@@ -1,0 +1,2161 @@
+# TECH360 LLC — FINAL MASTER PRODUCTION BUILD, VPS AUDIT, AI AUTOMATION, CRM, WEBSITE & MARKETING COMMAND CENTER PROMPT
+
+## CRITICAL INSTRUCTION — READ BEFORE DOING ANYTHING
+
+You are working on the REAL production project:
+
+# TECH360 LLC
+
+Website: https://bdtech360.com
+
+This is NOT a demo project.
+
+This is NOT a prototype.
+
+This is NOT a UI-only exercise.
+
+This is NOT a mockup.
+
+The application is being built, repaired, completed and deployed on a REAL VPS server.
+
+Your job is to inspect the REAL existing project, REAL server environment, REAL database, REAL running services, REAL source code, REAL CRM, REAL AI integrations and REAL website before making changes.
+
+Do not assume the previous production-readiness report is correct.
+
+Do not blindly trust previous AI-generated reports.
+
+Verify everything yourself from the actual source code and actual VPS runtime.
+
+The final system must contain REAL working functionality.
+
+---
+
+# PRIMARY OBJECTIVE
+
+Transform the existing TECH360 project into a genuinely production-ready system where:
+
+* The public website is fully functional.
+* The CRM uses real database data.
+* The Super Admin dashboard displays real metrics.
+* AI agents make real provider/API calls when configured.
+* AI automation performs real actions.
+* Marketing automation uses real workflows.
+* Leads enter the real CRM.
+* Follow-ups are genuinely scheduled and executed.
+* Email/WhatsApp/social integrations are real when credentials are configured.
+* Images are clear, professional and correctly managed.
+* TECH360 branding and logo are consistently used.
+* Multiple languages can be supported.
+* No fake success messages exist.
+* No hardcoded dashboard statistics exist.
+* No mock AI responses pretend to be real.
+* No disconnected buttons or dead routes remain.
+* No demo-only implementation is presented as production functionality.
+* The system works on the actual VPS and actual domain.
+
+---
+
+# ABSOLUTE RULE: INSPECT FIRST, MODIFY SECOND
+
+Before changing code, perform a complete inventory of the VPS.
+
+Identify:
+
+```text
+Operating system
+Server resources
+Active users
+Project directories
+Current deployment directory
+Backups
+Git repositories
+Node.js versions
+npm
+Bun
+PHP
+Composer
+Python
+PM2
+systemd services
+Nginx
+Apache
+Caddy
+MySQL/MariaDB/PostgreSQL
+Redis
+Cron jobs
+Open ports
+Firewall
+SSL certificates
+Domain configuration
+Reverse proxy configuration
+Running processes
+Environment files
+Database connections
+Storage directories
+Upload directories
+Logs
+Scheduled jobs
+Background workers
+Webhooks
+```
+
+Do not delete anything until the active production architecture is understood.
+
+Create an inventory report first.
+
+---
+
+# STEP 1 — DETERMINE THE REAL ACTIVE STACK
+
+Previous information shows conflicting architecture.
+
+One report says the application is:
+
+```text
+Laravel 11.56
+PHP 8.2+
+MySQL
+Blade
+Sanctum
+105 routes
+67 views
+45 migrations
+```
+
+But the real server environment previously showed:
+
+```text
+NODE_ENV=production
+PORT=3021
+DATABASE_URL=...
+NEXTAUTH_URL=...
+NEXTAUTH_SECRET=...
+JWT_SECRET=...
+OPENAI_API_KEY=...
+AI_MODEL=...
+REDIS_URL=...
+UPLOAD_DIR=...
+RESEND_API_KEY=...
+PM2 / Node.js runtime
+```
+
+Therefore:
+
+# DO NOT AUTOMATICALLY CONVERT THE PROJECT FROM NEXT.JS TO LARAVEL.
+
+# DO NOT AUTOMATICALLY STOP THE PORT 3021 APPLICATION.
+
+# DO NOT AUTOMATICALLY DEPLOY THE PREVIOUS LARAVEL ZIP.
+
+Instead:
+
+1. Inspect the actual active domain.
+2. Identify which process serves `bdtech360.com`.
+3. Identify the active PM2/systemd process.
+4. Identify the actual source directory.
+5. Identify the actual framework.
+6. Inspect the actual database connection.
+7. Inspect the active reverse proxy.
+8. Inspect the active environment variables without exposing secrets.
+9. Compare the running application against all available source packages.
+10. Determine which project is the REAL production codebase.
+
+Only after verification should architecture changes be made.
+
+The existing working stack must be preserved unless there is a technically verified reason to replace it.
+
+---
+
+# STEP 2 — CREATE A SAFE BACKUP BEFORE CHANGES
+
+Before modifying production:
+
+Create and verify backups of:
+
+```text
+Database
+Current active source code
+Environment configuration
+Uploaded files
+Media files
+Application storage
+PM2 configuration
+Nginx/Apache/Caddy configuration
+Cron configuration
+Systemd services
+```
+
+Do not print secrets into reports.
+
+Do not commit `.env`.
+
+Do not place credentials into source code.
+
+Do not expose API keys in logs.
+
+Verify that backups actually exist and can be used.
+
+---
+
+# STEP 3 — FULL CODEBASE AUDIT
+
+Audit every part of the existing project.
+
+Check:
+
+```text
+package.json
+composer.json
+bun.lock
+package-lock.json
+pnpm-lock.yaml
+prisma/
+database/
+app/
+pages/
+src/
+components/
+lib/
+services/
+api/
+routes/
+controllers/
+models/
+migrations/
+public/
+storage/
+uploads/
+scripts/
+cron/
+workers/
+ecosystem.config.*
+Docker files if present
+deployment files
+environment examples
+```
+
+Create a real inventory.
+
+For every feature classify it as:
+
+```text
+REAL_WORKING
+PARTIALLY_WORKING
+UI_ONLY
+MOCKED
+DISCONNECTED
+BROKEN
+MISSING
+NOT_CONFIGURED
+```
+
+Do not guess.
+
+Verify by tracing:
+
+```text
+UI
+→ API
+→ validation
+→ business logic
+→ database/provider
+→ response
+→ UI result
+```
+
+---
+
+# ZERO FAKE FUNCTIONALITY POLICY
+
+This is mandatory.
+
+Never use:
+
+```text
+Fake dashboard statistics
+Hardcoded revenue
+Hardcoded leads
+Mock AI responses
+Fake chat replies
+Fake WhatsApp delivery
+Fake email sending
+Fake social publishing
+Fake payment success
+Fake CRM activity
+Fake analytics
+Fake automation completion
+Fake video generation
+Fake image generation
+Fake API responses
+Placeholder data presented as live data
+```
+
+If something cannot work because credentials are missing, display:
+
+```text
+NOT CONFIGURED
+```
+
+or:
+
+```text
+CONFIGURATION REQUIRED
+```
+
+or:
+
+```text
+PROVIDER ERROR
+```
+
+with safe diagnostic information.
+
+Never pretend it succeeded.
+
+---
+
+# TECH360 PUBLIC WEBSITE
+
+Build and complete a modern, premium TECH360 public website.
+
+The website should communicate clearly:
+
+```text
+Who we are
+What we do
+Who we help
+How the process works
+Our services
+Our technology
+Our AI capabilities
+Our marketing services
+Our portfolio/case studies if available
+Our process
+Contact information
+Consultation / enquiry
+Call to action
+```
+
+Every CTA must perform a real action.
+
+Examples:
+
+```text
+Get Started
+Book Consultation
+Request a Quote
+Contact Us
+Start Your Project
+Talk to AI Assistant
+Submit Enquiry
+```
+
+Buttons must connect to real forms, CRM records, booking workflows or configured communication channels.
+
+No dead buttons.
+
+---
+
+# VISUAL DESIGN AND IMAGE SYSTEM
+
+The website must use clear, high-quality visual content.
+
+The user specifically wants a clean visual presentation similar in quality and structure to the visual inspiration from:
+
+https://needwebsite.site
+
+Use that website only as a design inspiration/reference.
+
+Do not copy:
+
+```text
+Their source code
+Their branding
+Their copyrighted images
+Their logo
+Their written content
+Their proprietary assets
+```
+
+Study and reproduce only general design principles where appropriate:
+
+```text
+Clean image presentation
+Large clear visuals
+Strong hierarchy
+Modern sections
+Professional typography
+Clear service explanation
+Image-supported storytelling
+Strong CTA placement
+Good whitespace
+Premium business appearance
+Modern cards
+Clear process visualization
+Mobile responsiveness
+```
+
+TECH360 must have its own unique design and branding.
+
+---
+
+# CLEAR IMAGE REQUIREMENT
+
+Do not use:
+
+```text
+Blurry images
+Low-resolution images
+Random irrelevant stock images
+Broken image URLs
+Stretched logos
+Duplicate meaningless images
+Images with incorrect aspect ratios
+Generic placeholder images in production
+```
+
+Build a real media system.
+
+Every media asset should support:
+
+```text
+Original file
+Optimized version
+Thumbnail
+Alt text
+Title
+Caption
+Category
+Tags
+Upload date
+File type
+File size
+Usage references
+```
+
+Optimize for:
+
+```text
+WebP
+AVIF where supported
+Responsive images
+Lazy loading
+Correct dimensions
+SEO alt text
+Performance
+```
+
+---
+
+# TECH360 BRAND SYSTEM
+
+Use the REAL TECH360 logo and branding throughout the system.
+
+Create central brand management.
+
+Super Admin must be able to manage:
+
+```text
+Primary logo
+Dark logo
+Light logo
+Favicon
+Company name
+Brand colors
+Typography
+Social profiles
+Email signature
+Default marketing footer
+Website contact information
+```
+
+The TECH360 logo should appear correctly in:
+
+```text
+Public website
+Admin dashboard
+CRM
+Login page
+AI-generated marketing material
+Email templates
+PDF documents
+Reports
+Social media graphics
+Marketing automation
+```
+
+Do not distort or stretch the logo.
+
+---
+
+# MULTILINGUAL WEBSITE
+
+The website currently may contain content in languages other than English.
+
+Audit every public page and identify:
+
+```text
+English content
+Bangla/Bengali content
+Mixed language content
+Hardcoded language strings
+Broken encoding
+Incomplete translations
+```
+
+Implement a proper multilingual architecture.
+
+At minimum support:
+
+```text
+English
+Bangla
+```
+
+Make the system extensible for additional languages.
+
+Requirements:
+
+```text
+Language switcher
+SEO-aware language URLs where appropriate
+Translated navigation
+Translated CMS content
+Translated marketing content
+Translated forms
+Translated AI output where requested
+Fallback language
+No broken mixed-language UI
+Unicode-safe storage
+```
+
+Do not blindly machine-translate technical or legal content without review controls.
+
+---
+
+# SUPER ADMIN DASHBOARD — REAL COMMAND CENTER
+
+The Super Admin dashboard must become the main TECH360 operational command center.
+
+It must use REAL database and system data.
+
+Do not hardcode metrics.
+
+Dashboard sections:
+
+## BUSINESS OVERVIEW
+
+```text
+Total leads
+New leads
+Qualified leads
+Hot leads
+Active clients
+Projects
+Pending projects
+Completed projects
+Revenue where real payment data exists
+Pending invoices
+Conversion rate
+```
+
+## CRM
+
+```text
+Recent leads
+Lead source
+Lead status
+Lead pipeline
+Assigned team member
+Overdue follow-ups
+Upcoming follow-ups
+Lead activity
+Conversion funnel
+```
+
+## AI AUTOMATION
+
+```text
+AI agents
+Total AI runs
+Successful runs
+Failed runs
+Pending approvals
+Provider status
+Model usage
+Token usage where available
+Estimated AI cost where available
+Recent AI activity
+Automation failures
+```
+
+## MARKETING
+
+```text
+Active campaigns
+Scheduled content
+Published content
+Drafts
+Approval queue
+Failed publications
+Lead source performance
+Campaign performance
+```
+
+## SYSTEM
+
+```text
+Application status
+Database status
+Queue/worker status
+Cron status
+Last automation run
+Recent errors
+Storage usage
+Provider connection status
+```
+
+Every metric must trace back to a real source.
+
+---
+
+# CRM — REAL FUNCTIONAL SYSTEM
+
+Audit and complete the CRM.
+
+Core entities should support as appropriate:
+
+```text
+Leads
+Contacts
+Clients
+Companies
+Projects
+Services
+Quotes
+Invoices
+Payments
+Tasks
+Notes
+Activities
+Follow-ups
+Communication
+Campaigns
+Team members
+AI actions
+Automation logs
+Files
+Documents
+```
+
+Each lead/client must have a real history.
+
+Timeline example:
+
+```text
+Lead created
+↓
+Source recorded
+↓
+AI qualification
+↓
+Lead scoring
+↓
+Assigned to team member
+↓
+Follow-up scheduled
+↓
+Email sent
+↓
+WhatsApp message sent
+↓
+Reply received
+↓
+Status updated
+↓
+Project/quote created
+↓
+Client converted
+```
+
+Every event must be stored from actual application activity.
+
+---
+
+# LEAD CAPTURE AUTOMATION
+
+Every public website lead form should connect to the real CRM.
+
+Workflow:
+
+```text
+Website Form
+→ Validation
+→ Spam protection
+→ Database
+→ Lead created
+→ Source recorded
+→ AI qualification
+→ AI lead scoring
+→ Team assignment
+→ Follow-up created
+→ Notification
+```
+
+Do not create duplicate leads unnecessarily.
+
+Implement duplicate detection using appropriate fields:
+
+```text
+Email
+Phone
+Normalized phone
+Company
+Name similarity where appropriate
+```
+
+---
+
+# AI LEAD QUALIFICATION
+
+Create a real AI workflow.
+
+AI can analyze:
+
+```text
+Service required
+Project type
+Budget
+Urgency
+Company type
+Message content
+Intent
+Potential value
+Lead quality
+Recommended next action
+```
+
+Store:
+
+```text
+AI summary
+Lead score
+Confidence where supported
+Reasons
+Recommended service
+Recommended follow-up
+```
+
+The CRM must show WHY a lead received its score.
+
+Example:
+
+```text
+Score: 85
+
+Reasons:
+- Clear project requirement
+- Budget provided
+- Immediate timeline
+- Requested consultation
+```
+
+Do not fabricate scoring.
+
+---
+
+# AI AUTOMATION ARCHITECTURE
+
+Build real AI agents appropriate for TECH360.
+
+Possible agents:
+
+```text
+Lead Qualification Agent
+Lead Scoring Agent
+CRM Assistant
+Sales Follow-up Agent
+Customer Support Agent
+Website Chat Agent
+SEO Agent
+Content Writing Agent
+Social Media Agent
+Marketing Campaign Agent
+Proposal Generation Agent
+Project Analysis Agent
+Client Summary Agent
+Report Generation Agent
+Image/Creative Agent
+Video Script Agent
+```
+
+Each agent must have:
+
+```text
+Name
+Purpose
+Prompt
+Model/provider
+Input schema
+Output schema
+Allowed tools
+Permissions
+Trigger
+Status
+Retry policy
+Error handling
+Logs
+Usage tracking
+Cost tracking where available
+Human approval setting
+```
+
+---
+
+# REAL AI PROVIDER INTEGRATION
+
+Use real provider integration when credentials are configured.
+
+Possible providers may include:
+
+```text
+OpenAI
+Other configured AI providers
+```
+
+Do not hardcode provider-specific assumptions without checking the actual project configuration.
+
+The AI system must support:
+
+```text
+Provider health check
+Model selection
+Timeout
+Retry
+Rate limit handling
+Error logging
+Fallback where configured
+```
+
+If API credentials are missing:
+
+Show:
+
+```text
+AI NOT CONFIGURED
+```
+
+Do not return a fake AI response.
+
+---
+
+# AI HUMAN APPROVAL SYSTEM
+
+Support three modes:
+
+```text
+AUTOMATIC
+REQUIRE APPROVAL
+DISABLED
+```
+
+Sensitive actions should default to approval where appropriate.
+
+Examples:
+
+```text
+Mass email
+Mass WhatsApp
+Social media publishing
+Client proposal
+Payment-related communication
+Destructive CRM action
+External API action
+```
+
+Admin approval queue should show:
+
+```text
+Action
+AI agent
+Content
+Target
+Reason
+Created time
+Approve
+Reject
+Edit
+```
+
+---
+
+# MARKETING COMMAND CENTER
+
+Build a complete Super Admin Marketing Command Center.
+
+Manage:
+
+```text
+Campaigns
+Content calendar
+Social media posts
+Email campaigns
+Lead campaigns
+AI content generation
+Creative generation
+Video scripts
+Approval workflow
+Scheduling
+Publishing
+Analytics
+UTM tracking
+Lead attribution
+```
+
+Workflow:
+
+```text
+Campaign
+↓
+AI strategy
+↓
+AI content generation
+↓
+Image/creative generation
+↓
+Human review
+↓
+Approval
+↓
+Schedule
+↓
+Publish through real provider
+↓
+Record provider result
+↓
+Track campaign performance
+```
+
+Never mark something as published unless the actual provider confirms success.
+
+---
+
+# SOCIAL MEDIA AUTOMATION
+
+Support configured platforms.
+
+Potential integrations:
+
+```text
+Facebook
+Instagram
+LinkedIn
+YouTube
+Other supported platforms
+```
+
+Each integration should show:
+
+```text
+CONNECTED
+NOT CONFIGURED
+ERROR
+TOKEN EXPIRED
+```
+
+Do not display secrets.
+
+AI can generate:
+
+```text
+Post ideas
+Captions
+Hashtags
+CTA
+Campaign concepts
+Image prompts
+Video scripts
+Content variations
+Bangla content
+English content
+```
+
+---
+
+# CONTENT CALENDAR
+
+Build a visual marketing calendar.
+
+Show:
+
+```text
+Draft
+Needs approval
+Approved
+Scheduled
+Publishing
+Published
+Failed
+```
+
+Filters:
+
+```text
+Date
+Platform
+Campaign
+Status
+Content type
+Language
+```
+
+Every scheduled job must actually execute through the real scheduler/worker architecture.
+
+---
+
+# EMAIL AUTOMATION
+
+Use the existing configured provider architecture.
+
+If Resend or another provider is configured, integrate through the real API.
+
+Support:
+
+```text
+Lead welcome
+Follow-up
+Proposal
+Project update
+Campaign
+Newsletter
+Re-engagement
+Appointment reminder
+Internal notification
+```
+
+Track provider-confirmed events where supported:
+
+```text
+Queued
+Sent
+Delivered
+Bounced
+Opened
+Clicked
+Failed
+```
+
+Do not fake delivery.
+
+---
+
+# WHATSAPP AUTOMATION
+
+If WhatsApp Cloud API or another approved provider is configured, implement real integration.
+
+Support:
+
+```text
+Inbound messages
+Outbound messages
+Templates
+Media
+Conversation history
+Delivery status
+Read status where available
+Failure status
+Webhook processing
+```
+
+Automation example:
+
+```text
+New Lead
+→ Welcome message
+
+No response after configured period
+→ Follow-up
+
+Lead replies
+→ Stop automated sequence
+→ Notify assigned team member
+```
+
+Never continue automated spam after a reply or opt-out.
+
+---
+
+# WEBSITE AI CHATBOT
+
+The public website chatbot must be a real system.
+
+It should:
+
+```text
+Answer company/service questions
+Collect leads when appropriate
+Route complex enquiries
+Create CRM activity
+Recommend next steps
+Escalate to human support
+```
+
+Chatbot flow:
+
+```text
+Visitor
+→ AI response
+→ Intent detection
+→ Lead capture if appropriate
+→ CRM record
+→ Human handoff if required
+```
+
+Do not expose internal prompts or API keys.
+
+---
+
+# WEBSITE CONTENT MANAGEMENT
+
+Super Admin must be able to manage important public content.
+
+Examples:
+
+```text
+Homepage sections
+Services
+About
+Team
+Portfolio
+Case studies
+Testimonials
+FAQs
+Blog
+Contact information
+SEO metadata
+Images
+CTA content
+Language translations
+```
+
+Avoid requiring code changes for ordinary content edits.
+
+---
+
+# SEO AUTOMATION
+
+Build a real SEO workflow.
+
+Support:
+
+```text
+SEO title
+Meta description
+Canonical URL
+OpenGraph
+Twitter metadata
+Schema markup
+Image alt text
+Internal linking suggestions
+Keyword/content suggestions
+Sitemap
+Robots.txt
+```
+
+AI SEO tools can generate drafts but should not automatically overwrite important content without configured approval.
+
+---
+
+# IMAGE / CREATIVE AUTOMATION
+
+Where an image-generation provider is configured:
+
+AI may generate:
+
+```text
+Marketing creative
+Social media graphics
+Campaign concepts
+Illustrations
+Blog visuals
+Presentation graphics
+```
+
+All generated images must:
+
+```text
+Use TECH360 branding where configured
+Use correct dimensions
+Be saved in the media system
+Be connected to campaigns/content
+Have status tracking
+Have approval workflow where configured
+```
+
+Do not claim an image was generated if only a prompt was generated.
+
+---
+
+# VIDEO AUTOMATION
+
+Where the VPS and configured providers support it, build real workflows.
+
+Possible stages:
+
+```text
+Script Created
+Voice Created
+Assets Prepared
+Rendering
+Rendered
+Approved
+Scheduled
+Published
+Failed
+```
+
+If the server has real tools such as:
+
+```text
+FFmpeg
+Text-to-speech
+Configured AI providers
+```
+
+use them only after verifying they are actually installed and functional.
+
+Never fake:
+
+```text
+Video ready
+Video rendered
+Video published
+```
+
+---
+
+# FILE AND MEDIA MANAGEMENT
+
+Create/complete a secure media system.
+
+Support:
+
+```text
+Upload
+Validation
+File type validation
+Size limits
+Image preview
+Replacement
+Deletion
+Usage tracking
+Storage management
+Private files
+Public files
+```
+
+Do not allow arbitrary executable uploads.
+
+---
+
+# CLIENT PORTAL
+
+Audit the existing client portal.
+
+Each client must only access their own resources.
+
+Verify server-side authorization.
+
+Protect against:
+
+```text
+IDOR
+Cross-client access
+URL manipulation
+API manipulation
+Unauthorized downloads
+```
+
+Client functionality may include:
+
+```text
+Profile
+Projects
+Project progress
+Documents
+Invoices
+Payments
+Messages
+Files
+Deliverables
+Support requests
+```
+
+All data must be real.
+
+---
+
+# PROJECT MANAGEMENT
+
+Complete project workflows where applicable.
+
+Support:
+
+```text
+Project
+Client
+Service
+Status
+Team
+Tasks
+Milestones
+Files
+Notes
+Activity
+Due date
+Delivery
+```
+
+Example:
+
+```text
+New
+Planning
+In Progress
+Waiting for Client
+Review
+Revision
+Completed
+Archived
+```
+
+Make statuses configurable where appropriate.
+
+---
+
+# PAYMENT SYSTEM
+
+Do not fake payment processing.
+
+Audit existing payment implementation.
+
+Verify:
+
+```text
+Payment creation
+Provider interaction
+Webhook validation
+Signature validation
+Amount validation
+Duplicate transaction protection
+Status transitions
+Refund logic if supported
+Audit log
+```
+
+Example statuses:
+
+```text
+Pending
+Processing
+Paid
+Failed
+Refunded
+Cancelled
+```
+
+Payment confirmation must come from real verified provider/server-side logic.
+
+---
+
+# WEBHOOK SECURITY
+
+For every external webhook implement appropriate protection:
+
+```text
+Signature verification
+Timestamp validation where supported
+Replay protection
+Idempotency
+Duplicate event handling
+Rate limiting
+Safe logging
+```
+
+Do not trust client-side payment or webhook claims.
+
+---
+
+# SECURITY AUDIT
+
+Perform a real production security review.
+
+Verify:
+
+```text
+Authentication
+Authorization
+Role-based access control
+Server-side permissions
+IDOR protection
+CSRF protection
+XSS prevention
+SQL injection prevention
+Rate limiting
+Input validation
+Output encoding
+Secure cookies
+HTTPS
+Security headers
+File upload protection
+Secret management
+Webhook security
+Audit logs
+Error handling
+Production debug disabled
+```
+
+Never claim security is PASS unless verified.
+
+---
+
+# ENVIRONMENT MANAGEMENT
+
+Inspect environment configuration safely.
+
+Do not print:
+
+```text
+Database passwords
+API keys
+JWT secrets
+NextAuth secrets
+Webhook secrets
+Payment secrets
+SMTP passwords
+```
+
+Create or maintain `.env.example` with placeholders only.
+
+Example concept:
+
+```env
+NODE_ENV=production
+PORT=3021
+APP_URL=https://bdtech360.com
+
+DATABASE_URL=
+
+NEXTAUTH_URL=https://bdtech360.com
+NEXTAUTH_SECRET=
+
+JWT_SECRET=
+
+OPENAI_API_KEY=
+AI_MODEL=
+
+REDIS_URL=
+
+UPLOAD_DIR=
+
+EMAIL_FROM=
+RESEND_API_KEY=
+
+LOG_LEVEL=error
+```
+
+Use the actual application's required environment variables.
+
+Do not invent variables that the active code does not use.
+
+---
+
+# DATABASE PRODUCTION AUDIT
+
+Inspect the real database.
+
+Verify:
+
+```text
+Active database engine
+Connection
+Schema
+Tables
+Indexes
+Foreign keys
+Migrations
+Production data
+Duplicate data
+Orphan records
+Query performance
+Backup
+Restore process
+```
+
+Never switch databases automatically.
+
+Never convert MySQL to SQLite.
+
+Never use SQLite for production unless the actual architecture intentionally requires it.
+
+Do not run destructive migrations without backup.
+
+---
+
+# PERFORMANCE
+
+Audit:
+
+```text
+Slow pages
+Slow API endpoints
+Slow database queries
+N+1 queries
+Large assets
+Image optimization
+Memory usage
+CPU usage
+PM2 restart loops
+Memory leaks
+Worker failures
+Cache usage
+Build size
+```
+
+Optimize without breaking real-time or CRM correctness.
+
+---
+
+# VPS DEPLOYMENT
+
+The final application must run on the REAL VPS.
+
+Determine the correct deployment method from the active architecture.
+
+Possible runtime may include:
+
+```text
+PM2
+systemd
+Node.js
+Next.js standalone
+Laravel/PHP
+Nginx
+Apache
+Caddy
+Cron
+Queue workers
+Redis
+```
+
+Do not force a new architecture unnecessarily.
+
+If the actual live project is a Next.js application on port 3021, preserve and correctly manage that runtime unless a verified migration is explicitly required.
+
+Verify:
+
+```text
+Domain
+HTTPS
+Reverse proxy
+Application process
+Automatic restart
+Server reboot recovery
+Logs
+Health check
+Database connection
+File permissions
+Background jobs
+Cron
+Webhooks
+```
+
+---
+
+# PM2 REQUIREMENTS IF PM2 IS THE ACTIVE RUNTIME
+
+Verify:
+
+```bash
+pm2 status
+pm2 logs
+pm2 describe
+```
+
+Check:
+
+```text
+Restart loop
+Correct working directory
+Correct environment
+Correct port
+Correct startup command
+Correct build/runtime
+Memory usage
+Error logs
+Auto restart
+Startup on reboot
+```
+
+Do not run a second duplicate application on the same port.
+
+---
+
+# DEPLOYMENT VALIDATION
+
+After every major deployment:
+
+Verify:
+
+```text
+HTTP status
+HTTPS status
+Homepage
+Navigation
+Public pages
+Login
+Logout
+Registration if enabled
+Password reset
+CRM
+Admin dashboard
+Client portal
+Forms
+Lead creation
+Database writes
+AI integration
+Automation
+Email integration where configured
+Media upload
+Image rendering
+Scheduled jobs
+Webhooks
+Mobile responsiveness
+```
+
+Use real end-to-end tests.
+
+---
+
+# REQUIRED END-TO-END TESTING
+
+Test actual flows.
+
+## LEAD FLOW
+
+```text
+Visitor
+→ Submit enquiry
+→ Validation
+→ Database lead created
+→ Source recorded
+→ AI qualification
+→ Lead score
+→ Assigned
+→ Follow-up scheduled
+→ Admin dashboard updated
+```
+
+## AI FLOW
+
+```text
+Admin/User triggers AI
+→ Real provider request
+→ Real response
+→ Validation
+→ Database/log entry
+→ UI result
+```
+
+## MARKETING FLOW
+
+```text
+Create campaign
+→ AI content
+→ Image/creative
+→ Approval
+→ Schedule
+→ Background job
+→ Provider publish
+→ Provider response
+→ Status recorded
+```
+
+## CLIENT FLOW
+
+```text
+Client login
+→ Access own project
+→ Access own files
+→ Access own invoice
+→ Cannot access another client's data
+```
+
+## MEDIA FLOW
+
+```text
+Upload image
+→ Validate
+→ Store
+→ Optimize
+→ Assign to page/campaign
+→ Display correctly
+```
+
+---
+
+# AUTOMATION HEALTH MONITOR
+
+Create a Super Admin automation monitoring page.
+
+Show every automation:
+
+```text
+Automation name
+Status
+Enabled/disabled
+Last run
+Next run
+Duration
+Success
+Failure
+Last error
+Retry count
+```
+
+Statuses:
+
+```text
+HEALTHY
+WARNING
+FAILED
+DISABLED
+NOT CONFIGURED
+```
+
+This page must read actual execution data.
+
+---
+
+# AUDIT LOG
+
+Critical actions must be auditable.
+
+Examples:
+
+```text
+User login
+Role change
+Lead deletion
+Client deletion
+Project change
+Payment change
+Automation change
+AI configuration change
+Provider connection change
+Marketing publication
+Admin settings change
+```
+
+Store:
+
+```text
+Actor
+Action
+Entity
+Entity ID
+Timestamp
+Safe metadata
+```
+
+Never store secrets in audit logs.
+
+---
+
+# REQUIRED FINAL DOCUMENTATION
+
+When work is complete, create:
+
+## 1. REAL_PRODUCTION_AUDIT.md
+
+Include:
+
+```text
+Actual stack
+Actual active project path
+Actual runtime
+Actual domain routing
+Database engine
+Process manager
+Services
+What was found
+What was broken
+What was fixed
+What remains configuration-required
+```
+
+## 2. AI_AUTOMATION_ARCHITECTURE.md
+
+Document:
+
+```text
+AI agents
+Triggers
+Providers
+Tools
+Permissions
+Approval workflow
+Failure handling
+Logs
+Costs
+```
+
+## 3. CRM_WORKFLOW.md
+
+Document real CRM lifecycle.
+
+## 4. MARKETING_AUTOMATION.md
+
+Document:
+
+```text
+Campaign creation
+AI generation
+Approval
+Scheduling
+Publishing
+Tracking
+Failure recovery
+```
+
+## 5. VPS_DEPLOYMENT.md
+
+Document the REAL deployment process discovered from the server.
+
+Do not write generic instructions that conflict with the actual architecture.
+
+## 6. OPERATIONS_RUNBOOK.md
+
+Include:
+
+```text
+Start
+Stop
+Restart
+Deploy
+Rollback
+Backup
+Restore
+Logs
+Database troubleshooting
+AI troubleshooting
+Automation troubleshooting
+Emergency procedures
+```
+
+---
+
+# FINAL PRODUCTION REPORT FORMAT
+
+At the end, produce a truthful report.
+
+Use these categories:
+
+```text
+VERIFIED WORKING
+FIXED AND VERIFIED
+CONFIGURATION REQUIRED
+NOT IMPLEMENTED
+FAILED
+```
+
+Do not use PASS simply because code exists.
+
+A feature can only be marked VERIFIED WORKING after it has been tested end-to-end.
+
+Example:
+
+| Feature             | Status                 | Real Verification                             |
+| ------------------- | ---------------------- | --------------------------------------------- |
+| Homepage            | VERIFIED WORKING       | Tested through live application               |
+| Lead Form           | VERIFIED WORKING       | Submitted test lead and confirmed CRM record  |
+| AI Agent            | VERIFIED WORKING       | Real provider response verified               |
+| WhatsApp            | CONFIGURATION REQUIRED | Provider credentials/webhook not configured   |
+| Marketing Publisher | VERIFIED WORKING       | Actual provider publication response recorded |
+| CRM Metrics         | VERIFIED WORKING       | Metrics match database queries                |
+| Video Generation    | NOT IMPLEMENTED        | No real provider/runtime available            |
+
+---
+
+# FINAL ACCEPTANCE CRITERIA
+
+Do not declare TECH360 production-ready until all applicable items are verified.
+
+## WEBSITE
+
+```text
+No broken pages
+No broken images
+No dead links
+No dead buttons
+No fake forms
+No placeholder production content
+Mobile responsive
+TECH360 branding correct
+Clear professional images
+Language handling correct
+SEO functional
+```
+
+## CRM
+
+```text
+Real database
+Real leads
+Real activities
+Real assignments
+Real follow-ups
+Server-side authorization
+No cross-client data access
+```
+
+## AI
+
+```text
+Real provider integration
+No fake responses
+Logs
+Errors
+Retry handling
+Approval workflow
+Usage tracking where available
+```
+
+## MARKETING
+
+```text
+Campaign management
+AI content
+Approval
+Scheduling
+Real publishing where provider configured
+Real provider result tracking
+```
+
+## VPS
+
+```text
+Correct active project
+Correct runtime
+No duplicate process
+HTTPS
+Automatic restart
+Correct environment
+Database working
+Logs working
+Cron/automation working
+```
+
+---
+
+# FINAL NON-NEGOTIABLE RULES
+
+1. DO NOT replace the existing project blindly.
+2. DO NOT assume Laravel is the live stack.
+3. DO NOT assume Next.js is the live stack.
+4. Inspect the real VPS first.
+5. Preserve working functionality.
+6. Backup before destructive changes.
+7. Do not expose secrets.
+8. Do not use mock functionality.
+9. Do not use fake AI responses.
+10. Do not use fake dashboard data.
+11. Do not claim a feature works because UI exists.
+12. Trace every important function from UI to backend to database/provider.
+13. Test on the real VPS.
+14. Verify the real domain.
+15. Use clear, professional images.
+16. Use the real TECH360 logo consistently.
+17. Support English and properly managed additional languages.
+18. Build the Super Admin dashboard as a real command center.
+19. Build AI automation as a real operational system.
+20. Build marketing automation with real execution and provider confirmations.
+21. Clearly mark anything that requires credentials/configuration.
+22. Never silently delete production data.
+23. Never declare PRODUCTION READY without end-to-end verification.
+
+---
+
+# EXECUTION ORDER
+
+Follow this exact order:
+
+```text
+PHASE 1
+→ VPS inventory
+→ Active application discovery
+→ Runtime verification
+→ Domain/reverse proxy verification
+
+PHASE 2
+→ Backup
+→ Source code inventory
+→ Database audit
+→ Environment audit
+
+PHASE 3
+→ Feature-by-feature audit
+→ Identify REAL / PARTIAL / MOCK / BROKEN / MISSING
+
+PHASE 4
+→ Fix architecture and broken functionality
+→ Preserve working features
+
+PHASE 5
+→ Complete CRM
+→ Complete AI automation
+→ Complete marketing automation
+
+PHASE 6
+→ Improve public website
+→ Clear professional images
+→ TECH360 logo/branding
+→ Multilingual architecture
+→ Mobile and SEO
+
+PHASE 7
+→ Super Admin Command Center
+→ AI Control Center
+→ Marketing Command Center
+→ Automation Monitoring
+
+PHASE 8
+→ Security audit
+→ Performance optimization
+→ Production deployment validation
+
+PHASE 9
+→ Real end-to-end tests
+→ Fix failures
+→ Retest
+
+PHASE 10
+→ Final documentation
+→ Truthful production readiness report
+```
+
+# IMPORTANT FINAL COMMAND
+
+Do not stop after analyzing.
+
+Do not give me a theoretical plan.
+
+Do not give me mock code.
+
+Do not create a separate demo.
+
+Work directly with the REAL TECH360 project and the REAL VPS architecture.
+
+Inspect first.
+
+Preserve what works.
+
+Fix what is broken.
+
+Complete what is missing.
+
+Connect everything to real backend/database/provider services.
+
+Make AI automation actually execute.
+
+Make CRM data real.
+
+Make Super Admin a real command center.
+
+Make marketing automation actually run.
+
+Use clear, professional images.
+
+Use the real TECH360 logo.
+
+Support proper multilingual content.
+
+Test every critical workflow end-to-end.
+
+Then provide a final report containing only verified facts.
+
+# SUCCESS CONDITION
+
+The project is successful only when:
+
+```text
+bdtech360.com
+→ serves the correct active production application
+
+Website
+→ looks professional and uses clear images and TECH360 branding
+
+Forms
+→ create real CRM records
+
+CRM
+→ uses real database data
+
+AI
+→ performs real provider calls
+
+Automation
+→ actually executes
+
+Marketing
+→ creates, approves, schedules and publishes through configured providers
+
+Super Admin
+→ controls the real system
+
+Images
+→ are clear, optimized and centrally managed
+
+Languages
+→ are properly managed
+
+VPS
+→ reliably runs the application
+
+Critical workflows
+→ have been tested end-to-end
+```
+
+# FINAL OUTPUT REQUIRED FROM YOU
+
+When all work is complete, provide:
+
+1. Actual VPS architecture discovered.
+2. Actual active project path.
+3. Actual runtime/process configuration.
+4. Every feature found.
+5. Every feature fixed.
+6. Every feature verified end-to-end.
+7. Every remaining configuration-required item.
+8. Every failed or incomplete item.
+9. Exact deployment/restart commands for the REAL stack.
+10. Backup and rollback commands.
+11. Automation health summary.
+12. AI integration summary.
+13. Marketing integration summary.
+14. Security findings.
+15. Final truthful status:
+
+```text
+TECH360 — PRODUCTION READY
+
+OR
+
+TECH360 — PRODUCTION READY WITH CONFIGURATION REQUIRED
+
+OR
+
+TECH360 — NOT YET PRODUCTION READY
+```
+
+Do not choose the first option unless the actual VPS, application, database, integrations and critical workflows have been verified.

@@ -1,0 +1,115 @@
+{
+  "name": "Tech360 24 Daily CEO Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "n1",
+      "name": "Schedule Daily 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TECH360_API_BASE }}/api/webhooks/n8n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"workflow\":\"CEO_REPORT\"}",
+        "options": {
+          "timeout": 30000,
+          "retry": {
+            "enabled": true,
+            "maxTries": 3,
+            "waitBetweenTries": 5000
+          }
+        }
+      },
+      "id": "n2",
+      "name": "Platform CEO Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TECH360_API_SECRET",
+          "name": "Tech360 API Secret"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "n3",
+      "name": "Deliver Report",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        620,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Daily 08:00": {
+      "main": [
+        [
+          {
+            "node": "Platform CEO Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Platform CEO Report": {
+      "main": [
+        [
+          {
+            "node": "Deliver Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "instanceId": "tech360-automation",
+    "templateCredsSetupCompleted": true,
+    "description": "Daily scheduled CEO report from live CRM data (Pulse agent)."
+  },
+  "tags": [
+    {
+      "name": "tech360"
+    },
+    {
+      "name": "production"
+    }
+  ]
+}

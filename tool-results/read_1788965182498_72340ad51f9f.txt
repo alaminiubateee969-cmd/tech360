@@ -1,0 +1,651 @@
+     1→"use client";
+     2→
+     3→import { useState } from "react";
+     4→import { useForm } from "react-hook-form";
+     5→import { zodResolver } from "@hookform/resolvers/zod";
+     6→import { z } from "zod";
+     7→import { CheckCircle2, Loader2, Mail, MapPin, Phone, Send } from "lucide-react";
+     8→import { Button } from "@/components/ui/button";
+     9→import { Card, CardContent } from "@/components/ui/card";
+    10→import { Checkbox } from "@/components/ui/checkbox";
+    11→import { Input } from "@/components/ui/input";
+    12→import { Label } from "@/components/ui/label";
+    13→import { Textarea } from "@/components/ui/textarea";
+    14→import {
+    15→  Select,
+    16→  SelectContent,
+    17→  SelectItem,
+    18→  SelectTrigger,
+    19→  SelectValue,
+    20→} from "@/components/ui/select";
+    21→import {
+    22→  Form,
+    23→  FormControl,
+    24→  FormField,
+    25→  FormItem,
+    26→  FormLabel,
+    27→  FormMessage,
+    28→} from "@/components/ui/form";
+    29→import {
+    30→  COMPANY,
+    31→  BUSINESS_TYPES,
+    32→  COUNTRIES,
+    33→  PROJECT_TYPES,
+    34→  BUDGET_RANGES,
+    35→  CONTACT_METHODS,
+    36→} from "@/data/site";
+    37→import { PageHero } from "./PageHero";
+    38→import { Reveal } from "./Reveal";
+    39→
+    40→/* ------------------------------------------------------------------ */
+    41→/* Validation schema                                                   */
+    42→/* ------------------------------------------------------------------ */
+    43→
+    44→const contactSchema = z.object({
+    45→  name: z.string().min(2, "Please enter your full name."),
+    46→  businessName: z.string().optional(),
+    47→  businessType: z.string().min(1, "Select your business type."),
+    48→  email: z.email("Enter a valid email address."),
+    49→  whatsapp: z
+    50→    .string()
+    51→    .min(7, "Enter a reachable WhatsApp number including country code."),
+    52→  country: z.string().min(1, "Select your country."),
+    53→  projectType: z.string().min(1, "Select the type of project."),
+    54→  budgetRange: z.string().min(1, "Select a budget range (or the guidance option)."),
+    55→  details: z
+    56→    .string()
+    57→    .min(30, "Please describe your project in at least 30 characters — the more specific, the sharper the scope."),
+    58→  preferredContact: z.string().min(1, "Select your preferred contact method."),
+    59→  consent: z.boolean().refine((v) => v === true, {
+    60→    message: "Please agree to the Privacy Policy so we can respond to you.",
+    61→  }),
+    62→});
+    63→
+    64→type ContactFormValues = z.infer<typeof contactSchema>;
+    65→
+    66→/* ------------------------------------------------------------------ */
+    67→/* View                                                                */
+    68→/* ------------------------------------------------------------------ */
+    69→
+    70→export default function ContactView() {
+    71→  const [submitting, setSubmitting] = useState(false);
+    72→  const [apiError, setApiError] = useState<string | null>(null);
+    73→  const [success, setSuccess] = useState<{ clientId: string; message: string } | null>(null);
+    74→
+    75→  const form = useForm<ContactFormValues>({
+    76→    resolver: zodResolver(contactSchema),
+    77→    defaultValues: {
+    78→      name: "",
+    79→      businessName: "",
+    80→      businessType: "",
+    81→      email: "",
+    82→      whatsapp: "",
+    83→      country: "",
+    84→      projectType: "",
+    85→      budgetRange: "",
+    86→      details: "",
+    87→      preferredContact: "WhatsApp",
+    88→      consent: false,
+    89→    },
+    90→  });
+    91→
+    92→  const onSubmit = async (values: ContactFormValues) => {
+    93→    setSubmitting(true);
+    94→    setApiError(null);
+    95→    try {
+    96→      const res = await fetch("/api/contact", {
+    97→        method: "POST",
+    98→        headers: { "Content-Type": "application/json" },
+    99→        body: JSON.stringify({
+   100→          name: values.name,
+   101→          businessName: values.businessName ?? "",
+   102→          businessType: values.businessType,
+   103→          email: values.email,
+   104→          whatsapp: values.whatsapp,
+   105→          country: values.country,
+   106→          projectType: values.projectType,
+   107→          budgetRange: values.budgetRange,
+   108→          details: values.details,
+   109→          preferredContact: values.preferredContact,
+   110→          consent: true,
+   111→          tracking: {
+   112→            ref: typeof document !== "undefined" ? document.referrer || null : null,
+   113→            path: typeof window !== "undefined" ? window.location.hash : null,
+   114→          },
+   115→        }),
+   116→      });
+   117→      const data = (await res.json().catch(() => null)) as
+   118→        | { ok?: boolean; clientId?: string; message?: string; error?: string }
+   119→        | null;
+   120→      if (!res.ok || !data?.ok) {
+   121→        // Honest error handling: show what we know, no fake success.
+   122→        setApiError(
+   123→          data?.error ??
+   124→            data?.message ??
+   125→            `The request could not be submitted (HTTP ${res.status}). Please try again or reach us directly on WhatsApp.`
+   126→        );
+   127→        return;
+   128→      }
+   129→      setSuccess({
+   130→        clientId: data.clientId ?? "—",
+   131→        message:
+   132→          data.message ??
+   133→          "Your enquiry has been received. Our team will respond within one business day.",
+   134→      });
+   135→    } catch {
+   136→      setApiError(
+   137→        "Network error — the request never left your browser. Check your connection and try again, or message us on WhatsApp."
+   138→      );
+   139→    } finally {
+   140→      setSubmitting(false);
+   141→    }
+   142→  };
+   143→
+   144→  return (
+   145→    <main id="main-content">
+   146→      <PageHero
+   147→        eyebrow="Contact"
+   148→        title="Start your project — the scoped way"
+   149→        description="One form. You receive a Client ID immediately, a written scope after discovery, and an HTML preview before any payment decision."
+   150→        breadcrumb={[{ label: "Contact" }]}
+   151→      />
+   152→
+   153→      <section aria-labelledby="contact-heading" className="bg-[#F4FAFF]">
+   154→        <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-12 lg:gap-12 lg:px-8 lg:py-20">
+   155→          {/* Form column */}
+   156→          <div className="lg:col-span-7">
+   157→            <Reveal>
+   158→              <h2 id="contact-heading" className="text-2xl font-bold tracking-tight text-[#0B1F33] sm:text-3xl">
+   159→                Project enquiry form
+   160→              </h2>
+   161→              <p className="mt-3 text-base leading-relaxed text-[#526173]">
+   162→                Fields marked with an asterisk are required. Your details go
+   163→                into our delivery system against a Client ID — never into a
+   164→                mailing list.
+   165→              </p>
+   166→            </Reveal>
+   167→
+   168→            {success ? (
+   169→              <Reveal className="mt-8">
+   170→                <Card className="border-[#18B83A]/40 bg-white" role="status">
+   171→                  <CardContent className="p-6 sm:p-8">
+   172→                    <div className="flex items-start gap-4">
+   173→                      <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#18B83A]/10">
+   174→                        <CheckCircle2 className="size-6 text-[#18B83A]" aria-hidden="true" />
+   175→                      </span>
+   176→                      <div className="min-w-0">
+   177→                        <h3 className="text-xl font-bold text-[#0B1F33]">
+   178→                          Enquiry received
+   179→                        </h3>
+   180→                        <p className="mt-2 text-sm leading-relaxed text-[#526173]">
+   181→                          {success.message}
+   182→                        </p>
+   183→                        <div className="mt-5 rounded-xl border border-[#063B8F]/20 bg-[#F4FAFF] p-5">
+   184→                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#526173]">
+   185→                            Your reference ID
+   186→                          </p>
+   187→                          <p className="mt-1 break-all text-2xl font-bold tracking-tight text-[#063B8F]">
+   188→                            {success.clientId}
+   189→                          </p>
+   190→                          <p className="mt-2 text-xs leading-relaxed text-[#526173]">
+   191→                            Keep it for all future communication — quote it in
+   192→                            every message, email or call so your record stays
+   193→                            unified.
+   194→                          </p>
+   195→                        </div>
+   196→                        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+   197→                          <a
+   198→                            href={COMPANY.whatsappLink}
+   199→                            target="_blank"
+   200→                            rel="noopener noreferrer"
+   201→                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#18B83A] px-5 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#16A433] focus-visible:ring-2 focus-visible:ring-[#18B83A] focus-visible:ring-offset-2"
+   202→                          >
+   203→                            <Phone className="size-4" aria-hidden="true" />
+   204→                            Message us on WhatsApp
+   205→                          </a>
+   206→                          <a
+   207→                            href="#/process"
+   208→                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#063B8F]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#063B8F] outline-none transition-colors hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
+   209→                          >
+   210→                            What happens next
+   211→                          </a>
+   212→                        </div>
+   213→                      </div>
+   214→                    </div>
+   215→                  </CardContent>
+   216→                </Card>
+   217→              </Reveal>
+   218→            ) : (
+   219→              <Reveal delay={0.1} className="mt-8">
+   220→                <Card className="border-[#E2E8F0] bg-white">
+   221→                  <CardContent className="p-6 sm:p-8">
+   222→                    <Form {...form}>
+   223→                      <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-6">
+   224→                        <div className="grid gap-6 sm:grid-cols-2">
+   225→                          <FormField
+   226→                            control={form.control}
+   227→                            name="name"
+   228→                            render={({ field }) => (
+   229→                              <FormItem>
+   230→                                <FormLabel className="text-[#0B1F33]">Name *</FormLabel>
+   231→                                <FormControl>
+   232→                                  <Input
+   233→                                    placeholder="Your full name"
+   234→                                    autoComplete="name"
+   235→                                    className="min-h-11 border-[#E2E8F0] focus-visible:ring-[#009FE3]/40"
+   236→                                    {...field}
+   237→                                  />
+   238→                                </FormControl>
+   239→                                <FormMessage />
+   240→                              </FormItem>
+   241→                            )}
+   242→                          />
+   243→                          <FormField
+   244→                            control={form.control}
+   245→                            name="businessName"
+   246→                            render={({ field }) => (
+   247→                              <FormItem>
+   248→                                <FormLabel className="text-[#0B1F33]">Business name</FormLabel>
+   249→                                <FormControl>
+   250→                                  <Input
+   251→                                    placeholder="Company or brand (optional)"
+   252→                                    autoComplete="organization"
+   253→                                    className="min-h-11 border-[#E2E8F0] focus-visible:ring-[#009FE3]/40"
+   254→                                    {...field}
+   255→                                  />
+   256→                                </FormControl>
+   257→                                <FormMessage />
+   258→                              </FormItem>
+   259→                            )}
+   260→                          />
+   261→                        </div>
+   262→
+   263→                        <div className="grid gap-6 sm:grid-cols-2">
+   264→                          <FormField
+   265→                            control={form.control}
+   266→                            name="email"
+   267→                            render={({ field }) => (
+   268→                              <FormItem>
+   269→                                <FormLabel className="text-[#0B1F33]">Email *</FormLabel>
+   270→                                <FormControl>
+   271→                                  <Input
+   272→                                    type="email"
+   273→                                    inputMode="email"
+   274→                                    placeholder="you@company.com"
+   275→                                    autoComplete="email"
+   276→                                    className="min-h-11 border-[#E2E8F0] focus-visible:ring-[#009FE3]/40"
+   277→                                    {...field}
+   278→                                  />
+   279→                                </FormControl>
+   280→                                <FormMessage />
+   281→                              </FormItem>
+   282→                            )}
+   283→                          />
+   284→                          <FormField
+   285→                            control={form.control}
+   286→                            name="whatsapp"
+   287→                            render={({ field }) => (
+   288→                              <FormItem>
+   289→                                <FormLabel className="text-[#0B1F33]">WhatsApp number *</FormLabel>
+   290→                                <FormControl>
+   291→                                  <Input
+   292→                                    type="tel"
+   293→                                    inputMode="tel"
+   294→                                    placeholder="+880 1XXX-XXXXXX"
+   295→                                    autoComplete="tel"
+   296→                                    className="min-h-11 border-[#E2E8F0] focus-visible:ring-[#009FE3]/40"
+   297→                                    {...field}
+   298→                                  />
+   299→                                </FormControl>
+   300→                                <FormMessage />
+   301→                              </FormItem>
+   302→                            )}
+   303→                          />
+   304→                        </div>
+   305→
+   306→                        <div className="grid gap-6 sm:grid-cols-2">
+   307→                          <FormField
+   308→                            control={form.control}
+   309→                            name="businessType"
+   310→                            render={({ field }) => (
+   311→                              <FormItem>
+   312→                                <FormLabel className="text-[#0B1F33]">Business type *</FormLabel>
+   313→                                <Select onValueChange={field.onChange} value={field.value}>
+   314→                                  <FormControl>
+   315→                                    <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
+   316→                                      <SelectValue placeholder="Select your business type" />
+   317→                                    </SelectTrigger>
+   318→                                  </FormControl>
+   319→                                  <SelectContent>
+   320→                                    {BUSINESS_TYPES.map((type) => (
+   321→                                      <SelectItem key={type} value={type}>
+   322→                                        {type}
+   323→                                      </SelectItem>
+   324→                                    ))}
+   325→                                  </SelectContent>
+   326→                                </Select>
+   327→                                <FormMessage />
+   328→                              </FormItem>
+   329→                            )}
+   330→                          />
+   331→                          <FormField
+   332→                            control={form.control}
+   333→                            name="country"
+   334→                            render={({ field }) => (
+   335→                              <FormItem>
+   336→                                <FormLabel className="text-[#0B1F33]">Country *</FormLabel>
+   337→                                <Select onValueChange={field.onChange} value={field.value}>
+   338→                                  <FormControl>
+   339→                                    <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
+   340→                                      <SelectValue placeholder="Select your country" />
+   341→                                    </SelectTrigger>
+   342→                                  </FormControl>
+   343→                                  <SelectContent>
+   344→                                    {COUNTRIES.map((country) => (
+   345→                                      <SelectItem key={country} value={country}>
+   346→                                        {country}
+   347→                                      </SelectItem>
+   348→                                    ))}
+   349→                                  </SelectContent>
+   350→                                </Select>
+   351→                                <FormMessage />
+   352→                              </FormItem>
+   353→                            )}
+   354→                          />
+   355→                        </div>
+   356→
+   357→                        <div className="grid gap-6 sm:grid-cols-2">
+   358→                          <FormField
+   359→                            control={form.control}
+   360→                            name="projectType"
+   361→                            render={({ field }) => (
+   362→                              <FormItem>
+   363→                                <FormLabel className="text-[#0B1F33]">Project type *</FormLabel>
+   364→                                <Select onValueChange={field.onChange} value={field.value}>
+   365→                                  <FormControl>
+   366→                                    <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
+   367→                                      <SelectValue placeholder="What do you need built?" />
+   368→                                    </SelectTrigger>
+   369→                                  </FormControl>
+   370→                                  <SelectContent>
+   371→                                    {PROJECT_TYPES.map((type) => (
+   372→                                      <SelectItem key={type} value={type}>
+   373→                                        {type}
+   374→                                      </SelectItem>
+   375→                                    ))}
+   376→                                  </SelectContent>
+   377→                                </Select>
+   378→                                <FormMessage />
+   379→                              </FormItem>
+   380→                            )}
+   381→                          />
+   382→                          <FormField
+   383→                            control={form.control}
+   384→                            name="budgetRange"
+   385→                            render={({ field }) => (
+   386→                              <FormItem>
+   387→                                <FormLabel className="text-[#0B1F33]">Budget range *</FormLabel>
+   388→                                <Select onValueChange={field.onChange} value={field.value}>
+   389→                                  <FormControl>
+   390→                                    <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
+   391→                                      <SelectValue placeholder="Select a range" />
+   392→                                    </SelectTrigger>
+   393→                                  </FormControl>
+   394→                                  <SelectContent>
+   395→                                    {BUDGET_RANGES.map((range) => (
+   396→                                      <SelectItem key={range} value={range}>
+   397→                                        {range}
+   398→                                      </SelectItem>
+   399→                                    ))}
+   400→                                  </SelectContent>
+   401→                                </Select>
+   402→                                <FormMessage />
+   403→                              </FormItem>
+   404→                            )}
+   405→                          />
+   406→                        </div>
+   407→
+   408→                        <FormField
+   409→                          control={form.control}
+   410→                          name="details"
+   411→                          render={({ field }) => (
+   412→                            <FormItem>
+   413→                              <FormLabel className="text-[#0B1F33]">Project details *</FormLabel>
+   414→                              <FormControl>
+   415→                                <Textarea
+   416→                                  rows={6}
+   417→                                  placeholder="What are you building? What problem should it solve? Any deadline or existing system we should know about? (minimum 30 characters)"
+   418→                                  className="min-h-32 border-[#E2E8F0] focus-visible:ring-[#009FE3]/40"
+   419→                                  {...field}
+   420→                                />
+   421→                              </FormControl>
+   422→                              <FormMessage />
+   423→                            </FormItem>
+   424→                          )}
+   425→                        />
+   426→
+   427→                        <div className="grid gap-6 sm:grid-cols-2">
+   428→                          <FormField
+   429→                            control={form.control}
+   430→                            name="preferredContact"
+   431→                            render={({ field }) => (
+   432→                              <FormItem>
+   433→                                <FormLabel className="text-[#0B1F33]">Preferred contact method *</FormLabel>
+   434→                                <Select onValueChange={field.onChange} value={field.value}>
+   435→                                  <FormControl>
+   436→                                    <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
+   437→                                      <SelectValue placeholder="How should we reach you?" />
+   438→                                    </SelectTrigger>
+   439→                                  </FormControl>
+   440→                                  <SelectContent>
+   441→                                    {CONTACT_METHODS.map((method) => (
+   442→                                      <SelectItem key={method} value={method}>
+   443→                                        {method}
+   444→                                      </SelectItem>
+   445→                                    ))}
+   446→                                  </SelectContent>
+   447→                                </Select>
+   448→                                <FormMessage />
+   449→                              </FormItem>
+   450→                            )}
+   451→                          />
+   452→                          <div className="flex items-end">
+   453→                            <p className="text-xs leading-relaxed text-[#526173]">
+   454→                              Response within one business day. Your enquiry
+   455→                              creates a Client ID immediately — every follow-up
+   456→                              is tracked against it.
+   457→                            </p>
+   458→                          </div>
+   459→                        </div>
+   460→
+   461→                        <FormField
+   462→                          control={form.control}
+   463→                          name="consent"
+   464→                          render={({ field }) => (
+   465→                            <FormItem>
+   466→                              <div className="flex items-start gap-3 rounded-lg border border-[#E2E8F0] bg-[#F4FAFF] p-4">
+   467→                                <FormControl>
+   468→                                  <Checkbox
+   469→                                    checked={field.value}
+   470→                                    onCheckedChange={(v) => field.onChange(v === true)}
+   471→                                    className="mt-0.5 size-5 data-[state=checked]:bg-[#009FE3] data-[state=checked]:border-[#009FE3]"
+   472→                                    aria-label="Agree to the Privacy Policy"
+   473→                                  />
+   474→                                </FormControl>
+   475→                                <Label className="text-sm font-normal leading-relaxed text-[#526173]">
+   476→                                  I agree that TECH360 LLC may process the
+   477→                                  information above to respond to my enquiry,
+   478→                                  as described in the{" "}
+   479→                                  <a
+   480→                                    href="#/legal/privacy"
+   481→                                    className="font-semibold text-[#009FE3] underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm outline-none"
+   482→                                  >
+   483→                                    Privacy Policy
+   484→                                  </a>
+   485→                                  .
+   486→                                </Label>
+   487→                              </div>
+   488→                              <FormMessage />
+   489→                            </FormItem>
+   490→                          )}
+   491→                        />
+   492→
+   493→                        {apiError ? (
+   494→                          <div
+   495→                            role="alert"
+   496→                            className="rounded-lg border border-[#B4472A]/30 bg-[#FDF3F0] p-4 text-sm leading-relaxed text-[#8A3420]"
+   497→                          >
+   498→                            {apiError}
+   499→                          </div>
+   500→                        ) : null}
+   501→
+   502→                        <Button
+   503→                          type="submit"
+   504→                          disabled={submitting}
+   505→                          className="min-h-12 w-full rounded-lg bg-[#009FE3] text-sm font-semibold text-white hover:bg-[#0090CC] sm:w-auto sm:px-8"
+   506→                        >
+   507→                          {submitting ? (
+   508→                            <>
+   509→                              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+   510→                              Submitting enquiry…
+   511→                            </>
+   512→                          ) : (
+   513→                            <>
+   514→                              <Send className="size-4" aria-hidden="true" />
+   515→                              Submit project enquiry
+   516→                            </>
+   517→                          )}
+   518→                        </Button>
+   519→                        <p className="text-xs text-[#526173]">
+   520→                          No payment, no commitment — the next step is a
+   521→                          written scope you approve.
+   522→                        </p>
+   523→                      </form>
+   524→                    </Form>
+   525→                  </CardContent>
+   526→                </Card>
+   527→              </Reveal>
+   528→            )}
+   529→          </div>
+   530→
+   531→          {/* Contact info column */}
+   532→          <div className="lg:col-span-5">
+   533→            <Reveal delay={0.15}>
+   534→              <h2 className="text-2xl font-bold tracking-tight text-[#0B1F33] sm:text-3xl">
+   535→                Direct channels
+   536→              </h2>
+   537→              <p className="mt-3 text-base leading-relaxed text-[#526173]">
+   538→                Prefer to start the conversation outside the form? Every
+   539→              channel below reaches the same team — and the same Client ID
+   540→              record.
+   541→              </p>
+   542→            </Reveal>
+   543→
+   544→            <div className="mt-8 space-y-5">
+   545→              <Reveal delay={0.2}>
+   546→                <Card className="border-[#E2E8F0] bg-white">
+   547→                  <CardContent className="p-6">
+   548→                    <div className="flex items-start gap-4">
+   549→                      <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#009FE3]/10 text-[#009FE3]">
+   550→                        <Mail className="size-5" aria-hidden="true" />
+   551→                      </span>
+   552→                      <div className="min-w-0">
+   553→                        <h3 className="text-sm font-semibold text-[#0B1F33]">Email</h3>
+   554→                        <a
+   555→                          href={`mailto:${COMPANY.email}`}
+   556→                          className="mt-1 block break-all text-sm font-medium text-[#009FE3] underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm outline-none"
+   557→                        >
+   558→                          {COMPANY.email}
+   559→                        </a>
+   560→                        <p className="mt-2 text-xs leading-relaxed text-[#526173]">
+   561→                          Best for detailed briefs and document attachments.
+   562→                        </p>
+   563→                      </div>
+   564→                    </div>
+   565→                  </CardContent>
+   566→                </Card>
+   567→              </Reveal>
+   568→
+   569→              <Reveal delay={0.25}>
+   570→                <Card className="border-[#E2E8F0] bg-white">
+   571→                  <CardContent className="p-6">
+   572→                    <div className="flex items-start gap-4">
+   573→                      <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#18B83A]/10 text-[#18B83A]">
+   574→                        <Phone className="size-5" aria-hidden="true" />
+   575→                      </span>
+   576→                      <div className="min-w-0">
+   577→                        <h3 className="text-sm font-semibold text-[#0B1F33]">WhatsApp</h3>
+   578→                        <a
+   579→                          href={COMPANY.whatsappLink}
+   580→                          target="_blank"
+   581→                          rel="noopener noreferrer"
+   582→                          className="mt-1 block text-sm font-medium text-[#009FE3] underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm outline-none"
+   583→                        >
+   584→                          {COMPANY.whatsappDisplay}
+   585→                        </a>
+   586→                        <p className="mt-2 text-xs leading-relaxed text-[#526173]">
+   587→                          Fastest first response — messages arrive in our
+   588→                          system, not a personal phone.
+   589→                        </p>
+   590→                      </div>
+   591→                    </div>
+   592→                  </CardContent>
+   593→                </Card>
+   594→              </Reveal>
+   595→
+   596→              <Reveal delay={0.3}>
+   597→                <Card className="border-[#E2E8F0] bg-white">
+   598→                  <CardContent className="p-6">
+   599→                    <div className="flex items-start gap-4">
+   600→                      <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#063B8F]/10 text-[#063B8F]">
+   601→                        <MapPin className="size-5" aria-hidden="true" />
+   602→                      </span>
+   603→                      <div className="min-w-0">
+   604→                        <h3 className="text-sm font-semibold text-[#0B1F33]">Registered office</h3>
+   605→                        <address className="mt-1 text-sm not-italic leading-relaxed text-[#526173]">
+   606→                          {COMPANY.legalName}
+   607→                          <br />
+   608→                          {COMPANY.address}
+   609→                        </address>
+   610→                        <p className="mt-2 text-xs text-[#526173]">
+   611→                          Missouri LLC {COMPANY.missouriLLC} · EIN {COMPANY.ein}
+   612→                        </p>
+   613→                      </div>
+   614→                    </div>
+   615→                  </CardContent>
+   616→                </Card>
+   617→              </Reveal>
+   618→
+   619→              <Reveal delay={0.35}>
+   620→                <div className="rounded-xl border border-[#009FE3]/30 bg-[#F4FAFF] p-6">
+   621→                  <h3 className="text-sm font-semibold text-[#0B1F33]">
+   622→                    What happens after you send
+   623→                  </h3>
+   624→                  <ol className="mt-4 space-y-3">
+   625→                    {[
+   626→                      "Your Client ID is issued immediately and shown on screen.",
+   627→                      "Discovery questions arrive within one business day.",
+   628→                      "A written scope follows — then an HTML preview for your approval.",
+   629→                      "Payment is discussed only after you approve the preview.",
+   630→                    ].map((step, i) => (
+   631→                      <li key={step} className="flex items-start gap-3 text-sm leading-relaxed text-[#526173]">
+   632→                        <span
+   633→                          aria-hidden="true"
+   634→                          className="flex size-6 shrink-0 items-center justify-center rounded-md bg-[#009FE3]/10 text-xs font-bold text-[#009FE3]"
+   635→                        >
+   636→                          {i + 1}
+   637→                        </span>
+   638→                        {step}
+   639→                      </li>
+   640→                    ))}
+   641→                  </ol>
+   642→                </div>
+   643→              </Reveal>
+   644→            </div>
+   645→          </div>
+   646→        </div>
+   647→      </section>
+   648→    </main>
+   649→  );
+   650→}
+   651→

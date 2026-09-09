@@ -1,0 +1,502 @@
+  1021→    approach:
+  1022→      "A conversion-engineered storefront with local payment integration, automated WhatsApp order confirmations and delivery-status updates, and a closing sales report generated each night.",
+  1023→    outcome:
+  1024→      "Order communication became automatic and consistent; checkout abandonment improved after the redesign; the founder reclaimed the hours previously spent confirming orders manually.",
+  1025→    stack: ["Next.js", "PostgreSQL", "WhatsApp Cloud API", "bKash", "n8n", "Google Cloud Run"],
+  1026→  },
+  1027→  {
+  1028→    slug: "clinic-appointment-automation",
+  1029→    industry: "Healthcare",
+  1030→    title: "A front desk that stopped making reminder calls",
+  1031→    challenge:
+  1032→      "A multi-physician clinic depended on front-desk staff calling patients for reminders. No-shows were routine during busy hours precisely because reminder calls were the first thing dropped under pressure.",
+  1033→    approach:
+  1034→      "Online booking with automated SMS reminders and confirmation replies, plus a structured daily schedule view for the front desk and recall workflows for follow-up visits.",
+  1035→    outcome:
+  1036→      "Manual reminder calls ended entirely; no-shows fell noticeably after reminders became systematic; staff time shifted from dialling to patient care.",
+  1037→    stack: ["Next.js", "PostgreSQL", "SMS gateway", "Node.js", "Google Cloud Run"],
+  1038→  },
+  1039→  {
+  1040→    slug: "school-enquiry-pipeline",
+  1041→    industry: "Education",
+  1042→    title: "Admission enquiries answered before competitors wake up",
+  1043→    challenge:
+  1044→      "A coaching centre received enquiries at all hours but replied only when staff saw them. Parents shortlisting multiple centres moved on before the reply arrived.",
+  1045→    approach:
+  1046→      "An enquiry-to-admission CRM with instant automated first-response, guided follow-up questions, batch-allocation notices and guardian progress updates — every message logged against the student's record.",
+  1047→    outcome:
+  1048→      "Response latency dropped from hours to minutes; admission-season workload stayed manageable; no enquiry was lost to an unread inbox.",
+  1049→    stack: ["Next.js", "PostgreSQL", "WhatsApp Cloud API", "n8n", "Prisma"],
+  1050→  },
+  1051→  {
+  1052→    slug: "developer-sales-crm",
+  1053→    industry: "Real Estate",
+  1054→    title: "One client timeline replacing eleven spreadsheets",
+  1055→    challenge:
+  1056→      "A property developer ran sales through agents' personal spreadsheets and chats. Management could not answer \"where is this buyer?\" without a meeting, and handovers between agents lost context.",
+  1057→    approach:
+  1058→      "A custom CRM tying every enquiry, site visit, booking and installment to a single client timeline — with automated follow-up scheduling and agent performance reporting.",
+  1059→    outcome:
+  1060→      "Pipeline visibility became instant; follow-ups stopped depending on individual memory; leadership reviewed the live pipeline instead of compiled spreadsheets.",
+  1061→    stack: ["Next.js", "TypeScript", "PostgreSQL", "Prisma", "Google Cloud Run"],
+  1062→  },
+  1063→  {
+  1064→    slug: "restaurant-order-pipeline",
+  1065→    industry: "Restaurants & Food",
+  1066→    title: "Four order channels converging into one pipeline",
+  1067→    challenge:
+  1068→      "A restaurant chain took orders from chat, phone, marketplace apps and walk-ins — each into a different place. Peak-hour errors were routine and no consolidated sales picture existed.",
+  1069→    approach:
+  1070→      "All channels routed into a single order pipeline with automated confirmations, live preparation and delivery status, and a nightly closing report per branch.",
+  1071→    outcome:
+  1072→      "Peak-hour order handling became consistent across branches; delivery-status questions from customers fell away; branch comparison became a daily fact rather than a month-end estimate.",
+  1073→    stack: ["Node.js", "PostgreSQL", "WhatsApp Cloud API", "n8n", "Google Cloud Run"],
+  1074→  },
+  1075→  {
+  1076→    slug: "logistics-live-tracking",
+  1077→    industry: "Logistics",
+  1078→    title: "Forty status calls a day replaced by a tracking link",
+  1079→    challenge:
+  1080→      "A courier company's dispatchers spent most of the day answering \"where is my parcel?\" — the same question, re-answered per customer, with status known only inside the dispatcher's head.",
+  1081→    approach:
+  1082→      "Shipment objects with live status, customer-visible tracking links, automated milestone notifications and a dispatch planning dashboard for route load.",
+  1083→    outcome:
+  1084→      "Status calls collapsed; customers checked tracking links instead of calling; dispatchers returned to exception handling rather than repetition.",
+  1085→    stack: ["Next.js", "PostgreSQL", "SMS gateway", "Node.js", "Cloud Storage"],
+  1086→  },
+  1087→  {
+  1088→    slug: "agency-client-portal",
+  1089→    industry: "Agencies",
+  1090→    title: "Approvals that used to live in forwarded messages",
+  1091→    challenge:
+  1092→      "A digital agency collected client approvals through chats and email. Rounds were disputed, versions conflicted, and preparing each status update consumed senior hours.",
+  1093→    approach:
+  1094→      "A branded client portal with structured review workflows — deliverables uploaded, reviewed and approved with a permanent record, plus automated weekly status digests.",
+  1095→    outcome:
+  1096→      "Approval disputes ended (the record answered them); status meetings shortened from an hour to fifteen minutes; onboarding new clients became a repeatable process.",
+  1097→    stack: ["Next.js", "TypeScript", "PostgreSQL", "Cloud Storage", "Google Cloud Run"],
+  1098→  },
+  1099→  {
+  1100→    slug: "firm-intake-automation",
+  1101→    industry: "Professional Services",
+  1102→    title: "An accounting practice that stopped burying deadlines",
+  1103→    challenge:
+  1104→      "An accounting firm exchanged client documents through personal email and tracked engagements in a private spreadsheet. Deadlines surfaced only through individual discipline.",
+  1105→    approach:
+  1106→      "A secure client portal for document delivery and approvals, automated deadline reminders, and an engagement pipeline visible to the whole practice.",
+  1107→    outcome:
+  1108→      "Document exchange became trackable and confidential; deadline reminders ran on schedule regardless of workload; partners reviewed live engagement status instead of chasing updates.",
+  1109→    stack: ["Next.js", "PostgreSQL", "SMTP", "Node.js", "Secret Manager"],
+  1110→  },
+  1111→];
+  1112→
+  1113→/* ------------------------------------------------------------------ */
+  1114→/* Technology stack                                                    */
+  1115→/* ------------------------------------------------------------------ */
+  1116→
+  1117→export interface TechGroup {
+  1118→  name: string;
+  1119→  icon: string;
+  1120→  blurb: string;
+  1121→  items: string[];
+  1122→}
+  1123→
+  1124→export const TECHNOLOGY_GROUPS: TechGroup[] = [
+  1125→  {
+  1126→    name: "Frontend",
+  1127→    icon: "LayoutDashboard",
+  1128→    blurb: "Interfaces that stay fast, accessible and maintainable as they grow.",
+  1129→    items: ["Next.js", "React", "TypeScript", "Tailwind CSS", "shadcn/ui", "Framer Motion", "Vite", "Recharts"],
+  1130→  },
+  1131→  {
+  1132→    name: "Backend",
+  1133→    icon: "Server",
+  1134→    blurb: "APIs and services engineered for correctness before features.",
+  1135→    items: ["Node.js", "Bun", "Laravel / PHP", "Python", "REST APIs", "Webhooks", "Prisma ORM", "JWT & session auth"],
+  1136→  },
+  1137→  {
+  1138→    name: "Data",
+  1139→    icon: "Database",
+  1140→    blurb: "Schemas designed once, correctly — with integrity at the data layer.",
+  1141→    items: ["PostgreSQL", "MySQL", "SQLite", "Cloud SQL", "Redis", "Backups & PITR", "Query engineering", "Data modelling"],
+  1142→  },
+  1143→  {
+  1144→    name: "Cloud & Infrastructure",
+  1145→    icon: "Cloud",
+  1146→    blurb: "Production-grade deployment without hiring a platform team.",
+  1147→    items: ["Google Cloud Run", "Cloud Storage", "Secret Manager", "Cloud Build", "Cloud Scheduler", "Cloud Logging", "Docker", "cPanel", "StackCP"],
+  1148→  },
+  1149→  {
+  1150→    name: "Automation & AI",
+  1151→    icon: "Workflow",
+  1152→    blurb: "Governed automation: logged, retried, auditable and honest.",
+  1153→    items: ["n8n", "WhatsApp Cloud API", "LLM APIs", "AI agent frameworks", "Event queues", "Cron & schedulers", "Retry & idempotency", "Execution logging"],
+  1154→  },
+  1155→  {
+  1156→    name: "Integrations",
+  1157→    icon: "Plug",
+  1158→    blurb: "Payment, communication and platform connections done properly.",
+  1159→    items: ["Stripe", "PayPal", "bKash", "Nagad", "SSLCommerz", "Meta APIs", "Google Workspace", "SMTP", "SMS gateways"],
+  1160→  },
+  1161→];
+  1162→
+  1163→/* ------------------------------------------------------------------ */
+  1164→/* Delivery process                                                    */
+  1165→/* ------------------------------------------------------------------ */
+  1166→
+  1167→export interface ProcessPhase {
+  1168→  step: string;
+  1169→  name: string;
+  1170→  title: string;
+  1171→  duration: string;
+  1172→  description: string;
+  1173→  details: string[];
+  1174→  gate?: { label: string; text: string };
+  1175→}
+  1176→
+  1177→export const PROCESS: ProcessPhase[] = [
+  1178→  {
+  1179→    step: "01",
+  1180→    name: "Discover",
+  1181→    title: "Understanding your business before proposing anything",
+  1182→    duration: "1–3 days",
+  1183→    description:
+  1184→      "We study your business, your customers and the outcomes you need. This phase produces a shared understanding — and an honest recommendation, including telling you when you do not need us.",
+  1185→    details: [
+  1186→      "Business goals and audience mapping",
+  1187→      "Current systems and workflow audit",
+  1188→      "Competitive and channel review",
+  1189→      "Opportunity and constraint assessment",
+  1190→    ],
+  1191→  },
+  1192→  {
+  1193→    step: "02",
+  1194→    name: "Scope",
+  1195→    title: "A written scope that removes ambiguity permanently",
+  1196→    duration: "2–4 days",
+  1197→    description:
+  1198→      "Every deliverable, timeline, milestone and payment term is written into a Final Scope of Work. You review it, request revisions, and approve it in writing. From this moment, \"I thought it would include…\" stops being a possible conversation.",
+  1199→    details: [
+  1200→      "Structured discovery questions and gap analysis",
+  1201→      "Deliverables, timeline and milestone definition",
+  1202→      "Payment structure per our Payment Policy",
+  1203→      "Written client approval of the final scope",
+  1204→    ],
+  1205→    gate: {
+  1206→      label: "Approval gate",
+  1207→      text: "Scope changes after approval are possible — but they trigger a new quote and timeline, never silent drift. This is written into the Client Approval Policy.",
+  1208→    },
+  1209→  },
+  1210→  {
+  1211→    step: "03",
+  1212→    name: "Preview",
+  1213→    title: "HTML preview before any payment moves",
+  1214→    duration: "2–5 days",
+  1215→    description:
+  1216→      "We build and send you a working, clickable HTML preview of the solution generated from your approved scope. You evaluate quality with your own eyes — and can request revisions at this stage at no cost — before any money is committed.",
+  1217→    details: [
+  1218→      "Working preview generated from the approved scope",
+  1219→      "Review with your team and stakeholders",
+  1220→      "Revision requests at this stage are free",
+  1221→      "Written approval (or revision) recorded on file",
+  1222→    ],
+  1223→    gate: {
+  1224→      label: "Approval gate",
+  1225→      text: "Payment begins only after your preview approval. The preview and the scope document are permanent references for the whole engagement.",
+  1226→    },
+  1227→  },
+  1228→  {
+  1229→    step: "04",
+  1230→    name: "Payment",
+  1231→    title: "Milestone payments, verified and receipted",
+  1232→    duration: "Per milestone",
+  1233→    description:
+  1234→      "Payment follows the structure in your scope — commonly 40% advance, 30% at the midpoint milestone, 30% at delivery. Every payment is recorded, verified and receipted. Project status changes only after verification — never on a screenshot.",
+  1235→    details: [
+  1236→      "Milestone structure as written in the approved scope",
+  1237→      "Payment instructions with reference to your Client ID",
+  1238→      "Verification before any project status change",
+  1239→      "Receipt and record for every transaction",
+  1240→    ],
+  1241→    gate: {
+  1242→      label: "Verification gate",
+  1243→      text: "The project activates only after the first payment is verified. Final delivery and source-code release gate on full payment completion.",
+  1244→    },
+  1245→  },
+  1246→  {
+  1247→    step: "05",
+  1248→    name: "Build",
+  1249→    title: "Iterative build with milestone acceptance",
+  1250→    duration: "Per scope timeline",
+  1251→    description:
+  1252→      "Development proceeds against the approved scope in milestones — each accepted in writing before the next begins. Progress updates reach you automatically at milestone boundaries, not when someone remembers to write.",
+  1253→    details: [
+  1254→      "Milestone-based development against the scope",
+  1255→      "Automated progress updates at each milestone",
+  1256→      "Two revision rounds within scope included",
+  1257→      "Testing against the QA checklist before each acceptance",
+  1258→    ],
+  1259→  },
+  1260→  {
+  1261→    step: "06",
+  1262→    name: "Deliver",
+  1263→    title: "Delivery with a checklist, not a hope",
+  1264→    duration: "2–4 days",
+  1265→    description:
+  1266→      "Delivery is a structured event: the system goes live against the quality checklist, you confirm delivery in writing, and any final payment milestone is settled with the same verification discipline as the first.",
+  1267→    details: [
+  1268→      "Live deployment on your hosting or ours",
+  1269→      "Quality checklist verified together",
+  1270→      "Written delivery confirmation on record",
+  1271→      "Final payment milestone settled and verified",
+  1272→    ],
+  1273→    gate: {
+  1274→      label: "Payment gate",
+  1275→      text: "Source code release happens only after full payment is verified — per the Source Code Handover Policy. Both sides are protected by the same rule.",
+  1276→    },
+  1277→  },
+  1278→  {
+  1279→    step: "07",
+  1280→    name: "Handover & Support",
+  1281→    title: "Source code, credentials and a system you own",
+  1282→    duration: "1–2 days + support",
+  1283→    description:
+  1284→      "After full payment, the complete source package and every credential are handed over securely. You change passwords, confirm in writing, and receive documentation any competent developer can follow. Ongoing support is available — and optional.",
+  1285→    details: [
+  1286→      "Full source code and documentation package",
+  1287→      "Secure credential handover",
+  1288→      "Password change confirmed by you in writing",
+  1289→      "Optional maintenance and support agreement",
+  1290→    ],
+  1291→  },
+  1292→];
+  1293→
+  1294→/* ------------------------------------------------------------------ */
+  1295→/* FAQs                                                                */
+  1296→/* ------------------------------------------------------------------ */
+  1297→
+  1298→export interface Faq {
+  1299→  q: string;
+  1300→  a: string;
+  1301→}
+  1302→
+  1303→export const FAQS: Faq[] = [
+  1304→  {
+  1305→    q: "Do I really get an HTML preview before paying anything?",
+  1306→    a: "Yes. After your written scope approval, we build a working, clickable HTML preview of your solution and send it to you. You approve it or request revisions — revisions at the preview stage are free — and payment begins only after your approval. This is written into our Delivery Policy, not just promised in a chat.",
+  1307→  },
+  1308→  {
+  1309→    q: "When do I receive the source code?",
+  1310→    a: "The complete source code, documentation and all credentials are handed over after final payment is verified. The release is gated by our Source Code Handover Policy, which protects both sides: you cannot lose the code you paid for, and we cannot deliver code that was not paid for. After handover you confirm password changes in writing, and the system is fully yours.",
+  1311→  },
+  1312→  {
+  1313→    q: "How do payments work? Do I pay everything upfront?",
+  1314→    a: "No upfront lump payment. Payment follows the milestone structure written in your approved scope — commonly 40% advance, 30% at a midpoint milestone and 30% at delivery. Every payment is recorded and receipted, and project status changes only after verification — never on a payment screenshot. Details are in our Payment Policy.",
+  1315→  },
+  1316→  {
+  1317→    q: "What if I want changes after the scope is approved?",
+  1318→    a: "Scope changes are normal — we just handle them honestly. A change that fits within the approved scope is absorbed. A change that adds new work gets a new written quote and timeline which you approve before the work begins. Silent scope creep — us quietly doing more, or quietly doing less — is what the Client Approval Policy exists to prevent.",
+  1319→  },
+  1320→  {
+  1321→    q: "How many revisions do I get?",
+  1322→    a: "Two revision rounds within the approved scope are included in every engagement, as written in our Delivery Policy. Revision rounds at the preview stage — before any payment — are free. Revision requests that expand the scope become new quoted work, agreed in writing beforehand.",
+  1323→  },
+  1324→  {
+  1325→    q: "How long does a project take?",
+  1326→    a: "It follows from the scope, and it is written down before you commit. A focused business website typically runs two to four weeks; a platform or CRM build runs six to twelve weeks depending on integrations. The timeline in your Final Scope of Work is the reference we are accountable to — and it is only promised after discovery, never during a sales pitch.",
+  1327→  },
+  1328→  {
+  1329→    q: "What support do I get after delivery?",
+  1330→    a: "Delivery includes documentation, credential handover and a post-launch check-in. Beyond that, maintenance and support is available as a structured agreement: monitoring, security patches, backup verification, incident response with defined turnaround and a monthly report. It is optional — the system is fully yours either way.",
+  1331→  },
+  1332→  {
+  1333→    q: "How do you protect my business data and confidentiality?",
+  1334→    a: "Client data is stored under access control with audit logging, credentials live in encrypted secret management rather than code, and project records are tied to your Client ID with role-based access. Confidential information is never reused or shared, and our Privacy Policy governs what we collect and why. For sensitive engagements, an NDA precedes disclosure.",
+  1335→  },
+  1336→  {
+  1337→    q: "Where do you work? Can you handle clients outside the US?",
+  1338→    a: "TECH360 LLC is a Missouri-registered company (LC014737249) with an engineering team spanning the USA and Bangladesh. We deliver worldwide — the preview-first, milestone-based process is designed precisely so geography never becomes a trust problem. Current clients and representative patterns are available on request under NDA.",
+  1339→  },
+  1340→  {
+  1341→    q: "How do we start working together?",
+  1342→    a: "Send one message — through the contact form or WhatsApp. You receive a Client ID for all future communication, we run discovery on your business, and you get a written scope and then an HTML preview before any payment decision. Starting costs you nothing but the message.",
+  1343→  },
+  1344→  {
+  1345→    q: "What technologies do you build with?",
+  1346→    a: "We work in a deliberate, boring-in-the-good-way stack: Next.js and TypeScript on the frontend; Node.js, Laravel and Python on the backend; PostgreSQL and MySQL for data; Google Cloud Run, Cloud SQL and Secret Manager for infrastructure; n8n plus the official WhatsApp Cloud API for automation. The full breakdown with reasoning is on our Technologies page.",
+  1347→  },
+  1348→  {
+  1349→    q: "Where will my project be hosted — and who controls it?",
+  1350→    a: "Your choice, made with our guidance during scoping. Google Cloud suits platforms that need scaling and observability; cPanel or StackCP hosting suits many business sites and Laravel applications. In every case the accounts and billing belong to you, credentials are handed over at completion, and we never hold your system hostage — it is your asset from day one.",
+  1351→  },
+  1352→];
+  1353→
+  1354→/* ------------------------------------------------------------------ */
+  1355→/* Careers                                                             */
+  1356→/* ------------------------------------------------------------------ */
+  1357→
+  1358→export interface Role {
+  1359→  slug: string;
+  1360→  title: string;
+  1361→  location: string;
+  1362→  type: string;
+  1363→  summary: string;
+  1364→  responsibilities: string[];
+  1365→  requirements: string[];
+  1366→}
+  1367→
+  1368→export const ROLES: Role[] = [
+  1369→  {
+  1370→    slug: "senior-fullstack-engineer",
+  1371→    title: "Senior Full-Stack Engineer",
+  1372→    location: "Remote / Dhaka",
+  1373→    type: "Full-time",
+  1374→    summary:
+  1375→      "Own complete product builds — from schema design to deployed interface — for client platforms across eCommerce, CRM and portals. You will work directly against written scopes and be accountable to milestone acceptance, not ticket counts.",
+  1376→    responsibilities: [
+  1377→      "Design and build full-stack features against approved scopes",
+  1378→      "Own data models, API design and interface implementation",
+  1379→      "Write acceptance-quality code with tests before milestone review",
+  1380→      "Participate in scope reviews and honest effort estimation",
+  1381→      "Contribute to internal engineering standards and documentation",
+  1382→    ],
+  1383→    requirements: [
+  1384→      "4+ years with TypeScript, React/Next.js and Node.js",
+  1385→      "Strong relational database design (PostgreSQL or MySQL)",
+  1386→      "Production deployment experience (Google Cloud, Docker or cPanel)",
+  1387→      "Habit of writing documentation other engineers can follow",
+  1388→      "Comfortable being measured on delivered acceptance criteria",
+  1389→    ],
+  1390→  },
+  1391→  {
+  1392→    slug: "backend-engineer-laravel",
+  1393→    title: "Backend Engineer (Laravel / PHP)",
+  1394→    location: "Remote / Dhaka",
+  1395→    type: "Full-time",
+  1396→    summary:
+  1397→      "Build and maintain server-side systems for business applications and integrations — payment flows, order pipelines and APIs — with the reliability discipline our delivery policy promises clients.",
+  1398→    responsibilities: [
+  1399→      "Develop Laravel applications and integration services",
+  1400→      "Implement payment, notification and third-party API flows",
+  1401→      "Engineer retry, idempotency and failure-handling paths",
+  1402→      "Maintain deployment pipelines on cPanel/StackCP environments",
+  1403→      "Support quality assurance before milestone acceptance",
+  1404→    ],
+  1405→    requirements: [
+  1406→      "3+ years professional Laravel/PHP development",
+  1407→      "MySQL schema design and query optimisation experience",
+  1408→      "Hands-on work with at least one payment gateway integration",
+  1409→      "Understanding of secure credential and secret handling",
+  1410→      "Evidence of production systems you can walk us through",
+  1411→    ],
+  1412→  },
+  1413→  {
+  1414→    slug: "automation-engineer",
+  1415→    title: "Automation Engineer (n8n / WhatsApp Cloud API)",
+  1416→    location: "Remote / Harrisonville, MO / Dhaka",
+  1417→    type: "Full-time",
+  1418→    summary:
+  1419→      "Design and operate the automation backbone: n8n workflows, WhatsApp Cloud API integrations, notification pipelines and the monitoring that keeps all of it honest.",
+  1420→    responsibilities: [
+  1421→      "Build and version n8n workflows with failure-path design",
+  1422→      "Implement official WhatsApp Cloud API integrations end-to-end",
+  1423→      "Set up delivery-status tracking, retries and escalation logic",
+  1424→      "Operate monitoring dashboards and respond to automation failures",
+  1425→      "Document every workflow for client handover",
+  1426→    ],
+  1427→    requirements: [
+  1428→      "2+ years building production automation (n8n, Zapier or custom)",
+  1429→      "Direct experience with WhatsApp Cloud API or comparable Meta APIs",
+  1430→      "Solid Node.js and webhook fundamentals",
+  1431→      "Obsession with logging and failure visibility",
+  1432→      "Ability to explain automation behaviour to non-engineers",
+  1433→    ],
+  1434→  },
+  1435→  {
+  1436→    slug: "ui-ux-designer",
+  1437→    title: "UI/UX Designer",
+  1438→    location: "Remote",
+  1439→    type: "Full-time",
+  1440→    summary:
+  1441→      "Design interfaces that convert for client businesses and hold up under enterprise-level scrutiny. Your work is the HTML preview clients approve before payment — the design carries our delivery promise.",
+  1442→    responsibilities: [
+  1443→      "Design conversion-focused websites and platform interfaces",
+  1444→      "Produce design systems, component libraries and prototypes",
+  1445→      "Collaborate with engineering on implementation feasibility",
+  1446→      "Own the visual quality of preview-stage deliverables",
+  1447→      "Contribute layout and messaging ideas for representative case material",
+  1448→    ],
+  1449→    requirements: [
+  1450→      "3+ years designing digital products and marketing sites",
+  1451→      "Portfolio demonstrating conversion thinking, not just aesthetics",
+  1452→      "Fluency with a modern design tool and component-based design",
+  1453→      "Comfort designing within a fixed brand system and data reality",
+  1454→      "Willingness to defend design decisions with business reasoning",
+  1455→    ],
+  1456→  },
+  1457→  {
+  1458→    slug: "business-development-executive",
+  1459→    title: "Business Development Executive",
+  1460→    location: "Remote / Harrisonville, MO",
+  1461→    type: "Full-time",
+  1462→    summary:
+  1463→      "Grow our client base across the USA, Bangladesh and beyond — with a process that closes on trust mechanics (preview-first, milestone payments) rather than discount pressure.",
+  1464→    responsibilities: [
+  1465→      "Manage inbound enquiries from first message to scope approval",
+  1466→      "Qualify opportunities honestly — including declining bad fits",
+  1467→      "Coordinate discovery workshops with the engineering team",
+  1468→      "Maintain CRM discipline — every interaction on the client record",
+  1469→      "Represent company policies accurately in all communication",
+  1470→    ],
+  1471→    requirements: [
+  1472→      "2+ years in B2B software or digital services sales",
+  1473→      "Comfortable selling a consultative, policy-governed process",
+  1474→      "Excellent written communication in English",
+  1475→      "CRM discipline and structured follow-up habits",
+  1476→      "Reputation for accurate representation — no overpromising",
+  1477→    ],
+  1478→  },
+  1479→];
+  1480→
+  1481→/* ------------------------------------------------------------------ */
+  1482→/* Legal documents                                                     */
+  1483→/* ------------------------------------------------------------------ */
+  1484→
+  1485→export interface LegalSection {
+  1486→  heading: string;
+  1487→  body: string[];
+  1488→}
+  1489→
+  1490→export interface LegalDoc {
+  1491→  slug: string;
+  1492→  title: string;
+  1493→  summary: string;
+  1494→  updated: string;
+  1495→  sections: LegalSection[];
+  1496→}
+  1497→
+  1498→export const LEGAL_DOCS: LegalDoc[] = [
+  1499→  {
+  1500→    slug: "terms",
+  1501→    title: "Terms & Conditions",
+  1502→    summary:
+  1503→      "The general terms governing use of this website and the framework under which TECH360 LLC provides services.",
+  1504→    updated: "January 2026",
+  1505→    sections: [
+  1506→      {
+  1507→        heading: "1. Agreement to these terms",
+  1508→        body: [
+  1509→          "These Terms & Conditions (\"Terms\") govern your access to and use of the website bdtech360.com (the \"Site\") operated by TECH360 LLC, a limited liability company registered in Missouri, USA (registration LC014737249, EIN 98-1940053), with its registered address at 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA (\"Tech360\", \"we\", \"us\").",
+  1510→          "By accessing the Site, submitting a project enquiry, or engaging our services, you agree to these Terms. If you do not agree, you must not use the Site or submit information through it.",
+  1511→          "These Terms apply together with any written agreement, scope of work, or proposal signed between you and TECH360 LLC for a specific engagement. Where a signed agreement and these Terms conflict, the signed agreement prevails for that engagement.",
+  1512→        ],
+  1513→      },
+  1514→      {
+  1515→        heading: "2. Our services and how engagements are formed",
+  1516→        body: [
+  1517→          "Tech360 provides software design, development, automation and related consulting services, including websites, eCommerce platforms, CRM systems, portals, dashboards, and workflow automation. Descriptions of services on the Site are informational and do not constitute a binding offer.",
+  1518→          "No engagement exists until both parties have agreed in writing to a Final Scope of Work. Content submitted through the contact form, WhatsApp, or email constitutes an enquiry — not a contract.",
+  1519→          "Each engagement is governed by: (a) the signed Final Scope of Work; (b) these Terms; (c) our Delivery, Payment, Client Approval, Refund and Source Code Handover Policies; and (d) any written variation agreed by both parties.",
+  1520→        ],
+
+[showing lines 1021-1520 of 1974; use offset=1521 with limit to continue reading]

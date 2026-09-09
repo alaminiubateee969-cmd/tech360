@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+*.log
+upload
+agent-ctx
+mini-services
+tests
+db/*.db
+db/*.db-journal
+.env
+.env.local

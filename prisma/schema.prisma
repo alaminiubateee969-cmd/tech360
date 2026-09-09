@@ -1,0 +1,808 @@
+// ============================================================
+// TECH360 ENTERPRISE PLATFORM — DATABASE SCHEMA
+// Company: TECH360 LLC (brand: Tech360) — bdtech360.com
+// Pipeline: Lead → Client ID → Scope → Approval → Payment →
+//           Project → Tasks → Delivery → Handover → Closure
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------- AUTH / RBAC ----------------
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  role         String    @default("STAFF") // SUPER_ADMIN | ADMIN | MANAGER | STAFF
+  title        String?
+  passwordHash String
+  isActive     Boolean   @default(true)
+  mustChangePassword Boolean @default(false)
+  lastLoginAt  DateTime?
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  twoFactorEnabled Boolean @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions   Session[]
+  auditLogs  AuditLog[]
+
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip        String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------------- CRM CORE ----------------
+
+model Client {
+  id            String   @id @default(cuid())
+  clientId      String   @unique // TECH-YYYY-NNNNNN
+  name          String
+  businessName  String?
+  businessType  String?
+  email         String?
+  phone         String?
+  whatsapp      String?
+  country       String?
+  source        String   @default("WEBSITE") // WEBSITE | WHATSAPP | EMAIL | SMS | FACEBOOK | INSTAGRAM | LINKEDIN | X | N8N
+  status        String   @default("LEAD") // LEAD | CLIENT | ACTIVE | COMPLETED | CLOSED | LOST
+  pipelineStage String   @default("NEW") // see lib/pipeline.ts PIPELINE_STAGES
+  score         Int      @default(0)
+  preferredContact String?
+  notes         String?
+  deletedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lead            Lead?
+  projects        Project[]
+  communications  Communication[]
+  invoices        Invoice[]
+  payments        Payment[]
+  meetings        Meeting[]
+  scopes          ScopeOfWork[]
+  previews        Preview[]
+  formSubmissions FormSubmission[]
+  memories        AiMemory[]
+  approvals       ApprovalRequest[]
+  scopeApprovals  ScopeApproval[]
+  reviews         Review[]
+  referrals       Referral[]
+  automationLogs  AutomationLog[]
+  files           FileRecord[]
+  deliveries      Delivery[]
+  handovers       HandoverRecord[]
+  contentAssets   ContentAsset[]
+
+  @@index([pipelineStage])
+  @@index([status])
+  @@index([email])
+  @@index([whatsapp])
+  @@index([deletedAt])
+}
+
+model Lead {
+  id          String  @id @default(cuid())
+  clientId    String  @unique
+  client      Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requirements String?
+  budgetRange String?
+  projectType String?
+  interest    String?
+  tracking    String? // JSON: utm, referrer, anon id
+  sourceDetails String?
+  contactedAt DateTime?
+  qualifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectType])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  code        String   @unique // PRJ-YYYY-NNNN
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  plan        String?  // recommended plan
+  status      String   @default("PLANNING") // PLANNING | ACTIVE | DEVELOPMENT | TESTING | CLIENT_REVIEW | DELIVERY | HANDOVER | COMPLETED | ON_HOLD | CANCELLED
+  currency    String   @default("USD")
+  totalAmount Float    @default(0)
+  paidAmount  Float    @default(0)
+  paymentStatus String @default("PENDING") // PENDING | PARTIAL | PAID
+  timelineWeeks Int?
+  startedAt   DateTime?
+  deliveredAt DateTime?
+  closedAt    DateTime?
+  deletedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks       ProjectTask[]
+  invoices    Invoice[]
+  payments    Payment[]
+  scopes      ScopeOfWork[]
+  previews    Preview[]
+  meetings    Meeting[]
+  deliveries  Delivery[]
+  handovers   HandoverRecord[]
+  reviews     Review[]
+  files       FileRecord[]
+  contentAssets ContentAsset[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model ProjectTask {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      String   @default("TODO") // TODO | IN_PROGRESS | REVIEW | DONE | BLOCKED
+  priority    String   @default("MEDIUM")
+  assigneeType String  @default("AGENT") // AGENT | HUMAN
+  assigneeRef String?  // agent code or user id
+  order       Int      @default(0)
+  dueAt       DateTime?
+  completedAt DateTime?
+  evidence    String?  // JSON array of file ids / notes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId, status])
+}
+
+// ---------------- SCOPE OF WORK ----------------
+
+model ScopeOfWork {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  version     Int      @default(1)
+  status      String   @default("DRAFT") // DRAFT | AI_REVIEWED | AWAITING_ADMIN_APPROVAL | APPROVED | FINAL | SUPERSEDED
+  summary     String?
+  content     String   @default("{}") // JSON: items, timeline, paymentPolicy, deliverables
+  aiNotes     String?  // AI review notes / recommended updates
+  generatedBy String?  // agent code
+  reviewedBy  String?  // admin user id
+  approvedBy  String?  // admin user id
+  approvedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  approvals ScopeApproval[]
+
+  @@unique([clientId, version])
+  @@index([status])
+}
+
+model ScopeApproval {
+  id          String   @id @default(cuid())
+  scopeId     String
+  scope       ScopeOfWork @relation(fields: [scopeId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  decision    String   // APPROVED | REVISION_REQUESTED | CLARIFICATION_REQUESTED | REJECTED
+  notes       String?
+  meetingRequested Boolean @default(false)
+  decidedAt   DateTime @default(now())
+
+  @@index([clientId])
+}
+
+// ---------------- HTML PREVIEW ----------------
+
+model Preview {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  scopeVersion Int?
+  version     Int      @default(1)
+  status      String   @default("GENERATED") // GENERATED | SENT | VIEWED | REVISION_REQUESTED | APPROVED | EXPIRED
+  html        String
+  viewCount   Int      @default(0)
+  revisionNotes String?
+  lastIp      String?
+  createdAt   DateTime @default(now())
+  sentAt      DateTime?
+  viewedAt    DateTime?
+  approvedAt  DateTime?
+
+  events      PreviewEvent[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model PreviewEvent {
+  id        String   @id @default(cuid())
+  previewId String
+  preview   Preview  @relation(fields: [previewId], references: [id], onDelete: Cascade)
+  type      String   // SENT | VIEWED | APPROVED | REVISION_REQUESTED | EXPIRED
+  meta      String?
+  createdAt DateTime @default(now())
+
+  @@index([previewId])
+}
+
+// ---------------- FINANCE ----------------
+
+model Invoice {
+  id        String   @id @default(cuid())
+  number    String   @unique // INV-YYYY-NNNN
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  currency  String   @default("USD")
+  amount    Float
+  status    String   @default("DRAFT") // DRAFT | SENT | PARTIAL | PAID | OVERDUE | CANCELLED
+  notes     String?
+  issuedAt  DateTime @default(now())
+  dueAt     DateTime?
+
+  payments  Payment[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId     String?
+  project       Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  milestone     String?  // e.g. ADVANCE | FINAL
+  amount        Float
+  currency      String   @default("USD")
+  method        String?  // BANK_TRANSFER | BKASH | NAGAD | CARD | WISE | PAYPAL | OTHER
+  transactionId String?
+  status        String   @default("PENDING") // PENDING | PARTIAL | PAID | FAILED | REFUNDED | CANCELLED
+  proofFileId   String?
+  verifiedBy    String?  // admin user id
+  verifiedAt    DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([transactionId])
+  @@index([clientId])
+  @@index([status])
+}
+
+// ---------------- COMMUNICATIONS ----------------
+
+model Communication {
+  id                String   @id @default(cuid())
+  clientId          String?
+  client            Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  channel           String   // WHATSAPP | EMAIL | SMS | FACEBOOK | INSTAGRAM | LINKEDIN | X | WEB | PORTAL
+  direction         String   // IN | OUT
+  recipient         String?
+  sender            String?
+  subject           String?
+  body              String
+  messageType       String   @default("TEXT") // TEXT | TEMPLATE | MEDIA | DOCUMENT | SYSTEM
+  templateName      String?
+  providerMessageId String?
+  status            String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | RECEIVED | FAILED | NOT_CONFIGURED
+  error             String?
+  workflowId        String?  // automation log id / n8n workflow code
+  agentCode         String?  // originating agent
+  approvalId        String?  // linked approval request
+  metadata          String?  // JSON
+
+  createdAt DateTime @default(now())
+  sentAt    DateTime?
+
+  @@index([clientId, channel])
+  @@index([status])
+  @@index([channel, direction])
+}
+
+model Meeting {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  reason    String?
+  status    String   @default("REQUESTED") // REQUESTED | SCHEDULED | COMPLETED | CANCELLED | DECLINED
+  channel   String   @default("GOOGLE_MEET") // GOOGLE_MEET | ZOOM | PHONE | WHATSAPP_CALL
+  scheduledAt DateTime?
+  bookingLink String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+// ---------------- DELIVERY / HANDOVER ----------------
+
+model Delivery {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status    String   @default("PREPARING") // PREPARING | READY | DELIVERED | CONFIRMED | PARTIAL
+  checklist String   @default("{}") // JSON: scope, files, docs, deployment, credentials, testing
+  evidence  String?  // JSON
+  deliveredAt DateTime?
+  clientConfirmedAt DateTime?
+  confirmationAnswers String? // JSON answers from client review
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+model HandoverRecord {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type      String   @default("SOURCE_CODE") // SOURCE_CODE | FILES | CREDENTIALS | DOCUMENTATION
+  packageToken String @unique
+  status    String   @default("PENDING_APPROVAL") // PENDING_APPROVAL | PREPARED | RELEASED | DOWNLOADED | CONFIRMED | EXPIRED
+  contents  String?  // JSON manifest of package
+  paymentVerifiedAt DateTime?
+  releasedBy String?
+  releasedAt DateTime?
+  downloadedAt DateTime?
+  confirmedAt DateTime?
+  expiryAt  DateTime?
+  passwordChangeRequestedAt DateTime?
+  passwordChangeConfirmedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  rating    Int?
+  content   String?
+  published Boolean  @default(false)
+  consent   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+}
+
+model Referral {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name      String?
+  contact   String?
+  notes     String?
+  status    String   @default("REQUESTED") // REQUESTED | RECEIVED | CONVERTED | CLOSED
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+}
+
+// ---------------- FORMS / WEBSITE ----------------
+
+model FormSubmission {
+  id           String  @id @default(cuid())
+  clientId     String?
+  client       Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  form         String  @default("CONTACT") // CONTACT | CAREERS | NEWSLETTER
+  name         String
+  businessName String?
+  businessType String?
+  email        String?
+  whatsapp     String?
+  country      String?
+  projectType  String?
+  budgetRange  String?
+  details      String?
+  preferredContact String?
+  tracking     String? // JSON
+  ip           String?
+  status       String  @default("NEW") // NEW | PROCESSING | PROCESSED | FAILED
+  createdAt    DateTime @default(now())
+
+  @@index([status])
+}
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String?
+  content     String
+  category    String?
+  tags        String?  // JSON array
+  coverImage  String?
+  author      String   @default("Tech360 Team")
+  status      String   @default("PUBLISHED") // DRAFT | PUBLISHED
+  views       Int      @default(0)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+}
+
+// ---------------- AI WORKFORCE ----------------
+
+model Department {
+  id          String  @id @default(cuid())
+  code        String  @unique // D001...
+  name        String
+  category    String  // EXECUTIVE | REVENUE | DELIVERY | TECHNOLOGY | CONTENT | OPERATIONS | GOVERNANCE | SUPPORT
+  description String?
+  createdAt   DateTime @default(now())
+
+  agents AiAgent[]
+}
+
+model AiAgent {
+  id           String   @id @default(cuid())
+  code         String   @unique // CEO-001, CRM-014 ...
+  name         String
+  title        String?
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  purpose      String
+  systemPrompt String
+  tools        String   @default("[]") // JSON array of tool names
+  permissions  String   @default("[]") // JSON
+  requiresApproval Boolean @default(false)
+  status       String   @default("ACTIVE") // ACTIVE | PAUSED | RETIRED
+  model        String   @default("default")
+  dailyQuota   Int      @default(200)
+  tokensToday  Int      @default(0)
+  executionCount Int    @default(0)
+  successCount Int      @default(0)
+  failureCount Int      @default(0)
+  parentCode   String?  // hierarchy
+  level        Int      @default(3) // 1 CEO ... 5 specialist
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  executions AiAgentExecution[]
+
+  @@index([departmentId])
+  @@index([status])
+}
+
+model AiAgentExecution {
+  id            String   @id @default(cuid())
+  agentCode     String
+  agent         AiAgent  @relation(fields: [agentCode], references: [code], onDelete: Cascade)
+  correlationId String
+  clientId      String?
+  projectId     String?
+  workflow      String?
+  input         String
+  output        String?
+  status        String   @default("RUNNING") // RUNNING | SUCCESS | FAILED | TIMEOUT | AWAITING_APPROVAL
+  tokensUsed    Int      @default(0)
+  durationMs    Int?
+  error         String?
+  createdAt     DateTime @default(now())
+
+  @@index([agentCode])
+  @@index([status])
+  @@index([correlationId])
+}
+
+model AiMemory {
+  id        String   @id @default(cuid())
+  scope     String   // COMPANY | BRAND | SERVICES | PRICING | POLICIES | CLIENT | PROJECT | COMMUNICATION | WORKFLOW | KNOWLEDGE | AGENT | TASK | LESSON
+  key       String
+  content   String
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId String?
+  agentCode String?
+  importance Int     @default(5)
+  hits      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([scope])
+  @@index([clientId])
+  @@index([key])
+}
+
+model KnowledgeDocument {
+  id             String   @id @default(cuid())
+  title          String
+  filename       String
+  mimeType       String
+  size           Int
+  classification String   @default("PRIVATE") // PUBLIC | PRIVATE | CONFIDENTIAL | HIGHLY_SENSITIVE
+  status         String   @default("UPLOADED") // UPLOADED | SCANNED | QUARANTINED | INDEXED | APPROVED | ARCHIVED
+  extractedText  String?
+  scanResult     String?  // JSON
+  sha256         String?
+  uploadedBy     String?
+  approvedBy     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([classification])
+}
+
+model PromptTemplate {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  name       String
+  category   String
+  agentCode  String?
+  template   String
+  variables  String   @default("[]") // JSON
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([category])
+}
+
+// ---------------- CONTENT / VIDEO AI ----------------
+
+model Campaign {
+  id        String   @id @default(cuid())
+  name      String
+  goal      String?
+  channel   String?  // YOUTUBE | FACEBOOK | INSTAGRAM | LINKEDIN | X | TIKTOK
+  audience  String?
+  status    String   @default("RESEARCHING") // RESEARCHING | SCORING | SCRIPTING | PRODUCING | PUBLISHED | LEARNING
+  hooks     String?  // JSON A/B hooks
+  metrics   String   @default("{}") // JSON performance
+  lessons   String   @default("[]") // JSON self-learning lessons
+  assets    ContentAsset[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContentAsset {
+  id         String   @id @default(cuid())
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  clientId   String?
+  client     Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  projectId  String?
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  type       String   // RESEARCH | OPPORTUNITY | HOOK | SCRIPT | IMAGE_PROMPT | VIDEO_PLAN | VOICEOVER | CAPTIONS | THUMBNAIL | MUSIC_BRIEF | EDIT_PLAN
+  language   String   @default("EN") // EN | BN
+  voice      String?  // Bangla / English voice config
+  durationSec Int?
+  aspect     String?  // 16:9 | 9:16 | 1:1 | 4:5
+  title      String
+  content    String   @default("{}") // JSON structured asset
+  status     String   @default("DRAFT") // DRAFT | APPROVED | PRODUCING | READY | PUBLISHED | FAILED
+  safeContent Boolean @default(true)
+  metrics    String   @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([type])
+  @@index([campaignId])
+}
+
+// ---------------- GOVERNANCE / LOGS ----------------
+
+model ApprovalRequest {
+  id          String   @id @default(cuid())
+  type        String   // FINAL_SCOPE_SEND | PAYMENT_INSTRUCTION | REFUND | SOURCE_HANDOVER | CREDENTIAL_OP | DELETION | SOCIAL_PUBLISH | LEGAL_COMM | SENSITIVE_COMM | AGENT_CREATE | EXTERNAL_SEND
+  title       String
+  description String?
+  clientId    String?
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId   String?
+  agentCode   String?
+  payload     String   @default("{}") // JSON: generated content, target channel, risk
+  risk        String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED | EXECUTED | FAILED
+  requestedBy String?  // agent code or user id
+  decidedBy   String?
+  decisionNote String?
+  executedAt  DateTime?
+  result      String?  // execution outcome JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actor      String   // user email or agent code
+  action     String
+  entityType String?
+  entityId   String?
+  clientId   String?
+  projectId  String?
+  details    String?  // JSON
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+  @@index([clientId])
+}
+
+model ErrorLog {
+  id            String   @id @default(cuid())
+  source        String   // API | AUTOMATION | AGENT | COMMS | DB | WEBHOOK | AUTH
+  code          String?
+  message       String
+  stack         String?
+  correlationId String?
+  clientId      String?
+  projectId     String?
+  workflow      String?
+  resolved      Boolean  @default(false)
+  resolvedAt    DateTime?
+  resolvedBy    String?
+  createdAt     DateTime @default(now())
+
+  @@index([source])
+  @@index([resolved])
+  @@index([createdAt])
+}
+
+model AutomationLog {
+  id            String   @id @default(cuid())
+  workflow      String   // LEAD_INTAKE, BUSINESS_DETECTION, ...
+  trigger       String?  // WEBHOOK | FORM | API | SCHEDULER | AGENT | COMMAND
+  correlationId String
+  clientId      String?
+  client        Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId     String?
+  input         String?  // JSON
+  output        String?  // JSON
+  steps         String   @default("[]") // JSON step log
+  status        String   @default("RUNNING") // RUNNING | SUCCESS | FAILED | AWAITING_APPROVAL | RETRYING
+  attempts      Int      @default(1)
+  error         String?
+  durationMs    Int?
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+
+  @@index([workflow])
+  @@index([status])
+  @@index([correlationId])
+}
+
+model AgentMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String?
+  role      String   // user | assistant | system
+  content   String
+  meta      String?  // JSON: action executed, data
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // APPROVAL | ERROR | LEAD | PAYMENT | DELIVERY | SYSTEM
+  title     String
+  body      String?
+  severity  String   @default("INFO") // INFO | WARNING | CRITICAL
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([read])
+}
+
+model TrackingEvent {
+  id        String   @id @default(cuid())
+  name      String   // page_view | lead | contact | whatsapp_click | form_submit | preview_view | approval | conversion
+  path      String?
+  clientId  String?
+  anonId    String?
+  consent   Boolean  @default(false)
+  meta      String?  // JSON
+  createdAt DateTime @default(now())
+
+  @@index([name])
+  @@index([createdAt])
+}
+
+model FileRecord {
+  id             String   @id @default(cuid())
+  filename       String
+  originalName   String
+  mimeType       String
+  size           Int
+  sha256         String?
+  classification String   @default("PRIVATE")
+  scanStatus     String   @default("PENDING") // PENDING | CLEAN | QUARANTINED | REJECTED
+  scanResult     String?  // JSON
+  storagePath    String?
+  clientId       String?
+  client         Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  projectId      String?
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  relatedType    String?  // COMMUNICATION | SCOPE | PAYMENT_PROOF | DELIVERY | KNOWLEDGE
+  relatedId      String?
+  uploadedBy     String?
+  createdAt      DateTime @default(now())
+
+  @@index([clientId])
+  @@index([scanStatus])
+}
+
+model N8nWorkflow {
+  id          String   @id @default(cuid())
+  code        String   @unique // W01_LEAD_INTAKE
+  name        String
+  description String?
+  category    String
+  trigger     String?
+  definition  String   @default("{}") // importable n8n JSON (no secrets)
+  status      String   @default("AVAILABLE") // AVAILABLE | IMPORTED | RUNNING | ERROR
+  lastRunAt   DateTime?
+  lastRunStatus String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // JSON
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
