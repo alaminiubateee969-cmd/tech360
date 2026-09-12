@@ -37,6 +37,9 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
+    "deployment",
+    "mini-services",
+    "n8n",
     "node_modules"
   ]
 }

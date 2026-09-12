@@ -137,3 +137,37 @@ Stage Summary:
 - Files: src/data/site.ts (complete content model + SITE aggregate), src/data/images.ts (IMAGES + imageFor over images.json), 26 components in src/components/site/ (SiteHeader, SiteFooter, HomeView, AboutView, ServicesView, ServiceDetailView, IndustriesView, IndustryDetailView, WorkView, TechnologiesView, ProcessView, BlogView, BlogPostView, CareersView, ContactView, LegalView, FaqView, PageHero, SectionHeading, CtaBand, ImageView/LazyImage, Reveal, StatChip, buttons, icons, nav).
 - Verification: eslint clean on all owned files; tsc clean for owned files; bun runtime import of all 27 modules OK; data counts match spec (20/20/8/7/12/5/7 + 21 countries… options); aria-labelledby audit clean.
 - Deviations: LazyImage shipped as an alias of ImageView (same contract); SITE aggregate added alongside named exports; header is `fixed` (sticky behaviour) — all within spec intent. Nothing internal (admin/CRM/agents) is exposed on public pages.
+
+---
+Task ID: 3, 4, 5, 6
+Agent: main
+Task: Backend APIs · AI agent execution engine · n8n + Google Cloud package · autonomous AI operations · E2E verification
+
+Work Log:
+- Built 35+ API routes: auth (login/logout/me/change-password with scrypt+sessions+RBAC+CSRF+lockout), public (contact→journey, blog, track, newsletter, health), tokenized client surfaces (preview GET/view/action, handover download/confirm with payment gates), webhooks (WhatsApp Cloud API verify+inbound, social inbox, n8n bridge with secret), admin (dashboard, clients, journey engine, approvals with SUPER_ADMIN gated execution, communications with honest channel statuses, payments with verify gate, projects, agents registry+run+create, memory, knowledge upload+search with file safety, logs audit/errors/automation, analytics, content studio, n8n download, CEO reports, deploy-package zip), ops (scan/act/heartbeat for the autonomous loop).
+- Fixed critical bugs found in verification: project not created when payment predates project (verifyPayment now activates + links), budget range parsing ($1,000-$5,000 → first number), Radix select automation, syntax error in heartbeat route, tsconfig/lint excludes.
+- AUTONOMOUS AI OPERATIONS SERVICE (mini-services/ai-ops, port 3031): runs the loop every 90s — DETECT (scan) → UNDERSTAND/DECIDE (deterministic rules + platform agents) → EXECUTE (SCORE_LEAD via Sentry, FOLLOWUP_LEAD via Echo with honest NOT_CONFIGURED + task creation, RETRY_COMM, TRIAGE_ERROR via Sentinel, stale approval escalation, failure alerts) → LOG (AI_OPS_LOOP automation log + audit) → LEARN (LESSON-scope memory). Heartbeat recorded to settings; /api/health reports it honestly (ACTIVE/STALE/OFFLINE). Status: operating, cycles logged, lead TECH-2026-000001 scored autonomously by REV-002.
+- 25 importable n8n workflows generated (n8n/*.json, no secrets — n8n credentials + $env.TECH360_API_BASE).
+- Google Cloud deployment package: Dockerfile (multi-stage, Cloud Run PORT 8080, HEALTHCHECK), .dockerignore, cloudbuild.yaml (Artifact Registry + Cloud Run + Secret Manager wiring), deploy.sh, backup.sh, .env.example (all env vars, names only).
+- Brand/visual: extracted Tech360 logo + platform imagery from uploaded zip; image-search collected 21 categories of real business photos (src/data/images.json); built 22s cinematic hero video via ffmpeg Ken Burns + crossfade (public/videos/hero-loop.mp4 + poster).
+- page.tsx: single-route hash router (public SPA + #/admin lazy), consent-aware GTM+Meta Pixel (inject only after consent), server-side tracking events, skip-link, sonner Toaster.
+
+E2E VERIFICATION (agent-browser, all PASSED):
+1. Homepage renders cinematic hero + all sections; console clean; VLM review: premium corporate quality.
+2. Contact form → POST /api/contact 200 → Client TECH-2026-000001 created; AI business detection (eCommerce, confidence 1); welcome comms attempted (NOT_CONFIGURED — honest); LEAD_INTAKE automation log SUCCESS; memory persisted.
+3. Admin: login → forced password change → dashboard shows REAL KPIs (1 lead, 1 unread comm, pipeline chart).
+4. Journey: ASK_SCOPE_QUESTIONS (real SCP-006 execution, contextual questions) → SUBMIT_SCOPE (SCP-007 review + SCP-008 draft SOW) → approval queued → SUPER_ADMIN approve → FINAL scope + send (NOT_CONFIGURED honest) → stage FINAL_SCOPE.
+5. HTML preview: generated from real scope, tokenized link, VIEWED×2 tracked, client APPROVED → stage CLIENT_APPROVAL; tracking events recorded.
+6. Payment: request generated 4 real milestone invoices ($300/$400/$200/$300) → payment recorded PENDING (never fake-paid) → verified PAID → project PRJ-2026-0001 auto-activated with 12 AI-generated tasks → stage PROJECT_ACTIVE.
+7. Handover: prepared (payment verified) → SOURCE_HANDOVER approval (HIGH risk) → approved → RELEASED; download works; bogus token 404; password-change confirmation + delivery confirmation → close → COMPLETED.
+8. Command Center: quick chips + typed NL ("show me clients who completed their projects") → Oracle agent → real data returned.
+9. Public pages all render (about/services+detail/industries+detail/work/technologies/process/blog+post/careers/faq/legal×7/contact); mobile 390px clean (VLM verified).
+10. Multilingual: Bangla follow-up message generated by Echo agent.
+11. Ops: FOLLOWUP_LEAD act → Echo drafted, WhatsApp NOT_CONFIGURED (honest), task created; deploy-package zip 36 files; health shows aiOperations ACTIVE.
+
+Stage Summary:
+- The platform is functional end-to-end: first message → Client ID → AI journey → approval gates → preview → payment verification → project + tasks → handover gates → closure, all recorded against the Client ID with audit logs.
+- AI agents executed real work (12+ executions, all SUCCESS): business detection, plan, scope questions, scope review, SOW, task breakdown, command center, lead scoring, follow-up drafting, Bangla output.
+- Autonomous ops loop is live (heartbeat, scoring, learning, escalation).
+- Channels honestly NOT_CONFIGURED until credentials are provided (env vars documented); NO fake sent/paid/delivered states anywhere.
+- Super Admin: admin@bdtech360.com / Tech360@Secure2026 (changed from default during E2E; ADMIN_PASSWORD env for fresh installs, must-change enforced).

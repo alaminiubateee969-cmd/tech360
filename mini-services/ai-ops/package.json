@@ -1,0 +1,13 @@
+{
+  "name": "tech360-ai-ops",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TECH360 autonomous AI operations service — the AI operating engine: monitors, scores, follows up, triages errors, retries, learns, reports.",
+  "scripts": {
+    "dev": "bun --hot index.ts",
+    "start": "bun index.ts"
+  },
+  "dependencies": {
+    "z-ai-web-dev-sdk": "^0.0.18"
+  }
+}

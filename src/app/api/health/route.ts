@@ -19,6 +19,21 @@ export async function GET() {
   } catch {
     checks.aiAgents = { status: 'UNKNOWN' }
   }
+  // Autonomous AI operations service — honest status from heartbeat
+  try {
+    const hb = await db.setting.findUnique({ where: { key: 'ops.heartbeat' } })
+    if (hb) {
+      const parsed = JSON.parse(hb.value) as { at?: string; cycles?: number }
+      const ageSec = parsed.at ? Math.floor((Date.now() - new Date(parsed.at).getTime()) / 1000) : null
+      checks.aiOperations = ageSec !== null && ageSec < 180
+        ? { status: 'ACTIVE', detail: `autonomous loop cycle #${parsed.cycles ?? '?'} · heartbeat ${ageSec}s ago` }
+        : { status: 'STALE', detail: `last heartbeat ${ageSec ?? '?'}s ago — check mini-services/ai-ops` }
+    } else {
+      checks.aiOperations = { status: 'OFFLINE', detail: 'no heartbeat recorded — start mini-services/ai-ops' }
+    }
+  } catch {
+    checks.aiOperations = { status: 'UNKNOWN' }
+  }
   const channels = channelStatuses()
   const result = {
     status: healthy ? 'healthy' : 'unhealthy',
