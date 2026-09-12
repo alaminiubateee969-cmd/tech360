@@ -25,5 +25,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   })
   if (!project) return Response.json({ error: 'Project not found' }, { status: 404 })
-  return Response.json({ project })
+  // Relations also exposed top-level for console consumers (ProjectDetailResponse contract)
+  const { tasks, payments, invoices, scopes, previews, deliveries, handovers, reviews, ...projectFields } = project
+  return Response.json({
+    project: { ...projectFields, tasks, payments, scopes, previews, handovers },
+    tasks,
+    payments,
+    invoices,
+    scopes,
+    previews: previews as unknown as Array<{ id: string; token?: string | null; version?: number | null; status?: string | null; viewCount?: number | null }>,
+    handovers,
+    reviews,
+    delivery: deliveries[0] ?? null,
+  })
 }

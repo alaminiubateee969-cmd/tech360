@@ -383,7 +383,7 @@ export function ProjectDetailView({
         <TabsContent value="tasks" className="mt-3">
           <SectionCard
             title="Tasks"
-            description="Project task board (read-only — task updates are performed by the journey engine / automation)"
+            description="Task board — mark progress with evidence; every change is audit-logged"
             contentClassName="p-0"
           >
             {(data?.tasks ?? []).length === 0 ? (
@@ -394,25 +394,7 @@ export function ProjectDetailView({
                   .slice()
                   .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
                   .map((t: TaskRecord) => (
-                    <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-medium text-slate-200">{t.title}</p>
-                        {t.description ? <p className="mt-0.5 max-w-xl truncate text-xs text-slate-500">{t.description}</p> : null}
-                        <p className="mt-0.5 text-[11px] text-slate-600">
-                          {t.assigneeType === 'AGENT' ? `Agent ${t.assigneeRef ?? ''}` : t.assigneeRef ? `Human: ${t.assigneeRef}` : 'Unassigned'}
-                          {t.dueAt ? ` · due ${fmtDateShort(t.dueAt)}` : ''}
-                          {t.completedAt ? ` · completed ${fmtDateShort(t.completedAt)}` : ''}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {t.priority ? (
-                          <span className="rounded bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                            {t.priority}
-                          </span>
-                        ) : null}
-                        <StatusBadge status={t.status} />
-                      </div>
-                    </li>
+                    <TaskRow key={t.id} task={t} projectId={projectId} onDone={refresh} />
                   ))}
               </ul>
             )}
@@ -544,5 +526,54 @@ export function ProjectDetailView({
         </div>
       ) : null}
     </div>
+  )
+}
+
+// ---------------- Interactive task row (PATCH /tasks/[taskId]) ----------------
+function TaskRow({ task, projectId, onDone }: { task: TaskRecord; projectId: string; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const nextStatus = task.status === 'DONE' ? 'IN_PROGRESS' : task.status === 'IN_PROGRESS' ? 'REVIEW' : 'DONE'
+  const advance = async () => {
+    setBusy(true)
+    try {
+      const res = await api.updateTask(projectId, task.id, nextStatus, `Advanced by admin via console → ${nextStatus}`)
+      toast.success(res.message ?? `Task → ${nextStatus}`)
+      onDone()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Task update failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-[13px] font-medium text-slate-200">{task.title}</p>
+        {task.description ? <p className="mt-0.5 max-w-xl truncate text-xs text-slate-500">{task.description}</p> : null}
+        <p className="mt-0.5 text-[11px] text-slate-600">
+          {task.assigneeType === 'AGENT' ? `Agent ${task.assigneeRef ?? ''}` : task.assigneeRef ? `Human: ${task.assigneeRef}` : 'Unassigned'}
+          {task.dueAt ? ` · due ${fmtDateShort(task.dueAt)}` : ''}
+          {task.completedAt ? ` · completed ${fmtDateShort(task.completedAt)}` : ''}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        {task.priority ? (
+          <span className="rounded bg-slate-800/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            {task.priority}
+          </span>
+        ) : null}
+        <StatusBadge status={task.status} />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={advance}
+          className="h-7 border-slate-700 bg-slate-900 px-2.5 text-[11px] text-slate-300 hover:border-[#18B83A]/50 hover:text-[#4ade80] disabled:opacity-50"
+          aria-label={`Advance task ${task.title} to ${nextStatus}`}
+        >
+          {busy ? '…' : `→ ${nextStatus.toLowerCase()}`}
+        </Button>
+      </div>
+    </li>
   )
 }

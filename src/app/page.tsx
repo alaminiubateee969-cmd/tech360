@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState, Suspense, lazy, useCallback, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense, lazy, useSyncExternalStore } from 'react'
 import { Toaster } from 'sonner'
+import { ArrowUp } from 'lucide-react'
 
 // Public site views (single-route SPA with hash navigation)
 import SiteHeader from '@/components/site/SiteHeader'
@@ -21,6 +22,7 @@ import CareersView from '@/components/site/CareersView'
 import ContactView from '@/components/site/ContactView'
 import LegalView from '@/components/site/LegalView'
 import FaqView from '@/components/site/FaqView'
+import PortalView from '@/components/site/PortalView'
 
 // Private admin console (auth-gated internally)
 const AdminApp = lazy(() => import('@/components/admin/AdminApp'))
@@ -107,6 +109,80 @@ function ConsentBanner({ onDecide }: { onDecide: (g: boolean) => void }) {
 }
 
 // ------------------------------------------------------------------
+// Reading progress bar + back-to-top (public pages) — direct DOM updates
+// via rAF so scrolling never triggers React re-render cascades.
+// ------------------------------------------------------------------
+function ScrollProgressBar() {
+  const barRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      const el = barRef.current
+      if (el) {
+        const doc = document.documentElement
+        const max = doc.scrollHeight - doc.clientHeight
+        const pct = max > 0 ? Math.min(1, window.scrollY / max) : 0
+        el.style.transform = `scaleX(${pct})`
+      }
+    }
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => { raf = 0; update() })
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+  return (
+    <div aria-hidden className="fixed inset-x-0 top-0 z-[80] h-[3px] bg-transparent">
+      <div ref={barRef} className="h-full w-full origin-left scale-x-0 bg-gradient-to-r from-[#009FE3] via-[#063B8F] to-[#18B83A]" style={{ willChange: 'transform' }} />
+    </div>
+  )
+}
+
+function BackToTop() {
+  const btnRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      const el = btnRef.current
+      if (el) {
+        const show = window.scrollY > 600
+        el.style.opacity = show ? '1' : '0'
+        el.style.pointerEvents = show ? 'auto' : 'none'
+        el.style.transform = show ? 'translateY(0)' : 'translateY(12px)'
+      }
+    }
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => { raf = 0; update() })
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+  return (
+    <button
+      ref={btnRef}
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      aria-label="Back to top"
+      className="fixed bottom-6 right-6 z-[70] flex h-11 w-11 items-center justify-center rounded-full bg-[#063B8F] text-white shadow-lg shadow-[#063B8F]/25 outline-none transition-[opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+      style={{ opacity: 0, pointerEvents: 'none', transform: 'translateY(12px)' }}
+    >
+      <ArrowUp className="h-5 w-5" aria-hidden />
+    </button>
+  )
+}
+
+// ------------------------------------------------------------------
 // Hash router
 // ------------------------------------------------------------------
 function parseHash(raw: string) {
@@ -117,7 +193,7 @@ function parseHash(raw: string) {
   return { section, param, full: `/${parts.join('/')}` }
 }
 
-const PUBLIC_SECTIONS = new Set(['', 'about', 'services', 'industries', 'work', 'technologies', 'process', 'blog', 'careers', 'contact', 'legal', 'faq'])
+const PUBLIC_SECTIONS = new Set(['', 'about', 'services', 'industries', 'work', 'technologies', 'process', 'blog', 'careers', 'contact', 'legal', 'faq', 'portal'])
 
 function PublicView({ section, param, navigate }: { section: string; param: string; navigate: (h: string) => void }) {
   switch (section) {
@@ -133,6 +209,7 @@ function PublicView({ section, param, navigate }: { section: string; param: stri
     case 'contact': return <ContactView />
     case 'legal': return <LegalView slug={param || 'terms'} />
     case 'faq': return <FaqView />
+    case 'portal': return <PortalView />
     default: return <HomeView onNavigate={navigate} />
   }
 }
@@ -192,10 +269,12 @@ export default function Page() {
         </Suspense>
       ) : (
         <>
+          <ScrollProgressBar />
           <SiteHeader currentHash={hash} />
           <main id="main-content" className="flex-1">
             <PublicView section={section} param={param} navigate={navigate} />
           </main>
+          <BackToTop />
           <SiteFooter />
         </>
       )}

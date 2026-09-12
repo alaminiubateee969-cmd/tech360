@@ -631,6 +631,16 @@ export const api = {
     fetchJson<{ ok?: boolean; message?: string }>(`/api/admin/projects/${encodeURIComponent(id)}/close`, {
       method: 'POST',
     }),
+  updateTask: (projectId: string, taskId: string, status: string, evidence?: string) =>
+    fetchJson<{ ok?: boolean; message?: string }>(`/api/admin/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`, {
+      method: 'PATCH',
+      body: { status, evidence },
+    }),
+  resolveError: (errorId: string, note?: string) =>
+    fetchJson<{ ok?: boolean; message?: string }>(`/api/admin/logs/errors/${encodeURIComponent(errorId)}/resolve`, {
+      method: 'POST',
+      body: { note },
+    }),
   runAgent: (code: string, input: string, expectJson = true) =>
     fetchJson<AgentRunResponse>(`/api/admin/agents/${encodeURIComponent(code)}/run`, {
       method: 'POST',

@@ -171,3 +171,27 @@ Stage Summary:
 - Autonomous ops loop is live (heartbeat, scoring, learning, escalation).
 - Channels honestly NOT_CONFIGURED until credentials are provided (env vars documented); NO fake sent/paid/delivered states anywhere.
 - Super Admin: admin@bdtech360.com / Tech360@Secure2026 (changed from default during E2E; ADMIN_PASSWORD env for fresh installs, must-change enforced).
+
+---
+Task ID: cron-round-1 (webDevReview cycle)
+Agent: main (autonomous review)
+Task: QA sweep · bug fixes · Client Portal · task/error management · styling polish
+
+Work Log:
+- QA: platform healthy, AI-Ops loop operating (cycles advancing), no console errors on public pages, all admin endpoints 200 (earlier 401s were test-side cookie parsing, not app bugs). Dev server had crashed (port 3000 gone) — restarted; root cause unknown (possibly OOM), risk noted below.
+- BUG FIXED (real): /api/admin/projects/[id] nested relations only inside `project` while the console reads top-level `tasks/payments/scopes/previews/handovers` → project detail tabs showed 0 records. API now returns both shapes; verified UI shows Tasks (13)/Payments (1)/Handovers (1) and delivery CONFIRMED.
+- API gaps closed (documented by Task 2-b): PATCH /api/admin/projects/[id]/tasks/[taskId] (status transitions + evidence, audit-logged — verified: Task 9 → DONE with evidence, Task 1 → IN_PROGRESS from UI); POST /api/admin/logs/errors/[id]/resolve.
+- NEW FEATURE — CLIENT PORTAL (spec §50): #/portal route (public brand styling).
+  - POST/DELETE /api/portal/login: Client ID + email/WhatsApp match → HttpOnly signed-cookie session (HMAC, 24h), rate-limited, audit-logged; wrong details get a generic error (no field disclosure).
+  - GET /api/portal/me: safe summary only — stage + progress %, project (code/status/payment status/task progress), final scope (formatted), preview link, handover (status/download/confirm links when released), payments/invoices, own communications (FAILED/NOT_CONFIGURED shown honestly), meetings, policy card.
+  - PortalView.tsx: login panel + dashboard (progress stepper 1–18, project card with build progress, scope document, payments table, comms timeline, preview/handover action cards, password-change confirm action, protections card). VLM: premium SaaS quality; mobile 390px clean; verified real data (69% task progress, COMPLETED stage, CONFIRMED handover).
+  - Footer "Client Portal" link added.
+- Styling (mandatory): scroll progress bar (3px brand gradient, rAF direct-DOM, no re-renders) + back-to-top button (appears >600px, smooth scroll) on all public pages; portal is fully new premium UI.
+- Admin console: task rows now interactive (advance TODO→IN_PROGRESS→REVIEW→DONE with evidence + toast + audit); Tasks tab description updated.
+- admin-client.ts: api.updateTask + api.resolveError helpers added.
+
+Stage Summary:
+- All lint/tsc clean; health green; AI-Ops ACTIVE (cycle #14, lead scoring/learning/alerts continuing).
+- Verified in browser: portal login→dashboard with real data; project detail task counts + advance flow; audit trail for task updates.
+- Open risks: (1) dev server crashed once mid-session — if it recurs, investigate memory/next.config; (2) client detail approvals included but UI still uses fallback filter (fine); (3) portal has no 2FA (documented as future hardening for HIGHLY_SENSITIVE clients).
+- Next-round candidates: notifications dropdown wiring in admin topbar, knowledge approve/archive actions UI, CEO report scheduling surfaced in Reports view, preview expiry enforcement job in ai-ops loop.

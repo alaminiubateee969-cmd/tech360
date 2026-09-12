@@ -14,6 +14,7 @@ export default function SiteFooter() {
     { label: "About", href: "#/about" },
     { label: "Work", href: "#/work" },
     { label: "Process", href: "#/process" },
+    { label: "Client Portal", href: "#/portal" },
     { label: "Careers", href: "#/careers" },
     { label: "Blog", href: "#/blog" },
     { label: "FAQ", href: "#/faq" },
