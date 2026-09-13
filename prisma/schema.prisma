@@ -350,10 +350,13 @@ model Meeting {
   scheduledAt DateTime?
   bookingLink String?
   notes     String?
+  clientResponse String? // CONFIRMED | DECLINED | RESCHEDULE_REQUESTED (set via client portal)
+  clientRespondedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([clientId])
+  @@index([scheduledAt])
 }
 
 // ---------------- DELIVERY / HANDOVER ----------------

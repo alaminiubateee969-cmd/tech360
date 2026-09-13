@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       previews: { orderBy: { createdAt: 'desc' } },
       payments: { orderBy: { createdAt: 'desc' } },
       invoices: { orderBy: { issuedAt: 'desc' } },
-      meetings: { orderBy: { createdAt: 'desc' }, take: 5 },
+      meetings: { orderBy: [{ scheduledAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }] },
     },
   })
   if (!client) return Response.json({ error: 'Client not found' }, { status: 404 })
@@ -107,7 +107,17 @@ export async function GET(req: NextRequest) {
       channel: c.channel, direction: c.direction, subject: c.subject,
       preview: (c.body ?? '').slice(0, 160), status: c.status, at: c.createdAt,
     })),
-    meetings: client.meetings.map((m) => ({ status: m.status, scheduledAt: m.scheduledAt, reason: m.reason })),
+    meetings: client.meetings.map((m) => ({
+      id: m.id,
+      status: m.status,
+      scheduledAt: m.scheduledAt,
+      reason: m.reason,
+      channel: m.channel,
+      bookingLink: m.bookingLink,
+      notes: m.status === 'COMPLETED' ? m.notes : null,
+      clientResponse: m.clientResponse,
+      clientRespondedAt: m.clientRespondedAt,
+    })),
     documents: documents.map((d) => ({
       id: d.id,
       name: d.originalName,

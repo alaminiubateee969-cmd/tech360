@@ -9,9 +9,11 @@
 // ============================================================
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { io, type Socket } from 'socket.io-client'
 import {
   AlertTriangle,
   Bell,
+  CalendarDays,
   CheckCheck,
   CircleAlert,
   FileText,
@@ -24,6 +26,7 @@ import {
   UserPlus,
   Wallet,
   X,
+  Zap,
 } from 'lucide-react'
 import { api, type NotificationItem } from '@/lib/admin-client'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -47,6 +50,7 @@ const TYPE_ICON: Record<string, typeof Bell> = {
   PREVIEW_REFRESH: FileText,
   REVIEW_PUBLISHED: Star,
   CLIENT_DOC: Paperclip,
+  MEETING: CalendarDays,
 }
 
 const TYPE_LINK: Record<string, NotificationViewLink> = {
@@ -61,6 +65,7 @@ const TYPE_LINK: Record<string, NotificationViewLink> = {
   PREVIEW_REFRESH: 'clients',
   REVIEW_PUBLISHED: 'reviews',
   CLIENT_DOC: 'clients',
+  MEETING: 'clients',
 }
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -119,6 +124,41 @@ export function NotificationCenter({
     const t = setInterval(() => void load(), 60_000)
     return () => clearInterval(t)
   }, [load])
+
+  // REAL-TIME layer: the notify-relay (port 3032) pushes "ping" events the
+  // moment the platform writes a notification. The ping carries no business
+  // data (kind + severity only) — we simply refetch the feed through the
+  // authenticated API. If the relay is unreachable, the 60s poll above
+  // remains the honest fallback and the LIVE dot turns off.
+  const [live, setLive] = useState(false)
+  const loadRef = useRef(load)
+  loadRef.current = load
+  useEffect(() => {
+    let socket: Socket | null = null
+    try {
+      socket = io('/?XTransformPort=3032', {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 6,
+        reconnectionDelay: 2000,
+        timeout: 6000,
+      })
+      socket.on('connect', () => setLive(true))
+      socket.on('disconnect', () => setLive(false))
+      socket.on('connect_error', () => setLive(false))
+      socket.on('hello', () => setLive(true))
+      socket.on('notify', (ping: { kind?: string; severity?: string; ts?: string }) => {
+        // New notification happened — refetch immediately.
+        void loadRef.current()
+        if (ping?.severity === 'CRITICAL') {
+          toast.error(`New critical alert (${ping.kind ?? 'system'}) — open the feed`, { duration: 6000 })
+        }
+      })
+    } catch {
+      // relay unreachable — polling fallback stays
+    }
+    return () => { socket?.disconnect() }
+  }, [])
 
   // reload when the panel opens so the operator always sees fresh rows
   useEffect(() => {
@@ -316,7 +356,19 @@ export function NotificationCenter({
 
         {/* footer */}
         <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2.5">
-          <span className="text-[10.5px] text-slate-600">Live feed · refreshed every 60s</span>
+          <span className="flex items-center gap-1.5 text-[10.5px] text-slate-600" title={live ? 'WebSocket relay connected — feed refreshes the instant something happens' : 'Relay offline — refreshing every 60s'}>
+            <span className="relative flex size-1.5" aria-hidden="true">
+              <span className={cn('absolute inline-flex size-full rounded-full', live ? 'animate-ping bg-emerald-400/70' : 'bg-slate-600')} />
+              <span className={cn('relative inline-flex size-1.5 rounded-full', live ? 'bg-emerald-400' : 'bg-slate-600')} />
+            </span>
+            {live ? (
+              <span className="flex items-center gap-1 font-medium text-emerald-400/90">
+                <Zap className="size-2.5" aria-hidden="true" /> Live — instant push
+              </span>
+            ) : (
+              'Live feed · refreshed every 60s'
+            )}
+          </span>
           <Button
             variant="ghost"
             size="sm"

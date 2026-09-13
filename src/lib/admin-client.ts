@@ -479,6 +479,8 @@ export interface MeetingRecord {
   scheduledAt?: string | null
   bookingLink?: string | null
   notes?: string | null
+  clientResponse?: string | null
+  clientRespondedAt?: string | null
   createdAt?: string | null
 }
 export interface MemoryRecord {
@@ -802,6 +804,16 @@ export const api = {
     fetchJson<{ ok?: boolean; message?: string }>(`/api/admin/logs/errors/${encodeURIComponent(errorId)}/resolve`, {
       method: 'POST',
       body: { note },
+    }),
+  meetingSchedule: (body: { clientId: string; scheduledAt: string; channel: string; reason?: string; bookingLink?: string; notes?: string }) =>
+    fetchJson<{ ok?: boolean; message?: string; agent?: { ok?: boolean; agenda?: string } }>(`/api/admin/meetings`, {
+      method: 'POST',
+      body,
+    }),
+  meetingManage: (meetingId: string, action: 'COMPLETE' | 'CANCEL' | 'RESCHEDULE', body?: { notes?: string; scheduledAt?: string }) =>
+    fetchJson<{ ok?: boolean; message?: string; status?: string }>(`/api/admin/meetings/${encodeURIComponent(meetingId)}`, {
+      method: 'PATCH',
+      body: { action, ...body },
     }),
   docStatus: (docId: string, action: 'RELEASE' | 'REJECT') =>
     fetchJson<{ ok?: boolean; message?: string }>(`/api/admin/documents/${encodeURIComponent(docId)}/status`, {

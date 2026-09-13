@@ -1,0 +1,13 @@
+{
+  "name": "tech360-notify-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TECH360 real-time notification relay — receives 'something changed' pings from the platform (src/lib/notify.ts) and pushes them to connected admin consoles over WebSocket. Payloads carry NO business data: the client refetches via the authenticated /api/admin/notifications endpoint.",
+  "scripts": {
+    "dev": "bun --hot index.ts",
+    "start": "bun index.ts"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.3"
+  }
+}

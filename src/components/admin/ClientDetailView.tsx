@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BadgeDollarSign,
   Bot,
+  CalendarDays,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -38,6 +39,7 @@ import {
   type ApprovalsResponse,
   type ClientDetailResponse,
   type DocumentRecord,
+  type MeetingRecord,
   type PaymentRecord,
 } from '@/lib/admin-client'
 import { PIPELINE_STAGES } from '@/lib/constants'
@@ -580,6 +582,7 @@ export function ClientDetailView({
             ['projects', `Projects (${projects.length})`],
             ['approvals', `Approvals (${clientApprovals.length})`],
             ['documents', `Documents (${(data?.documents ?? []).length})`],
+            ['meetings', `Meetings (${(data?.meetings ?? []).length})`],
             ['memory', `Memory (${(data?.memories ?? []).length})`],
             ['automation', `Automation (${(data?.automationLogs ?? []).length})`],
           ].map(([v, label]) => (
@@ -802,6 +805,15 @@ export function ClientDetailView({
           <DocumentsPanel
             clientId={client.clientId}
             documents={data?.documents ?? []}
+            onChanged={refresh}
+          />
+        </TabsContent>
+
+        <TabsContent value="meetings" className="mt-3">
+          <MeetingsPanel
+            clientId={client.clientId}
+            clientName={clientDisplayName(data?.client)}
+            meetings={data?.meetings ?? []}
             onChanged={refresh}
           />
         </TabsContent>
@@ -1186,6 +1198,338 @@ function DocumentsPanel({
             <Button onClick={share} disabled={shareBusy || !shareFile} className="font-semibold" style={{ background: ACCENT }}>
               {shareBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
               Scan &amp; share
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </SectionCard>
+  )
+}
+
+// ---------------- Meetings panel (real scheduling + lifecycle) ----------------
+const MEETING_CHANNELS = [
+  { value: 'GOOGLE_MEET', label: 'Google Meet' },
+  { value: 'ZOOM', label: 'Zoom' },
+  { value: 'PHONE', label: 'Phone call' },
+  { value: 'WHATSAPP_CALL', label: 'WhatsApp call' },
+] as const
+
+const RESPONSE_TONE: Record<string, string> = {
+  CONFIRMED: 'bg-emerald-500/15 text-emerald-300',
+  DECLINED: 'bg-red-500/15 text-red-300',
+  RESCHEDULE_REQUESTED: 'bg-amber-500/15 text-amber-300',
+}
+
+function fmtMeetingWhenFull(d?: string | null): string {
+  if (!d) return 'Time to be confirmed'
+  try {
+    const dt = new Date(d)
+    return dt.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  } catch { return 'Time to be confirmed' }
+}
+
+function MeetingsPanel({
+  clientId,
+  clientName,
+  meetings,
+  onChanged,
+}: {
+  clientId: string
+  clientName: string
+  meetings: MeetingRecord[]
+  onChanged: () => void
+}) {
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [mWhen, setMWhen] = useState('')
+  const [mChannel, setMChannel] = useState<string>('GOOGLE_MEET')
+  const [mReason, setMReason] = useState('')
+  const [mLink, setMLink] = useState('')
+  const [mNotes, setMNotes] = useState('')
+  const [scheduleBusy, setScheduleBusy] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [rescheduleFor, setRescheduleFor] = useState<MeetingRecord | null>(null)
+  const [reschedWhen, setReschedWhen] = useState('')
+  const [completeFor, setCompleteFor] = useState<MeetingRecord | null>(null)
+  const [completeNotes, setCompleteNotes] = useState('')
+
+  const active = meetings.filter((m) => ['REQUESTED', 'SCHEDULED'].includes(m.status ?? ''))
+  const upcoming = active.filter((m) => !m.scheduledAt || new Date(m.scheduledAt).getTime() > Date.now() - 60 * 60_000)
+  const awaitingClient = active.filter((m) => m.clientResponse === 'RESCHEDULE_REQUESTED')
+
+  async function schedule() {
+    if (!mWhen) { toast.error('Pick a date and time first.'); return }
+    setScheduleBusy(true)
+    try {
+      const res = await api.meetingSchedule({
+        clientId,
+        scheduledAt: new Date(mWhen).toISOString(),
+        channel: mChannel,
+        reason: mReason.trim() || undefined,
+        bookingLink: mLink.trim() || undefined,
+        notes: mNotes.trim() || undefined,
+      })
+      toast.success(`Meeting scheduled. ${res.agent?.ok ? 'Tempo (MTG-015) prepared the agenda — see the notes on the new row.' : 'Agent unavailable — add notes manually.'}`)
+      setScheduleOpen(false)
+      setMWhen(''); setMReason(''); setMLink(''); setMNotes('')
+      onChanged()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Scheduling failed.')
+    } finally { setScheduleBusy(false) }
+  }
+
+  async function manage(m: MeetingRecord, action: 'COMPLETE' | 'CANCEL' | 'RESCHEDULE', body?: { notes?: string; scheduledAt?: string }) {
+    setBusyId(m.id + action)
+    try {
+      const res = await api.meetingManage(m.id, action, body)
+      toast.success(res.message ?? 'Updated.')
+      setRescheduleFor(null); setReschedWhen('')
+      setCompleteFor(null); setCompleteNotes('')
+      onChanged()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Action failed.')
+    } finally { setBusyId(null) }
+  }
+
+  return (
+    <SectionCard
+      title="Meetings"
+      description="Real scheduling with the client — invitations land in their portal and their responses appear here"
+      contentClassName="p-0"
+      actions={
+        <Button size="sm" onClick={() => setScheduleOpen(true)} className="gap-1.5" style={{ background: ACCENT }}>
+          <CalendarDays className="size-3.5" aria-hidden="true" /> Schedule meeting
+        </Button>
+      }
+    >
+      {meetings.length === 0 ? (
+        <EmptyState
+          title="No meetings yet"
+          description="Schedule a consultation, progress review or handover walkthrough — the client confirms or proposes a new time from their portal."
+        />
+      ) : (
+        <div>
+          <div className="flex flex-wrap gap-2 border-b border-slate-800/60 px-4 py-2.5 text-[11px] text-slate-500">
+            <span className="rounded-full bg-slate-800/70 px-2 py-0.5">{upcoming.length} upcoming</span>
+            <span className="rounded-full bg-slate-800/70 px-2 py-0.5">{meetings.filter((m) => m.status === 'COMPLETED').length} completed</span>
+            {awaitingClient.length > 0 && (
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-semibold text-amber-300">
+                {awaitingClient.length} awaiting a new time proposal
+              </span>
+            )}
+          </div>
+          <ul className={`max-h-[60vh] divide-y divide-slate-800/60 overflow-auto ${SCROLL_THIN}`}>
+            {[...meetings]
+              .sort((a, b) => (b.scheduledAt ?? b.createdAt ?? '').localeCompare(a.scheduledAt ?? a.createdAt ?? ''))
+              .map((m) => {
+                const isActive = ['REQUESTED', 'SCHEDULED'].includes(m.status ?? '')
+                return (
+                  <li key={m.id} className="px-4 py-3">
+                    <div className="flex flex-wrap items-start gap-2">
+                      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${m.status === 'COMPLETED' ? 'bg-emerald-500/15 text-emerald-300' : isActive ? 'bg-[#009FE3]/15 text-[#7dd3fc]' : 'bg-slate-800/70 text-slate-500'}`}>
+                        <CalendarDays className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-slate-200">{m.reason ?? 'Consultation call'}</p>
+                          <StatusBadge status={m.status ?? ''} />
+                          {m.clientResponse && (
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${RESPONSE_TONE[m.clientResponse] ?? 'bg-slate-700/50 text-slate-400'}`}>
+                              client: {m.clientResponse === 'RESCHEDULE_REQUESTED' ? 'wants new time' : m.clientResponse.toLowerCase()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-slate-500">
+                          <span className="font-medium text-slate-400">{fmtMeetingWhenFull(m.scheduledAt)}</span>
+                          <span>· {MEETING_CHANNELS.find((c) => c.value === (m.channel ?? 'GOOGLE_MEET'))?.label ?? m.channel}</span>
+                          <span>· created {fmtDate(m.createdAt)}</span>
+                          {m.bookingLink && (
+                            <a href={m.bookingLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-[#009FE3] hover:underline">
+                              join link <ExternalLink className="size-2.5" aria-hidden="true" />
+                            </a>
+                          )}
+                        </p>
+                        {m.clientRespondedAt && (
+                          <p className="mt-0.5 text-[11px] text-slate-600">client responded {fmtDate(m.clientRespondedAt)}</p>
+                        )}
+                        {m.notes && (
+                          <details className="group mt-1.5" open={m.status === 'SCHEDULED' && m.createdAt != null && Date.now() - new Date(m.createdAt).getTime() < 5 * 60_000}>
+                            <summary className="cursor-pointer list-none text-[11px] font-medium text-slate-500 hover:text-slate-300">
+                              <span className="inline-flex items-center gap-1">Agenda &amp; notes <Clock className="size-2.5 transition-transform group-open:rotate-90" aria-hidden="true" /></span>
+                            </summary>
+                            <p className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-slate-950/60 p-2 text-[11.5px] leading-relaxed text-slate-400">{m.notes.slice(0, 1500)}</p>
+                          </details>
+                        )}
+                      </div>
+                      {isActive && (
+                        <div className="flex shrink-0 flex-wrap gap-1.5">
+                          <Button
+                            size="sm" variant="outline"
+                            disabled={busyId === m.id + 'COMPLETE'}
+                            onClick={() => { setCompleteFor(m); setCompleteNotes('') }}
+                            className="h-7 gap-1 border-emerald-500/40 text-[11px] text-emerald-300 hover:bg-emerald-500/10"
+                          >
+                            <CheckCircle2 className="size-3" aria-hidden="true" /> Complete
+                          </Button>
+                          <Button
+                            size="sm" variant="outline"
+                            disabled={busyId === m.id + 'RESCHEDULE'}
+                            onClick={() => { setRescheduleFor(m); setReschedWhen('') }}
+                            className="h-7 gap-1 border-[#009FE3]/40 text-[11px] text-[#7dd3fc] hover:bg-[#009FE3]/10"
+                          >
+                            <Clock className="size-3" aria-hidden="true" /> Move
+                          </Button>
+                          <Button
+                            size="sm" variant="outline"
+                            disabled={busyId === m.id + 'CANCEL'}
+                            onClick={() => manage(m, 'CANCEL')}
+                            className="h-7 gap-1 border-red-500/40 text-[11px] text-red-300 hover:bg-red-500/10"
+                          >
+                            {busyId === m.id + 'CANCEL' ? <Loader2 className="size-3 animate-spin" aria-hidden="true" /> : <Trash2 className="size-3" aria-hidden="true" />}
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* inline reschedule row */}
+                    {rescheduleFor?.id === m.id && (
+                      <div className="mt-2.5 flex flex-wrap items-end gap-2 rounded-lg border border-[#009FE3]/30 bg-[#009FE3]/5 p-2.5">
+                        <div className="space-y-1">
+                          <Label htmlFor={`rs-when-${m.id}`} className="text-[11px] text-slate-400">New date &amp; time</Label>
+                          <Input
+                            id={`rs-when-${m.id}`}
+                            type="datetime-local"
+                            value={reschedWhen}
+                            onChange={(e) => setReschedWhen(e.target.value)}
+                            className="h-8 w-56 border-slate-800 bg-slate-950/60 text-xs text-slate-200"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          disabled={busyId === m.id + 'RESCHEDULE' || !reschedWhen}
+                          onClick={() => manage(m, 'RESCHEDULE', { scheduledAt: new Date(reschedWhen).toISOString() })}
+                          className="h-8 gap-1 font-semibold"
+                          style={{ background: ACCENT }}
+                        >
+                          {busyId === m.id + 'RESCHEDULE' ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <CalendarDays className="size-3.5" aria-hidden="true" />}
+                          Confirm new time
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setRescheduleFor(null)} className="h-8 text-[11px] text-slate-400">Dismiss</Button>
+                      </div>
+                    )}
+                    {/* inline complete row */}
+                    {completeFor?.id === m.id && (
+                      <div className="mt-2.5 space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5">
+                        <Label htmlFor={`done-${m.id}`} className="text-[11px] text-slate-400">Outcome notes (visible to the client in their portal)</Label>
+                        <Textarea
+                          id={`done-${m.id}`}
+                          value={completeNotes}
+                          onChange={(e) => setCompleteNotes(e.target.value)}
+                          rows={2}
+                          maxLength={1000}
+                          placeholder="e.g. Agreed milestone 2 scope, client will send brand assets by Friday…"
+                          className="border-slate-800 bg-slate-950/60 text-xs text-slate-200"
+                        />
+                        <div className="flex flex-wrap gap-1.5">
+                          <Button
+                            size="sm"
+                            disabled={busyId === m.id + 'COMPLETE' || !completeNotes.trim()}
+                            onClick={() => manage(m, 'COMPLETE', { notes: completeNotes.trim() })}
+                            className="h-8 gap-1 bg-emerald-600 font-semibold text-white hover:bg-emerald-500"
+                          >
+                            {busyId === m.id + 'COMPLETE' ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="size-3.5" aria-hidden="true" />}
+                            Mark completed
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setCompleteFor(null)} className="h-8 text-[11px] text-slate-400">Dismiss</Button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+          </ul>
+        </div>
+      )}
+
+      {/* Schedule dialog */}
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent className="border-slate-800 bg-slate-900 text-slate-200 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <CalendarDays className="size-4" aria-hidden="true" /> Schedule a meeting with {clientName}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              The invitation appears instantly in the client&apos;s portal (Meetings section) — they confirm or propose a new time there.
+              MTG-015 “Tempo” prepares a call agenda from the client&apos;s live context.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="meet-when" className="text-xs text-slate-400">Date &amp; time</Label>
+                <Input
+                  id="meet-when"
+                  type="datetime-local"
+                  value={mWhen}
+                  onChange={(e) => setMWhen(e.target.value)}
+                  className="h-9 border-slate-800 bg-slate-950/60 text-slate-200"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-400">Channel</Label>
+                <Select value={mChannel} onValueChange={setMChannel}>
+                  <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Meeting channel">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                    {MEETING_CHANNELS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="meet-reason" className="text-xs text-slate-400">Purpose (title the client sees)</Label>
+              <Input
+                id="meet-reason"
+                value={mReason}
+                onChange={(e) => setMReason(e.target.value)}
+                placeholder="e.g. Scope walkthrough — milestone 1 review"
+                maxLength={200}
+                className="h-9 border-slate-800 bg-slate-950/60 text-slate-200"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="meet-link" className="text-xs text-slate-400">Joining link (optional)</Label>
+              <Input
+                id="meet-link"
+                value={mLink}
+                onChange={(e) => setMLink(e.target.value)}
+                placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                maxLength={500}
+                className="h-9 border-slate-800 bg-slate-950/60 text-slate-200"
+              />
+              <p className="text-[11px] text-slate-600">For phone/WhatsApp calls, leave empty — the client will use the number on file.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="meet-notes" className="text-xs text-slate-400">Private notes (prepended to the agenda)</Label>
+              <Textarea
+                id="meet-notes"
+                value={mNotes}
+                onChange={(e) => setMNotes(e.target.value)}
+                rows={2}
+                maxLength={1000}
+                placeholder="Anything specific to cover…"
+                className="border-slate-800 bg-slate-950/60 text-slate-200"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setScheduleOpen(false)} disabled={scheduleBusy} className="text-slate-400 hover:text-slate-200">Cancel</Button>
+            <Button onClick={schedule} disabled={scheduleBusy || !mWhen} className="font-semibold" style={{ background: ACCENT }}>
+              {scheduleBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <CalendarDays className="size-4" aria-hidden="true" />}
+              Schedule &amp; prepare agenda
             </Button>
           </DialogFooter>
         </DialogContent>

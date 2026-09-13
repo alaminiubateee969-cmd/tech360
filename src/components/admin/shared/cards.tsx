@@ -57,7 +57,7 @@ export function KpiCard({
     slate: 'bg-slate-500/10 text-slate-400',
   }
   return (
-    <div className={cn(CARD, 'min-w-0 p-4')}>
+    <div className={cn(CARD, 'flex min-w-0 flex-col p-4')}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
         {Icon ? (
@@ -73,8 +73,14 @@ export function KpiCard({
         </div>
       ) : (
         <>
-          <p className="mt-1 truncate text-2xl font-semibold tabular-nums text-slate-100">{value}</p>
-          {sub ? <p className="mt-0.5 truncate text-[11px] text-slate-500">{sub}</p> : null}
+          <p className="mt-1 truncate text-2xl font-semibold leading-tight tabular-nums text-slate-100" title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}>{value}</p>
+          {sub ? (
+            <p className="mt-0.5 line-clamp-2 min-h-[1.4rem] text-[11px] leading-[1.15] text-slate-500" title={typeof sub === 'string' ? sub : undefined}>
+              {sub}
+            </p>
+          ) : (
+            <p className="mt-0.5 min-h-[1.4rem]" aria-hidden="true" />
+          )}
         </>
       )}
     </div>

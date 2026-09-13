@@ -17,7 +17,7 @@ import {
   LogOut, RefreshCw, ShieldCheck, FileText, CreditCard, MessageSquare,
   Download, KeyRound, Eye, Package, ArrowRight, CheckCircle2, Clock, Lock,
   Star, Handshake, LinkIcon, Undo2, Paperclip, Trash2, FileUp, FileCheck2,
-  ShieldAlert, File as FileIcon, Upload,
+  ShieldAlert, File as FileIcon, Upload, CalendarDays, Video, CalendarX, Send,
 } from 'lucide-react'
 
 type PortalData = {
@@ -33,7 +33,7 @@ type PortalData = {
   payments: Array<{ milestone: string | null; amount: number; currency: string; status: string; verifiedAt: string | null }>
   invoices: Array<{ number: string; amount: number; currency: string; status: string; notes: string | null }>
   communications: Array<{ channel: string; direction: string; subject: string | null; preview: string; status: string; at: string }>
-  meetings: Array<{ status: string; scheduledAt: string | null; reason: string | null }>
+  meetings: Array<{ id: string; status: string; scheduledAt: string | null; reason: string | null; channel: string | null; bookingLink: string | null; notes: string | null; clientResponse: string | null; clientRespondedAt: string | null }>
   documents: Array<{ id: string; name: string; mimeType: string; size: number; note: string | null; scanStatus: string; direction: string; classification: string; at: string }>
   policy: { previewBeforePayment: boolean; sourceAfterFullPayment: boolean; supportContact: string; whatsapp: string }
 }
@@ -241,13 +241,9 @@ export default function PortalView() {
 
           {/* Documents hub — two-way file exchange with full scan statuses */}
           <DocumentsCard documents={data.documents} onDone={load} />
-
-          {/* Review + referral feedback */}
-          <ReviewCard review={data.review} stage={data.client.stage} onDone={load} />
-          <ReferralCard referral={data.referral} onDone={load} />
         </div>
 
-        {/* Right column: actions + handover + policy */}
+        {/* Right column: actions + handover + feedback + policy */}
         <div className="min-w-0 space-y-6">
           {/* Preview action */}
           <SectionCard icon={<Eye className="h-5 w-5" />} title="Project preview">
@@ -301,6 +297,13 @@ export default function PortalView() {
               <p className="text-xs text-slate-300">Questions? <a className="font-semibold text-white underline underline-offset-2" href={`mailto:${data.policy.supportContact}`}>{data.policy.supportContact}</a> · WhatsApp <a className="font-semibold text-white underline underline-offset-2" href="https://wa.me/8801327100297" target="_blank" rel="noopener noreferrer">{data.policy.whatsapp}</a></p>
             </CardContent>
           </Card>
+
+          {/* Review + referral feedback (right rail keeps both columns balanced) */}
+          <ReviewCard review={data.review} stage={data.client.stage} onDone={load} />
+          <ReferralCard referral={data.referral} onDone={load} />
+
+          {/* Meetings — schedule + responses */}
+          <MeetingsCard meetings={data.meetings} onDone={load} />
         </div>
       </div>
     </div>
@@ -782,6 +785,157 @@ function DocumentsCard({ documents, onDone }: { documents: PortalData['documents
           <EmptyLine text="Share your logo, brand guide, content or any reference file — everything stays linked to your Client ID." />
         )}
       </div>
+    </SectionCard>
+  )
+}
+
+// ---------------- Meetings (real schedule, client responses) ----------------
+const CHANNEL_LABELS: Record<string, string> = {
+  GOOGLE_MEET: 'Google Meet', ZOOM: 'Zoom', PHONE: 'Phone call', WHATSAPP_CALL: 'WhatsApp call',
+}
+
+function fmtMeetingWhen(d?: string | null): string {
+  if (!d) return 'Time to be confirmed'
+  try {
+    const dt = new Date(d)
+    return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  } catch { return 'Time to be confirmed' }
+}
+
+function MeetingCountdown({ at }: { at: string }) {
+  const [label, setLabel] = useState('')
+  useEffect(() => {
+    const tick = () => {
+      const diff = new Date(at).getTime() - Date.now()
+      if (diff <= 0) { setLabel('Happening now / started'); return }
+      const mins = Math.floor(diff / 60_000)
+      if (mins < 60) { setLabel(`in ${mins} min`); return }
+      const hrs = Math.floor(mins / 60)
+      if (hrs < 24) { setLabel(`in ${hrs}h ${mins % 60}m`); return }
+      setLabel(`in ${Math.floor(hrs / 24)} day${Math.floor(hrs / 24) === 1 ? '' : 's'}`)
+    }
+    tick()
+    const id = setInterval(tick, 30_000)
+    return () => clearInterval(id)
+  }, [at])
+  if (!label) return null
+  return <span className="inline-flex items-center gap-1.5 rounded-full bg-[#063B8F]/5 px-2.5 py-1 text-xs font-semibold text-[#063B8F]"><Clock className="h-3 w-3" aria-hidden /> {label}</span>
+}
+
+function MeetingsCard({ meetings, onDone }: { meetings: PortalData['meetings']; onDone: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [rescheduleFor, setRescheduleFor] = useState<string | null>(null)
+  const [message, setMessage] = useState('')
+
+  const now = Date.now()
+  const upcoming = meetings.filter((m) => ['REQUESTED', 'SCHEDULED'].includes(m.status) && (!m.scheduledAt || new Date(m.scheduledAt).getTime() > now - 60 * 60_000))
+  const past = meetings.filter((m) => !upcoming.includes(m))
+
+  async function respond(meetingId: string, action: 'CONFIRM' | 'DECLINE' | 'RESCHEDULE', msg?: string) {
+    setBusy(`${meetingId}:${action}`)
+    try {
+      const res = await fetch('/api/portal/meeting/respond', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meetingId, action, message: msg ?? '' }),
+      })
+      const j = await res.json().catch(() => ({})) as { error?: string }
+      if (!res.ok) toast.error(j.error ?? 'Could not save your response.')
+      else {
+        toast.success(action === 'CONFIRM' ? 'See you there — your confirmation is recorded.' : action === 'DECLINE' ? 'Noted. We will reach out to re-plan.' : 'Reschedule request sent to our team.')
+        setRescheduleFor(null)
+        setMessage('')
+        onDone()
+      }
+    } catch { toast.error('Connection problem. Please retry.') }
+    finally { setBusy(null) }
+  }
+
+  return (
+    <SectionCard icon={<CalendarDays className="h-5 w-5" />} title="Meetings with our team">
+      {meetings.length === 0 ? (
+        <EmptyLine text="No meetings yet. If you would like a call to discuss your scope or progress, request one from your preview page or reply to any message — we will schedule it here." />
+      ) : (
+        <div className="space-y-4">
+          {/* Next meetings — hero treatment */}
+          {upcoming.map((m) => (
+            <div key={m.id} className="rounded-2xl border border-[#DCEAF6] bg-gradient-to-br from-[#F4FAFF] to-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[#0B1F33]">{m.reason ?? 'Consultation call'}</p>
+                  <p className="mt-1 text-sm text-slate-600">{fmtMeetingWhen(m.scheduledAt)}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  {m.status === 'SCHEDULED' && m.scheduledAt && <MeetingCountdown at={m.scheduledAt} />}
+                  <Badge variant={m.status === 'SCHEDULED' ? 'default' : 'secondary'} className="capitalize">{m.status === 'SCHEDULED' ? 'scheduled' : 'requested'}</Badge>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 font-medium text-[#063B8F] ring-1 ring-[#DCEAF6]"><Video className="h-3 w-3" aria-hidden /> {CHANNEL_LABELS[m.channel ?? 'GOOGLE_MEET'] ?? m.channel}</span>
+                {m.clientResponse && (
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${m.clientResponse === 'CONFIRMED' ? 'bg-[#18B83A]/10 text-[#116b26]' : m.clientResponse === 'DECLINED' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+                    you: {m.clientResponse === 'CONFIRMED' ? 'confirmed' : m.clientResponse === 'DECLINED' ? 'declined' : 'asked to reschedule'}
+                  </span>
+                )}
+              </div>
+              {m.bookingLink && (
+                <Button asChild className="mt-3 w-full gap-2 bg-[#009FE3] hover:bg-[#063B8F] sm:w-auto">
+                  <a href={m.bookingLink} target="_blank" rel="noopener noreferrer"><Video className="h-4 w-4" /> Join {CHANNEL_LABELS[m.channel ?? 'GOOGLE_MEET'] ?? 'call'}</a>
+                </Button>
+              )}
+              {(!m.clientResponse || m.clientResponse === 'RESCHEDULE_REQUESTED') && (
+                rescheduleFor === m.id ? (
+                  <div className="mt-3 space-y-2 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200">
+                    <Label htmlFor={`rs-${m.id}`} className="text-xs font-semibold text-amber-800">When works better for you?</Label>
+                    <Textarea id={`rs-${m.id}`} value={message} onChange={(e) => setMessage(e.target.value)} rows={2} maxLength={300} placeholder="e.g. Weekday afternoons after 4pm, or a specific date/time…" className="bg-white text-sm" />
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" className="gap-1.5 bg-[#063B8F] hover:bg-[#0B1F33]" disabled={busy === `${m.id}:RESCHEDULE` || !message.trim()} onClick={() => respond(m.id, 'RESCHEDULE', message)}>
+                        {busy === `${m.id}:RESCHEDULE` ? 'Sending…' : <><Send className="h-3.5 w-3.5" /> Send request</>}
+                      </Button>
+                      <Button size="sm" variant="outline" className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100" onClick={() => { setRescheduleFor(null); setMessage('') }}>Cancel</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Respond to meeting invitation">
+                    <Button size="sm" className="gap-1.5 bg-[#18B83A] hover:bg-[#116b26]" disabled={busy === `${m.id}:CONFIRM`} onClick={() => respond(m.id, 'CONFIRM')}>
+                      {busy === `${m.id}:CONFIRM` ? 'Saving…' : <><CheckCircle2 className="h-3.5 w-3.5" /> I can make it</>}
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-[#DCEAF6] text-slate-600 hover:bg-[#F4FAFF]" disabled={busy === `${m.id}:RESCHEDULE`} onClick={() => setRescheduleFor(m.id)}>
+                      <Clock className="h-3.5 w-3.5" /> Propose another time
+                    </Button>
+                    <Button size="sm" variant="ghost" className="gap-1.5 text-slate-500 hover:text-slate-700" disabled={busy === `${m.id}:DECLINE`} onClick={() => respond(m.id, 'DECLINE')}>
+                      Can&apos;t make it
+                    </Button>
+                  </div>
+                )
+              )}
+            </div>
+          ))}
+
+          {/* Past meetings — compact history */}
+          {past.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">History</p>
+              <ul className="space-y-2">
+                {past.slice(0, 6).map((m) => (
+                  <li key={m.id} className="flex items-start gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3">
+                    <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${m.status === 'COMPLETED' ? 'bg-[#18B83A]/10 text-[#116b26]' : 'bg-slate-100 text-slate-400'}`}>
+                      {m.status === 'COMPLETED' ? <CheckCircle2 className="h-4 w-4" /> : <CalendarX className="h-4 w-4" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700">
+                        {m.reason ?? 'Meeting'}
+                        <Badge variant={statusTone(m.status)} className="h-4 px-1.5 text-[10px] capitalize">{m.status.toLowerCase()}</Badge>
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">{fmtMeetingWhen(m.scheduledAt)}</p>
+                      {m.status === 'COMPLETED' && m.notes && <p className="mt-1 rounded-lg bg-slate-50 p-2 text-xs leading-relaxed text-slate-500">{m.notes.slice(0, 220)}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </SectionCard>
   )
 }
