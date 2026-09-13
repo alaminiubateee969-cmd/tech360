@@ -286,7 +286,13 @@ export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => 
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={pipeline} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
                   <CartesianGrid horizontal={false} stroke={SLATE_GRID} />
-                  <XAxis type="number" tick={{ fill: AXIS_TICK, fontSize: 11 }} allowDecimals={false} stroke={SLATE_GRID} />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: AXIS_TICK, fontSize: 11 }}
+                    allowDecimals={false}
+                    stroke={SLATE_GRID}
+                    domain={[0, (dataMax: number) => Math.max(2, dataMax)]}
+                  />
                   <YAxis
                     type="category"
                     dataKey="stage"

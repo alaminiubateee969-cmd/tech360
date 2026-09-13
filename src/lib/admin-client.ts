@@ -510,6 +510,12 @@ export interface AutomationLogRecord {
   finishedAt?: string | null
   createdAt?: string | null
 }
+export interface AutomationRetryResponse {
+  ok?: boolean
+  message?: string
+  status?: string
+  attempts?: number
+}
 export interface TimelineEvent {
   at?: string | null
   type?: string | null
@@ -672,7 +678,11 @@ export interface KnowledgeDoc {
   createdAt?: string | null
 }
 export interface KnowledgeResponse { docs?: KnowledgeDoc[] }
-export interface KnowledgeSearchResponse { results?: Array<Record<string, unknown>> }
+export interface KnowledgeSearchResponse {
+  results?: Array<Record<string, unknown>>
+  agent?: { ok?: boolean; executionId?: string; error?: string }
+  aiRanked?: boolean
+}
 
 export interface ContentAsset {
   id: string
@@ -870,6 +880,8 @@ export const api = {
     fetchJson<MemoryMutationResponse>('/api/admin/memory', { method: 'POST', body }),
   knowledgeSearch: (query: string) =>
     fetchJson<KnowledgeSearchResponse>('/api/admin/knowledge/search', { method: 'POST', body: { query } }),
+  automationRetry: (id: string) =>
+    fetchJson<AutomationRetryResponse>(`/api/admin/logs/automation/${encodeURIComponent(id)}/retry`, { method: 'POST' }),
   generateContent: (body: {
     type: string
     topic: string

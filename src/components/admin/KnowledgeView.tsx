@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Archive, CheckCircle2, FileSearch, FileUp, Loader2, RefreshCw, Search, ShieldAlert, ShieldCheck, Upload } from 'lucide-react'
+import { Archive, CheckCircle2, FileSearch, FileUp, Loader2, RefreshCw, Search, ShieldAlert, ShieldCheck, Sparkles, Upload } from 'lucide-react'
 
 import {
   api,
@@ -116,6 +116,7 @@ export function KnowledgeView() {
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState<Array<Record<string, unknown>> | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
+  const [searchMeta, setSearchMeta] = useState<{ agentOk: boolean; executionId: string } | null>(null)
 
   async function doUpload(e: React.FormEvent) {
     e.preventDefault()
@@ -151,9 +152,14 @@ export function KnowledgeView() {
     setSearching(true)
     setSearchError(null)
     setResults(null)
+    setSearchMeta(null)
     try {
       const res = await api.knowledgeSearch(query.trim())
       setResults(res.results ?? [])
+      const agent = res.agent as { ok?: boolean; executionId?: string } | undefined
+      if (agent && typeof agent.executionId === 'string' && agent.executionId) {
+        setSearchMeta({ agentOk: agent.ok !== false, executionId: agent.executionId })
+      }
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed.')
     } finally {
@@ -372,7 +378,7 @@ export function KnowledgeView() {
             </form>
           </SectionCard>
 
-          <SectionCard title="Semantic Search" description="Query the indexed knowledge">
+          <SectionCard title="AI Search" description="Sage (KNW-023) ranks keyword-recalled documents by real AI relevance — every rank is a recorded agent execution">
             <form onSubmit={doSearch} className="space-y-2">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-600" aria-hidden="true" />
@@ -380,18 +386,25 @@ export function KnowledgeView() {
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search knowledge…"
+                  placeholder="Search knowledge — ask it like a question…"
                   aria-label="Knowledge search query"
                   className="h-9 border-slate-800 bg-slate-950/60 pl-9 text-slate-200 placeholder:text-slate-600"
                 />
               </div>
-              <Button type="submit" disabled={searching || !query.trim()} className="w-full" variant="outline" aria-label="Search">
+              <Button type="submit" disabled={searching || !query.trim()} className="w-full font-semibold" style={{ background: ACCENT }} aria-label="Search">
                 {searching ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <FileSearch className="size-4" aria-hidden="true" />}
-                Search
+                {searching ? 'Sage is ranking…' : 'Search'}
               </Button>
             </form>
             {searchError ? (
               <p role="alert" className="mt-2 text-xs text-red-400">{searchError}</p>
+            ) : null}
+            {searchMeta && results && results.length > 0 ? (
+              <p className="mt-1.5 truncate text-[10px] text-slate-600" title={`Sage execution ${searchMeta.executionId}`}>
+                {searchMeta.agentOk
+                  ? 'Ranked by Sage (KNW-023) · recorded agent execution'
+                  : 'Sage could not rank — keyword order shown honestly'}
+              </p>
             ) : null}
             {results !== null ? (
               <div className={cn('mt-3 max-h-80 space-y-2 overflow-auto', SCROLL_THIN)} aria-live="polite">
@@ -409,17 +422,49 @@ export function KnowledgeView() {
                       (typeof r.document === 'string' && r.document) ||
                       (typeof r.filename === 'string' && r.filename) ||
                       `Result ${i + 1}`
+                    const relevance = typeof r.relevance === 'number' ? r.relevance : null
+                    const reason = typeof r.reason === 'string' ? r.reason : null
+                    const aiRanked = r.rankedBy === 'AI'
                     return (
-                      <div key={i} className={cn(CARD, 'p-2.5')}>
-                        <p className="text-xs font-medium text-slate-300">{label}</p>
+                      <div key={i} className={cn(CARD, 'p-2.5 transition-colors hover:border-slate-700')}>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="min-w-0 text-xs font-medium text-slate-200">{label}</p>
+                          {aiRanked ? (
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#009FE3]/30 bg-[#009FE3]/10 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-[#4FC3F7]" title={`Ranked by Sage (KNW-023) — real agent execution`}>
+                              <Sparkles className="size-2.5" aria-hidden="true" /> AI {relevance !== null ? `${relevance}%` : ''}
+                            </span>
+                          ) : (
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-slate-400" title="AI ranking unavailable — keyword match order">
+                              <FileSearch className="size-2.5" aria-hidden="true" /> Keyword
+                            </span>
+                          )}
+                        </div>
+                        {relevance !== null ? (
+                          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-slate-800" role="img" aria-label={`AI relevance ${relevance} out of 100`}>
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${relevance}%`,
+                                background: relevance >= 70
+                                  ? 'linear-gradient(90deg, #18B83A, #0FA354)'
+                                  : relevance >= 40
+                                    ? 'linear-gradient(90deg, #009FE3, #063B8F)'
+                                    : 'linear-gradient(90deg, #64748B, #475569)',
+                              }}
+                            />
+                          </div>
+                        ) : null}
+                        {reason ? (
+                          <p className="mt-1.5 flex items-start gap-1 text-[10.5px] italic leading-relaxed text-slate-500">
+                            <Sparkles className="mt-0.5 size-2.5 shrink-0 text-[#009FE3]/60" aria-hidden="true" />
+                            {reason}
+                          </p>
+                        ) : null}
                         {excerpt ? (
                           <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-500">{excerpt}</p>
                         ) : (
                           <JsonView value={r} maxHeightClass="max-h-28" />
                         )}
-                        {r.score !== undefined ? (
-                          <p className="mt-1 text-[10px] text-slate-600">score: {String(r.score)}</p>
-                        ) : null}
                       </div>
                     )
                   })

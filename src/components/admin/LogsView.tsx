@@ -1,9 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AlertOctagon, ChevronDown, RefreshCw, ScrollText, Workflow } from 'lucide-react'
+import { AlertOctagon, ChevronDown, RefreshCw, RotateCcw, ScrollText, Workflow } from 'lucide-react'
+import { toast } from 'sonner'
 
 import {
+  api,
   fmtDate,
   num,
   parseMaybeJson,
@@ -255,13 +257,32 @@ function AutomationTab() {
   const { data, loading, error, refresh } = useApi<{ logs?: AutomationLogRecord[] }>(url)
   const logs = data?.logs ?? []
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [retryingId, setRetryingId] = useState<string | null>(null)
 
   const rows = useMemo(() => logs, [logs])
+
+  const doRetry = async (id: string) => {
+    if (retryingId) return
+    setRetryingId(id)
+    try {
+      const res = await api.automationRetry(id)
+      if (res.ok) {
+        toast.success(res.message ?? 'Automation replayed successfully.')
+      } else {
+        toast.warning(res.message ?? 'Retry refused by the server.')
+      }
+      refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Retry request failed.')
+    } finally {
+      setRetryingId(null)
+    }
+  }
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
+        <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="auto-status" className="sr-only">Filter by status</label>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger id="auto-status" className="h-9 w-[180px] border-slate-800 bg-slate-950/60 text-slate-200">
@@ -274,6 +295,9 @@ function AutomationTab() {
               ))}
             </SelectContent>
           </Select>
+          <p className="hidden text-[11px] leading-relaxed text-slate-600 sm:block">
+            FAILED runs with a safe replay routine can be retried — the original failure stays in the step history.
+          </p>
         </div>
         <Button
           variant="outline"
@@ -303,20 +327,37 @@ function AutomationTab() {
           {
             key: 'steps',
             header: '',
-            className: 'w-12 text-right',
+            className: 'w-24 text-right',
             cell: (l: AutomationLogRecord) => (
-              <button
-                type="button"
-                className="text-slate-500 hover:text-slate-300"
-                aria-label={expanded === l.id ? 'Collapse steps' : 'Expand steps'}
-                aria-expanded={expanded === l.id}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setExpanded(expanded === l.id ? null : l.id)
-                }}
-              >
-                <ChevronDown className={cn('size-4 transition-transform', expanded === l.id && 'rotate-180')} aria-hidden="true" />
-              </button>
+              <div className="flex items-center justify-end gap-1">
+                {l.status === 'FAILED' ? (
+                  <button
+                    type="button"
+                    className="inline-flex size-7 items-center justify-center rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-300 transition-colors hover:border-amber-400/60 hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400/50 disabled:opacity-50"
+                    aria-label={`Retry failed ${l.workflow} run`}
+                    title={`Retry ${l.workflow}${l.attempts ? ` (attempt ${l.attempts + 1})` : ''}`}
+                    disabled={retryingId !== null}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void doRetry(l.id)
+                    }}
+                  >
+                    <RotateCcw className={cn('size-3.5', retryingId === l.id && 'animate-spin')} aria-hidden="true" />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="text-slate-500 hover:text-slate-300"
+                  aria-label={expanded === l.id ? 'Collapse steps' : 'Expand steps'}
+                  aria-expanded={expanded === l.id}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setExpanded(expanded === l.id ? null : l.id)
+                  }}
+                >
+                  <ChevronDown className={cn('size-4 transition-transform', expanded === l.id && 'rotate-180')} aria-hidden="true" />
+                </button>
+              </div>
             ),
           },
         ]}
@@ -340,6 +381,13 @@ function AutomationTab() {
 function StepsView({ log }: { log?: AutomationLogRecord }) {
   if (!log) return null
   const steps = parseMaybeJson(log.steps)
+  const RETRYABLE_WORKFLOWS = ['FINAL_SCOPE', 'PREVIEW_REFRESH_REQUEST', 'AI_OPS_LOOP']
+  const RETRY_HINTS: Record<string, string> = {
+    FINAL_SCOPE: 'Retry re-sends the approved Final Scope of Work through the real journey engine.',
+    PREVIEW_REFRESH_REQUEST: 'Retry regenerates a fresh tokenized preview link for the client.',
+    AI_OPS_LOOP: 'Retry runs one autonomous operations cycle immediately.',
+  }
+  const retryable = log.status === 'FAILED' && RETRYABLE_WORKFLOWS.includes(log.workflow ?? '')
   return (
     <div className={cn(CARD, 'p-4')}>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -348,6 +396,20 @@ function StepsView({ log }: { log?: AutomationLogRecord }) {
       {log.error ? (
         <p role="alert" className="mb-2 rounded-md border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-400">
           {log.error}
+        </p>
+      ) : null}
+      {log.status === 'FAILED' ? (
+        <p className={cn(
+          'mb-2 rounded-md border p-2.5 text-[11px] leading-relaxed',
+          retryable
+            ? 'border-amber-500/25 bg-amber-500/[0.07] text-amber-300/90'
+            : 'border-slate-700/60 bg-slate-800/30 text-slate-500',
+        )}>
+          {retryable ? (
+            <><RotateCcw className="mr-1 inline size-3 align-[-2px]" aria-hidden="true" /> {RETRY_HINTS[log.workflow ?? '']} Use the retry button on this row — the replay runs the real engine function, and this failure stays in the history.</>
+          ) : (
+            <>This workflow has no safe replay routine — re-trigger it from its source. The platform refuses to fake a retry.</>
+          )}
         </p>
       ) : null}
       {Array.isArray(steps) && steps.length > 0 ? (

@@ -181,7 +181,7 @@ export default function SiteFooter() {
             </p>
             <p>Registered Missouri LLC {COMPANY.missouriLLC} · EIN {COMPANY.ein}</p>
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-white/40">
+          <p className="mt-3 text-xs leading-relaxed text-white/65">
             {COMPANY.legalName} ({COMPANY.brand}, {COMPANY.domain}) ·{" "}
             {COMPANY.address} · {COMPANY.email}
           </p>

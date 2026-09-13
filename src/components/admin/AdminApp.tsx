@@ -280,7 +280,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
     <nav aria-label="Admin navigation" className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
       {NAV.map((group) => (
         <div key={group.section}>
-          <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">{group.section}</p>
+          <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{group.section}</p>
           <ul className="space-y-0.5">
             {group.items.map((item) => {
               const Icon = item.icon
@@ -328,7 +328,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
       <img src="/images/tech360-logo-web.png" alt="Tech360 LLC logo" className="h-7 w-auto" width={70} height={28} />
       <div className="min-w-0 leading-tight">
         <p className="truncate text-[13px] font-bold text-slate-100">Command Center</p>
-        <p className="text-[10px] text-slate-600">Super Admin Console</p>
+        <p className="text-[10px] text-slate-500">Super Admin Console</p>
       </div>
     </div>
   )
@@ -341,7 +341,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
         {navContent}
         <div className="border-t border-slate-800 px-4 py-3">
           <p className="truncate text-[11px] text-slate-500">{me.email}</p>
-          <p className="text-[10px] text-slate-600">{me.role ?? 'ADMIN'} · bdtech360.com</p>
+          <p className="text-[10px] text-slate-500">{me.role ?? 'ADMIN'} · bdtech360.com</p>
         </div>
       </aside>
 
@@ -354,7 +354,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
             {navContent}
             <div className="border-t border-slate-800 px-4 py-3">
               <p className="truncate text-[11px] text-slate-500">{me.email}</p>
-              <p className="text-[10px] text-slate-600">{me.role ?? 'ADMIN'} · bdtech360.com</p>
+              <p className="text-[10px] text-slate-500">{me.role ?? 'ADMIN'} · bdtech360.com</p>
             </div>
           </div>
         </SheetContent>

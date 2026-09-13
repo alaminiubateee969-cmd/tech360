@@ -75,7 +75,7 @@ export function KpiCard({
         <>
           <p className="mt-1 truncate text-2xl font-semibold leading-tight tabular-nums text-slate-100" title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}>{value}</p>
           {sub ? (
-            <p className="mt-0.5 line-clamp-2 min-h-[1.4rem] text-[11px] leading-[1.15] text-slate-500" title={typeof sub === 'string' ? sub : undefined}>
+            <p className="mt-0.5 line-clamp-2 min-h-[1.4rem] text-[11px] leading-[1.15] text-slate-400" title={typeof sub === 'string' ? sub : undefined}>
               {sub}
             </p>
           ) : (

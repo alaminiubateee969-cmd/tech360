@@ -128,13 +128,45 @@ export default function PortalView() {
               <span className="text-slate-500 capitalize">{data.client.stageLabel} · {data.client.progressPct}%</span>
             </div>
             <Progress value={data.client.progressPct} className="h-2.5 bg-[#E2E8F0]" indicatorClassName="bg-gradient-to-r from-[#009FE3] to-[#063B8F]" />
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {STAGE_ORDER.slice(0, 18).map((s, i) => (
-                <span key={s} title={STAGE_LABELS_SHORT[s]} className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${i <= stageIdx ? (i === stageIdx ? 'bg-[#063B8F] text-white' : 'bg-[#18B83A]/15 text-[#116b26]') : 'bg-slate-100 text-slate-400'}`}>
-                  {i + 1}
-                </span>
-              ))}
-              <span className="ml-2 text-xs text-slate-500">{STAGE_LABELS_SHORT[data.client.stage] ?? data.client.stage}</span>
+            <div className="mt-4">
+              <ol className="flex flex-wrap items-center gap-y-2" aria-label="Delivery stages completed so far">
+                {STAGE_ORDER.slice(0, 18).map((s, i) => {
+                  const done = i < stageIdx
+                  const current = i === stageIdx
+                  return (
+                    <li key={s} className="flex items-center">
+                      {i > 0 ? <span className={`h-0.5 w-2.5 sm:w-4 ${done || current ? 'bg-[#18B83A]/50' : 'bg-slate-200'}`} aria-hidden="true" /> : null}
+                      <span
+                        title={`Stage ${i + 1}: ${STAGE_LABELS_SHORT[s]}`}
+                        aria-current={current ? 'step' : undefined}
+                        className={`inline-flex items-center justify-center rounded-full text-[10.5px] font-bold transition-all ${
+                          current
+                            ? 'h-8 min-w-8 bg-[#063B8F] text-white shadow-md shadow-[#063B8F]/25 ring-4 ring-[#063B8F]/10'
+                            : done
+                              ? 'h-6.5 min-w-6.5 bg-[#18B83A] text-white'
+                              : 'h-6 min-w-6 bg-slate-100 text-slate-400'
+                        }`}
+                      >
+                        {i + 1}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ol>
+              <p className="mt-2.5 flex items-center gap-1.5 text-xs text-slate-500">
+                {stageIdx >= 18 ? (
+                  <>
+                    <span className="inline-block size-2 rounded-full bg-[#18B83A]" aria-hidden="true" />
+                    <span className="font-medium text-[#0B1F33]">All {STAGE_ORDER.slice(0, 18).length} delivery stages completed</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-block size-2 rounded-full bg-[#18B83A]" aria-hidden="true" /> completed
+                    <span className="ml-2 inline-block size-2 rounded-full bg-[#063B8F]" aria-hidden="true" /> current ·
+                    <span className="ml-1 font-medium text-[#0B1F33]">{STAGE_LABELS_SHORT[data.client.stage] ?? data.client.stage}</span>
+                  </>
+                )}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -862,7 +894,10 @@ function MeetingsCard({ meetings, onDone }: { meetings: PortalData['meetings']; 
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-[#0B1F33]">{m.reason ?? 'Consultation call'}</p>
-                  <p className="mt-1 text-sm text-slate-600">{fmtMeetingWhen(m.scheduledAt)}</p>
+                  <p className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold text-[#063B8F]">
+                    <CalendarDays className="h-4 w-4 shrink-0 text-[#009FE3]" aria-hidden />
+                    <span className="capitalize">{fmtMeetingWhen(m.scheduledAt)}</span>
+                  </p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   {m.status === 'SCHEDULED' && m.scheduledAt && <MeetingCountdown at={m.scheduledAt} />}
@@ -872,7 +907,7 @@ function MeetingsCard({ meetings, onDone }: { meetings: PortalData['meetings']; 
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 font-medium text-[#063B8F] ring-1 ring-[#DCEAF6]"><Video className="h-3 w-3" aria-hidden /> {CHANNEL_LABELS[m.channel ?? 'GOOGLE_MEET'] ?? m.channel}</span>
                 {m.clientResponse && (
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${m.clientResponse === 'CONFIRMED' ? 'bg-[#18B83A]/10 text-[#116b26]' : m.clientResponse === 'DECLINED' ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${m.clientResponse === 'CONFIRMED' ? 'bg-[#18B83A]/10 text-[#116b26]' : m.clientResponse === 'DECLINED' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-900 ring-1 ring-amber-300/60'}`}>
                     you: {m.clientResponse === 'CONFIRMED' ? 'confirmed' : m.clientResponse === 'DECLINED' ? 'declined' : 'asked to reschedule'}
                   </span>
                 )}
