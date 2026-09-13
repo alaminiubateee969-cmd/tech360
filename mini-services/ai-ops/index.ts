@@ -23,6 +23,7 @@ type Scan = {
   failedAutomations: Array<{ id: string; workflow: string; error: string | null; correlationId: string | null; clientId: string | null }>
   unresolvedErrors: Array<{ id: string; source: string; code: string | null; message: string; correlationId: string | null }>
   staleApprovals: Array<{ id: string; type: string; title: string; clientId: string | null; createdAt: string }>
+  expiredPreviews: Array<{ id: string; token: string; clientId: string; status: string; expiresAt: string; version: number }>
   context: { agentExecutions24h: number; agents: number; totalExecutions: number; totalSuccesses: number; totalFailures: number }
 }
 
@@ -130,8 +131,14 @@ async function runCycle() {
     performed.push(`automation-alert ${auto.workflow}`)
   }
 
+  // 6b) PREVIEW EXPIRY — security enforcement: kill stale tokenized links
+  if (data.expiredPreviews?.length) {
+    const r = await act('EXPIRE_PREVIEWS', { previewIds: data.expiredPreviews.map((p) => p.id) })
+    performed.push(`expired ${String(r.data.expired ?? 0)} preview link(s)`)
+  }
+
   // 7) LEARN — persistent lesson from this cycle (self-improvement trail)
-  const lesson = `Cycle #${cycle}: scanned unscored=${data.unscoredLeads.length}, overdue=${data.overdueLeads.length}, failedComms=${data.retryableComms.length}, unresolvedErrors=${data.unresolvedErrors.length}; executed ${performed.length} actions; agents 24h=${data.context.agentExecutions24h} (total ${data.context.totalExecutions}, failures ${data.context.totalFailures}).`
+  const lesson = `Cycle #${cycle}: scanned unscored=${data.unscoredLeads.length}, overdue=${data.overdueLeads.length}, failedComms=${data.retryableComms.length}, unresolvedErrors=${data.unresolvedErrors.length}, expiredPreviews=${data.expiredPreviews?.length ?? 0}; executed ${performed.length} actions; agents 24h=${data.context.agentExecutions24h} (total ${data.context.totalExecutions}, failures ${data.context.totalFailures}).`
   await act('LEARN', { insight: lesson })
 
   // 8) LOG the cycle into automation trail

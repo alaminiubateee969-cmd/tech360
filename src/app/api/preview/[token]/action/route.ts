@@ -12,6 +12,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const clean = sanitizeText(token, 64).replace(/[^a-f0-9]/gi, '')
   const preview = await db.preview.findUnique({ where: { token: clean }, include: { client: true } })
   if (!preview || !preview.client) return Response.json({ error: 'Preview not found' }, { status: 404 })
+  // expiry guard: no decisions accepted on expired links (approved/revision are terminal)
+  const terminal = preview.status === 'APPROVED' || preview.status === 'REVISION_REQUESTED'
+  if (!terminal && preview.expiresAt && preview.expiresAt.getTime() < Date.now()) {
+    if (preview.status !== 'EXPIRED') {
+      await db.preview.update({ where: { id: preview.id }, data: { status: 'EXPIRED' } })
+      await db.previewEvent.create({ data: { previewId: preview.id, type: 'EXPIRED' } })
+    }
+    return Response.json({ error: 'This preview link has expired. Please contact info@bdtech360.com for a fresh link.' }, { status: 410 })
+  }
 
   const raw = await readJson(req)
   const decision = sanitizeText(raw.decision, 40).toUpperCase()

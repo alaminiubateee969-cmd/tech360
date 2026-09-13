@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BarChart3,
-  Bell,
   Bot,
   BookOpen,
   Building2,
@@ -16,8 +15,8 @@ import {
   LogOut,
   Menu,
   MessageSquare,
-  Search,
   ScrollText,
+  Search,
   Settings,
   ShieldCheck,
   Terminal,
@@ -30,6 +29,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
 import { ChangePasswordScreen } from './ChangePasswordScreen'
 import { LoginScreen } from './LoginScreen'
+import { NotificationCenter } from './NotificationCenter'
 import { AgentsView } from './AgentsView'
 import { AnalyticsView } from './AnalyticsView'
 import { ApprovalsView } from './ApprovalsView'
@@ -285,6 +285,14 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                       <span className="ml-auto rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
                         {pendingApprovals}
                       </span>
+                    ) : item.id === 'communications' && unread > 0 ? (
+                      <span className="ml-auto rounded-full bg-[#009FE3]/20 px-1.5 py-0.5 text-[10px] font-semibold text-[#009FE3]">
+                        {unread}
+                      </span>
+                    ) : item.id === 'logs' && failedAutomations > 0 ? (
+                      <span className="ml-auto rounded-full bg-red-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
+                        {failedAutomations}
+                      </span>
                     ) : null}
                   </button>
                 </li>
@@ -377,41 +385,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
           </form>
 
           <div className="ml-auto flex items-center gap-1 md:ml-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="relative text-slate-400 hover:text-slate-100" aria-label={`Notifications — ${unread} unread`}>
-                  <Bell className="size-5" aria-hidden="true" />
-                  {unread > 0 ? (
-                    <span
-                      className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
-                      style={{ background: '#EF4444' }}
-                      aria-hidden="true"
-                    >
-                      {unread > 99 ? '99+' : unread}
-                    </span>
-                  ) : null}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 border-slate-800 bg-slate-900 text-slate-300">
-                <DropdownMenuLabel className="text-xs text-slate-500">Live signals</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => navigate('communications')} className="gap-2 text-[13px]">
-                  <MessageSquare className="size-3.5" aria-hidden="true" /> Unread communications
-                  <span className="ml-auto tabular-nums text-[#009FE3]">{unread}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('approvals')} className="gap-2 text-[13px]">
-                  <ShieldCheck className="size-3.5" aria-hidden="true" /> Pending approvals
-                  <span className="ml-auto tabular-nums text-amber-400">{pendingApprovals}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('logs')} className="gap-2 text-[13px]">
-                  <ScrollText className="size-3.5" aria-hidden="true" /> Failed automations
-                  <span className="ml-auto tabular-nums text-red-400">{failedAutomations}</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-slate-800" />
-                <DropdownMenuItem onClick={() => navigate('dashboard')} className="gap-2 text-[13px]">
-                  <LayoutDashboard className="size-3.5" aria-hidden="true" /> Open dashboard
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <NotificationCenter onNavigate={navigate} />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

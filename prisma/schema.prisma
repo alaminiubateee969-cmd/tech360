@@ -236,6 +236,7 @@ model Preview {
   viewCount   Int      @default(0)
   revisionNotes String?
   lastIp      String?
+  expiresAt   DateTime? // security: tokenized preview links expire (default 30 days)
   createdAt   DateTime @default(now())
   sentAt      DateTime?
   viewedAt    DateTime?

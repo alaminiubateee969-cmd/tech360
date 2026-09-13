@@ -5,6 +5,9 @@ import { sendCommunication, emailTemplate, wrapEmailHtml, escapeHtml } from '@/l
 import { newCorrelationId, logError, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
 
+// Tokenized preview links expire after this many days (env-overridable).
+const PREVIEW_TTL_DAYS = Math.max(1, Number(process.env.PREVIEW_TTL_DAYS ?? 30) || 30)
+
 // ============================================================
 // FIRST MESSAGE → FINAL DELIVERY JOURNEY ENGINE
 // Every step is persisted against the Client ID with automation
@@ -447,6 +450,8 @@ export async function generatePreview(clientRowId: string) {
     data: {
       token, clientId: client.id, projectId: null, scopeVersion: finalScope.version,
       version: existing + 1, status: 'GENERATED', html,
+      // security: tokenized preview links expire after 30 days (configurable)
+      expiresAt: new Date(Date.now() + PREVIEW_TTL_DAYS * 24 * 3600 * 1000),
     },
   })
   await db.previewEvent.create({ data: { previewId: preview.id, type: 'GENERATED' } })

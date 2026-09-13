@@ -112,6 +112,26 @@ export async function POST(req: NextRequest) {
         return Response.json({ ok: result.status === 'SENT', action, status: result.status, error: result.error ?? null })
       }
 
+      case 'EXPIRE_PREVIEWS': {
+        // security action: mark expired-but-active tokenized previews as EXPIRED
+        // and alert the admin so a fresh link can be issued deliberately.
+        const ids = Array.isArray(payload.previewIds) ? payload.previewIds.map((x: unknown) => sanitizeText(String(x), 40)).filter(Boolean) : []
+        if (!ids.length) return Response.json({ ok: true, action, expired: 0 })
+        const res = await db.preview.updateMany({ where: { id: { in: ids }, status: { in: ['GENERATED', 'SENT', 'VIEWED'] } }, data: { status: 'EXPIRED' } })
+        for (const id of ids) {
+          await db.previewEvent.create({ data: { previewId: id, type: 'EXPIRED', meta: JSON.stringify({ by: 'ai-operations' }) } }).catch(() => null)
+        }
+        await db.notification.create({
+          data: {
+            type: 'SYSTEM', severity: 'WARNING',
+            title: `${res.count} preview link${res.count === 1 ? '' : 's'} expired`,
+            body: 'Tokenized preview links passed their security TTL and were marked EXPIRED by AI Operations. Issue a fresh preview if the client still needs one.',
+            link: 'projects',
+          },
+        })
+        return Response.json({ ok: true, action, expired: res.count })
+      }
+
       case 'ALERT': {
         const type = ['APPROVAL', 'ERROR', 'LEAD', 'PAYMENT', 'DELIVERY', 'SYSTEM'].includes(sanitizeText(payload.type, 20).toUpperCase()) ? sanitizeText(payload.type, 20).toUpperCase() : 'SYSTEM'
         const title = sanitizeText(payload.title, 200) || 'AI Operations alert'

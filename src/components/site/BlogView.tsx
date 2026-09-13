@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowRight, CircleAlert } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, CircleAlert, Search, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { PageHero } from "./PageHero";
 import { CtaBand } from "./CtaBand";
 import { RevealList, RevealItem } from "./Reveal";
@@ -72,6 +74,26 @@ export default function BlogView() {
   const error = fresh ? cache.error : null;
   const reload = () => setTick((t) => t + 1);
 
+  // search + category filter (client-side over the real post list)
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<string | null>(null);
+  const categories = useMemo(
+    () => Array.from(new Set((posts ?? []).map((p) => p.category).filter(Boolean))).sort(),
+    [posts],
+  );
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (posts ?? []).filter((p) => {
+      if (category && p.category !== category) return false;
+      if (!q) return true;
+      return (
+        p.title.toLowerCase().includes(q) ||
+        p.excerpt.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      );
+    });
+  }, [posts, query, category]);
+
   return (
     <main id="main-content">
       <PageHero
@@ -84,6 +106,59 @@ export default function BlogView() {
       <section aria-labelledby="articles-heading" className="bg-[#F4FAFF]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <h2 id="articles-heading" className="sr-only">Article list</h2>
+
+          {/* search + category filter */}
+          {posts && posts.length > 0 ? (
+            <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center" role="search" aria-label="Filter articles">
+              <div className="relative w-full max-w-md">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#7A8CA0]" aria-hidden="true" />
+                <Input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search articles…"
+                  aria-label="Search articles by title or topic"
+                  className="h-11 rounded-lg border-[#E2E8F0] bg-white pl-10 text-sm text-[#0B1F33] placeholder:text-[#7A8CA0] focus-visible:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]/25"
+                />
+              </div>
+              {categories.length > 1 ? (
+                <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by category">
+                  <button
+                    type="button"
+                    onClick={() => setCategory(null)}
+                    aria-pressed={category === null}
+                    className={cn(
+                      "min-h-9 rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]/40",
+                      category === null
+                        ? "border-[#009FE3]/60 bg-[#009FE3]/10 text-[#0079AC]"
+                        : "border-[#E2E8F0] bg-white text-[#526173] hover:border-[#009FE3]/40 hover:text-[#0B1F33]",
+                    )}
+                  >
+                    All topics
+                  </button>
+                  {categories.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCategory(category === c ? null : c)}
+                      aria-pressed={category === c}
+                      className={cn(
+                        "min-h-9 rounded-full border px-3.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]/40",
+                        category === c
+                          ? "border-[#009FE3]/60 bg-[#009FE3]/10 text-[#0079AC]"
+                          : "border-[#E2E8F0] bg-white text-[#526173] hover:border-[#009FE3]/40 hover:text-[#0B1F33]",
+                      )}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <p className="text-xs text-[#7A8CA0] lg:ml-auto" aria-live="polite">
+                {filtered.length} of {posts.length} article{posts.length === 1 ? "" : "s"}
+              </p>
+            </div>
+          ) : null}
 
           {posts === null && !error ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -124,9 +199,31 @@ export default function BlogView() {
             </p>
           ) : null}
 
-          {posts && posts.length > 0 ? (
+          {posts && posts.length > 0 && filtered.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[#E2E8F0] bg-white px-6 py-14 text-center">
+              <span className="flex size-11 items-center justify-center rounded-full bg-[#009FE3]/10" aria-hidden="true">
+                <SearchX className="size-5 text-[#009FE3]" />
+              </span>
+              <p className="text-sm font-semibold text-[#0B1F33]">No articles match your search</p>
+              <p className="max-w-sm text-xs leading-relaxed text-[#526173]">
+                Try a different keyword, or clear the filters to see every published article.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-1 min-h-11 rounded-lg"
+                onClick={() => {
+                  setQuery("");
+                  setCategory(null);
+                }}
+              >
+                Clear filters
+              </Button>
+            </div>
+          ) : null}
+
+          {posts && filtered.length > 0 ? (
             <RevealList className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {posts.map((post) => (
+              {filtered.map((post) => (
                   <RevealItem key={post.slug} className="h-full">
                     <a
                       href={`#/blog/${post.slug}`}

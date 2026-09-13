@@ -1,9 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
   Activity,
   AlertOctagon,
   BadgeCheck,
+  Bot,
   Building2,
   CheckCircle2,
   Clock,
@@ -17,6 +19,7 @@ import {
   Rocket,
   UserPlus,
   Users,
+  Zap,
 } from 'lucide-react'
 import {
   Area,
@@ -64,6 +67,140 @@ const activityIcon = (type?: string | null) => {
   if (t.includes('APPROVAL')) return <BadgeCheck className="size-3.5" />
   if (t.includes('AUTOM') || t.includes('WORKFLOW')) return <Activity className="size-3.5" />
   return <Activity className="size-3.5" />
+}
+
+// ============================================================
+// LIVE AI OPERATIONS CARD — visible proof the autonomous loop is
+// running the platform: heartbeat, cycles, executed actions and
+// agent workforce stats, all from /api/admin/ops-status.
+// ============================================================
+type OpsStatus = {
+  status: string
+  heartbeatAgeSec: number | null
+  intervalSec: number
+  cycles: number | null
+  lastCycleAt: string | null
+  recentCycles: Array<{ id: string; at: string; status: string; summary: Record<string, unknown>; actions: string[] }>
+  agents: { registered: number; totalExecutions: number; successes: number; failures: number; executions24h: number }
+  unreadAlerts: number
+}
+
+function fmtAge(sec: number | null): string {
+  if (sec == null) return '—'
+  if (sec < 60) return `${sec}s ago`
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`
+  return `${Math.floor(sec / 3600)}h ago`
+}
+
+function AiOpsCard({ loading }: { loading: boolean }) {
+  const [ops, setOps] = useState<OpsStatus | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/admin/ops-status', { headers: { Accept: 'application/json' } })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = (await res.json()) as OpsStatus
+        if (!cancelled) { setOps(data); setFailed(false) }
+      } catch {
+        if (!cancelled) setFailed(true)
+      }
+    }
+    void load()
+    const t = setInterval(load, 30_000)
+    return () => { cancelled = true; clearInterval(t) }
+  }, [])
+
+  const active = ops?.status === 'ACTIVE'
+  const lastCycle = ops?.recentCycles?.[0]
+  const actions = lastCycle?.actions ?? []
+  const successRate = ops && ops.agents.totalExecutions > 0
+    ? Math.round((ops.agents.successes / ops.agents.totalExecutions) * 100)
+    : null
+
+  return (
+    <section
+      aria-label="Autonomous AI operations status"
+      className="relative overflow-hidden rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-[#0A1A2E]"
+    >
+      {/* subtle top accent line */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#009FE3]/60 to-transparent" aria-hidden="true" />
+      <div className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center">
+        {/* status block */}
+        <div className="flex min-w-[230px] items-center gap-3">
+          <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl border border-[#009FE3]/25 bg-[#009FE3]/10">
+            <Bot className="size-5 text-[#009FE3]" aria-hidden="true" />
+            {active ? (
+              <span className="absolute -right-1 -top-1 flex size-3" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex size-3 rounded-full bg-emerald-400" />
+              </span>
+            ) : null}
+          </span>
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-[13.5px] font-semibold text-slate-100">
+              Autonomous AI Operations
+              <span
+                className={`rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${
+                  loading || !ops
+                    ? 'bg-slate-800 text-slate-400'
+                    : active
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : ops.status === 'STALE'
+                        ? 'bg-amber-500/15 text-amber-400'
+                        : 'bg-red-500/15 text-red-400'
+                }`}
+              >
+                {loading ? '…' : failed ? 'FEED ERROR' : (ops?.status ?? 'OFFLINE')}
+              </span>
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+              {ops
+                ? `Cycle #${ops.cycles ?? '—'} · heartbeat ${fmtAge(ops.heartbeatAgeSec)} · beats every ${Math.round(ops.intervalSec / 60) || 1} min`
+                : 'Detect → Understand → Decide → Execute → Verify → Log → Learn'}
+            </p>
+          </div>
+        </div>
+
+        {/* agent workforce stats */}
+        <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: 'Agents', value: ops ? String(ops.agents.registered) : '—', icon: Bot },
+            { label: 'Runs (24h)', value: ops ? String(ops.agents.executions24h) : '—', icon: Zap },
+            { label: 'Total runs', value: ops ? String(ops.agents.totalExecutions) : '—', icon: Activity },
+            { label: 'Success', value: successRate != null ? `${successRate}%` : '—', icon: CheckCircle2 },
+          ].map((s) => (
+            <div key={s.label} className="rounded-lg border border-slate-800/80 bg-slate-900/60 px-3 py-2">
+              <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-slate-500">
+                <s.icon className="size-3" aria-hidden="true" /> {s.label}
+              </p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums leading-tight text-slate-100">{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* last cycle actions — evidence of real work */}
+        <div className="min-w-0 lg:max-w-[280px]">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Last cycle executed</p>
+          {actions.length > 0 ? (
+            <ul className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Actions performed in the last AI operations cycle">
+              {actions.slice(0, 6).map((a, i) => (
+                <li key={i} className="truncate rounded-md border border-slate-700/70 bg-slate-800/50 px-2 py-0.5 text-[10.5px] text-slate-300" title={a}>
+                  {a}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1.5 text-[11.5px] text-slate-600">
+              {ops ? 'No actions needed — the loop scans continuously.' : 'Waiting for the first cycle…'}
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  )
 }
 
 export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => void }) {
@@ -128,6 +265,9 @@ export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => 
         <KpiCard label="Pending Approvals" value={num(stats?.pendingAdminApprovals)} icon={FileClock} tone="amber" loading={loading} sub="Super Admin queue" />
         <KpiCard label="Projects / Approval" value={num(stats?.projectsAwaitingApproval)} icon={Clock} tone="amber" loading={loading} sub="Client-side stage" />
       </section>
+
+      {/* LIVE AI operations evidence strip */}
+      <AiOpsCard loading={loading} />
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">

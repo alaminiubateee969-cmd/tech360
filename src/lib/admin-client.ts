@@ -184,6 +184,28 @@ export interface DashboardResponse {
   recentActivity: RecentActivity[]
 }
 
+export interface NotificationItem {
+  id: string
+  type: string // APPROVAL | ERROR | LEAD | PAYMENT | DELIVERY | SYSTEM
+  title: string
+  body?: string | null
+  severity: string // INFO | WARNING | CRITICAL
+  read: boolean
+  link?: string | null
+  createdAt: string
+}
+export interface NotificationsResponse {
+  notifications: NotificationItem[]
+  unread: number
+  severityCounts?: Record<string, number>
+}
+
+export interface KnowledgeStatusResponse {
+  ok?: boolean
+  message?: string
+  doc?: KnowledgeDoc
+}
+
 export interface ClientRow {
   id: string
   clientId: string
@@ -504,6 +526,7 @@ export interface KnowledgeDoc {
   status?: string | null
   size?: number | null
   scanResult?: string | null
+  approvedBy?: string | null
   createdAt?: string | null
 }
 export interface KnowledgeResponse { docs?: KnowledgeDoc[] }
@@ -640,6 +663,23 @@ export const api = {
     fetchJson<{ ok?: boolean; message?: string }>(`/api/admin/logs/errors/${encodeURIComponent(errorId)}/resolve`, {
       method: 'POST',
       body: { note },
+    }),
+  notifications: (opts?: { unread?: boolean; take?: number }) =>
+    fetchJson<NotificationsResponse>(`/api/admin/notifications${opts?.unread ? '?unread=1' : ''}${opts?.take ? `${opts?.unread ? '&' : '?'}take=${opts.take}` : ''}`),
+  markNotificationRead: (id: string) =>
+    fetchJson<{ ok?: boolean; updated?: number }>('/api/admin/notifications/read', {
+      method: 'POST',
+      body: { id },
+    }),
+  markAllNotificationsRead: () =>
+    fetchJson<{ ok?: boolean; updated?: number }>('/api/admin/notifications/read', {
+      method: 'POST',
+      body: { all: true },
+    }),
+  knowledgeStatus: (docId: string, status: string, note?: string) =>
+    fetchJson<KnowledgeStatusResponse>(`/api/admin/knowledge/${encodeURIComponent(docId)}/status`, {
+      method: 'POST',
+      body: { status, note },
     }),
   runAgent: (code: string, input: string, expectJson = true) =>
     fetchJson<AgentRunResponse>(`/api/admin/agents/${encodeURIComponent(code)}/run`, {

@@ -1,6 +1,10 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, Search, SearchX } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { SERVICES, type Service } from "@/data/site";
 import { PageHero } from "./PageHero";
 import { CtaBand } from "./CtaBand";
@@ -99,6 +103,22 @@ function ServiceCard({ service }: { service: Service }) {
 }
 
 export default function ServicesView() {
+  // client-side search across all 20 services (title, tagline, problem, tech)
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const searching = q.length > 0;
+
+  const matches = useMemo(() => {
+    if (!q) return SERVICES;
+    return SERVICES.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.tagline.toLowerCase().includes(q) ||
+        s.problem.toLowerCase().includes(q) ||
+        s.tech.some((t) => t.toLowerCase().includes(q)),
+    );
+  }, [q]);
+
   return (
     <main id="main-content">
       <PageHero
@@ -108,6 +128,73 @@ export default function ServicesView() {
         breadcrumb={[{ label: "Services" }]}
       />
 
+      {/* search across every service */}
+      <section aria-label="Service search" className="border-b border-[#E2E8F0] bg-white">
+        <div className="mx-auto w-full max-w-7xl px-4 pb-10 pt-2 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative w-full max-w-md" role="search" aria-label="Search services">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#7A8CA0]" aria-hidden="true" />
+              <Input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search services — WhatsApp, dashboard, deployment…"
+                aria-label="Search services by name or technology"
+                className="h-11 rounded-lg border-[#E2E8F0] bg-white pl-10 text-sm text-[#0B1F33] placeholder:text-[#7A8CA0] focus-visible:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]/25"
+              />
+            </div>
+            <p className={cn("text-xs text-[#7A8CA0]", !searching && "sm:ml-1")} aria-live="polite">
+              {searching
+                ? `${matches.length} of ${SERVICES.length} services match “${query.trim()}”`
+                : `${SERVICES.length} services · grouped by discipline below`}
+            </p>
+            {searching ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto min-h-9 rounded-lg"
+                onClick={() => setQuery("")}
+              >
+                Clear search
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      {searching ? (
+        <section aria-labelledby="search-results-heading" className="bg-white">
+          <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+            <h2 id="search-results-heading" className="sr-only">Search results</h2>
+            {matches.length > 0 ? (
+              <RevealList className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {matches.map((service) => (
+                  <RevealItem key={service.slug} className="h-full">
+                    <ServiceCard service={service} />
+                  </RevealItem>
+                ))}
+              </RevealList>
+            ) : (
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[#E2E8F0] bg-[#F4FAFF] px-6 py-14 text-center">
+                <span className="flex size-11 items-center justify-center rounded-full bg-[#009FE3]/10" aria-hidden="true">
+                  <SearchX className="size-5 text-[#009FE3]" />
+                </span>
+                <p className="text-sm font-semibold text-[#0B1F33]">No services match “{query.trim()}”</p>
+                <p className="max-w-sm text-xs leading-relaxed text-[#526173]">
+                  Try a broader keyword, or tell us what you need — custom builds are a service too.
+                </p>
+                <a
+                  href="#/contact"
+                  className="mt-1 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#009FE3] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0090CC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
+                >
+                  Describe your need
+                </a>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
+        <>
       {GROUPS.map((group) => {
         const services = group.slugs
           .map((slug) => SERVICES.find((s) => s.slug === slug))
@@ -137,6 +224,8 @@ export default function ServicesView() {
           </section>
         );
       })}
+        </>
+      )}
 
       {/* How engagement starts */}
       <section className="bg-[#F4FAFF]">

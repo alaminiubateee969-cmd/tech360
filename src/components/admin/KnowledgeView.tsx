@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FileSearch, FileUp, Loader2, RefreshCw, Search, ShieldCheck, Upload } from 'lucide-react'
+import { Archive, CheckCircle2, FileSearch, FileUp, Loader2, RefreshCw, Search, ShieldAlert, ShieldCheck, Upload } from 'lucide-react'
 
 import {
   api,
@@ -28,6 +28,8 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 const CLASSIFICATIONS = ['PUBLIC', 'PRIVATE', 'CONFIDENTIAL', 'HIGHLY_SENSITIVE'] as const
+
+const STATUS_FILTERS = ['ALL', 'UPLOADED', 'SCANNED', 'INDEXED', 'APPROVED', 'QUARANTINED', 'ARCHIVED'] as const
 
 function uploadKnowledge(
   file: File,
@@ -79,8 +81,28 @@ function classificationBadge(c?: string | null) {
 }
 
 export function KnowledgeView() {
-  const { data, loading, error, refresh } = useApi<KnowledgeResponse>('/api/admin/knowledge')
+  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>('ALL')
+  const { data, loading, error, refresh } = useApi<KnowledgeResponse>(
+    statusFilter === 'ALL' ? '/api/admin/knowledge' : `/api/admin/knowledge?status=${statusFilter}`,
+  )
   const docs = data?.docs ?? []
+
+  // governance state: which doc has an action in flight
+  const [busyDocId, setBusyDocId] = useState<string | null>(null)
+
+  async function setDocStatus(doc: KnowledgeDoc, status: 'APPROVED' | 'ARCHIVED' | 'QUARANTINED' | 'SCANNED') {
+    if (busyDocId) return
+    setBusyDocId(doc.id)
+    try {
+      await api.knowledgeStatus(doc.id, status)
+      toast.success(`Document ${status === 'APPROVED' ? 'approved' : status === 'ARCHIVED' ? 'archived' : status === 'SCANNED' ? 'released from quarantine' : 'quarantined'}: ${doc.title ?? doc.filename ?? 'document'}`)
+      refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Status change failed.')
+    } finally {
+      setBusyDocId(null)
+    }
+  }
 
   // upload state
   const [file, setFile] = useState<File | null>(null)
@@ -159,10 +181,29 @@ export function KnowledgeView() {
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <SectionCard title="Documents" description="Every document with its classification and scan verdict" className="xl:col-span-2" contentClassName="p-0">
+        <SectionCard title="Documents" description="Every document with its classification, scan verdict and governance state" className="xl:col-span-2" contentClassName="p-0">
           {error ? (
             <div role="alert" className="p-4 text-sm text-red-400">Could not load documents: {error}</div>
           ) : null}
+          {/* status filter chips */}
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-800/70 px-3 py-2.5" role="group" aria-label="Filter documents by status">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setStatusFilter(f)}
+                aria-pressed={statusFilter === f}
+                className={cn(
+                  'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#009FE3]/50',
+                  statusFilter === f
+                    ? 'border-[#009FE3]/50 bg-[#009FE3]/15 text-[#009FE3]'
+                    : 'border-slate-700/70 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200',
+                )}
+              >
+                {prettify(f)}
+              </button>
+            ))}
+          </div>
           <DataTable
             columns={[
               { key: 'title', header: 'Title', cell: (d) => <span className="font-medium text-slate-200">{d.title || '—'}</span> },
@@ -194,11 +235,78 @@ export function KnowledgeView() {
                 },
               },
               { key: 'created', header: 'Uploaded', cell: (d) => <span className="text-xs text-slate-500">{fmtDate(d.createdAt)}</span> },
+              {
+                key: 'actions',
+                header: 'Govern',
+                className: 'min-w-[150px]',
+                cell: (d) => {
+                  const busy = busyDocId === d.id
+                  const st = (d.status ?? '').toUpperCase()
+                  return (
+                    <div className="flex items-center gap-1">
+                      {st !== 'APPROVED' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void setDocStatus(d, 'APPROVED')}
+                          disabled={busy || st === 'QUARANTINED'}
+                          title={st === 'QUARANTINED' ? 'Quarantined documents must be re-scanned before approval' : 'Approve for agent retrieval'}
+                          className="h-7 gap-1 border-emerald-500/30 bg-emerald-500/10 px-2 text-[11px] text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+                        >
+                          {busy ? <Loader2 className="size-3 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="size-3" aria-hidden="true" />}
+                          Approve
+                        </Button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap text-[10.5px] text-slate-500" title={d.approvedBy ? `Approved by ${d.approvedBy}` : undefined}>
+                          <ShieldCheck className="size-3 text-emerald-500" aria-hidden="true" />
+                          {d.approvedBy ? d.approvedBy.split('@')[0] : 'approved'}
+                        </span>
+                      )}
+                      {st !== 'ARCHIVED' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void setDocStatus(d, 'ARCHIVED')}
+                          disabled={busy}
+                          title="Archive — removes document from agent retrieval"
+                          className="h-7 gap-1 border-slate-700 bg-slate-900/60 px-2 text-[11px] text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                        >
+                          <Archive className="size-3" aria-hidden="true" />
+                          Archive
+                        </Button>
+                      ) : null}
+                      {st !== 'QUARANTINED' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void setDocStatus(d, 'QUARANTINED')}
+                          disabled={busy}
+                          title="Quarantine — block retrieval and flag for review"
+                          className="h-7 gap-1 border-red-500/30 bg-red-500/10 px-2 text-[11px] text-red-400 hover:bg-red-500/20 hover:text-red-300"
+                        >
+                          <ShieldAlert className="size-3" aria-hidden="true" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void setDocStatus(d, 'SCANNED')}
+                          disabled={busy}
+                          title="Release from quarantine back to SCANNED"
+                          className="h-7 gap-1 border-amber-500/30 bg-amber-500/10 px-2 text-[11px] text-amber-400 hover:bg-amber-500/20 hover:text-amber-300"
+                        >
+                          Release
+                        </Button>
+                      )}
+                    </div>
+                  )
+                },
+              },
             ]}
             rows={docs}
             loading={loading}
             rowKey={(d) => d.id}
-            empty={<EmptyState icon={FileUp} title="No documents yet" description="Upload company knowledge to make it available to the AI workforce." />}
+            empty={<EmptyState icon={FileUp} title={statusFilter === 'ALL' ? 'No documents yet' : `No ${prettify(statusFilter).toLowerCase()} documents`} description="Upload company knowledge to make it available to the AI workforce." />}
             aria-label="Knowledge documents"
             maxHeightClass="max-h-[70vh]"
           />
