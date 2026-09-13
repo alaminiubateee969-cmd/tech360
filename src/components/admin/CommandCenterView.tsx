@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Send, Sparkles, Terminal, Zap } from 'lucide-react'
+import { CalendarDays, Loader2, Send, Sparkles, Terminal, Video, Zap, Phone, MessageCircle } from 'lucide-react'
 
 import { api, num, useApi, type DashboardResponse } from '@/lib/admin-client'
 import { Markdownish } from './shared/Markdownish'
@@ -14,6 +14,7 @@ interface ChatMessage {
   text: string
   action?: string | null
   data?: unknown
+  dataKind?: string | null
 }
 
 const QUICK_COMMANDS = [
@@ -22,7 +23,7 @@ const QUICK_COMMANDS = [
   'Show unpaid projects',
   'Show failed WhatsApp messages',
   "Prepare today's CEO report",
-  'Show pending approvals',
+  'Schedule a call with TECH-2026-000001 next Tuesday 3pm',
 ]
 
 function DataTableFromData({ data }: { data: unknown }) {
@@ -60,8 +61,11 @@ function DataTableFromData({ data }: { data: unknown }) {
   )
 }
 
-function DataPayload({ data }: { data: unknown }) {
+function DataPayload({ data, dataKind }: { data: unknown; dataKind?: string | null }) {
   if (data === null || data === undefined) return null
+  if (dataKind === 'meeting' && typeof data === 'object' && !Array.isArray(data)) {
+    return <MeetingCard data={data as Record<string, unknown>} />
+  }
   if (Array.isArray(data)) {
     const objects = data.filter((r) => r && typeof r === 'object' && !Array.isArray(r)) as Array<Record<string, unknown>>
     if (objects.length > 0) return <DataTableFromData data={data} />
@@ -81,6 +85,55 @@ function DataPayload({ data }: { data: unknown }) {
     )
   }
   return <p className="mt-2 font-mono text-xs text-slate-400">{String(data)}</p>
+}
+
+const CHANNEL_ICONS: Record<string, React.ReactNode> = {
+  GOOGLE_MEET: <Video className="size-3.5" aria-hidden="true" />,
+  ZOOM: <Video className="size-3.5" aria-hidden="true" />,
+  PHONE: <Phone className="size-3.5" aria-hidden="true" />,
+  WHATSAPP_CALL: <MessageCircle className="size-3.5" aria-hidden="true" />,
+}
+
+function fmtDhaka(iso: unknown): string {
+  if (typeof iso !== 'string') return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return String(iso)
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dhaka', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).format(d) + ' (Dhaka)'
+}
+
+function MeetingCard({ data }: { data: Record<string, unknown> }) {
+  const channel = String(data.channel ?? 'GOOGLE_MEET')
+  const agentOk = data.agentOk === true || data.agentOk === 'true'
+  return (
+    <div className="mt-2 overflow-hidden rounded-md border border-[#009FE3]/30 bg-[#009FE3]/5" role="status" aria-label="Scheduled meeting confirmation">
+      <div className="flex items-center gap-2 border-b border-[#009FE3]/20 bg-[#009FE3]/10 px-3 py-2">
+        <CalendarDays className="size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
+        <p className="text-xs font-semibold text-slate-200">Meeting scheduled</p>
+        <span className={cn('ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px]', agentOk ? 'bg-[#18B83A]/15 text-[#4ade80]' : 'bg-amber-500/15 text-amber-400')}>
+          {agentOk ? 'MTG-015 agenda ready' : 'agenda pending'}
+        </span>
+      </div>
+      <div className="grid gap-x-4 gap-y-1.5 px-3 py-2.5 text-xs sm:grid-cols-2">
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Client</span>
+          <span className="font-mono text-[#009FE3]">{String(data.clientId ?? '—')}</span>
+          <span className="truncate text-slate-300">{String(data.clientName ?? '')}</span>
+        </p>
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">When</span>
+          <span className="font-medium text-slate-200">{fmtDhaka(data.scheduledAt)}</span>
+        </p>
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Channel</span>
+          <span className="inline-flex items-center gap-1 text-slate-200">{CHANNEL_ICONS[channel] ?? <Video className="size-3.5" aria-hidden="true" />} {channel}</span>
+        </p>
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Reason</span>
+          <span className="truncate text-slate-200">{String(data.reason ?? '—')}</span>
+        </p>
+      </div>
+    </div>
+  )
 }
 
 function MarkdownishTable({ data }: { data: Record<string, unknown> }) {
@@ -149,6 +202,7 @@ export function CommandCenterView() {
           text: res.reply ?? '(no reply returned)',
           action: res.action ?? null,
           data: res.data ?? null,
+          dataKind: res.dataKind ?? null,
         },
       ])
     } catch (err) {
@@ -204,7 +258,7 @@ export function CommandCenterView() {
                       <Zap className="size-3" aria-hidden="true" /> {m.action}
                     </p>
                   ) : null}
-                  <DataPayload data={m.data} />
+                  <DataPayload data={m.data} dataKind={m.dataKind} />
                 </>
               )}
             </div>
@@ -258,7 +312,7 @@ export function CommandCenterView() {
               void send(input)
             }
           }}
-          placeholder="e.g. show all clients waiting for payment…"
+          placeholder="e.g. schedule a call with TECH-2026-000001 next Tuesday 3pm…"
           className="max-h-32 min-h-[44px] flex-1 resize-none rounded-lg border border-slate-800 bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus-visible:border-[#009FE3]/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#009FE3]/40"
         />
         <Button type="submit" disabled={sending || !input.trim()} className="h-11 px-5 font-semibold" style={{ background: ACCENT }}>

@@ -105,11 +105,11 @@ export default function PortalView() {
     <div className="mx-auto max-w-6xl px-4 pb-24 pt-10 sm:px-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#009FE3]">Client Portal</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">Welcome, {data.client.name.split(' ')[0]}</h1>
-            <p className="mt-1 text-sm text-slate-500">{data.client.businessName ?? data.client.businessType ?? ''} · Reference <span className="font-mono font-semibold text-[#063B8F]">{data.client.clientId}</span></p>
+            <p className="mt-1 text-sm text-slate-500">{data.client.businessName ?? data.client.businessType ?? ''} · Reference <span className="font-mono font-medium text-[#063B8F]">{data.client.clientId}</span></p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={load} disabled={loading} aria-label="Refresh portal data" className="h-10 gap-2">
@@ -127,7 +127,7 @@ export default function PortalView() {
               <span className="font-semibold text-[#0B1F33]">Delivery progress</span>
               <span className="text-slate-500 capitalize">{data.client.stageLabel} · {data.client.progressPct}%</span>
             </div>
-            <Progress value={data.client.progressPct} className="h-2.5 bg-[#E2E8F0]" />
+            <Progress value={data.client.progressPct} className="h-2.5 bg-[#E2E8F0]" indicatorClassName="bg-gradient-to-r from-[#009FE3] to-[#063B8F]" />
             <div className="mt-4 flex flex-wrap gap-1.5">
               {STAGE_ORDER.slice(0, 18).map((s, i) => (
                 <span key={s} title={STAGE_LABELS_SHORT[s]} className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${i <= stageIdx ? (i === stageIdx ? 'bg-[#063B8F] text-white' : 'bg-[#18B83A]/15 text-[#116b26]') : 'bg-slate-100 text-slate-400'}`}>
@@ -163,7 +163,7 @@ export default function PortalView() {
                 {data.project.taskProgress !== null && (
                   <div className="mt-4">
                     <div className="mb-1.5 flex justify-between text-xs text-slate-500"><span>Build progress</span><span>{data.project.taskProgress}% of milestones done</span></div>
-                    <Progress value={data.project.taskProgress} className="h-2" />
+                    <Progress value={data.project.taskProgress} className="h-2 bg-[#E2E8F0]" indicatorClassName="bg-[#18B83A]" />
                   </div>
                 )}
                 <Separator className="my-4" />
@@ -902,8 +902,8 @@ function MeetingsCard({ meetings, onDone }: { meetings: PortalData['meetings']; 
                     <Button size="sm" variant="outline" className="gap-1.5 border-[#DCEAF6] text-slate-600 hover:bg-[#F4FAFF]" disabled={busy === `${m.id}:RESCHEDULE`} onClick={() => setRescheduleFor(m.id)}>
                       <Clock className="h-3.5 w-3.5" /> Propose another time
                     </Button>
-                    <Button size="sm" variant="ghost" className="gap-1.5 text-slate-500 hover:text-slate-700" disabled={busy === `${m.id}:DECLINE`} onClick={() => respond(m.id, 'DECLINE')}>
-                      Can&apos;t make it
+                    <Button size="sm" variant="outline" className="gap-1.5 border-[#E2E8F0] text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600" disabled={busy === `${m.id}:DECLINE`} onClick={() => respond(m.id, 'DECLINE')}>
+                      <CalendarX className="h-3.5 w-3.5" /> Can&apos;t make it
                     </Button>
                   </div>
                 )

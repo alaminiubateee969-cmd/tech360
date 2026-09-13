@@ -360,7 +360,7 @@ export function KnowledgeView() {
                   </SelectContent>
                 </Select>
               </div>
-              {uploading ? <Progress value={progress} aria-label="Upload progress" className="h-1.5" /> : null}
+              {uploading ? <Progress value={progress} aria-label="Upload progress" className="h-1.5" indicatorClassName="bg-[#009FE3]" /> : null}
               <Button type="submit" disabled={uploading} className="w-full font-semibold" style={{ background: ACCENT }}>
                 {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
                 {uploading ? `Uploading… ${progress}%` : 'Upload'}

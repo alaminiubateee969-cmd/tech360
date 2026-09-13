@@ -9,7 +9,7 @@ import { CtaBand } from "./CtaBand";
 import { Icon } from "./icons";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
-import { PrimaryLink, WhatsAppLink, LinkArrow } from "./buttons";
+import { PrimaryLink, WhatsAppLink, CardLinkAffordance } from "./buttons";
 
 export default function ServiceDetailView({ slug }: { slug: string }) {
   const service = getService(slug);
@@ -229,9 +229,9 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
                   </span>
                   <h3 className="mt-4 text-base font-semibold text-[#0B1F33]">{s.title}</h3>
                   <p className="mt-2 flex-1 text-sm leading-relaxed text-[#526173]">{s.tagline}</p>
-                  <LinkArrow href={`#/services/${s.slug}`} className="mt-4">
+                  <CardLinkAffordance className="mt-4">
                     View service
-                  </LinkArrow>
+                  </CardLinkAffordance>
                 </a>
               </RevealItem>
             ))}

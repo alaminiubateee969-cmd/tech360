@@ -107,6 +107,38 @@ export function WhatsAppLink({
   );
 }
 
+/**
+ * Non-anchor "learn more" affordance for use INSIDE a card that is already a
+ * link (nested <a> in <a> is invalid HTML and causes hydration errors).
+ * Renders a <span> styled identically to LinkArrow; the arrow animates on the
+ * parent card's group-hover instead.
+ */
+export function CardLinkAffordance({
+  children,
+  className,
+  dark = false,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  dark?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "group/inline inline-flex items-center gap-1.5 text-sm font-semibold",
+        dark ? "text-[#7FD4FF]" : "text-[#009FE3] group-hover:text-[#063B8F]",
+        className
+      )}
+    >
+      {children}
+      <ArrowRight
+        className="size-3.5 transition-transform group-hover:translate-x-1"
+        aria-hidden="true"
+      />
+    </span>
+  );
+}
+
 /** Inline text link with trailing arrow — for card "learn more" affordances. */
 export function LinkArrow({
   href,

@@ -654,6 +654,7 @@ export interface CommandResponse {
   reply?: string | null
   action?: string | null
   data?: unknown
+  dataKind?: string | null
 }
 
 export interface MemoriesResponse { memories?: MemoryRecord[] }

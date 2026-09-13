@@ -339,15 +339,15 @@ export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => 
             ) : activity.length === 0 ? (
               <EmptyState title="No activity yet" description="Platform events will appear here as the system runs." />
             ) : (
-              <ul className={`max-h-72 divide-y divide-slate-800/60 overflow-auto ${SCROLL_THIN}`} aria-label="Recent activity">
+              <ul className={`max-h-72 divide-y divide-slate-800 overflow-auto ${SCROLL_THIN}`} aria-label="Recent activity">
                 {activity.map((a, i) => (
-                  <li key={i} className="flex items-start gap-3 px-4 py-2.5">
+                  <li key={i} className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-slate-800/30">
                     <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-slate-800/70 text-slate-400">
                       {activityIcon(a.type)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="break-words text-[13px] leading-snug text-slate-300">{a.text || a.type || 'Event'}</p>
-                      <p className="mt-0.5 text-[11px] text-slate-600">
+                      <p className="mt-0.5 text-[11px] text-slate-500">
                         {a.type ? prettify(a.type) : ''}
                         {a.actor ? ` · ${a.actor}` : ''} · {fmtDate(a.at)}
                       </p>
@@ -378,7 +378,7 @@ export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => 
         />
       </SectionCard>
 
-      <p className="pb-2 text-center text-[11px] text-slate-700" aria-hidden="true">
+      <p className="pb-2 text-center text-[11px] text-slate-500" aria-hidden="true">
         Data source: /api/admin/dashboard · refreshed manually and on view switch
       </p>
     </div>

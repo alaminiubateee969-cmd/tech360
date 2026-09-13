@@ -36,7 +36,7 @@ export default function SiteFooter() {
   }));
 
   return (
-    <footer className="mt-auto bg-[#0B1F33] text-white/70">
+    <footer className="mt-auto bg-[#0B1F33] text-white/75">
       <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-12">
           {/* Identity */}
@@ -86,7 +86,7 @@ export default function SiteFooter() {
 
           {/* Sitemap columns */}
           <nav aria-label="Company links" className="lg:col-span-2">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
               Company
             </h2>
             <ul className="flex flex-col gap-1">
@@ -104,7 +104,7 @@ export default function SiteFooter() {
           </nav>
 
           <nav aria-label="Services links" className="lg:col-span-2">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
               Services
             </h2>
             <ul className="flex flex-col gap-1">
@@ -130,7 +130,7 @@ export default function SiteFooter() {
           </nav>
 
           <nav aria-label="Industries links" className="lg:col-span-2">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
               Industries
             </h2>
             <ul className="flex flex-col gap-1">
@@ -156,7 +156,7 @@ export default function SiteFooter() {
           </nav>
 
           <nav aria-label="Legal links" className="lg:col-span-2">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
               Legal & Policies
             </h2>
             <ul className="flex flex-col gap-1">
@@ -175,7 +175,7 @@ export default function SiteFooter() {
         </div>
 
         <div className="mt-12 border-t border-white/10 pt-6">
-          <div className="flex flex-col gap-3 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between">
             <p>
               © {year} {COMPANY.legalName}. All rights reserved.
             </p>

@@ -497,7 +497,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
         </main>
 
         <footer className="border-t border-slate-800/60 px-4 py-3">
-          <p className="text-center text-[10px] text-slate-700">
+          <p className="text-center text-[10px] text-slate-500">
             TECH360 LLC · Super Admin Command Center · authorized personnel only · all actions are audited
           </p>
         </footer>

@@ -6,7 +6,7 @@ export const GREEN = '#18B83A'
 export const AMBER = '#F59E0B'
 export const RED = '#EF4444'
 export const PURPLE = '#A78BFA'
-export const SLATE_GRID = '#1E293B'
+export const SLATE_GRID = '#2B3B55'
 export const AXIS_TICK = '#64748B'
 
 export const CARD = 'rounded-lg border border-slate-800 bg-slate-900/60'

@@ -2,8 +2,9 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { runAgent } from '@/lib/agents/engine'
-import { newCorrelationId, audit } from '@/lib/security'
+import { newCorrelationId, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
+import { parseWhenFlexible, scheduleMeeting, normalizeChannel } from '@/lib/meetings'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,8 @@ export const dynamic = 'force-dynamic'
 // into ONE real action, executed server-side with RBAC + audit.
 // No fabricated data: results come from live database queries.
 // ============================================================
+
+const TZ = 'Asia/Dhaka'
 
 const CAPABILITIES = `Available actions (choose exactly ONE):
 - show_new_leads {days?:number} — leads created in last N days (default 1/today)
@@ -30,9 +33,10 @@ const CAPABILITIES = `Available actions (choose exactly ONE):
 - ceo_report — generate today's CEO report (AI over live data)
 - generate_final_scope {clientId:string} — run Final Scope agent for a client (approval still required before sending)
 - create_followup {clientId:string, note?:string} — create follow-up task for a client
+- schedule_meeting {clientId:string, when:string, channel?:string, reason?:string} — schedule a real client meeting. Resolve relative dates ("next Tuesday 3pm") YOURSELF using the current Dhaka date/time in the context and output when as "YYYY-MM-DDTHH:mm" in Asia/Dhaka local time. channel: GOOGLE_MEET (default) | ZOOM | PHONE | WHATSAPP_CALL. Use the client's reference ID (e.g. TECH-2026-000001) from the CLIENT DIRECTORY in the context.
 - search_knowledge {query:string} — search knowledge base
 - search_memory {query:string} — search AI memory
-- none — ask a short clarifying question`
+- none — ask a short clarifying question (use when the client or time is ambiguous)`
 
 export async function POST(req: NextRequest) {
   const g = await guard(req, { minRole: 'ADMIN', limit: { max: 30, windowMs: 60_000 } })
@@ -50,13 +54,28 @@ export async function POST(req: NextRequest) {
   const history = await db.agentMessage.findMany({ where: { sessionId }, orderBy: { createdAt: 'asc' }, take: 20 })
   const recent = history.slice(-8).map((m) => `${m.role === 'user' ? 'Admin' : 'Oracle'}: ${m.content}`).join('\n')
 
-  const [newLeads, pendingApprovals, unpaid, failedComms] = await Promise.all([
+  const [newLeads, pendingApprovals, unpaid, failedComms, clientDir] = await Promise.all([
     db.client.count({ where: { createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } }),
     db.approvalRequest.count({ where: { status: 'PENDING' } }),
     db.project.count({ where: { paymentStatus: { in: ['PENDING', 'PARTIAL'] } } }),
     db.communication.count({ where: { status: 'FAILED' } }),
+    db.client.findMany({ where: { deletedAt: null }, orderBy: { updatedAt: 'desc' }, take: 12, select: { clientId: true, name: true, businessName: true, pipelineStage: true } }),
   ])
-  const contextNote = `LIVE CONTEXT (real numbers): new leads (24h)=${newLeads}, pending approvals=${pendingApprovals}, unpaid projects=${unpaid}, failed comms=${failedComms}. Current date: ${new Date().toISOString().slice(0, 10)}.\n\nCONVERSATION:\n${recent}\n\n${CAPABILITIES}`
+
+  // Dhaka "now" with weekday so the Oracle can resolve relative dates
+  // ("next Tuesday 3pm") deterministically server-side.
+  const now = new Date()
+  const dhakaNow = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, dateStyle: 'full', timeStyle: 'short', hour12: false }).format(now)
+  const clientDirectory = clientDir.map((c) => `${c.clientId} (${c.name}${c.businessName ? ` — ${c.businessName}` : ''}, stage ${c.pipelineStage})`).join('; ')
+
+  const contextNote = `LIVE CONTEXT (real numbers): new leads (24h)=${newLeads}, pending approvals=${pendingApprovals}, unpaid projects=${unpaid}, failed comms=${failedComms}.
+CURRENT DATE/TIME (Asia/Dhaka, resolve all relative dates against this): ${dhakaNow}.
+CLIENT DIRECTORY (use these reference IDs for scheduling/scope/follow-ups): ${clientDirectory || 'none yet'}.
+
+CONVERSATION:
+${recent}
+
+${CAPABILITIES}`
 
   const run = await runAgent('CMD-040', {
     input: message,
@@ -239,6 +258,64 @@ export async function POST(req: NextRequest) {
         data = { taskId: task.id }
         dataKind = 'task'
         reply = `Follow-up task created for ${client.clientId}.`
+        break
+      }
+      case 'schedule_meeting': {
+        // NL entry point to the REAL scheduling pipeline (MTG-015 agenda agent
+        // → meeting record → outbound comm → notification). Validates strictly:
+        // client must exist, time must parse and be in the future (≤60d).
+        const clientIdParam = sanitizeText(String(params.clientId ?? ''), 40).trim()
+        const whenRaw = String(params.when ?? '').trim()
+        const channel = normalizeChannel(params.channel ?? 'GOOGLE_MEET') ?? 'GOOGLE_MEET'
+        const reason = sanitizeText(String(params.reason ?? ''), 200).trim()
+
+        if (!clientIdParam || !whenRaw) {
+          reply = 'To schedule a meeting I need a client reference and a time — e.g. "schedule a call with TECH-2026-000001 next Tuesday 3pm".'
+          break
+        }
+        const client = await db.client.findFirst({
+          where: { OR: [{ clientId: clientIdParam }, { name: { contains: clientIdParam } }, { businessName: { contains: clientIdParam } }] , deletedAt: null },
+          include: { projects: { orderBy: { createdAt: 'desc' }, take: 1, select: { id: true } } },
+        })
+        if (!client) { reply = `I could not find a client matching "${clientIdParam}". Use show_clients to list references first.`; break }
+
+        const scheduledAt = parseWhenFlexible(whenRaw)
+        if (!scheduledAt) { reply = `I could not read the meeting time "${whenRaw}". Please give a date and time, e.g. "next Tuesday 3pm" or "2026-09-15T14:30".`; break }
+        if (scheduledAt.getTime() < Date.now() - 5 * 60_000) { reply = `The requested time (${whenRaw}) is in the past. Pick a future time.`; break }
+        if (scheduledAt.getTime() > Date.now() + 60 * 24 * 3600 * 1000) { reply = 'Meetings can be scheduled at most 60 days ahead. Pick a nearer date.'; break }
+
+        const result = await scheduleMeeting({
+          clientDbId: client.id,
+          clientIdHuman: client.clientId,
+          clientName: client.name,
+          businessName: client.businessName,
+          businessType: client.businessType,
+          country: client.country,
+          pipelineStage: client.pipelineStage,
+          projectId: client.projects[0]?.id ?? null,
+          scheduledAt,
+          channel,
+          reason: reason || 'Consultation call',
+          bookingLink: null,
+          actorEmail: g.user.email,
+          trigger: 'COMMAND_CENTER',
+        })
+
+        data = {
+          meetingId: result.meeting.id,
+          clientId: client.clientId,
+          clientName: client.name,
+          reason: result.meeting.reason,
+          channel: result.meeting.channel,
+          scheduledAt: result.meeting.scheduledAt,
+          status: result.meeting.status,
+          agentOk: result.agent.ok,
+          agentExecutionId: result.agent.executionId ?? null,
+        }
+        dataKind = 'meeting'
+        reply = result.agent.ok
+          ? `Meeting scheduled with **${client.clientId}** (${client.name}) — **${result.meeting.reason}** at ${result.meeting.scheduledAt.toISOString().replace('T', ' ').slice(0, 16)} UTC via ${result.meeting.channel}. The MTG-015 (Tempo) agent prepared the agenda, the invitation is recorded, and the client sees it in their portal now.`
+          : `Meeting scheduled with **${client.clientId}** at ${result.meeting.scheduledAt.toISOString().replace('T', ' ').slice(0, 16)} UTC — but the agenda agent was unavailable, so add notes manually in the client's Meetings tab.`
         break
       }
       case 'search_knowledge': {
