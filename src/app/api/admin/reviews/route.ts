@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const status = sanitizeText(url.searchParams.get('status') ?? '', 20).toUpperCase()
   const take = Math.min(100, Math.max(1, Number(url.searchParams.get('take') ?? 60) || 60))
 
-  const where = ['PENDING', 'SUBMITTED', 'APPROVED', 'REJECTED'].includes(status) ? { status } : {}
+  const where = ['PENDING', 'SUBMITTED', 'APPROVED', 'REJECTED', 'WITHDRAWN'].includes(status) ? { status } : {}
 
   const [reviews, referrals, stats] = await Promise.all([
     db.review.findMany({
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     db.referral.findMany({
       orderBy: { createdAt: 'desc' as const },
       take: 50,
-      include: { client: { select: { clientId: true, name: true, businessName: true } } },
+      include: { client: { select: { clientId: true, name: true, businessName: true } }, convertedClient: { select: { clientId: true, name: true } } },
     }),
     db.review.groupBy({ by: ['status'], _count: true }),
   ])
@@ -49,6 +49,10 @@ export async function GET(req: NextRequest) {
       clientName: f.client.name,
       businessName: f.client.businessName,
       name: f.name, contact: f.contact, notes: f.notes, status: f.status,
+      convertedClientId: f.convertedClientId,
+      convertedClientIdCode: f.convertedClient?.clientId ?? null,
+      convertedClientName: f.convertedClient?.name ?? null,
+      convertedAt: f.convertedAt,
       createdAt: f.createdAt,
     })),
     stats: Object.fromEntries(stats.map((s) => [s.status, s._count])),

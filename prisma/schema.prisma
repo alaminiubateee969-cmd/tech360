@@ -88,6 +88,7 @@ model Client {
   scopeApprovals  ScopeApproval[]
   reviews         Review[]
   referrals       Referral[]
+  referralsWon    Referral[] @relation("ReferralConverted")
   automationLogs  AutomationLog[]
   files           FileRecord[]
   deliveries      Delivery[]
@@ -426,9 +427,13 @@ model Referral {
   contact   String?
   notes     String?
   status    String   @default("REQUESTED") // REQUESTED | RECEIVED | CONVERTED | CLOSED
+  convertedClientId String? // row id of the Client created from this referral (when CONVERTED)
+  convertedClient   Client? @relation("ReferralConverted", fields: [convertedClientId], references: [id], onDelete: SetNull)
+  convertedAt       DateTime?
   createdAt DateTime @default(now())
 
   @@index([clientId])
+  @@index([status])
 }
 
 // ---------------- FORMS / WEBSITE ----------------
@@ -466,7 +471,7 @@ model BlogPost {
   tags        String?  // JSON array
   coverImage  String?
   author      String   @default("Tech360 Team")
-  status      String   @default("PUBLISHED") // DRAFT | PUBLISHED
+  status      String   @default("PUBLISHED") // DRAFT | SCHEDULED | PUBLISHED
   views       Int      @default(0)
   publishedAt DateTime @default(now())
   createdAt   DateTime @default(now())
@@ -737,7 +742,7 @@ model AgentMessage {
 
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // APPROVAL | ERROR | LEAD | PAYMENT | DELIVERY | SYSTEM
+  type      String   // APPROVAL | ERROR | LEAD | PAYMENT | DELIVERY | REVIEW | REFERRAL | SYSTEM
   title     String
   body      String?
   severity  String   @default("INFO") // INFO | WARNING | CRITICAL
@@ -746,6 +751,20 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([read])
+}
+
+model CeoReport {
+  id          String   @id @default(cuid())
+  title       String   @default("CEO Daily Report")
+  content     String   // markdown compiled by Oracle + Pulse agents from live data
+  trigger     String   @default("MANUAL") // MANUAL | SCHEDULED (ai-ops daily 08:00) 
+  generatedBy String   @default("RPT-039") // primary agent code
+  agentRuns   Int      @default(0)  // number of real agent executions behind this report
+  durationMs  Int?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([trigger])
 }
 
 model TrackingEvent {

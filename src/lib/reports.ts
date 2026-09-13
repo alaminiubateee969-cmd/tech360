@@ -4,10 +4,15 @@ import { audit } from '@/lib/security'
 
 // ============================================================
 // CEO DAILY REPORT — generated from live CRM data by the Pulse
-// agent, with a deterministic fallback if the model is offline.
+// agent (RPT-039), with a deterministic fallback if the model is
+// offline. Every report is PERSISTED to the CeoReport archive:
+// the executive trail of what the AI workforce reported and when.
+// Trigger MANUAL = admin requested it; SCHEDULED = the autonomous
+// ops loop generated the 08:00 Asia/Dhaka daily briefing.
 // ============================================================
 
-export async function generateCeoReport(userId: string) {
+export async function generateCeoReport(userId: string, trigger: 'MANUAL' | 'SCHEDULED' = 'MANUAL') {
+  const startedAt = Date.now()
   const [leads24h, totalClients, activeProjects, pendingApprovals, pendingPayments, unpaidProjects, failedAutomations, failedComms, agents, execToday, pipeline, payments] = await Promise.all([
     db.client.count({ where: { createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } }),
     db.client.count(),
@@ -28,6 +33,20 @@ export async function generateCeoReport(userId: string) {
     input: `Compose the executive daily report from this verified data:\n${summary}`,
     workflow: 'CEO_REPORT',
   })
-  await audit({ actor: `user:${userId}`, action: 'CEO_REPORT_GENERATED', details: { leads24h, totalClients } })
-  return run.ok ? run.output : summary
+  const content = run.ok ? run.output : summary
+  const durationMs = Date.now() - startedAt
+
+  // persist to the executive archive — the report trail
+  const saved = await db.ceoReport.create({
+    data: {
+      title: `CEO Daily Report — ${new Date().toDateString()}`,
+      content: content.slice(0, 100_000),
+      trigger,
+      generatedBy: 'RPT-039',
+      agentRuns: run.ok ? 1 : 0,
+      durationMs,
+    },
+  })
+  await audit({ actor: `user:${userId}`, action: 'CEO_REPORT_GENERATED', details: { leads24h, totalClients, trigger, reportId: saved.id, agentOk: run.ok } })
+  return { id: saved.id, content, agentRuns: run.ok ? 1 : 0, durationMs, trigger, generatedAt: saved.createdAt.toISOString() }
 }

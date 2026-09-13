@@ -10,6 +10,7 @@ import {
   Handshake,
   Loader2,
   RefreshCw,
+  Sparkles,
   Star,
   ThumbsDown,
   ThumbsUp,
@@ -18,13 +19,17 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api, useApi, fmtDateShort, type ReviewRow, type ReferralRow, type ReviewsResponse } from '@/lib/admin-client'
 import { SectionCard, EmptyState, KpiCard } from './shared/cards'
 import { StatusBadge } from './shared/StatusBadge'
 import { SCROLL_THIN } from './shared/styles'
 
-const STATUS_FILTERS = ['ALL', 'SUBMITTED', 'APPROVED', 'REJECTED', 'PENDING'] as const
+const STATUS_FILTERS = ['ALL', 'SUBMITTED', 'APPROVED', 'REJECTED', 'PENDING', 'WITHDRAWN'] as const
 
 function Stars({ rating, className = '' }: { rating?: number | null; className?: string }) {
   const n = Math.max(0, Math.min(5, Math.round(Number(rating ?? 0))))
@@ -45,6 +50,9 @@ export function ReviewsView() {
   const [statusFilter, setStatusFilter] = useState<string>('SUBMITTED')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [refBusyId, setRefBusyId] = useState<string | null>(null)
+  const [convertTarget, setConvertTarget] = useState<ReferralRow | null>(null)
+  const [convertForm, setConvertForm] = useState({ name: '', contact: '', message: '' })
+  const [converting, setConverting] = useState(false)
 
   const url = useMemo(
     () => `/api/admin/reviews${statusFilter !== 'ALL' ? `?status=${statusFilter}` : ''}`,
@@ -83,12 +91,37 @@ export function ReviewsView() {
     }
   }
 
+  function openConvert(referral: ReferralRow) {
+    setConvertTarget(referral)
+    setConvertForm({
+      name: referral.name ?? '',
+      contact: referral.contact ?? '',
+      message: '',
+    })
+  }
+
+  async function convertReferral() {
+    if (!convertTarget) return
+    setConverting(true)
+    try {
+      const res = await api.referralConvert(convertTarget.id, convertForm)
+      toast.success(res.message ?? `Converted — new client ${res.clientId ?? ''}`)
+      setConvertTarget(null)
+      refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Conversion failed')
+    } finally {
+      setConverting(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <KpiCard label="Awaiting Moderation" value={stats.SUBMITTED ?? 0} icon={Clock} tone="amber" loading={loading} />
         <KpiCard label="Published" value={stats.APPROVED ?? 0} icon={Globe2} tone="green" loading={loading} />
         <KpiCard label="Rejected" value={stats.REJECTED ?? 0} icon={ThumbsDown} tone="red" loading={loading} />
+        <KpiCard label="Withdrawn" value={stats.WITHDRAWN ?? 0} icon={X} tone="slate" loading={loading} />
         <KpiCard label="Referrals" value={referrals.length} icon={Users} tone="accent" loading={loading} />
       </div>
 
@@ -209,6 +242,10 @@ export function ReviewsView() {
                     <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400">
                       <Eye className="size-3" aria-hidden="true" /> Visible at #/work → Client Reviews
                     </span>
+                  ) : r.status === 'WITHDRAWN' ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+                      <X className="size-3" aria-hidden="true" /> Consent withdrawn by client{r.moderatedAt ? ` · ${fmtDateShort(r.moderatedAt)}` : ''} — unpublished, kept as private record
+                    </span>
                   ) : null}
                 </div>
               </article>
@@ -224,7 +261,7 @@ export function ReviewsView() {
 
       <SectionCard
         title="Referrals"
-        description="Real referrals submitted by clients via the portal. Track them from RECEIVED to CONVERTED."
+        description="Real referrals submitted by clients via the portal. Convert a referral into a live lead — the full intake pipeline runs with source=REFERRAL and the referrer credited."
       >
         {loading ? (
           <div className="space-y-2">
@@ -243,7 +280,11 @@ export function ReviewsView() {
             {referrals.map((f) => (
               <div
                 key={f.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3 transition-colors hover:border-slate-700"
+                className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:border-slate-700 ${
+                  f.status === 'CONVERTED'
+                    ? 'border-emerald-500/25 bg-emerald-500/[0.03]'
+                    : 'border-slate-800 bg-slate-900/40'
+                }`}
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-200">
@@ -252,20 +293,39 @@ export function ReviewsView() {
                   <p className="truncate text-[11px] text-slate-500">
                     {f.contact ?? '—'} · from {f.clientId} · {fmtDateShort(f.createdAt)}{f.notes ? ` · ${f.notes.slice(0, 80)}` : ''}
                   </p>
+                  {f.status === 'CONVERTED' && f.convertedClientIdCode ? (
+                    <p className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                      <Sparkles className="size-3" aria-hidden="true" />
+                      Became {f.convertedClientIdCode}{f.convertedClientName ? ` · ${f.convertedClientName}` : ''}{f.convertedAt ? ` · ${fmtDateShort(f.convertedAt)}` : ''}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={f.status} />
                   {f.status === 'RECEIVED' || f.status === 'REQUESTED' ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={refBusyId === f.id}
-                      onClick={() => setReferralStatus(f, 'CONVERTED')}
-                      className="border-slate-700 text-emerald-400 hover:border-emerald-500/40"
-                    >
-                      {refBusyId === f.id ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Handshake className="size-3.5" aria-hidden="true" />}
-                      Converted
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        disabled={refBusyId === f.id}
+                        onClick={() => openConvert(f)}
+                        title="Run the full intake pipeline for this referred contact (real Client ID, lead record, automation trail)"
+                        className="bg-[#009FE3] text-white hover:bg-[#009FE3]/85"
+                      >
+                        <Sparkles className="size-3.5" aria-hidden="true" />
+                        Convert to Lead
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={refBusyId === f.id}
+                        onClick={() => setReferralStatus(f, 'CONVERTED')}
+                        className="border-slate-700 text-slate-400 hover:border-slate-600"
+                        title="Mark converted without creating a lead record (legacy path)"
+                      >
+                        {refBusyId === f.id ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Handshake className="size-3.5" aria-hidden="true" />}
+                        Mark only
+                      </Button>
+                    </>
                   ) : null}
                   {f.status === 'CONVERTED' ? (
                     <Button
@@ -283,7 +343,66 @@ export function ReviewsView() {
             ))}
           </div>
         )}
+        <p className="mt-3 text-[11px] text-slate-500">
+          Convert to Lead runs the real intake pipeline — Client ID assignment, lead record, automation log, AI business detection queue — with attribution to the referring client.
+        </p>
       </SectionCard>
+
+      <Dialog open={Boolean(convertTarget)} onOpenChange={(open) => !converting && setConvertTarget(open ? convertTarget : null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Convert referral to lead</DialogTitle>
+            <DialogDescription>
+              {convertTarget
+                ? `${convertTarget.name ?? 'This contact'} was referred by ${convertTarget.clientName} (${convertTarget.clientId}). Converting runs the real intake pipeline — a new Client ID is issued with source REFERRAL.`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="convert-name">Referred person's name</Label>
+              <Input
+                id="convert-name"
+                value={convertForm.name}
+                onChange={(e) => setConvertForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Full name"
+                maxLength={120}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="convert-contact">Email or WhatsApp number</Label>
+              <Input
+                id="convert-contact"
+                value={convertForm.contact}
+                onChange={(e) => setConvertForm((f) => ({ ...f, contact: e.target.value }))}
+                placeholder="name@company.com or +8801XXXXXXXXX"
+                maxLength={200}
+              />
+              <p className="text-[11px] text-slate-500">Parsed automatically — email goes to the email channel, phone-looking input goes to WhatsApp.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="convert-message">First message (optional)</Label>
+              <Textarea
+                id="convert-message"
+                value={convertForm.message}
+                onChange={(e) => setConvertForm((f) => ({ ...f, message: e.target.value }))}
+                placeholder="Left blank, a referral context message is generated for you."
+                rows={3}
+                maxLength={2000}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertTarget(null)} disabled={converting} className="border-slate-700">
+              Cancel
+            </Button>
+            <Button onClick={convertReferral} disabled={converting || !convertForm.name.trim() || !convertForm.contact.trim()} className="bg-[#009FE3] text-white hover:bg-[#009FE3]/85">
+              {converting ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Sparkles className="size-4" aria-hidden="true" />}
+              Convert to Lead
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

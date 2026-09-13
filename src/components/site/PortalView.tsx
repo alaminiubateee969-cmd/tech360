@@ -16,7 +16,7 @@ import { toast } from 'sonner'
 import {
   LogOut, RefreshCw, ShieldCheck, FileText, CreditCard, MessageSquare,
   Download, KeyRound, Eye, Package, ArrowRight, CheckCircle2, Clock, Lock,
-  Star, Handshake, LinkIcon,
+  Star, Handshake, LinkIcon, Undo2,
 } from 'lucide-react'
 
 type PortalData = {
@@ -328,9 +328,12 @@ function ReviewCard({ review, stage, onDone }: { review: PortalData['review']; s
   const [content, setContent] = useState('')
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false)
+  const [resubmitting, setResubmitting] = useState(false)
 
   const eligible = ['REVIEW_REQUESTED', 'REFERRAL_REQUESTED', 'COMPLETED', 'CLOSED', 'PASSWORD_CHANGE', 'DELIVERY', 'HANDOVER'].includes(stage)
-  const submitted = review && ['SUBMITTED', 'APPROVED', 'REJECTED'].includes(review.status)
+  const submitted = review && !resubmitting && ['SUBMITTED', 'APPROVED', 'REJECTED', 'WITHDRAWN'].includes(review.status)
+  const withdrawn = review?.status === 'WITHDRAWN' && !resubmitting
 
   async function submit() {
     if (rating < 1) { toast.error('Please choose a star rating.'); return }
@@ -343,14 +346,51 @@ function ReviewCard({ review, stage, onDone }: { review: PortalData['review']; s
       })
       const j = await res.json().catch(() => ({})) as { error?: string; message?: string }
       if (!res.ok) toast.error(j.error ?? 'Submission failed.')
-      else { toast.success(j.message ?? 'Thank you — your review was submitted.'); onDone() }
+      else { toast.success(j.message ?? 'Thank you — your review was submitted.'); setResubmitting(false); onDone() }
+    } catch { toast.error('Connection problem. Please retry.') }
+    finally { setBusy(false) }
+  }
+
+  async function withdraw() {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/portal/review/withdraw', { method: 'POST' })
+      const j = await res.json().catch(() => ({})) as { error?: string; message?: string }
+      if (!res.ok) toast.error(j.error ?? 'Withdrawal failed.')
+      else {
+        toast.success(j.message ?? 'Your review consent is withdrawn.')
+        setConfirmWithdraw(false)
+        onDone()
+      }
     } catch { toast.error('Connection problem. Please retry.') }
     finally { setBusy(false) }
   }
 
   return (
     <SectionCard icon={<Star className="h-5 w-5" />} title="Share your experience">
-      {submitted ? (
+      {withdrawn ? (
+        <div className="space-y-3">
+          <p className="flex items-center gap-2 text-sm text-slate-600">
+            <Lock className="h-4 w-4 text-slate-400" /> Your review consent is withdrawn — nothing of yours is published on our website.
+          </p>
+          {review?.rating ? (
+            <div className="flex items-center gap-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star key={i} className={`h-4 w-4 ${i < review.rating! ? 'fill-slate-300 text-slate-300' : 'fill-slate-100 text-slate-200'}`} aria-hidden="true" />
+              ))}
+              <span className="ml-2 text-xs text-slate-400">kept as a private record</span>
+            </div>
+          ) : null}
+          {eligible ? (
+            <div className="rounded-xl bg-[#F4FAFF] p-3 text-xs leading-relaxed text-slate-600">
+              Changed your mind? You can submit a new review with fresh consent at any time.
+              <Button variant="outline" size="sm" className="ml-2 border-[#063B8F]/30 text-[#063B8F] hover:bg-[#063B8F]/5" onClick={() => { setRating(0); setContent(''); setConsent(false); setResubmitting(true) }}>
+                <Undo2 className="h-3.5 w-3.5" /> Write a new review
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : submitted ? (
         <div className="space-y-3">
           <p className="flex items-center gap-2 text-sm text-slate-600">
             {review?.status === 'APPROVED' ? <><CheckCircle2 className="h-4 w-4 text-[#18B83A]" /> Published on our website — thank you.</> : null}
@@ -364,6 +404,31 @@ function ReviewCard({ review, stage, onDone }: { review: PortalData['review']; s
             <span className="ml-2 text-xs text-slate-400">submitted {fmtDate(review?.createdAt)}</span>
           </div>
           {review?.content ? <blockquote className="border-l-2 border-[#E2E8F0] pl-3 text-sm italic leading-relaxed text-slate-600">“{review.content}”</blockquote> : null}
+          {review && (review.status === 'SUBMITTED' || review.status === 'APPROVED') ? (
+            <div className="space-y-2 border-t border-[#E2E8F0] pt-3">
+              {confirmWithdraw ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800" role="alert">
+                  <p className="font-medium">Withdraw your review consent?</p>
+                  <p className="mt-1">{review.status === 'APPROVED' ? 'Your review is currently live on bdtech360.com — withdrawing removes it immediately.' : 'Your review will not be published.'} Your review is kept as a private record and never displayed without consent again.</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setConfirmWithdraw(false)} disabled={busy} className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100">Keep my review</Button>
+                    <Button size="sm" onClick={withdraw} disabled={busy} className="bg-amber-600 text-white hover:bg-amber-700">
+                      {busy ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />} Yes, withdraw consent
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmWithdraw(true)}
+                  className="inline-flex items-center gap-1.5 rounded-sm text-xs text-slate-400 underline decoration-dotted underline-offset-2 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+                >
+                  <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  Withdraw my review consent (removes it from the website)
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
       ) : eligible ? (
         <div className="space-y-4">
@@ -397,7 +462,7 @@ function ReviewCard({ review, stage, onDone }: { review: PortalData['review']; s
           </div>
           <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-[#F4FAFF] p-3 text-xs leading-relaxed text-slate-600">
             <Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5 border-[#063B8F] data-[state=checked]:bg-[#063B8F]" aria-label="Consent to publish review" />
-            <span>I consent to my review, name and company being published on bdtech360.com. I can withdraw this via email anytime.</span>
+            <span>I consent to my review, name and company being published on bdtech360.com. I can withdraw this consent myself, right here in the portal, anytime.</span>
           </label>
           <Button onClick={submit} disabled={busy} className="w-full gap-2 bg-[#009FE3] hover:bg-[#063B8F]">
             <Star className="h-4 w-4" /> {busy ? 'Submitting…' : 'Submit review'}

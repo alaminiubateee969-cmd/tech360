@@ -2,10 +2,11 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText, audit } from '@/lib/security'
+import { isValidScheduleDate } from '@/lib/blog'
 
 export const dynamic = 'force-dynamic'
 
-const STATUSES = ['DRAFT', 'PUBLISHED']
+const STATUSES = ['DRAFT', 'SCHEDULED', 'PUBLISHED']
 const MAX_CONTENT = 60_000
 
 function slugify(input: string): string {
@@ -73,12 +74,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if (raw.status !== undefined) {
     const status = sanitizeText(raw.status, 20).toUpperCase()
-    if (!STATUSES.includes(status)) return Response.json({ error: 'status must be DRAFT or PUBLISHED' }, { status: 400 })
-    data.status = status
-    if (status === 'PUBLISHED' && post.status !== 'PUBLISHED') {
-      data.publishedAt = new Date() // publishing stamps the real publish time
+    if (!STATUSES.includes(status)) return Response.json({ error: 'status must be DRAFT, SCHEDULED or PUBLISHED' }, { status: 400 })
+    // scheduling: SCHEDULED requires a valid future publish time (new or already stored)
+    if (status === 'SCHEDULED') {
+      const candidate = raw.publishedAt !== undefined ? raw.publishedAt : (post.status === 'SCHEDULED' ? post.publishedAt : null)
+      if (!isValidScheduleDate(candidate)) {
+        return Response.json({ error: 'A valid future publish date is required to schedule (publishedAt).' }, { status: 400 })
+      }
+      data.status = status
+      data.publishedAt = new Date(candidate as string)
+    } else {
+      data.status = status
+      if (status === 'PUBLISHED' && post.status !== 'PUBLISHED') {
+        data.publishedAt = new Date() // publishing stamps the real publish time
+      }
+      if (status === 'DRAFT') data.publishedAt = new Date(0)
     }
-    if (status === 'DRAFT') data.publishedAt = new Date(0)
+  } else if (raw.publishedAt !== undefined && post.status === 'SCHEDULED') {
+    // rescheduling a scheduled post: the new date must stay in the future
+    if (!isValidScheduleDate(raw.publishedAt)) {
+      return Response.json({ error: 'A valid future publish date is required to reschedule.' }, { status: 400 })
+    }
+    data.publishedAt = new Date(raw.publishedAt as string)
   }
 
   const updated = await db.blogPost.update({ where: { id: post.id }, data })

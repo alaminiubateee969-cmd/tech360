@@ -227,7 +227,7 @@ export interface BlogPostRow {
 export interface BlogListResponse {
   posts: BlogPostRow[]
   total: number
-  stats: { total: number; published: number; drafts: number; views: number }
+  stats: { total: number; published: number; scheduled?: number; drafts: number; views: number }
 }
 export interface BlogMutationResponse {
   ok?: boolean
@@ -262,7 +262,19 @@ export interface ReferralRow {
   contact?: string | null
   notes?: string | null
   status: string
+  convertedClientId?: string | null
+  convertedClientIdCode?: string | null
+  convertedClientName?: string | null
+  convertedAt?: string | null
   createdAt: string
+}
+export interface ReferralConvertResponse {
+  ok?: boolean
+  message?: string
+  clientId?: string
+  clientRowId?: string
+  referral?: ReferralRow
+  error?: string
 }
 export interface ReviewsResponse {
   reviews: ReviewRow[]
@@ -272,6 +284,31 @@ export interface ReviewsResponse {
 export interface ReviewModerateResponse {
   ok?: boolean
   review?: ReviewRow
+  error?: string
+}
+
+// ---------------- CEO Report archive ----------------
+export interface ReportRow {
+  id: string
+  title: string
+  trigger: string
+  generatedBy: string
+  agentRuns: number
+  durationMs?: number | null
+  createdAt: string
+}
+export interface ReportArchiveResponse {
+  reports: ReportRow[]
+  total: number
+  stats: { scheduled: number; manual: number }
+  latest?: (ReportRow & { hasContent?: boolean }) | null
+}
+export interface CeoReportResponse {
+  report?: string
+  id?: string
+  agentRuns?: number
+  durationMs?: number
+  generatedAt?: string
   error?: string
 }
 
@@ -789,13 +826,18 @@ export const api = {
     params: { language?: string; aspect?: string; durationSec?: number }
   }) => fetchJson<ContentGenerateResponse>('/api/admin/content/generate', { method: 'POST', body }),
   ceoReport: () => fetchJson<{ report?: string }>('/api/admin/reports/ceo'),
+  reportArchive: () => fetchJson<ReportArchiveResponse>('/api/admin/reports'),
+  reportGet: (id: string) =>
+    fetchJson<{ report: ReportRow & { content: string } }>(`/api/admin/reports/${encodeURIComponent(id)}`),
+  generateCeoReport: () =>
+    fetchJson<CeoReportResponse>('/api/admin/reports/ceo', { method: 'POST' }),
 
   // ---------------- Blog Studio ----------------
   blogList: (opts?: { q?: string; status?: string }) =>
     fetchJson<BlogListResponse>(`/api/admin/blog${buildBlogQuery(opts)}`),
   blogGet: (id: string) =>
     fetchJson<{ post: BlogPostRow }>(`/api/admin/blog/${encodeURIComponent(id)}`),
-  blogCreate: (body: { title: string; content: string; status?: string; excerpt?: string; category?: string; author?: string; tags?: string[]; slug?: string; coverImage?: string }) =>
+  blogCreate: (body: { title: string; content: string; status?: string; excerpt?: string; category?: string; author?: string; tags?: string[]; slug?: string; coverImage?: string; publishedAt?: string }) =>
     fetchJson<BlogMutationResponse>('/api/admin/blog', { method: 'POST', body }),
   blogUpdate: (id: string, body: Record<string, unknown>) =>
     fetchJson<BlogMutationResponse>(`/api/admin/blog/${encodeURIComponent(id)}`, { method: 'PATCH', body }),
@@ -814,6 +856,11 @@ export const api = {
     fetchJson<{ ok?: boolean; error?: string }>(`/api/admin/referrals/${encodeURIComponent(id)}`, {
       method: 'POST',
       body: { status, notes },
+    }),
+  referralConvert: (id: string, body: { name?: string; contact?: string; email?: string; whatsapp?: string; message?: string }) =>
+    fetchJson<ReferralConvertResponse>(`/api/admin/referrals/${encodeURIComponent(id)}/convert`, {
+      method: 'POST',
+      body,
     }),
 }
 

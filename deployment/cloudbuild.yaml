@@ -30,7 +30,7 @@ steps:
       - '--min-instances=0'
       - '--max-instances=10'
       - '--set-env-vars=NODE_ENV=production'
-      - '--set-secrets=DATABASE_URL=tech360-database-url:latest,ADMIN_EMAIL=tech360-admin-email:latest,ADMIN_PASSWORD=tech360-admin-password:latest,N8N_WEBHOOK_SECRET=tech360-n8n-secret:latest,WHATSAPP_TOKEN=tech360-whatsapp-token:latest,WHATSAPP_PHONE_NUMBER_ID=tech360-whatsapp-phone-id:latest,WHATSAPP_VERIFY_TOKEN=tech360-whatsapp-verify:latest,SMTP_HOST=tech360-smtp-host:latest,SMTP_PORT=tech360-smtp-port:latest,SMTP_USER=tech360-smtp-user:latest,SMTP_PASS=tech360-smtp-pass:latest,SMTP_FROM=tech360-smtp-from:latest,APP_PUBLIC_URL=tech360-public-url:latest'
+      - '--set-secrets=DATABASE_URL=tech360-database-url:latest,ADMIN_EMAIL=tech360-admin-email:latest,ADMIN_PASSWORD=tech360-admin-password:latest,N8N_WEBHOOK_SECRET=tech360-n8n-secret:latest,OPS_SECRET=tech360-ops-secret:latest,WHATSAPP_TOKEN=tech360-whatsapp-token:latest,WHATSAPP_PHONE_NUMBER_ID=tech360-whatsapp-phone-id:latest,WHATSAPP_VERIFY_TOKEN=tech360-whatsapp-verify:latest,SMTP_HOST=tech360-smtp-host:latest,SMTP_PORT=tech360-smtp-port:latest,SMTP_USER=tech360-smtp-user:latest,SMTP_PASS=tech360-smtp-pass:latest,SMTP_FROM=tech360-smtp-from:latest,APP_PUBLIC_URL=tech360-public-url:latest'
 substitutions:
   _REGION: us-central1
 images:

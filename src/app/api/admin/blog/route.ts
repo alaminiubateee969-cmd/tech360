@@ -2,10 +2,11 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText, audit } from '@/lib/security'
+import { isValidScheduleDate } from '@/lib/blog'
 
 export const dynamic = 'force-dynamic'
 
-const STATUSES = ['DRAFT', 'PUBLISHED']
+const STATUSES = ['DRAFT', 'SCHEDULED', 'PUBLISHED']
 const MAX_CONTENT = 60_000
 
 function slugify(input: string): string {
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
   const skip = Math.max(0, Number(url.searchParams.get('skip') ?? 0) || 0)
 
   const where = {
-    ...(status === 'DRAFT' || status === 'PUBLISHED' ? { status } : {}),
+    ...(status === 'DRAFT' || status === 'PUBLISHED' || status === 'SCHEDULED' ? { status } : {}),
     ...(q ? { OR: [{ title: { contains: q } }, { category: { contains: q } }, { author: { contains: q } }] } : {}),
   }
 
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest) {
     db.blogPost.aggregate({ _count: true, _sum: { views: true } }),
   ])
   const publishedCount = await db.blogPost.count({ where: { status: 'PUBLISHED' } })
+  const scheduledCount = await db.blogPost.count({ where: { status: 'SCHEDULED' } })
 
   return Response.json({
     posts: posts.map((p) => ({
@@ -59,7 +61,7 @@ export async function GET(req: NextRequest) {
       publishedAt: p.publishedAt, updatedAt: p.updatedAt, createdAt: p.createdAt,
     })),
     total,
-    stats: { total: stats._count, published: publishedCount, drafts: stats._count - publishedCount, views: stats._sum.views ?? 0 },
+    stats: { total: stats._count, published: publishedCount, scheduled: scheduledCount, drafts: stats._count - publishedCount - scheduledCount, views: stats._sum.views ?? 0 },
   })
 }
 
@@ -80,7 +82,15 @@ export async function POST(req: NextRequest) {
 
   if (title.length < 5) return Response.json({ error: 'Title must be at least 5 characters' }, { status: 400 })
   if (content.length < 100) return Response.json({ error: 'Content must be at least 100 characters' }, { status: 400 })
-  if (!STATUSES.includes(status)) return Response.json({ error: 'status must be DRAFT or PUBLISHED' }, { status: 400 })
+  if (!STATUSES.includes(status)) return Response.json({ error: 'status must be DRAFT, SCHEDULED or PUBLISHED' }, { status: 400 })
+
+  // scheduling: SCHEDULED requires a valid future publish time
+  if (status === 'SCHEDULED') {
+    if (!isValidScheduleDate(raw.publishedAt)) {
+      return Response.json({ error: 'A valid future publish date is required to schedule (publishedAt, ISO or datetime-local).' }, { status: 400 })
+    }
+  }
+  const publishedAt = status === 'PUBLISHED' ? new Date() : status === 'SCHEDULED' ? new Date(raw.publishedAt as string) : new Date(0)
 
   const baseSlug = sanitizeText(raw.slug, 100).trim() || slugify(title)
   const slug = await uniqueSlug(baseSlug || slugify(title))
@@ -90,7 +100,7 @@ export async function POST(req: NextRequest) {
       slug, title, content, status, excerpt: excerpt || content.slice(0, 180).replace(/\s+\S*$/, '…'),
       category: category || 'Engineering', author, coverImage: coverImage || null,
       tags: JSON.stringify(tagsRaw.slice(0, 8)),
-      publishedAt: status === 'PUBLISHED' ? new Date() : new Date(0),
+      publishedAt,
     },
   })
 

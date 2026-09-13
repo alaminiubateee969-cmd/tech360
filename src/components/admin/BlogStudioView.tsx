@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
+  CalendarClock,
   Eye,
   FileEdit,
   Globe2,
@@ -38,7 +39,8 @@ interface EditorState {
   author: string
   tags: string
   content: string
-  status: 'DRAFT' | 'PUBLISHED'
+  status: 'DRAFT' | 'SCHEDULED' | 'PUBLISHED'
+  scheduleAt: string // datetime-local value for scheduled publishing
 }
 
 const EMPTY_EDITOR: EditorState = {
@@ -51,9 +53,24 @@ const EMPTY_EDITOR: EditorState = {
   tags: '',
   content: '',
   status: 'DRAFT',
+  scheduleAt: '',
 }
 
 const CATEGORY_SUGGESTIONS = ['Engineering', 'Automation', 'Architecture', 'Security', 'Process', 'Business', 'AI & Agents']
+
+function toLocalInputValue(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime()) || d.getFullYear() < 2001) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function isFutureLocalDatetime(value: string): boolean {
+  if (!value) return false
+  const d = new Date(value)
+  return !Number.isNaN(d.getTime()) && d.getTime() > Date.now()
+}
 
 export function BlogStudioView() {
   const [query, setQuery] = useState('')
@@ -105,7 +122,8 @@ export function BlogStudioView() {
         author: p.author,
         tags: parseTags(p.tags),
         content: p.content ?? '',
-        status: (p.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'),
+        status: (p.status === 'PUBLISHED' ? 'PUBLISHED' : p.status === 'SCHEDULED' ? 'SCHEDULED' : 'DRAFT'),
+        scheduleAt: p.status === 'SCHEDULED' ? toLocalInputValue(p.publishedAt) : '',
       })
       setEditorOpen(true)
     } catch (err) {
@@ -115,8 +133,8 @@ export function BlogStudioView() {
     }
   }
 
-  async function saveEditor(publish?: boolean) {
-    const status = publish === true ? 'PUBLISHED' : publish === false ? 'DRAFT' : editor.status
+  async function saveEditor(mode: 'draft' | 'publish' | 'schedule' | 'save' = 'save') {
+    const status = mode === 'draft' ? 'DRAFT' : mode === 'publish' ? 'PUBLISHED' : mode === 'schedule' ? 'SCHEDULED' : editor.status
     if (editor.title.trim().length < 5) {
       toast.error('Title must be at least 5 characters.')
       return
@@ -125,10 +143,14 @@ export function BlogStudioView() {
       toast.error('Content must be at least 100 characters (currently ' + editor.content.trim().length + ').')
       return
     }
+    if (status === 'SCHEDULED' && !isFutureLocalDatetime(editor.scheduleAt)) {
+      toast.error('Pick a valid future date & time to schedule this post.')
+      return
+    }
     setBusy(true)
     try {
       const tags = editor.tags.split(',').map((t) => t.trim()).filter(Boolean)
-      const body = {
+      const body: Record<string, unknown> = {
         title: editor.title,
         slug: editor.slug.trim() || undefined,
         excerpt: editor.excerpt,
@@ -138,8 +160,23 @@ export function BlogStudioView() {
         content: editor.content,
         status,
       }
-      const res = editor.id ? await api.blogUpdate(editor.id, body) : await api.blogCreate(body)
-      toast.success(editor.id ? (status === 'PUBLISHED' ? 'Post updated and published.' : 'Post saved.') : 'Post created.')
+      if (status === 'SCHEDULED') body.publishedAt = new Date(editor.scheduleAt).toISOString()
+      const res = editor.id ? await api.blogUpdate(editor.id, body) : await api.blogCreate({
+        title: editor.title,
+        content: editor.content,
+        status,
+        excerpt: editor.excerpt || undefined,
+        category: editor.category,
+        author: editor.author,
+        tags,
+        slug: editor.slug.trim() || undefined,
+        publishedAt: status === 'SCHEDULED' ? new Date(editor.scheduleAt).toISOString() : undefined,
+      })
+      toast.success(
+        status === 'SCHEDULED'
+          ? `Scheduled — goes live ${new Date(editor.scheduleAt).toLocaleString()}.`
+          : editor.id ? (status === 'PUBLISHED' ? 'Post updated and published.' : 'Post saved.') : 'Post created.',
+      )
       void res
       setEditorOpen(false)
       refresh()
@@ -212,9 +249,15 @@ export function BlogStudioView() {
       header: 'Published',
       cell: (p) => (
         <span className="text-xs text-slate-400">
-          {p.status === 'PUBLISHED' && p.publishedAt && new Date(p.publishedAt).getFullYear() > 2000
-            ? fmtDateShort(p.publishedAt)
-            : '—'}
+          {p.status === 'SCHEDULED' && p.publishedAt && new Date(p.publishedAt).getFullYear() > 2001
+            ? (
+              <span className="inline-flex items-center gap-1 text-amber-400">
+                <CalendarClock className="size-3" aria-hidden="true" /> {fmtDateShort(p.publishedAt)}
+              </span>
+            )
+            : p.status === 'PUBLISHED' && p.publishedAt && new Date(p.publishedAt).getFullYear() > 2000
+              ? fmtDateShort(p.publishedAt)
+              : '—'}
         </span>
       ),
       className: 'hidden lg:table-cell',
@@ -239,7 +282,8 @@ export function BlogStudioView() {
             size="sm"
             disabled={busy}
             onClick={() => quickToggle(p)}
-            aria-label={p.status === 'PUBLISHED' ? `Unpublish ${p.title}` : `Publish ${p.title}`}
+            aria-label={p.status === 'PUBLISHED' ? `Unpublish ${p.title}` : p.status === 'SCHEDULED' ? `Publish ${p.title} now (skip the schedule)` : `Publish ${p.title}`}
+            title={p.status === 'SCHEDULED' ? 'Publish now — skips the scheduled time' : undefined}
             className="size-8 p-0 text-slate-400 hover:text-emerald-400"
           >
             {p.status === 'PUBLISHED' ? <FileEdit className="size-3.5" aria-hidden="true" /> : <Globe2 className="size-3.5" aria-hidden="true" />}
@@ -273,16 +317,17 @@ export function BlogStudioView() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <KpiCard label="Total Posts" value={stats.total} icon={Newspaper} tone="accent" loading={loading} />
         <KpiCard label="Published" value={stats.published} icon={Globe2} tone="green" loading={loading} />
-        <KpiCard label="Drafts" value={stats.drafts} icon={FileEdit} tone="amber" loading={loading} />
+        <KpiCard label="Scheduled" value={stats.scheduled ?? 0} icon={CalendarClock} tone="amber" loading={loading} sub="Auto-publish at their time" />
+        <KpiCard label="Drafts" value={stats.drafts} icon={FileEdit} tone="slate" loading={loading} />
         <KpiCard label="Total Views" value={stats.views.toLocaleString()} icon={Eye} tone="slate" loading={loading} />
       </div>
 
       <SectionCard
         title="Blog Studio"
-        description="Write, edit and publish insights. Published posts go live on the public site instantly (honest statuses only — drafts stay private)."
+        description="Write, edit, schedule and publish insights. Scheduled posts go live automatically at their authored time; drafts stay private."
         actions={
           <>
             <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="border-slate-700">
@@ -312,6 +357,7 @@ export function BlogStudioView() {
             <SelectContent>
               <SelectItem value="ALL">All statuses</SelectItem>
               <SelectItem value="PUBLISHED">Published</SelectItem>
+              <SelectItem value="SCHEDULED">Scheduled</SelectItem>
               <SelectItem value="DRAFT">Drafts</SelectItem>
             </SelectContent>
           </Select>
@@ -445,6 +491,26 @@ export function BlogStudioView() {
                 <p className="text-[11px] text-amber-400">Minimum 100 characters — currently {editor.content.length}.</p>
               ) : null}
             </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="post-schedule" className="flex items-center gap-1.5 text-xs text-slate-400">
+                <CalendarClock className="size-3.5" aria-hidden="true" />
+                Schedule publish (optional)
+              </Label>
+              <Input
+                id="post-schedule"
+                type="datetime-local"
+                value={editor.scheduleAt}
+                onChange={(e) => setEditor({ ...editor, scheduleAt: e.target.value })}
+                className={`${INPUT} sm:max-w-[260px]`}
+                aria-describedby="post-schedule-hint"
+              />
+              <p id="post-schedule-hint" className="text-[11px] text-slate-500">
+                {editor.scheduleAt && isFutureLocalDatetime(editor.scheduleAt)
+                  ? `Goes live automatically ${new Date(editor.scheduleAt).toLocaleString()} — the autonomous loop publishes it and notifies the team.`
+                  : 'Pick a future date & time, then press Schedule — the post goes live by itself at that moment.'}
+              </p>
+            </div>
           </div>
 
           <DialogFooter className="gap-2">
@@ -455,7 +521,7 @@ export function BlogStudioView() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => saveEditor(false)}
+                onClick={() => saveEditor('draft')}
                 disabled={busy}
                 className="border-slate-700"
               >
@@ -463,7 +529,18 @@ export function BlogStudioView() {
                 Save Draft
               </Button>
             ) : null}
-            <Button size="sm" onClick={() => saveEditor(true)} disabled={busy} className="bg-[#009FE3] text-white hover:bg-[#009FE3]/85">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => saveEditor('schedule')}
+              disabled={busy || !isFutureLocalDatetime(editor.scheduleAt)}
+              title={isFutureLocalDatetime(editor.scheduleAt) ? 'Auto-publish at the chosen time' : 'Set a future date & time above first'}
+              className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 disabled:opacity-40"
+            >
+              {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <CalendarClock className="size-3.5" aria-hidden="true" />}
+              Schedule
+            </Button>
+            <Button size="sm" onClick={() => saveEditor('publish')} disabled={busy} className="bg-[#009FE3] text-white hover:bg-[#009FE3]/85">
               {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Globe2 className="size-3.5" aria-hidden="true" />}
               {editor.id ? (editor.status === 'PUBLISHED' ? 'Save (Published)' : 'Publish Now') : 'Publish Now'}
             </Button>

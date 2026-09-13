@@ -248,3 +248,49 @@ Stage Summary:
 - Platform now covers the complete post-delivery growth loop: delivery → review request → client review/referral via portal → moderation → public social proof → referral conversion tracking.
 - Open risks: (1) dev-server OOM root-caused and mitigated (turbopackMemoryLimit) but memory pressure with chrome+server concurrent remains possible — if it recurs, close agent-browser sessions between passes or lower the limit; (2) processes started from agent Bash commands die at command-exit — use the subshell pattern when restarting; (3) review consent withdrawal (via email) is policy-level, not yet a portal self-service action; (4) referrals lack a "referred lead → new Client" conversion link (manual intake still).
 - Next-round candidates: portal consent-withdrawal self-service; referral→lead conversion button in admin; blog post scheduling (future publish date); notifications over websocket instead of 60s polling; CEO report scheduling surfaced in Reports view.
+
+---
+Task ID: cron-round-4 (webDevReview cycle)
+Agent: main (autonomous review)
+Task: QA sweep · production autonomy endpoint · CEO report archive · referral→lead conversion · blog scheduling · portal consent withdrawal
+
+Work Log:
+- QA ASSESSMENT (agent-browser): platform stable — homepage/admin/portal render real data, all 19 admin views click through with ZERO console errors, mobile 390px clean (home + portal), lint clean, health green (AI-Ops loop ACTIVE). Dev server had crashed again (OOM, 4th occurrence, known risk) — restarted with the subshell pattern, healthy since.
+- FOCUS SELECTED from worklog next-round candidates + gap analysis: the autonomous AI operations loop only existed in the dev mini-service — on production Cloud Run nothing would trigger it. Plus four unfinished loops: CEO reports never persisted, referrals couldn't become real clients, blog had no scheduling, portal review consent could only be withdrawn by email.
+- PRODUCTION AUTONOMY (the big one):
+  - src/lib/ops-actions.ts (NEW): all loop actions extracted from the act route into a shared lib — single source of truth. Added PUBLISH_DUE_BLOG_POSTS action (promotes due SCHEDULED posts + notifies).
+  - src/lib/ops-loop.ts (NEW): the full in-process cycle — opsScan() (detect), recordHeartbeat(), cycleThrottled(), runOpsCycle() (decide → execute → learn → log, incl. idempotent daily CEO report at 08:00+ Asia/Dhaka persisted to the archive).
+  - POST/GET /api/ops/cycle (NEW): OPS_SECRET-authed production trigger with a 45s throttle guard so 1-minute schedulers never stack cycles; GET returns last-cycle state (read-only).
+  - /api/ops/act + /api/ops/scan + /api/ops/heartbeat refactored to thin wrappers over the shared libs (behavior identical, LOG_CYCLE now carries trigger + audit).
+  - mini-services/ai-ops rewritten: now just triggers POST /api/ops/cycle every 90s and keeps its health surface — dev and production run the EXACT same loop code.
+  - deployment: deploy.sh now generates the tech360-ops-secret, creates/updates the Cloud Scheduler job (every minute, x-ops-secret header, Asia/Dhaka, 300s deadline); cloudbuild.yaml wires OPS_SECRET from Secret Manager; NEW deployment/scheduler.md documents the whole setup + guardrails + alternatives.
+  - VERIFIED: forced cycle #167 ran in-process (scan/learn/log all real); throttle correctly skipped a 2nd call; mini-service picked up the endpoint (cycle #168 via platform, later cycles: "scored TECH-2026-000002", "published 1 scheduled post(s)").
+- CEO REPORT ARCHIVE:
+  - Prisma CeoReport model (title/content/trigger MANUAL|SCHEDULED/generatedBy/agentRuns/durationMs/createdAt, indexed) — db pushed non-destructively.
+  - generateCeoReport(userId, trigger) now PERSISTS every report and returns provenance; admin route POST (and back-compat GET) returns id/agentRuns/durationMs.
+  - NEW GET /api/admin/reports (archive list + stats) and GET /api/admin/reports/[id] (full content).
+  - ReportsView rebuilt: 4 KPIs (archive/scheduled/manual/agent), Current Report viewer with trigger badge + compile time, Report Archive table (click any row to read it) with per-row provenance; generate button archives automatically.
+  - VERIFIED: generated live → "1 agent execution · 2.1s · Manual" row appeared; archive row click loads full report.
+- REFERRAL → LEAD CONVERSION (closes the growth loop):
+  - Schema: Referral.convertedClientId + convertedClient relation (+ Client.referralsWon back-relation), convertedAt; reviews API returns conversion attribution.
+  - NEW POST /api/admin/referrals/[id]/convert: runs the REAL intake pipeline (journey.intakeLead with source=REFERRAL, referrer tracked in message + tracking), links the referral to the client it produced, 409 on double-convert, notification + audit + error-log on failure.
+  - ReviewsView: "Convert to Lead" primary button (dialog with prefilled name/contact parsed email-vs-phone, optional first message) + "Mark only" legacy path; CONVERTED rows show a green "Became TECH-…" attribution chip; WITHDRAWN status filter + KPI added.
+  - VERIFIED E2E: converted the Chittagong Marine Supplies referral → TECH-2026-000002 created (Leads view: source REFERRAL, stage Business Identified — AI detection ran) → attribution chip on the referral row → the ops loop autonomously scored the new lead in the next cycle.
+- BLOG POST SCHEDULING:
+  - BlogPost status now DRAFT | SCHEDULED | PUBLISHED; src/lib/blog.ts (NEW): publishDueBlogPosts() + isValidScheduleDate().
+  - Admin blog POST/PATCH accept status SCHEDULED with a validated future publishedAt (reschedule supported); list/stats include scheduled counts.
+  - Public /api/blog + /api/blog/[slug] defensively promote due posts before serving (belt & braces with the ops cycle action).
+  - BlogStudioView: schedule datetime picker with live hint, Schedule footer button (amber, disabled until valid), SCHEDULED chip + scheduled date column, scheduled KPI, publish-now override on scheduled rows, filter option.
+  - VERIFIED E2E: created post scheduled +2min → SCHEDULED in studio + NOT on public blog → autonomous loop published it at the authored second (publishedAt = exactly 01:29:55.228) → live + fully readable on public blog → "1 scheduled post published" notification.
+- PORTAL REVIEW CONSENT WITHDRAWAL (self-service right-to-be-forgotten):
+  - NEW POST /api/portal/review/withdraw (portal-session auth, rate-limited): consent=false, published=false, status=WITHDRAWN, moderatedBy='client-withdrawal', automation log + audit + admin notification (WARNING if it was live).
+  - PortalView ReviewCard: withdrawn state (honest copy + private-record note + resubmit CTA), "Withdraw my review consent" affordance under submitted/approved reviews with amber confirm panel ("Keep my review" / "Yes, withdraw consent"), resubmission form switch; consent label now points to self-service (not email).
+  - VERIFIED E2E: withdraw → public /api/reviews 1→0 instantly, homepage reviews section hidden entirely, admin shows WITHDRAWN + accountability → resubmit 5★ with consent from portal → admin Approve & Publish → live on public site again.
+- STYLING (mandatory): report archive table with active-row highlight + hover tints; conversion dialog + attribution chips in brand green; scheduled-state amber design language (chip, KPI, button, hint); portal withdraw flow in warm amber confirm panel with focus rings; all new interactive elements keyboard-accessible with aria labels/hints.
+
+Stage Summary:
+- All five features verified E2E in the browser with real DB records and real autonomous AI execution at every step; lint clean, tsc clean (src), health green (loop ACTIVE cycle #180), mobile 390px clean, console error-free.
+- The autonomous engine now ships to production: one code path (src/lib/ops-loop.ts) runs in dev (mini-service trigger) AND Cloud Run (Cloud Scheduler → /api/ops/cycle), throttled, audited, with the daily CEO briefing archived automatically.
+- Honest states preserved: NOT_CONFIGURED channels unchanged; empty review/archive states show honest copy; no fabricated anything.
+- Open risks: (1) dev-server OOM killed the process once this round (4th time) — mitigated before, but if it recurs consider lowering turbopackMemoryLimit further or closing agent-browser between passes; (2) datetime-local input cannot be automated via fill (native widget) — schedule UI was validated via API + display, manual mouse path works; (3) Withdrawn reviews are retained as private records by design — deletion is the documented email policy path.
+- Next-round candidates: notifications over websocket (replace 60s polling), agent execution evidence CSV → scheduled weekly email to admin (needs SMTP), knowledge base semantic search upgrades, portal 2FA for HIGHLY_SENSITIVE clients, per-client document uploads in portal, error-log auto-resolve retry policies surfaced in UI.
