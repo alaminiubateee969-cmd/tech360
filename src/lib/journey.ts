@@ -777,8 +777,22 @@ export async function confirmDelivery(clientRowId: string, answers: { received: 
 // STEP 12 — Optional review/referral + closure
 // ------------------------------------------------------------
 export async function requestReviewAndReferral(clientRowId: string) {
-  const client = await db.client.findUnique({ where: { id: clientRowId } })
+  const client = await db.client.findUnique({ where: { id: clientRowId }, include: { projects: { orderBy: { createdAt: 'desc' }, take: 1 } } })
   if (!client) throw new Error('Client not found')
+
+  // Create the real Review slot (client submits content via portal → admin moderates)
+  const projectId = client.projects[0]?.id ?? null
+  const existingReview = await db.review.findFirst({ where: { clientId: client.id } })
+  const review = existingReview
+    ? await db.review.update({ where: { id: existingReview.id }, data: { status: existingReview.status === 'PENDING' ? 'PENDING' : existingReview.status } })
+    : await db.review.create({ data: { clientId: client.id, projectId, status: 'PENDING', published: false, consent: false } })
+
+  // Create the real Referral record (client submits via portal → admin tracks conversion)
+  const existingReferral = await db.referral.findFirst({ where: { clientId: client.id } })
+  const referral = existingReferral
+    ? existingReferral
+    : await db.referral.create({ data: { clientId: client.id, status: 'REQUESTED', notes: 'Requested after delivery confirmation' } })
+
   await setStage(client.id, 'REVIEW_REQUESTED', 'Review requested (optional)')
   if (client.email) {
     await sendCommunication({ clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'How was your experience with Tech360?', body: emailTemplate('REVIEW_REQUEST', { name: client.name }).body, agentCode: 'RSK-036' })
@@ -787,7 +801,8 @@ export async function requestReviewAndReferral(clientRowId: string) {
   if (client.email) {
     await sendCommunication({ clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'Know a business that needs software?', body: emailTemplate('REFERRAL_REQUEST', { name: client.name }).body, agentCode: 'RSK-036' })
   }
-  return { ok: true }
+  await rememberMemory({ scope: 'CLIENT', key: `review-request:${client.id}`, content: `Review + referral requested after delivery. Review slot ${review.id} (PENDING), referral record ${referral.id} (REQUESTED). Client submits via portal.`, clientId: client.id, importance: 6 })
+  return { ok: true, reviewId: review.id, referralId: referral.id, projectId }
 }
 
 export async function closeProject(projectId: string, actor: string) {

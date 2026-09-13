@@ -23,7 +23,7 @@ const RED_SET = new Set([
 ])
 const BLUE_SET = new Set([
   'RUNNING', 'IN_PROGRESS', 'REVIEW', 'NEW', 'VIEWED', 'CLIENT_REVIEW', 'RECEIVED',
-  'CONTACTED', 'DEVELOPMENT', 'TESTING',
+  'CONTACTED', 'DEVELOPMENT', 'TESTING', 'SUBMITTED',
 ])
 
 const TONE_CLASSES: Record<StatusTone, string> = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CircleAlert, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,51 @@ interface BlogPost {
   author: string;
   publishedAt: string;
   views?: number;
+}
+
+/* ------------------------------------------------------------------ */
+/* Reading progress — rAF-driven, fixed brand bar, zero re-renders    */
+/* ------------------------------------------------------------------ */
+
+function ReadingProgress() {
+  const barRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const doc = document.documentElement;
+      const scrollable = doc.scrollHeight - window.innerHeight;
+      const pct = scrollable > 0 ? Math.min(100, Math.max(0, (window.scrollY / scrollable) * 100)) : 0;
+      bar.style.width = `${pct.toFixed(1)}%`;
+    };
+    const onScroll = () => {
+      if (!raf) raf = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-x-0 top-0 z-[60] h-[3px] bg-transparent"
+      role="progressbar"
+      aria-label="Article reading progress"
+    >
+      <div
+        ref={barRef}
+        className="h-full w-0 bg-gradient-to-r from-[#009FE3] via-[#18B83A] to-[#009FE3] transition-[width] duration-75 ease-linear"
+      />
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -297,6 +342,7 @@ export default function BlogPostView({ slug }: { slug: string }) {
         </section>
       ) : (
         <article className="bg-white">
+          <ReadingProgress />
           <div className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
             {header}
             <Reveal>

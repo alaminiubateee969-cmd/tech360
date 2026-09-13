@@ -5,7 +5,7 @@ import { readJson, sanitizeText, audit } from '@/lib/security'
 import {
   detectBusiness, recommendPlan, askScopeQuestions, submitScope, generatePreview,
   requestPayment, recordPayment, verifyPayment, activateProject, prepareHandover,
-  releaseHandover, closeProject, clientScopeDecision,
+  releaseHandover, closeProject, clientScopeDecision, requestReviewAndReferral,
 } from '@/lib/journey'
 
 export const dynamic = 'force-dynamic'
@@ -117,6 +117,18 @@ export async function POST(req: NextRequest) {
         const r13 = await closeProject(projectId, g.user.email)
         result = r13 as unknown as Record<string, unknown>
         message = 'Project closed and completed.'
+        break
+      }
+      case 'REQUEST_REVIEW': {
+        const r14 = await requestReviewAndReferral(client.id)
+        result = r14 as unknown as Record<string, unknown>
+        message = 'Review + referral requested. Real Review/Referral records created; client submits via portal, admin moderates.'
+        break
+      }
+      case 'REQUEST_REFERRAL': {
+        const r15 = await requestReviewAndReferral(client.id)
+        result = r15 as unknown as Record<string, unknown>
+        message = 'Referral requested. Client can submit a referral from the portal.'
         break
       }
       default:

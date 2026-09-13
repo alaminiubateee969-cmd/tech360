@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -534,6 +534,107 @@ function SelectedWork() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Client reviews (real only — hidden until a client review is         */
+/* submitted, moderated and consented; never fabricated)              */
+/* ------------------------------------------------------------------ */
+
+interface PublicReviewItem {
+  id: string;
+  name: string;
+  businessName?: string | null;
+  country?: string | null;
+  projectName?: string | null;
+  rating: number;
+  content: string;
+  date: string;
+}
+
+function ClientReviews() {
+  const [reviews, setReviews] = useState<PublicReviewItem[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const ctrl = new AbortController();
+    fetch("/api/reviews", { signal: ctrl.signal })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("failed"))))
+      .then((json: { reviews?: PublicReviewItem[] }) => {
+        if (active) setReviews(Array.isArray(json.reviews) ? json.reviews : []);
+      })
+      .catch(() => {
+        if (active) setReviews([]);
+      });
+    return () => {
+      active = false;
+      ctrl.abort();
+    };
+  }, []);
+
+  if (!reviews || reviews.length === 0) return null; // honest: no fabricated testimonials
+
+  const initials = (name: string) =>
+    name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? "")
+      .join("");
+
+  return (
+    <section aria-labelledby="reviews-heading" className="bg-[#F4FAFF]">
+      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <SectionHeading
+          id="reviews-heading"
+          eyebrow="Client reviews"
+          title="What clients say after delivery"
+          description="Every review below was submitted by a real client after project delivery, with their explicit consent to publish — nothing here is written by us."
+        />
+        <RevealList
+          className={
+            reviews.length === 1
+              ? "mt-12 mx-auto grid max-w-xl grid-cols-1 gap-6"
+              : reviews.length === 2
+                ? "mt-12 mx-auto grid max-w-3xl grid-cols-1 gap-6 md:grid-cols-2"
+                : "mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+          }
+        >
+          {reviews.slice(0, 6).map((r) => (
+            <RevealItem key={r.id} className="h-full">
+              <Card className="relative flex h-full flex-col border-[#E2E8F0] bg-white transition-all duration-300 hover:-translate-y-1 hover:border-[#18B83A]/40 hover:shadow-[0_12px_32px_rgba(24,184,58,0.08)]">
+                <CardContent className="flex h-full flex-col p-6">
+                  <div className="flex items-center gap-1" aria-label={`${r.rating} out of 5 stars`}>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`size-4 ${i < r.rating ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-300"}`}
+                        aria-hidden="true"
+                      />
+                    ))}
+                  </div>
+                  <p className="mt-4 flex-1 text-sm leading-relaxed text-[#526173]">“{r.content}”</p>
+                  <div className="mt-5 flex items-center gap-3 border-t border-[#E2E8F0] pt-4">
+                    <span
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#009FE3] to-[#063B8F] text-sm font-bold text-white"
+                      aria-hidden="true"
+                    >
+                      {initials(r.name)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[#0B1F33]">{r.name}</p>
+                      <p className="truncate text-xs text-[#526173]">
+                        {r.businessName ?? r.projectName ?? "Tech360 client"}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </RevealItem>
+          ))}
+        </RevealList>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Stats band                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -724,6 +825,7 @@ export default function HomeView({
       <IndustriesPreview />
       <ProcessStrip />
       <SelectedWork />
+      <ClientReviews />
       <StatsBand />
       <LatestInsights />
       <CtaBand />

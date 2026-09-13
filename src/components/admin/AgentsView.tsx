@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import {
   Bot,
   ChevronRight,
+  Download,
   Loader2,
   Play,
   Plus,
@@ -171,6 +172,15 @@ export function AgentsView() {
             >
               <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
             </Button>
+            <a
+              href="/api/admin/agents/export"
+              download
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-800 bg-transparent px-3 text-xs font-medium text-slate-300 transition-colors hover:border-[#18B83A]/50 hover:bg-[#18B83A]/10 hover:text-emerald-400"
+              aria-label="Export AI agent execution evidence as CSV"
+              title="Download a CSV of every real agent execution — inputs, outputs, status, duration. Proof of real work."
+            >
+              <Download className="size-4" aria-hidden="true" /> Evidence CSV
+            </a>
             <Button size="sm" onClick={() => setCreateOpen(true)} className="font-semibold" style={{ background: ACCENT }}>
               <Plus className="size-4" aria-hidden="true" /> Create Agent
             </Button>

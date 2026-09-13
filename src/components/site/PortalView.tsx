@@ -10,9 +10,13 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { toast } from 'sonner'
 import {
   LogOut, RefreshCw, ShieldCheck, FileText, CreditCard, MessageSquare,
   Download, KeyRound, Eye, Package, ArrowRight, CheckCircle2, Clock, Lock,
+  Star, Handshake, LinkIcon,
 } from 'lucide-react'
 
 type PortalData = {
@@ -20,6 +24,9 @@ type PortalData = {
   project: { code: string; name: string; status: string; totalAmount: number; paidAmount: number; currency: string; paymentStatus: string; startedAt: string | null; timelineWeeks: number | null; tasks: Array<{ title: string; status: string }>; taskProgress: number | null } | null
   scope: { version: number; approvedAt: string | null; text: string } | null
   preview: { link: string; status: string; version: number } | null
+  previewExpired: boolean
+  review: { status: string; rating: number | null; content: string | null; consent: boolean; createdAt: string } | null
+  referral: { status: string; name: string | null; contact: string | null; createdAt: string } | null
   handover: { status: string; downloadLink: string | null; confirmLink: string | null; passwordChangeRequested: boolean; passwordChangeConfirmed: boolean } | null
   delivery: { status: string; confirmedAt: string | null } | null
   payments: Array<{ milestone: string | null; amount: number; currency: string; status: string; verifiedAt: string | null }>
@@ -138,8 +145,8 @@ export default function PortalView() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left column: project + scope + payments */}
-        <div className="space-y-6 lg:col-span-2">
+        {/* Left column: project + scope + payments (min-w-0 lets cards shrink on mobile) */}
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           {/* Project */}
           <SectionCard icon={<Package className="h-5 w-5" />} title="Your project">
             {data.project ? (
@@ -229,10 +236,14 @@ export default function PortalView() {
               </ul>
             ) : <EmptyLine text="Messages appear here — every WhatsApp, email and form message linked to your reference ID." />}
           </SectionCard>
+
+          {/* Review + referral feedback */}
+          <ReviewCard review={data.review} stage={data.client.stage} onDone={load} />
+          <ReferralCard referral={data.referral} onDone={load} />
         </div>
 
         {/* Right column: actions + handover + policy */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Preview action */}
           <SectionCard icon={<Eye className="h-5 w-5" />} title="Project preview">
             {data.preview ? (
@@ -243,6 +254,8 @@ export default function PortalView() {
                   <a href={data.preview.link} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /> Open preview</a>
                 </Button>
               </div>
+            ) : data.previewExpired ? (
+              <RequestFreshLink onDone={load} />
             ) : <EmptyLine text="Your HTML preview is generated after scope approval — nothing is payable before you see it." />}
           </SectionCard>
 
@@ -306,6 +319,193 @@ function PasswordConfirm({ link, onDone }: { link: string; onDone: () => void })
     <Button onClick={confirm} disabled={busy} variant="outline" className="w-full gap-2 border-[#063B8F] text-[#063B8F] hover:bg-[#F4FAFF]">
       <KeyRound className="h-4 w-4" /> {busy ? 'Confirming…' : 'I changed my passwords'}
     </Button>
+  )
+}
+
+// ---------------- Review submission (real record, consent-aware) ----------------
+function ReviewCard({ review, stage, onDone }: { review: PortalData['review']; stage: string; onDone: () => void }) {
+  const [rating, setRating] = useState(review?.rating ?? 0)
+  const [content, setContent] = useState('')
+  const [consent, setConsent] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const eligible = ['REVIEW_REQUESTED', 'REFERRAL_REQUESTED', 'COMPLETED', 'CLOSED', 'PASSWORD_CHANGE', 'DELIVERY', 'HANDOVER'].includes(stage)
+  const submitted = review && ['SUBMITTED', 'APPROVED', 'REJECTED'].includes(review.status)
+
+  async function submit() {
+    if (rating < 1) { toast.error('Please choose a star rating.'); return }
+    if (content.trim().length < 20) { toast.error('Please write at least 20 characters.'); return }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/portal/review', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, content: content.trim(), consent }),
+      })
+      const j = await res.json().catch(() => ({})) as { error?: string; message?: string }
+      if (!res.ok) toast.error(j.error ?? 'Submission failed.')
+      else { toast.success(j.message ?? 'Thank you — your review was submitted.'); onDone() }
+    } catch { toast.error('Connection problem. Please retry.') }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <SectionCard icon={<Star className="h-5 w-5" />} title="Share your experience">
+      {submitted ? (
+        <div className="space-y-3">
+          <p className="flex items-center gap-2 text-sm text-slate-600">
+            {review?.status === 'APPROVED' ? <><CheckCircle2 className="h-4 w-4 text-[#18B83A]" /> Published on our website — thank you.</> : null}
+            {review?.status === 'SUBMITTED' ? <><Clock className="h-4 w-4 text-amber-500" /> Submitted — awaiting Tech360 moderation.</> : null}
+            {review?.status === 'REJECTED' ? <><Lock className="h-4 w-4 text-slate-400" /> Received, but kept private after moderation.</> : null}
+          </p>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} className={`h-4 w-4 ${i < (review?.rating ?? 0) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-300'}`} aria-hidden="true" />
+            ))}
+            <span className="ml-2 text-xs text-slate-400">submitted {fmtDate(review?.createdAt)}</span>
+          </div>
+          {review?.content ? <blockquote className="border-l-2 border-[#E2E8F0] pl-3 text-sm italic leading-relaxed text-slate-600">“{review.content}”</blockquote> : null}
+        </div>
+      ) : eligible ? (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">How was your experience working with us? Your review is published only with your explicit consent, after Tech360 moderation.</p>
+          <div className="flex items-center gap-1" role="radiogroup" aria-label="Star rating">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                role="radio"
+                aria-checked={rating === i + 1}
+                aria-label={`${i + 1} star${i > 0 ? 's' : ''}`}
+                onClick={() => setRating(i + 1)}
+                className="rounded-md p-1 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+              >
+                <Star className={`h-6 w-6 transition-colors ${i < rating ? 'fill-amber-400 text-amber-400' : 'fill-slate-100 text-slate-300 hover:text-amber-300'}`} aria-hidden="true" />
+              </button>
+            ))}
+            <span className="ml-2 text-xs text-slate-500">{rating > 0 ? `${rating}/5` : 'tap to rate'}</span>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="review-content" className="text-xs text-slate-500">Your review</Label>
+            <Textarea
+              id="review-content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="What did we do well? What could be better? (min 20 characters)"
+              className="min-h-[90px] border-[#E2E8F0] focus-visible:ring-[#009FE3]/40"
+              maxLength={2000}
+            />
+          </div>
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-[#F4FAFF] p-3 text-xs leading-relaxed text-slate-600">
+            <Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5 border-[#063B8F] data-[state=checked]:bg-[#063B8F]" aria-label="Consent to publish review" />
+            <span>I consent to my review, name and company being published on bdtech360.com. I can withdraw this via email anytime.</span>
+          </label>
+          <Button onClick={submit} disabled={busy} className="w-full gap-2 bg-[#009FE3] hover:bg-[#063B8F]">
+            <Star className="h-4 w-4" /> {busy ? 'Submitting…' : 'Submit review'}
+          </Button>
+        </div>
+      ) : (
+        <EmptyLine text="After your project is delivered, we will invite you to share a review — published only with your consent." />
+      )}
+    </SectionCard>
+  )
+}
+
+// ---------------- Referral submission (real record) ----------------
+function ReferralCard({ referral, onDone }: { referral: PortalData['referral']; onDone: () => void }) {
+  const [name, setName] = useState('')
+  const [contact, setContact] = useState('')
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function submit() {
+    if (name.trim().length < 2) { toast.error('Please tell us who you are referring.'); return }
+    if (contact.trim().length < 5) { toast.error('A contact for the referral is required.'); return }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/portal/referral', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), contact: contact.trim(), notes: notes.trim() }),
+      })
+      const j = await res.json().catch(() => ({})) as { error?: string; message?: string }
+      if (!res.ok) toast.error(j.error ?? 'Submission failed.')
+      else { toast.success(j.message ?? 'Thank you for the referral!'); onDone() }
+    } catch { toast.error('Connection problem. Please retry.') }
+    finally { setBusy(false) }
+  }
+
+  const hasReferral = referral && referral.status !== 'REQUESTED'
+
+  return (
+    <SectionCard icon={<Handshake className="h-5 w-5" />} title="Refer a business">
+      {hasReferral ? (
+        <div className="space-y-2">
+          <p className="flex items-center gap-2 text-sm text-slate-600">
+            <CheckCircle2 className="h-4 w-4 text-[#18B83A]" />
+            You referred <span className="font-semibold text-[#0B1F33]">{referral?.name}</span> — status: <Badge variant={referral?.status === 'CONVERTED' ? 'default' : 'secondary'} className="capitalize">{referral?.status.toLowerCase()}</Badge>
+          </p>
+          <p className="text-xs text-slate-500">Thank you! Referrals are the strongest compliment a software partner can get.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600">Know a business that needs software, automation or a website? Introduce us — we take care of the rest.</p>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ref-name" className="text-xs text-slate-500">Business or person name *</Label>
+            <Input id="ref-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Dhaka Traders Ltd. / Rahim Uddin" className="border-[#E2E8F0] focus-visible:ring-[#009FE3]/40" maxLength={120} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ref-contact" className="text-xs text-slate-500">Their email or phone *</Label>
+            <Input id="ref-contact" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="name@company.com or +880…" className="border-[#E2E8F0] focus-visible:ring-[#009FE3]/40" maxLength={160} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ref-notes" className="text-xs text-slate-500">What do they need? (optional)</Label>
+            <Textarea id="ref-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. inventory system, eCommerce site…" className="min-h-[60px] border-[#E2E8F0] focus-visible:ring-[#009FE3]/40" maxLength={1000} />
+          </div>
+          <Button onClick={submit} disabled={busy} variant="outline" className="w-full gap-2 border-[#063B8F] text-[#063B8F] hover:bg-[#F4FAFF]">
+            <Handshake className="h-4 w-4" /> {busy ? 'Sending…' : 'Send referral'}
+          </Button>
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
+// ---------------- Fresh preview link request (expired previews) ----------------
+function RequestFreshLink({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [requested, setRequested] = useState(false)
+
+  async function request() {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/portal/request-preview', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: '' }),
+      })
+      const j = await res.json().catch(() => ({})) as { error?: string; message?: string }
+      if (!res.ok) toast.error(j.error ?? 'Request failed.')
+      else { toast.success(j.message ?? 'Request sent.'); setRequested(true); onDone() }
+    } catch { toast.error('Connection problem. Please retry.') }
+    finally { setBusy(false) }
+  }
+
+  if (requested) {
+    return (
+      <div className="space-y-2">
+        <p className="flex items-center gap-2 rounded-xl bg-[#18B83A]/10 p-3 text-sm text-[#116b26]">
+          <CheckCircle2 className="h-4 w-4" /> Request sent — our team will regenerate your preview link.
+        </p>
+        <p className="text-xs text-slate-500">We will share the fresh link over your configured channel (email/WhatsApp) once it is ready.</p>
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-3">
+      <p className="flex items-center gap-2 text-sm text-slate-600">
+        <Clock className="h-4 w-4 text-amber-500" /> Your preview link has expired (links expire after 30 days for security).
+      </p>
+      <Button onClick={request} disabled={busy} className="w-full gap-2 bg-[#009FE3] hover:bg-[#063B8F]">
+        <LinkIcon className="h-4 w-4" /> {busy ? 'Requesting…' : 'Request a fresh link'}
+      </Button>
+    </div>
   )
 }
 

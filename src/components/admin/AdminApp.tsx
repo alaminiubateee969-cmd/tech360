@@ -15,10 +15,12 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  Newspaper,
   ScrollText,
   Search,
   Settings,
   ShieldCheck,
+  Star,
   Terminal,
   UserPlus,
   Wallet,
@@ -33,6 +35,7 @@ import { NotificationCenter } from './NotificationCenter'
 import { AgentsView } from './AgentsView'
 import { AnalyticsView } from './AnalyticsView'
 import { ApprovalsView } from './ApprovalsView'
+import { BlogStudioView } from './BlogStudioView'
 import { ClientDetailView } from './ClientDetailView'
 import { CommandCenterView } from './CommandCenterView'
 import { CommunicationsView } from './CommunicationsView'
@@ -46,6 +49,7 @@ import { N8nView } from './N8nView'
 import { PaymentsView } from './PaymentsView'
 import { ProjectDetailView, ProjectsView } from './ProjectsView'
 import { ReportsView } from './ReportsView'
+import { ReviewsView } from './ReviewsView'
 import { SettingsView } from './SettingsView'
 import { ACCENT } from './shared/styles'
 import { Button } from '@/components/ui/button'
@@ -63,8 +67,8 @@ import { cn } from '@/lib/utils'
 
 type ViewId =
   | 'dashboard' | 'leads' | 'clients' | 'approvals' | 'communications'
-  | 'payments' | 'projects' | 'agents' | 'command' | 'memory'
-  | 'knowledge' | 'content' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings'
+  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory'
+  | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings'
 
 interface NavItem {
   id: ViewId
@@ -91,6 +95,13 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     items: [
       { id: 'payments', label: 'Payments', icon: Wallet },
       { id: 'projects', label: 'Projects', icon: FolderKanban },
+    ],
+  },
+  {
+    section: 'Growth',
+    items: [
+      { id: 'reviews', label: 'Reviews & Referrals', icon: Star },
+      { id: 'blog', label: 'Blog Studio', icon: Newspaper },
     ],
   },
   {
@@ -123,11 +134,13 @@ const VIEW_TITLES: Record<ViewId, string> = {
   communications: 'Communications',
   payments: 'Payments',
   projects: 'Projects',
+  reviews: 'Reviews & Referrals',
   agents: 'AI Workforce',
   command: 'Command Center',
   memory: 'AI Memory',
   knowledge: 'Knowledge Base',
   content: 'Content Studio',
+  blog: 'Blog Studio',
   analytics: 'Analytics',
   logs: 'Logs',
   n8n: 'n8n Workflows',
@@ -454,6 +467,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <PaymentsView onOpenClient={openClient} />
               ) : view === 'projects' ? (
                 <ProjectsView onOpenProject={openProject} />
+              ) : view === 'reviews' ? (
+                <ReviewsView />
               ) : view === 'agents' ? (
                 <AgentsView />
               ) : view === 'command' ? (
@@ -464,6 +479,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <KnowledgeView />
               ) : view === 'content' ? (
                 <ContentStudioView />
+              ) : view === 'blog' ? (
+                <BlogStudioView />
               ) : view === 'analytics' ? (
                 <AnalyticsView />
               ) : view === 'logs' ? (

@@ -206,6 +206,92 @@ export interface KnowledgeStatusResponse {
   doc?: KnowledgeDoc
 }
 
+// ---------------- Blog Studio ----------------
+export interface BlogPostRow {
+  id: string
+  slug: string
+  title: string
+  excerpt?: string | null
+  category?: string | null
+  author: string
+  status: string
+  views: number
+  coverImage?: string | null
+  contentLength?: number
+  tags?: string | null
+  publishedAt?: string | null
+  updatedAt?: string | null
+  createdAt?: string | null
+  content?: string
+}
+export interface BlogListResponse {
+  posts: BlogPostRow[]
+  total: number
+  stats: { total: number; published: number; drafts: number; views: number }
+}
+export interface BlogMutationResponse {
+  ok?: boolean
+  post?: BlogPostRow
+  error?: string
+}
+
+// ---------------- Reviews & Referrals ----------------
+export interface ReviewRow {
+  id: string
+  clientId: string
+  clientName: string
+  businessName?: string | null
+  country?: string | null
+  projectCode?: string | null
+  projectName?: string | null
+  rating?: number | null
+  content?: string | null
+  published: boolean
+  consent: boolean
+  status: string
+  moderatedBy?: string | null
+  moderatedAt?: string | null
+  createdAt: string
+}
+export interface ReferralRow {
+  id: string
+  clientId: string
+  clientName: string
+  businessName?: string | null
+  name?: string | null
+  contact?: string | null
+  notes?: string | null
+  status: string
+  createdAt: string
+}
+export interface ReviewsResponse {
+  reviews: ReviewRow[]
+  referrals: ReferralRow[]
+  stats: Record<string, number>
+}
+export interface ReviewModerateResponse {
+  ok?: boolean
+  review?: ReviewRow
+  error?: string
+}
+
+// ---------------- Public reviews (site) ----------------
+export interface PublicReview {
+  id: string
+  name: string
+  businessName?: string | null
+  country?: string | null
+  projectName?: string | null
+  serviceType?: string | null
+  rating: number
+  content: string
+  date: string
+}
+export interface PublicReviewsResponse {
+  reviews: PublicReview[]
+  count: number
+}
+
 export interface ClientRow {
   id: string
   clientId: string
@@ -703,6 +789,39 @@ export const api = {
     params: { language?: string; aspect?: string; durationSec?: number }
   }) => fetchJson<ContentGenerateResponse>('/api/admin/content/generate', { method: 'POST', body }),
   ceoReport: () => fetchJson<{ report?: string }>('/api/admin/reports/ceo'),
+
+  // ---------------- Blog Studio ----------------
+  blogList: (opts?: { q?: string; status?: string }) =>
+    fetchJson<BlogListResponse>(`/api/admin/blog${buildBlogQuery(opts)}`),
+  blogGet: (id: string) =>
+    fetchJson<{ post: BlogPostRow }>(`/api/admin/blog/${encodeURIComponent(id)}`),
+  blogCreate: (body: { title: string; content: string; status?: string; excerpt?: string; category?: string; author?: string; tags?: string[]; slug?: string; coverImage?: string }) =>
+    fetchJson<BlogMutationResponse>('/api/admin/blog', { method: 'POST', body }),
+  blogUpdate: (id: string, body: Record<string, unknown>) =>
+    fetchJson<BlogMutationResponse>(`/api/admin/blog/${encodeURIComponent(id)}`, { method: 'PATCH', body }),
+  blogDelete: (id: string) =>
+    fetchJson<{ ok?: boolean; error?: string }>(`/api/admin/blog/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // ---------------- Reviews & Referrals ----------------
+  reviews: (status?: string) =>
+    fetchJson<ReviewsResponse>(`/api/admin/reviews${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  moderateReview: (id: string, action: 'PUBLISH' | 'REJECT') =>
+    fetchJson<ReviewModerateResponse>(`/api/admin/reviews/${encodeURIComponent(id)}/moderate`, {
+      method: 'POST',
+      body: { action },
+    }),
+  referralStatus: (id: string, status: string, notes?: string) =>
+    fetchJson<{ ok?: boolean; error?: string }>(`/api/admin/referrals/${encodeURIComponent(id)}`, {
+      method: 'POST',
+      body: { status, notes },
+    }),
+}
+
+function buildBlogQuery(opts?: { q?: string; status?: string }): string {
+  const params: string[] = []
+  if (opts?.q) params.push(`q=${encodeURIComponent(opts.q)}`)
+  if (opts?.status) params.push(`status=${encodeURIComponent(opts.status)}`)
+  return params.length > 0 ? `?${params.join('&')}` : ''
 }
 
 // ------------------------------------------------------------

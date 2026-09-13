@@ -16,6 +16,8 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Star,
+  Users,
 } from 'lucide-react'
 
 import {
@@ -147,6 +149,18 @@ export function ClientDetailView({
       title: 'Close Project',
       description: 'Closes the project and moves the client record to closure stage.',
       fields: 'project',
+    },
+    REQUEST_REVIEW: {
+      action: 'REQUEST_REVIEW',
+      title: 'Request Review & Referral',
+      description: 'Creates the real Review + Referral records and asks the client (over configured channels) to share their experience. The client submits via the portal; an admin moderates before anything goes public.',
+      fields: 'none',
+    },
+    REQUEST_REFERRAL: {
+      action: 'REQUEST_REFERRAL',
+      title: 'Request Referral',
+      description: 'Same engine step as Request Review — creates the referral record and invites the client to refer another business from their portal.',
+      fields: 'none',
     },
   }
 
@@ -508,6 +522,8 @@ export function ClientDetailView({
               {action === 'PREPARE_HANDOVER' ? <ShieldCheck className="size-3.5" aria-hidden="true" /> : null}
               {action === 'SUBMIT_SCOPE' || action === 'ASK_SCOPE_QUESTIONS' ? <FileText className="size-3.5" aria-hidden="true" /> : null}
               {action === 'CLOSE_PROJECT' ? <CheckCircle2 className="size-3.5" aria-hidden="true" /> : null}
+              {action === 'REQUEST_REVIEW' ? <Star className="size-3.5" aria-hidden="true" /> : null}
+              {action === 'REQUEST_REFERRAL' ? <Users className="size-3.5" aria-hidden="true" /> : null}
               {dialogs[action].title}
             </Button>
           ))}

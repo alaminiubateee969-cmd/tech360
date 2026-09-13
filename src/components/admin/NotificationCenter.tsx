@@ -19,6 +19,7 @@ import {
   Loader2,
   MessageSquare,
   ShieldCheck,
+  Star,
   UserPlus,
   Wallet,
   X,
@@ -30,8 +31,8 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 export type NotificationViewLink =
-  | 'dashboard' | 'leads' | 'approvals' | 'communications' | 'payments'
-  | 'projects' | 'logs' | 'agents' | 'knowledge' | 'settings'
+  | 'dashboard' | 'leads' | 'clients' | 'approvals' | 'communications' | 'payments'
+  | 'projects' | 'reviews' | 'logs' | 'agents' | 'knowledge' | 'settings'
 
 const TYPE_ICON: Record<string, typeof Bell> = {
   APPROVAL: ShieldCheck,
@@ -40,6 +41,10 @@ const TYPE_ICON: Record<string, typeof Bell> = {
   PAYMENT: Wallet,
   DELIVERY: FileText,
   SYSTEM: AlertTriangle,
+  REVIEW: Star,
+  REFERRAL: UserPlus,
+  PREVIEW_REFRESH: FileText,
+  REVIEW_PUBLISHED: Star,
 }
 
 const TYPE_LINK: Record<string, NotificationViewLink> = {
@@ -49,6 +54,10 @@ const TYPE_LINK: Record<string, NotificationViewLink> = {
   PAYMENT: 'payments',
   DELIVERY: 'projects',
   SYSTEM: 'dashboard',
+  REVIEW: 'reviews',
+  REFERRAL: 'reviews',
+  PREVIEW_REFRESH: 'clients',
+  REVIEW_PUBLISHED: 'reviews',
 }
 
 const SEVERITY_DOT: Record<string, string> = {

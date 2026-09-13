@@ -33,9 +33,14 @@ export async function GET(req: NextRequest) {
 
   const finalScope = client.scopes.filter((s) => s.status === 'FINAL')[0]
   const project = client.projects[0]
-  const activePreview = client.previews.filter((p) => !['EXPIRED'].includes(p.status))[0]
+  const previewsByAge = [...client.previews].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const latestPreview = previewsByAge[0]
+  const activePreview = previewsByAge.find((p) => !['EXPIRED'].includes(p.status))
   const handover = project ? await db.handoverRecord.findFirst({ where: { projectId: project.id, type: 'SOURCE_CODE' } }) : null
   const delivery = project ? await db.delivery.findFirst({ where: { projectId: project.id } }) : null
+  // Review + referral state for the client feedback card (real records only)
+  const reviewRow = await db.review.findFirst({ where: { clientId: client.id } })
+  const referralRow = await db.referral.findFirst({ where: { clientId: client.id } })
 
   const communications = await db.communication.findMany({
     where: { clientId: client.id },
@@ -69,6 +74,13 @@ export async function GET(req: NextRequest) {
       : null,
     preview: activePreview
       ? { link: `/api/preview/${activePreview.token}`, status: activePreview.status, version: activePreview.version }
+      : null,
+    previewExpired: latestPreview ? latestPreview.status === 'EXPIRED' : false,
+    review: reviewRow
+      ? { status: reviewRow.status, rating: reviewRow.rating, content: reviewRow.content, consent: reviewRow.consent, createdAt: reviewRow.createdAt }
+      : null,
+    referral: referralRow
+      ? { status: referralRow.status, name: referralRow.name, contact: referralRow.contact, createdAt: referralRow.createdAt }
       : null,
     handover: handover
       ? {
