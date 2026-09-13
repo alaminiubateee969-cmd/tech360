@@ -16,7 +16,8 @@ import { toast } from 'sonner'
 import {
   LogOut, RefreshCw, ShieldCheck, FileText, CreditCard, MessageSquare,
   Download, KeyRound, Eye, Package, ArrowRight, CheckCircle2, Clock, Lock,
-  Star, Handshake, LinkIcon, Undo2,
+  Star, Handshake, LinkIcon, Undo2, Paperclip, Trash2, FileUp, FileCheck2,
+  ShieldAlert, File as FileIcon, Upload,
 } from 'lucide-react'
 
 type PortalData = {
@@ -33,6 +34,7 @@ type PortalData = {
   invoices: Array<{ number: string; amount: number; currency: string; status: string; notes: string | null }>
   communications: Array<{ channel: string; direction: string; subject: string | null; preview: string; status: string; at: string }>
   meetings: Array<{ status: string; scheduledAt: string | null; reason: string | null }>
+  documents: Array<{ id: string; name: string; mimeType: string; size: number; note: string | null; scanStatus: string; direction: string; classification: string; at: string }>
   policy: { previewBeforePayment: boolean; sourceAfterFullPayment: boolean; supportContact: string; whatsapp: string }
 }
 
@@ -236,6 +238,9 @@ export default function PortalView() {
               </ul>
             ) : <EmptyLine text="Messages appear here — every WhatsApp, email and form message linked to your reference ID." />}
           </SectionCard>
+
+          {/* Documents hub — two-way file exchange with full scan statuses */}
+          <DocumentsCard documents={data.documents} onDone={load} />
 
           {/* Review + referral feedback */}
           <ReviewCard review={data.review} stage={data.client.stage} onDone={load} />
@@ -571,6 +576,213 @@ function RequestFreshLink({ onDone }: { onDone: () => void }) {
         <LinkIcon className="h-4 w-4" /> {busy ? 'Requesting…' : 'Request a fresh link'}
       </Button>
     </div>
+  )
+}
+
+// ---------------- Documents hub (two-way file exchange) ----------------
+const DOC_ACCEPT = '.pdf,.txt,.md,.csv,.json,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.webp'
+
+function docIcon(mime: string) {
+  if (mime.startsWith('image/')) return <FileIcon className="h-4 w-4" />
+  if (mime === 'application/pdf' || mime.includes('word') || mime.includes('document')) return <FileText className="h-4 w-4" />
+  if (mime.includes('sheet') || mime === 'text/csv') return <Paperclip className="h-4 w-4" />
+  return <FileIcon className="h-4 w-4" />
+}
+
+function fmtDocSize(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
+  return `${(n / 1024 / 1024).toFixed(1)} MB`
+}
+
+function DocumentsCard({ documents, onDone }: { documents: PortalData['documents']; onDone: () => void }) {
+  const [file, setFile] = useState<File | null>(null)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const uploads = documents.filter((d) => d.direction === 'UPLOADED')
+  const shared = documents.filter((d) => d.direction === 'SHARED')
+
+  async function upload() {
+    if (!file) { toast.error('Choose a file first.'); return }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Files must be 5MB or smaller.'); return }
+    setBusy(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      if (note.trim()) form.append('note', note.trim())
+      const res = await fetch('/api/portal/documents', { method: 'POST', body: form })
+      const j = await res.json().catch(() => ({})) as { error?: string; warning?: string }
+      if (!res.ok) toast.error(j.error ?? 'Upload failed.')
+      else {
+        toast.success(j.warning ? 'Uploaded — flagged for review by our team.' : `"${file.name}" uploaded and scanned clean.`)
+        setFile(null); setNote('')
+        if (inputRef.current) inputRef.current.value = ''
+        onDone()
+      }
+    } catch { toast.error('Connection problem. Please retry.') }
+    finally { setBusy(false) }
+  }
+
+  async function remove(id: string) {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/portal/documents/${id}`, { method: 'DELETE' })
+      const j = await res.json().catch(() => ({})) as { error?: string }
+      if (!res.ok) toast.error(j.error ?? 'Delete failed.')
+      else { toast.success('File deleted.'); setConfirmDelete(null); onDone() }
+    } catch { toast.error('Connection problem. Please retry.') }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <SectionCard icon={<Paperclip className="h-5 w-5" />} title="Documents">
+      <div className="space-y-4">
+        {/* Upload control */}
+        <div className="rounded-xl border border-dashed border-[#009FE3]/50 bg-[#F4FAFF] p-4">
+          <input
+            ref={inputRef}
+            id="doc-file"
+            type="file"
+            accept={DOC_ACCEPT}
+            className="sr-only"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+          <label
+            htmlFor="doc-file"
+            className="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg px-3 py-4 text-center transition-colors hover:bg-[#E6F5FE] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009FE3]"
+          >
+            <Upload className="h-6 w-6 text-[#009FE3]" aria-hidden="true" />
+            <span className="text-sm font-semibold text-[#063B8F]">{file ? file.name : 'Choose a file to share with us'}</span>
+            <span className="text-xs text-slate-500">
+              {file ? `${fmtDocSize(file.size)} selected` : 'Brand assets, briefs, requirements, references — up to 5MB'}
+            </span>
+          </label>
+          {file && (
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Optional note for the team (e.g. “logo pack v2”)"
+                maxLength={300}
+                aria-label="Note for the Tech360 team"
+                className="h-9 flex-1 border-[#CBD5E1] bg-white text-sm"
+              />
+              <Button onClick={upload} disabled={busy} className="h-9 gap-2 bg-[#009FE3] px-5 hover:bg-[#063B8F]">
+                <FileUp className="h-4 w-4" /> {busy ? 'Uploading…' : 'Upload'}
+              </Button>
+            </div>
+          )}
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
+            <ShieldCheck className="h-3 w-3 shrink-0 text-[#18B83A]" aria-hidden="true" />
+            Every file is scanned before anyone can open it — quarantined files stay locked until a human reviews them.
+          </p>
+        </div>
+
+        {/* Shared by Tech360 */}
+        {shared.length > 0 && (
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#063B8F]">
+              <FileCheck2 className="h-3.5 w-3.5" aria-hidden="true" /> Shared by Tech360
+            </p>
+            <ul className="space-y-2">
+              {shared.map((d) => (
+                <li key={d.id} className="flex items-center gap-3 rounded-xl border-l-4 border-[#009FE3] border-y border-r border-[#E2E8F0] bg-white p-3 shadow-sm">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#009FE3]/10 text-[#063B8F]">{docIcon(d.mimeType)}</span>
+                  <div className="min-w-0 flex-1">
+                    <a
+                      href={`/api/portal/documents/${d.id}`}
+                      className="block truncate text-sm font-semibold text-[#0B1F33] underline-offset-2 hover:text-[#009FE3] hover:underline"
+                    >
+                      {d.name}
+                    </a>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {fmtDocSize(d.size)} · {fmtDate(d.at)}{d.note ? ` · ${d.note}` : ''}
+                    </p>
+                  </div>
+                  <Badge className={d.classification === 'CONFIDENTIAL' || d.classification === 'HIGHLY_SENSITIVE' ? 'h-5 bg-amber-100 px-1.5 text-[10px] text-amber-800 hover:bg-amber-100' : 'h-5 bg-slate-100 px-1.5 text-[10px] text-slate-600 hover:bg-slate-100'}>
+                    {d.classification.toLowerCase()}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Your uploads */}
+        {uploads.length > 0 && (
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" /> Your uploads ({uploads.length})
+            </p>
+            <ul className="space-y-2">
+              {uploads.map((d) => (
+                <li key={d.id} className="rounded-xl border border-[#E2E8F0] bg-white p-3 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    {d.mimeType.startsWith('image/') && d.scanStatus === 'CLEAN' ? (
+                      <img
+                        src={`/api/portal/documents/${d.id}?inline=1`}
+                        alt={`Thumbnail of ${d.name}`}
+                        className="h-9 w-9 shrink-0 rounded-lg border border-[#E2E8F0] object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">{docIcon(d.mimeType)}</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      {d.scanStatus === 'CLEAN' ? (
+                        <a href={`/api/portal/documents/${d.id}`} className="block truncate text-sm font-semibold text-[#0B1F33] underline-offset-2 hover:text-[#009FE3] hover:underline">{d.name}</a>
+                      ) : (
+                        <p className="block truncate text-sm font-semibold text-slate-400">{d.name}</p>
+                      )}
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{fmtDocSize(d.size)} · {fmtDate(d.at)}{d.note ? ` · ${d.note}` : ''}</p>
+                    </div>
+                    {d.scanStatus === 'CLEAN' && (
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#18B83A]/10 text-[#116b26]" title="Scanned clean">
+                        <FileCheck2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </span>
+                    )}
+                    {d.scanStatus === 'QUARANTINED' && (
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700" title="Quarantined — pending review">
+                        <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
+                      </span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      aria-label={`Delete ${d.name}`}
+                      onClick={() => setConfirmDelete(d.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {d.scanStatus === 'QUARANTINED' && (
+                    <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-50 p-2 text-[11px] leading-snug text-amber-800">
+                      <ShieldAlert className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                      Locked by the content scan — our team reviews it before download is possible.
+                    </p>
+                  )}
+                  {confirmDelete === d.id && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-red-50 p-2">
+                      <p className="min-w-0 flex-1 text-xs text-red-700">Delete “{d.name}”? This is recorded and our team is notified.</p>
+                      <Button size="sm" variant="outline" className="h-7 border-red-200 text-red-700 hover:bg-red-100" onClick={() => setConfirmDelete(null)}>Keep</Button>
+                      <Button size="sm" className="h-7 bg-red-600 hover:bg-red-700" disabled={busy} onClick={() => remove(d.id)}>Delete</Button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {documents.length === 0 && (
+          <EmptyLine text="Share your logo, brand guide, content or any reference file — everything stays linked to your Client ID." />
+        )}
+      </div>
+    </SectionCard>
   )
 }
 

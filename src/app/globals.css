@@ -120,3 +120,52 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ------------------------------------------------------------
+   Print styles — legal policy documents print cleanly as PDFs:
+   site chrome (hero, sidebar nav, footer, floating buttons,
+   consent banner) is stripped; typography goes ink-friendly.
+   ------------------------------------------------------------ */
+@media print {
+  header,
+  footer,
+  nav,
+  aside,
+  [data-print="hide"],
+  [data-noprint],
+  #consent-banner,
+  #scroll-progress,
+  #back-to-top {
+    display: none !important;
+  }
+
+  main,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  a {
+    color: #111 !important;
+    text-decoration: underline !important;
+  }
+
+  section,
+  article {
+    break-inside: auto;
+  }
+
+  article h2,
+  article section {
+    break-inside: avoid-page;
+  }
+
+  @page {
+    margin: 18mm 16mm;
+  }
+}

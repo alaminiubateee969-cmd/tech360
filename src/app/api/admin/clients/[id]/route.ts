@@ -24,6 +24,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       memories: { orderBy: { importance: 'desc' }, take: 50 },
       automationLogs: { orderBy: { startedAt: 'desc' }, take: 30 },
       approvals: { orderBy: { createdAt: 'desc' }, take: 30 },
+      files: {
+        where: { relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE'] } },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, originalName: true, mimeType: true, size: true, note: true, classification: true, scanStatus: true, scanResult: true, relatedType: true, uploadedBy: true, downloads: true, createdAt: true },
+      },
     },
   })
   if (!client) return Response.json({ error: 'Client not found' }, { status: 404 })
@@ -44,13 +49,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   client.approvals.forEach((a) => tl.push({ at: a.createdAt, type: 'APPROVAL', text: `Approval [${a.type}] ${a.status}: ${a.title}` }))
   client.memories.forEach((m) => tl.push({ at: m.createdAt, type: 'MEMORY', text: `Memory [${m.scope}] ${m.key}` }))
   client.automationLogs.forEach((l) => tl.push({ at: l.startedAt, type: 'AUTOMATION', text: `${l.workflow} ${l.status}` }))
+  client.files.forEach((f) => tl.push({
+    at: f.createdAt,
+    type: 'DOCUMENT',
+    text: `${f.relatedType === 'ADMIN_SHARE' ? 'Shared with client' : 'Client uploaded'}: ${f.originalName} (${f.scanStatus})`,
+  }))
   projects.forEach((p) => {
     tl.push({ at: p.createdAt, type: 'PROJECT', text: `Project ${p.code} created (${p.status})` })
     p.tasks.forEach((t) => tl.push({ at: t.createdAt, type: 'TASK', text: `Task: ${t.title} (${t.status})` }))
   })
   tl.sort((a, b) => b.at.getTime() - a.at.getTime())
 
-  const { communications, scopes, previews, payments, invoices, meetings, memories, automationLogs, approvals, lead, ...clientFields } = client
+  const { communications, scopes, previews, payments, invoices, meetings, memories, automationLogs, approvals, files, lead, ...clientFields } = client
   return Response.json({
     client: clientFields,
     lead,
@@ -63,7 +73,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     memories,
     automationLogs,
     approvals,
+    documents: files.map((f) => ({
+      id: f.id,
+      name: f.originalName,
+      mimeType: f.mimeType,
+      size: f.size,
+      note: f.note,
+      classification: f.classification,
+      scanStatus: f.scanStatus,
+      scanResult: f.scanResult ? safeParse(f.scanResult) : null,
+      direction: f.relatedType === 'ADMIN_SHARE' ? 'SHARED' : 'UPLOADED',
+      uploadedBy: f.uploadedBy,
+      downloads: f.downloads,
+      at: f.createdAt,
+    })),
     projects,
     timeline: tl.slice(0, 200),
   })
+}
+
+function safeParse(s: string): unknown {
+  try { return JSON.parse(s) } catch { return { raw: s.slice(0, 200) } }
 }

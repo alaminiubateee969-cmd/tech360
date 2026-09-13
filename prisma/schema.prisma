@@ -792,17 +792,25 @@ model FileRecord {
   scanStatus     String   @default("PENDING") // PENDING | CLEAN | QUARANTINED | REJECTED
   scanResult     String?  // JSON
   storagePath    String?
+  // Client Documents Hub: bytes stored in DB (≤ CLIENT_DOC_MAX_BYTES) so files
+  // survive restarts on Cloud Run's ephemeral filesystem; production hardening
+  // can move blobs to Cloud Storage while keeping the same records.
+  content        Bytes?
+  note           String?  // description supplied by uploader
+  downloads      Int      @default(0)
   clientId       String?
   client         Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   projectId      String?
   project        Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  relatedType    String?  // COMMUNICATION | SCOPE | PAYMENT_PROOF | DELIVERY | KNOWLEDGE
+  relatedType    String?  // CLIENT_UPLOAD | ADMIN_SHARE | COMMUNICATION | SCOPE | PAYMENT_PROOF | DELIVERY | KNOWLEDGE
   relatedId      String?
   uploadedBy     String?
   createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([clientId])
   @@index([scanStatus])
+  @@index([relatedType])
 }
 
 model N8nWorkflow {

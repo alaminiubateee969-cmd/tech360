@@ -29,6 +29,7 @@ export type OpsScan = {
   unresolvedErrors: Array<{ id: string; source: string; code: string | null; message: string; correlationId: string | null }>
   staleApprovals: Array<{ id: string; type: string; title: string; clientId: string | null; createdAt: Date }>
   expiredPreviews: Array<{ id: string; token: string; clientId: string | null; status: string; expiresAt: Date | null; version: number }>
+  quarantinedDocs: Array<{ id: string; originalName: string; scanStatus: string; createdAt: Date; client: { clientId: string; name: string } | null }>
   context: { agentExecutions24h: number; agents: number; totalExecutions: number; totalSuccesses: number; totalFailures: number }
 }
 
@@ -39,7 +40,7 @@ export type CycleSummary = {
   finishedAt: string
   ok: boolean
   performed: string[]
-  scanned: { unscored: number; overdue: number; failedComms: number; errors: number; staleApprovals: number; failedAutomations: number; expiredPreviews: number }
+  scanned: { unscored: number; overdue: number; failedComms: number; errors: number; staleApprovals: number; failedAutomations: number; expiredPreviews: number; quarantinedDocs: number }
   ceoReport?: { id: string } | { skipped: string } | null
   error?: string
 }
@@ -50,7 +51,7 @@ export async function opsScan(): Promise<OpsScan> {
   const overdueMs = 48 * 3600 * 1000 // 48h without activity before CLIENT_APPROVAL
   const dayAgo = new Date(now - 24 * 3600 * 1000)
 
-  const [unscoredLeads, activeClients, retryableComms, failedAutomations, unresolvedErrors, staleApprovals, expiringPreviews, execToday, agentStats] = await Promise.all([
+  const [unscoredLeads, activeClients, retryableComms, failedAutomations, unresolvedErrors, staleApprovals, expiringPreviews, quarantinedDocs, execToday, agentStats] = await Promise.all([
     db.client.findMany({ where: { score: 0, deletedAt: null }, select: { id: true, clientId: true, name: true, businessName: true, businessType: true, source: true, lead: { select: { requirements: true, budgetRange: true, projectType: true } } }, take: 10 }),
     db.client.findMany({
       where: { deletedAt: null, pipelineStage: { in: ['NEW', 'CONTACTED', 'BUSINESS_IDENTIFIED', 'PLAN_RECOMMENDED', 'SCOPE_COLLECTION', 'SCOPE_REVIEW', 'FINAL_SCOPE'] }, updatedAt: { lt: new Date(now - overdueMs) } },
@@ -63,6 +64,13 @@ export async function opsScan(): Promise<OpsScan> {
     db.approvalRequest.findMany({ where: { status: 'PENDING', createdAt: { lt: new Date(now - 12 * 3600 * 1000) } }, take: 10, select: { id: true, type: true, title: true, clientId: true, createdAt: true } }),
     // security: previews past expiry that are still active → must be marked EXPIRED + alert
     db.preview.findMany({ where: { status: { in: ['GENERATED', 'SENT', 'VIEWED'] }, expiresAt: { lt: new Date(now) } }, take: 10, select: { id: true, token: true, clientId: true, status: true, expiresAt: true, version: true } }),
+    // documents hub: quarantined client uploads pending human review for >24h → escalate
+    db.fileRecord.findMany({
+      where: { scanStatus: 'QUARANTINED', relatedType: 'CLIENT_UPLOAD', createdAt: { lt: new Date(now - 24 * 3600 * 1000) } },
+      orderBy: { createdAt: 'asc' },
+      take: 10,
+      select: { id: true, originalName: true, scanStatus: true, createdAt: true, client: { select: { clientId: true, name: true } } },
+    }),
     db.aiAgentExecution.count({ where: { createdAt: { gte: dayAgo } } }),
     db.aiAgent.aggregate({ _count: true, _sum: { executionCount: true, successCount: true, failureCount: true } }),
   ])
@@ -76,6 +84,7 @@ export async function opsScan(): Promise<OpsScan> {
     unresolvedErrors,
     staleApprovals,
     expiredPreviews: expiringPreviews,
+    quarantinedDocs,
     context: {
       agentExecutions24h: execToday,
       agents: agentStats._count,
@@ -135,7 +144,7 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
   const startedAt = new Date().toISOString()
   const cycle = await recordHeartbeat()
   const performed: string[] = []
-  const scanned: CycleSummary['scanned'] = { unscored: 0, overdue: 0, failedComms: 0, errors: 0, staleApprovals: 0, failedAutomations: 0, expiredPreviews: 0 }
+  const scanned: CycleSummary['scanned'] = { unscored: 0, overdue: 0, failedComms: 0, errors: 0, staleApprovals: 0, failedAutomations: 0, expiredPreviews: 0, quarantinedDocs: 0 }
   let ceoReport: CycleSummary['ceoReport'] = null
   let ok = true
   let error: string | undefined
@@ -151,6 +160,7 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
     scanned.staleApprovals = data.staleApprovals.length
     scanned.failedAutomations = data.failedAutomations.length
     scanned.expiredPreviews = data.expiredPreviews.length
+    scanned.quarantinedDocs = data.quarantinedDocs.length
 
     // 1) LEAD SCORING — Sentry agent scores every unscored lead
     for (const lead of data.unscoredLeads.slice(0, 5)) {
@@ -198,6 +208,17 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
     const blog = await executeOpsAction('PUBLISH_DUE_BLOG_POSTS', {})
     if (Number(blog.data.published ?? 0) > 0) performed.push(`published ${blog.data.published} scheduled post(s)`)
 
+    // 6d) DOCUMENTS HUB — quarantined uploads pending human review >24h get escalated
+    for (const doc of data.quarantinedDocs.slice(0, 5)) {
+      await executeOpsAction('ALERT', {
+        type: 'CLIENT_DOC',
+        title: `Quarantined document awaiting review: ${doc.originalName}`,
+        body: `${doc.client?.clientId ?? 'unknown client'} · ${doc.client?.name ?? ''} uploaded "${doc.originalName}" — locked by the content scan for over 24h. A human must RELEASE or REJECT it in the client's Documents tab.`,
+        severity: 'WARNING',
+      })
+      performed.push(`doc-escalation ${doc.client?.clientId ?? doc.id}`)
+    }
+
     // 7) DAILY CEO REPORT (08:00+ Asia/Dhaka, idempotent per day) — persisted to the archive
     if (await ceoReportDue()) {
       const report = await generateCeoReport('ops:ai-operations', 'SCHEDULED')
@@ -208,7 +229,7 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
     }
 
     // 8) LEARN — persistent lesson from this cycle (self-improvement trail)
-    const lesson = `Cycle #${cycle}: scanned unscored=${data.unscoredLeads.length}, overdue=${data.overdueLeads.length}, failedComms=${data.retryableComms.length}, unresolvedErrors=${data.unresolvedErrors.length}, expiredPreviews=${data.expiredPreviews.length}; executed ${performed.length} actions; agents 24h=${data.context.agentExecutions24h} (total ${data.context.totalExecutions}, failures ${data.context.totalFailures}).`
+    const lesson = `Cycle #${cycle}: scanned unscored=${data.unscoredLeads.length}, overdue=${data.overdueLeads.length}, failedComms=${data.retryableComms.length}, unresolvedErrors=${data.unresolvedErrors.length}, expiredPreviews=${data.expiredPreviews.length}, quarantinedDocs=${data.quarantinedDocs.length}; executed ${performed.length} actions; agents 24h=${data.context.agentExecutions24h} (total ${data.context.totalExecutions}, failures ${data.context.totalFailures}).`
     await executeOpsAction('LEARN', { insight: lesson })
 
     // 9) LOG the cycle into the automation trail + audit

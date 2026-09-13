@@ -526,6 +526,22 @@ export interface ClientDetailResponse {
   memories?: MemoryRecord[]
   automationLogs?: AutomationLogRecord[]
   timeline?: TimelineEvent[]
+  documents?: DocumentRecord[]
+}
+
+export interface DocumentRecord {
+  id: string
+  name: string
+  mimeType: string
+  size: number
+  note?: string | null
+  classification: string
+  scanStatus: string // CLEAN | QUARANTINED | REJECTED
+  scanResult?: { verdict?: string; notes?: string[]; sha256?: string; releasedBy?: string; rejectedBy?: string } | null
+  direction: 'UPLOADED' | 'SHARED'
+  uploadedBy?: string | null
+  downloads: number
+  at: string
 }
 
 export interface JourneyResponse {
@@ -787,6 +803,27 @@ export const api = {
       method: 'POST',
       body: { note },
     }),
+  docStatus: (docId: string, action: 'RELEASE' | 'REJECT') =>
+    fetchJson<{ ok?: boolean; message?: string }>(`/api/admin/documents/${encodeURIComponent(docId)}/status`, {
+      method: 'POST',
+      body: { action },
+    }),
+  docShare: (clientId: string, file: File, note: string, classification: string) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('clientId', clientId)
+    if (note) form.append('note', note)
+    form.append('classification', classification)
+    return fetch('/api/admin/documents', {
+      method: 'POST',
+      headers: { 'x-csrf-token': getCsrf() },
+      body: form,
+    }).then(async (res) => {
+      const data = (await res.json().catch(() => null)) as { error?: string; message?: string } | null
+      if (!res.ok) throw new ApiError(data?.error ?? `Request failed (${res.status})`, res.status, data)
+      return data ?? {}
+    })
+  },
   notifications: (opts?: { unread?: boolean; take?: number }) =>
     fetchJson<NotificationsResponse>(`/api/admin/notifications${opts?.unread ? '?unread=1' : ''}${opts?.take ? `${opts?.unread ? '&' : '?'}take=${opts.take}` : ''}`),
   markNotificationRead: (id: string) =>

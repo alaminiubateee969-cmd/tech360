@@ -1,6 +1,6 @@
 "use client";
 
-import { FileCheck, ShieldCheck } from "lucide-react";
+import { FileCheck, Printer, ShieldCheck } from "lucide-react";
 import { LEGAL_DOCS, getLegalDoc, COMPANY } from "@/data/site";
 import { PageHero } from "./PageHero";
 import { Reveal } from "./Reveal";
@@ -90,6 +90,15 @@ export default function LegalView({ slug }: { slug: string }) {
                   <span className="text-xs text-[#526173]">
                     Applies as written; a signed engagement agreement prevails where it differs.
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    data-print="hide"
+                    className="ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#063B8F]/20 bg-white px-3 py-1.5 text-xs font-semibold text-[#063B8F] outline-none transition-colors hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
+                  >
+                    <Printer className="size-3.5" aria-hidden="true" />
+                    Print / save as PDF
+                  </button>
                 </div>
                 <h1 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">
                   {doc.title}

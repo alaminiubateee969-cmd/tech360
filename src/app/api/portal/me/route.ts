@@ -49,6 +49,15 @@ export async function GET(req: NextRequest) {
     select: { channel: true, direction: true, subject: true, body: true, status: true, createdAt: true },
   })
 
+  // Documents hub — the client's own uploads + files shared by the team.
+  // REJECTED files are hidden from the client (removed after review).
+  const documents = await db.fileRecord.findMany({
+    where: { clientId: client.id, relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE'] }, scanStatus: { not: 'REJECTED' } },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: { id: true, originalName: true, mimeType: true, size: true, note: true, scanStatus: true, relatedType: true, classification: true, createdAt: true },
+  })
+
   return Response.json({
     client: {
       clientId: client.clientId,
@@ -99,6 +108,17 @@ export async function GET(req: NextRequest) {
       preview: (c.body ?? '').slice(0, 160), status: c.status, at: c.createdAt,
     })),
     meetings: client.meetings.map((m) => ({ status: m.status, scheduledAt: m.scheduledAt, reason: m.reason })),
+    documents: documents.map((d) => ({
+      id: d.id,
+      name: d.originalName,
+      mimeType: d.mimeType,
+      size: d.size,
+      note: d.note,
+      scanStatus: d.scanStatus,
+      direction: d.relatedType === 'ADMIN_SHARE' ? 'SHARED' : 'UPLOADED',
+      classification: d.classification,
+      at: d.createdAt,
+    })),
     policy: {
       previewBeforePayment: true,
       sourceAfterFullPayment: true,

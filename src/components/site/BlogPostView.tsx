@@ -53,7 +53,7 @@ function ReadingProgress() {
 
   return (
     <div
-      className="fixed inset-x-0 top-0 z-[60] h-[3px] bg-transparent"
+      className="fixed inset-x-0 top-0 z-[60] h-[3px] bg-transparent print:hidden"
       role="progressbar"
       aria-label="Article reading progress"
     >

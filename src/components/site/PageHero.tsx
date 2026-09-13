@@ -26,7 +26,7 @@ export function PageHero({
   return (
     <section
       className={cn(
-        "relative overflow-hidden bg-gradient-to-br from-[#063B8F] via-[#073a86] to-[#0B1F33]",
+        "relative overflow-hidden bg-gradient-to-br from-[#063B8F] via-[#073a86] to-[#0B1F33] print:from-white print:via-white print:to-white print:overflow-visible",
         className
       )}
       aria-labelledby="page-hero-title"
@@ -78,12 +78,12 @@ export function PageHero({
           </p>
           <h1
             id="page-hero-title"
-            className="max-w-3xl text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl"
+            className="max-w-3xl text-3xl font-bold tracking-tight text-white print:text-[#0B1F33] sm:text-4xl lg:text-5xl"
           >
             {title}
           </h1>
           {description ? (
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/75 sm:text-lg">
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/75 print:text-[#526173] sm:text-lg">
               {description}
             </p>
           ) : null}

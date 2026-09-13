@@ -92,7 +92,7 @@ function trackServerEvent(name: string, path: string) {
 
 function ConsentBanner({ onDecide }: { onDecide: (g: boolean) => void }) {
   return (
-    <div role="dialog" aria-label="Cookie consent" className="fixed inset-x-0 bottom-0 z-[90] border-t border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-[0_-8px_30px_rgba(6,59,143,0.08)]">
+    <div role="dialog" aria-label="Cookie consent" className="fixed inset-x-0 bottom-0 z-[90] border-t border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-[0_-8px_30px_rgba(6,59,143,0.08)] print:hidden">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-slate-600">
           We use privacy-respecting analytics (Google Tag Manager, Meta Pixel) to improve this site.
@@ -139,7 +139,7 @@ function ScrollProgressBar() {
     }
   }, [])
   return (
-    <div aria-hidden className="fixed inset-x-0 top-0 z-[80] h-[3px] bg-transparent">
+    <div aria-hidden id="scroll-progress" className="fixed inset-x-0 top-0 z-[80] h-[3px] bg-transparent print:hidden">
       <div ref={barRef} className="h-full w-full origin-left scale-x-0 bg-gradient-to-r from-[#009FE3] via-[#063B8F] to-[#18B83A]" style={{ willChange: 'transform' }} />
     </div>
   )
@@ -172,9 +172,10 @@ function BackToTop() {
   return (
     <button
       ref={btnRef}
+      id="back-to-top"
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       aria-label="Back to top"
-      className="fixed bottom-6 right-6 z-[70] flex h-11 w-11 items-center justify-center rounded-full bg-[#063B8F] text-white shadow-lg shadow-[#063B8F]/25 outline-none transition-[opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+      className="fixed bottom-6 right-6 z-[70] flex h-11 w-11 items-center justify-center rounded-full bg-[#063B8F] text-white shadow-lg shadow-[#063B8F]/25 outline-none transition-[opacity,transform] duration-300 focus-visible:ring-2 focus-visible:ring-[#009FE3] print:hidden"
       style={{ opacity: 0, pointerEvents: 'none', transform: 'translateY(12px)' }}
     >
       <ArrowUp className="h-5 w-5" aria-hidden />

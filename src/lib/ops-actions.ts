@@ -146,7 +146,7 @@ export async function executeOpsAction(action: string, payload: OpsPayload): Pro
       }
 
       case 'ALERT': {
-        const type = ['APPROVAL', 'ERROR', 'LEAD', 'PAYMENT', 'DELIVERY', 'REVIEW', 'REFERRAL', 'SYSTEM'].includes(sanitizeText(payload.type, 20).toUpperCase()) ? sanitizeText(payload.type, 20).toUpperCase() : 'SYSTEM'
+        const type = ['APPROVAL', 'ERROR', 'LEAD', 'PAYMENT', 'DELIVERY', 'REVIEW', 'REFERRAL', 'CLIENT_DOC', 'SYSTEM'].includes(sanitizeText(payload.type, 20).toUpperCase()) ? sanitizeText(payload.type, 20).toUpperCase() : 'SYSTEM'
         const title = sanitizeText(payload.title, 200) || 'AI Operations alert'
         const body = sanitizeText(payload.body, 1000) || null
         const severity = ['INFO', 'WARNING', 'CRITICAL'].includes(sanitizeText(payload.severity, 10).toUpperCase()) ? sanitizeText(payload.severity, 10).toUpperCase() : 'INFO'

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   BadgeDollarSign,
@@ -12,11 +12,15 @@ import {
   Loader2,
   Mail,
   MessageSquare,
+  Paperclip,
   Phone,
   RefreshCw,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Star,
+  Trash2,
+  Upload,
   Users,
 } from 'lucide-react'
 
@@ -33,6 +37,7 @@ import {
   type ApprovalItem,
   type ApprovalsResponse,
   type ClientDetailResponse,
+  type DocumentRecord,
   type PaymentRecord,
 } from '@/lib/admin-client'
 import { PIPELINE_STAGES } from '@/lib/constants'
@@ -77,6 +82,9 @@ export function ClientDetailView({
   const [dialog, setDialog] = useState<JourneyDialog | null>(null)
   const [busy, setBusy] = useState(false)
   const [journeyMessage, setJourneyMessage] = useState<{ ok: boolean; text: string; result?: unknown } | null>(null)
+  // Controlled tab so refreshes (journey actions, doc moderation, payments)
+  // never yank the admin back to the Timeline tab mid-work.
+  const [activeTab, setActiveTab] = useState('timeline')
 
   // dialog form state
   const [scopeText, setScopeText] = useState('')
@@ -562,7 +570,7 @@ export function ClientDetailView({
       </SectionCard>
 
       {/* Detail tabs */}
-      <Tabs defaultValue="timeline">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-slate-900/80 p-1">
           {[
             ['timeline', 'Timeline'],
@@ -571,6 +579,7 @@ export function ClientDetailView({
             ['payments', `Payments (${(data?.payments ?? []).length})`],
             ['projects', `Projects (${projects.length})`],
             ['approvals', `Approvals (${clientApprovals.length})`],
+            ['documents', `Documents (${(data?.documents ?? []).length})`],
             ['memory', `Memory (${(data?.memories ?? []).length})`],
             ['automation', `Automation (${(data?.automationLogs ?? []).length})`],
           ].map(([v, label]) => (
@@ -789,6 +798,14 @@ export function ClientDetailView({
           </SectionCard>
         </TabsContent>
 
+        <TabsContent value="documents" className="mt-3">
+          <DocumentsPanel
+            clientId={client.clientId}
+            documents={data?.documents ?? []}
+            onChanged={refresh}
+          />
+        </TabsContent>
+
         <TabsContent value="memory" className="mt-3">
           <SectionCard title="AI Memory" description="What the AI workforce remembers about this client" contentClassName="p-0">
             {(data?.memories ?? []).length === 0 ? (
@@ -923,5 +940,256 @@ export function ClientDetailView({
       </Dialog>
 
     </div>
+  )
+}
+
+// ---------------- Documents hub panel (moderation + two-way sharing) ----------------
+const DOC_CLASSIFICATIONS = ['PUBLIC', 'PRIVATE', 'CONFIDENTIAL', 'HIGHLY_SENSITIVE'] as const
+const DOC_ACCEPT = '.pdf,.txt,.md,.csv,.json,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.webp'
+
+function docScanTone(status: string): string {
+  if (status === 'CLEAN') return 'bg-emerald-500/15 text-emerald-300'
+  if (status === 'QUARANTINED') return 'bg-amber-500/15 text-amber-300'
+  if (status === 'REJECTED') return 'bg-red-500/15 text-red-300'
+  return 'bg-slate-700/50 text-slate-400'
+}
+
+function fmtDocSize(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
+  return `${(n / 1024 / 1024).toFixed(1)} MB`
+}
+
+function DocumentsPanel({
+  clientId,
+  documents,
+  onChanged,
+}: {
+  clientId: string
+  documents: DocumentRecord[]
+  onChanged: () => void
+}) {
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareFile, setShareFile] = useState<File | null>(null)
+  const [shareNote, setShareNote] = useState('')
+  const [shareClass, setShareClass] = useState<string>('PRIVATE')
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [shareBusy, setShareBusy] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const quarantined = documents.filter((d) => d.scanStatus === 'QUARANTINED').length
+  const totalDownloads = documents.reduce((s, d) => s + d.downloads, 0)
+
+  async function share() {
+    if (!shareFile) { toast.error('Choose a file first.'); return }
+    setShareBusy(true)
+    try {
+      const res = await api.docShare(clientId, shareFile, shareNote.trim(), shareClass)
+      toast.success(res.message ?? 'File shared with the client.')
+      setShareOpen(false)
+      setShareFile(null)
+      setShareNote('')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      onChanged()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Share failed.')
+    } finally { setShareBusy(false) }
+  }
+
+  async function moderate(docId: string, action: 'RELEASE' | 'REJECT') {
+    setBusyId(docId + action)
+    try {
+      const res = await api.docStatus(docId, action)
+      toast.success(res.message ?? 'Updated.')
+      onChanged()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Action failed.')
+    } finally { setBusyId(null) }
+  }
+
+  return (
+    <SectionCard
+      title="Documents Hub"
+      description="Two-way file exchange — client uploads awaiting moderation and files shared by the team"
+      contentClassName="p-0"
+      actions={
+        <Button size="sm" onClick={() => setShareOpen(true)} className="gap-1.5" style={{ background: ACCENT }}>
+          <Upload className="size-3.5" aria-hidden="true" /> Share file with client
+        </Button>
+      }
+    >
+      {documents.length === 0 ? (
+        <EmptyState
+          title="No documents yet"
+          description="Files the client uploads from their portal (brand assets, briefs, payment proofs) and files your team shares back appear here — every one scanned and audited."
+        />
+      ) : (
+        <div>
+          <div className="flex flex-wrap gap-2 border-b border-slate-800/60 px-4 py-2.5 text-[11px] text-slate-500">
+            <span className="rounded-full bg-slate-800/70 px-2 py-0.5">{documents.length} files</span>
+            <span className="rounded-full bg-slate-800/70 px-2 py-0.5">{fmtDocSize(documents.reduce((s, d) => s + d.size, 0))} stored</span>
+            <span className="rounded-full bg-slate-800/70 px-2 py-0.5">{totalDownloads} downloads</span>
+            {quarantined > 0 && (
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-semibold text-amber-300">
+                {quarantined} quarantined — review required
+              </span>
+            )}
+          </div>
+          <ul className={`max-h-[60vh] divide-y divide-slate-800/60 overflow-auto ${SCROLL_THIN}`}>
+            {documents.map((d) => {
+              const scan = (d.scanResult ?? {}) as { verdict?: string; notes?: string[]; releasedBy?: string; rejectedBy?: string }
+              return (
+                <li key={d.id} className="px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${d.direction === 'SHARED' ? 'bg-[#009FE3]/15 text-[#7dd3fc]' : 'bg-slate-800/70 text-slate-400'}`}>
+                      <Paperclip className="size-3.5" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <a
+                          href={`/api/admin/documents/${encodeURIComponent(d.id)}`}
+                          className="truncate text-sm font-semibold text-slate-200 underline-offset-2 hover:text-white hover:underline"
+                        >
+                          {d.name}
+                        </a>
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${docScanTone(d.scanStatus)}`}>
+                          {d.scanStatus.toLowerCase()}
+                        </span>
+                        <span className="rounded bg-slate-800/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+                          {d.classification.toLowerCase()}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-slate-500">
+                        <span>{d.direction === 'SHARED' ? 'shared by Tech360' : 'client upload'}</span>
+                        <span>· {fmtDocSize(d.size)}</span>
+                        <span>· {d.downloads} dl</span>
+                        <span>· {d.uploadedBy || '—'}</span>
+                        <span>· {fmtDate(d.at)}</span>
+                        {d.note ? <span className="text-slate-400">· “{d.note}”</span> : null}
+                      </p>
+                      {scan.notes && scan.notes.length > 0 && (
+                        <p className="mt-1 text-[11px] text-slate-600">scan: {scan.notes.join(' · ')}</p>
+                      )}
+                      {scan.releasedBy && (
+                        <p className="mt-1 text-[11px] text-emerald-400/80">released by {scan.releasedBy}</p>
+                      )}
+                      {scan.rejectedBy && (
+                        <p className="mt-1 text-[11px] text-red-400/80">rejected by {scan.rejectedBy} — content removed, record retained</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 gap-1.5">
+                      {d.scanStatus === 'QUARANTINED' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busyId === d.id + 'RELEASE'}
+                            onClick={() => moderate(d.id, 'RELEASE')}
+                            className="h-7 gap-1 border-emerald-500/40 text-[11px] text-emerald-300 hover:bg-emerald-500/10"
+                          >
+                            {busyId === d.id + 'RELEASE' ? <Loader2 className="size-3 animate-spin" aria-hidden="true" /> : <ShieldCheck className="size-3" aria-hidden="true" />}
+                            Release
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busyId === d.id + 'REJECT'}
+                            onClick={() => moderate(d.id, 'REJECT')}
+                            className="h-7 gap-1 border-red-500/40 text-[11px] text-red-300 hover:bg-red-500/10"
+                          >
+                            {busyId === d.id + 'REJECT' ? <Loader2 className="size-3 animate-spin" aria-hidden="true" /> : <Trash2 className="size-3" aria-hidden="true" />}
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      {d.scanStatus === 'CLEAN' && d.direction === 'UPLOADED' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busyId === d.id + 'REJECT'}
+                          onClick={() => moderate(d.id, 'REJECT')}
+                          className="h-7 gap-1 border-red-500/40 text-[11px] text-red-300 hover:bg-red-500/10"
+                        >
+                          {busyId === d.id + 'REJECT' ? <Loader2 className="size-3 animate-spin" aria-hidden="true" /> : <Trash2 className="size-3" aria-hidden="true" />}
+                          Reject
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* Share dialog */}
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="border-slate-800 bg-slate-900 text-slate-200 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Paperclip className="size-4" aria-hidden="true" /> Share a file with {clientId}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              The file is scanned with the same engine as client uploads — flagged files are refused, never delivered.
+              Clean files become visible in the client portal instantly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="share-file" className="text-xs text-slate-400">File (≤ 5MB · pdf, docx, xlsx, images, text)</Label>
+              <input
+                ref={fileInputRef}
+                id="share-file"
+                type="file"
+                accept={DOC_ACCEPT}
+                onChange={(e) => setShareFile(e.target.files?.[0] ?? null)}
+                className="w-full cursor-pointer rounded-md border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-400 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-200 hover:file:bg-slate-700"
+              />
+              {shareFile && (
+                <p className="text-[11px] text-slate-500">{shareFile.name} · {fmtDocSize(shareFile.size)} — ready to scan &amp; share</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="share-note" className="text-xs text-slate-400">Note shown to the client</Label>
+              <Input
+                id="share-note"
+                value={shareNote}
+                onChange={(e) => setShareNote(e.target.value)}
+                placeholder="e.g. Milestone 2 invoice — bank transfer copy"
+                maxLength={300}
+                className="h-9 border-slate-800 bg-slate-950/60 text-slate-200"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-400">Classification</Label>
+              <Select value={shareClass} onValueChange={setShareClass}>
+                <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Classification">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                  {DOC_CLASSIFICATIONS.map((c) => (
+                    <SelectItem key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {['CONFIDENTIAL', 'HIGHLY_SENSITIVE'].includes(shareClass) && (
+                <p className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">
+                  <ShieldAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                  Sensitive classification — the client sees the label; the file stays bound to their Client ID and every download is audited.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShareOpen(false)} disabled={shareBusy} className="text-slate-400 hover:text-slate-200">Cancel</Button>
+            <Button onClick={share} disabled={shareBusy || !shareFile} className="font-semibold" style={{ background: ACCENT }}>
+              {shareBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
+              Scan &amp; share
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </SectionCard>
   )
 }

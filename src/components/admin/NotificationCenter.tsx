@@ -18,6 +18,7 @@ import {
   Info,
   Loader2,
   MessageSquare,
+  Paperclip,
   ShieldCheck,
   Star,
   UserPlus,
@@ -45,6 +46,7 @@ const TYPE_ICON: Record<string, typeof Bell> = {
   REFERRAL: UserPlus,
   PREVIEW_REFRESH: FileText,
   REVIEW_PUBLISHED: Star,
+  CLIENT_DOC: Paperclip,
 }
 
 const TYPE_LINK: Record<string, NotificationViewLink> = {
@@ -58,6 +60,7 @@ const TYPE_LINK: Record<string, NotificationViewLink> = {
   REFERRAL: 'reviews',
   PREVIEW_REFRESH: 'clients',
   REVIEW_PUBLISHED: 'reviews',
+  CLIENT_DOC: 'clients',
 }
 
 const SEVERITY_DOT: Record<string, string> = {
