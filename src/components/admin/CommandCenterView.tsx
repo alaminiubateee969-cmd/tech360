@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, Loader2, Send, Sparkles, Terminal, Video, Zap, Phone, MessageCircle } from 'lucide-react'
+import { ArrowRight, CalendarClock, CalendarDays, Loader2, Send, Sparkles, Terminal, Video, Zap, Phone, MessageCircle } from 'lucide-react'
 
 import { api, num, useApi, type DashboardResponse } from '@/lib/admin-client'
 import { Markdownish } from './shared/Markdownish'
@@ -24,6 +24,7 @@ const QUICK_COMMANDS = [
   'Show failed WhatsApp messages',
   "Prepare today's CEO report",
   'Schedule a call with TECH-2026-000001 next Tuesday 3pm',
+  "Move TECH-2026-000001's next call to tomorrow 10am",
 ]
 
 function DataTableFromData({ data }: { data: unknown }) {
@@ -65,6 +66,9 @@ function DataPayload({ data, dataKind }: { data: unknown; dataKind?: string | nu
   if (data === null || data === undefined) return null
   if (dataKind === 'meeting' && typeof data === 'object' && !Array.isArray(data)) {
     return <MeetingCard data={data as Record<string, unknown>} />
+  }
+  if (dataKind === 'meeting_reschedule' && typeof data === 'object' && !Array.isArray(data)) {
+    return <RescheduleCard data={data as Record<string, unknown>} />
   }
   if (Array.isArray(data)) {
     const objects = data.filter((r) => r && typeof r === 'object' && !Array.isArray(r)) as Array<Record<string, unknown>>
@@ -128,6 +132,43 @@ function MeetingCard({ data }: { data: Record<string, unknown> }) {
           <span className="inline-flex items-center gap-1 text-slate-200">{CHANNEL_ICONS[channel] ?? <Video className="size-3.5" aria-hidden="true" />} {channel}</span>
         </p>
         <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Reason</span>
+          <span className="truncate text-slate-200">{String(data.reason ?? '—')}</span>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function RescheduleCard({ data }: { data: Record<string, unknown> }) {
+  const channel = String(data.channel ?? 'GOOGLE_MEET')
+  const agentOk = data.agentOk === true || data.agentOk === 'true'
+  return (
+    <div className="mt-2 overflow-hidden rounded-md border border-amber-500/30 bg-amber-500/5" role="status" aria-label="Rescheduled meeting confirmation">
+      <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/10 px-3 py-2">
+        <CalendarClock className="size-4 shrink-0 text-amber-400" aria-hidden="true" />
+        <p className="text-xs font-semibold text-slate-200">Meeting moved</p>
+        <span className={cn('ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px]', agentOk ? 'bg-[#18B83A]/15 text-[#4ade80]' : 'bg-amber-500/15 text-amber-400')}>
+          {agentOk ? 'MTG-015 agenda refreshed' : 'agenda kept from before'}
+        </span>
+      </div>
+      <div className="grid gap-x-4 gap-y-1.5 px-3 py-2.5 text-xs sm:grid-cols-2">
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Client</span>
+          <span className="font-mono text-[#009FE3]">{String(data.clientId ?? '—')}</span>
+          <span className="truncate text-slate-300">{String(data.clientName ?? '')}</span>
+        </p>
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Channel</span>
+          <span className="inline-flex items-center gap-1 text-slate-200">{CHANNEL_ICONS[channel] ?? <Video className="size-3.5" aria-hidden="true" />} {channel}</span>
+        </p>
+        <p className="col-span-full flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-slate-800/80 bg-slate-950/50 px-2.5 py-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">When</span>
+          <span className="text-slate-500 line-through decoration-slate-600">{fmtDhaka(data.previousScheduledAt)}</span>
+          <ArrowRight className="size-3 shrink-0 text-amber-400" aria-hidden="true" />
+          <span className="font-medium text-amber-300">{fmtDhaka(data.scheduledAt)}</span>
+        </p>
+        <p className="flex items-center gap-1.5 text-slate-400 sm:col-span-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Reason</span>
           <span className="truncate text-slate-200">{String(data.reason ?? '—')}</span>
         </p>
@@ -312,7 +353,7 @@ export function CommandCenterView() {
               void send(input)
             }
           }}
-          placeholder="e.g. schedule a call with TECH-2026-000001 next Tuesday 3pm…"
+          placeholder="e.g. schedule a call with TECH-2026-000001 next Tuesday 3pm, or move their call to Thursday 4pm…"
           className="max-h-32 min-h-[44px] flex-1 resize-none rounded-lg border border-slate-800 bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus-visible:border-[#009FE3]/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#009FE3]/40"
         />
         <Button type="submit" disabled={sending || !input.trim()} className="h-11 px-5 font-semibold" style={{ background: ACCENT }}>

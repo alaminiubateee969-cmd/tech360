@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const [heartbeatSetting, lastCycles, agentAgg, exec24h, notificationAgg] = await Promise.all([
     db.setting.findUnique({ where: { key: 'ops.heartbeat' } }),
-    db.automationLog.findMany({ where: { workflow: 'AI_OPS_LOOP' }, orderBy: { startedAt: 'desc' }, take: 3, select: { id: true, startedAt: true, finishedAt: true, status: true, output: true, steps: true } }),
+    db.automationLog.findMany({ where: { workflow: 'AI_OPS_LOOP' }, orderBy: { startedAt: 'desc' }, take: 15, select: { id: true, startedAt: true, finishedAt: true, status: true, output: true, steps: true } }),
     db.aiAgent.aggregate({ _count: true, _sum: { executionCount: true, successCount: true, failureCount: true } }),
     db.aiAgentExecution.count({ where: { createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } }),
     db.notification.aggregate({ where: { read: false }, _count: true }),
@@ -39,7 +39,20 @@ export async function GET(req: NextRequest) {
     let actions: string[] = []
     try { summary = c.output ? JSON.parse(c.output) as Record<string, unknown> : {} } catch { /* honest fallback */ }
     try { actions = c.steps ? (JSON.parse(c.steps) as string[]).slice(0, 8) : [] } catch { /* honest fallback */ }
-    return { id: c.id, at: c.startedAt, status: c.status, summary, actions }
+    return {
+      id: c.id,
+      at: c.startedAt,
+      finishedAt: c.finishedAt,
+      status: c.status,
+      // CycleSummary fields (from lib/ops-loop): cycle, ok, performed, scanned
+      cycle: typeof summary.cycle === 'number' ? summary.cycle : null,
+      ok: summary.ok === true,
+      trigger: typeof summary.trigger === 'string' ? summary.trigger : null,
+      performed: actions,
+      actions, // backwards-compatible alias (dashboard AiOpsCard)
+      scanned: (summary.scanned ?? {}) as Record<string, unknown>,
+      summary,
+    }
   })
 
   return Response.json({

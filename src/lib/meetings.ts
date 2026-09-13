@@ -162,3 +162,115 @@ export function normalizeChannel(raw: unknown): MeetingChannel | null {
   const c = sanitizeText(typeof raw === 'string' ? raw : '', 20).trim().toUpperCase().replace(/[\s-]+/g, '_')
   return (MEETING_CHANNELS as readonly string[]).includes(c) ? (c as MeetingChannel) : null
 }
+
+// ============================================================
+// RESCHEDULING — the "move" half of the meeting lifecycle.
+// Same real-execution contract as scheduleMeeting: the MTG-015
+// agent re-prepares the agenda for the NEW time, the record is
+// updated (old time preserved in notes + audit), an honest
+// platform communication is issued, and a notification lands.
+// ============================================================
+
+export type RescheduleMeetingInput = {
+  clientDbId: string
+  clientIdHuman: string // TECH-YYYY-NNNNNN
+  clientName: string
+  businessName: string | null
+  businessType: string | null
+  country: string | null
+  pipelineStage: string
+  meetingId: string
+  newScheduledAt: Date
+  actorEmail: string
+  trigger: 'MEETINGS_UI' | 'COMMAND_CENTER'
+}
+
+export type RescheduleMeetingResult = {
+  ok: true
+  meeting: { id: string; status: string; scheduledAt: Date; previousScheduledAt: Date; channel: string; reason: string }
+  agent: { ok: boolean; executionId: string | undefined; agenda: string }
+}
+
+/**
+ * Reschedule an existing REQUESTED/SCHEDULED meeting to a new time.
+ * Completed/cancelled meetings are rejected honestly.
+ */
+export async function rescheduleMeeting(input: RescheduleMeetingInput): Promise<RescheduleMeetingResult> {
+  const existing = await db.meeting.findFirst({
+    where: { id: input.meetingId, clientId: input.clientDbId },
+  })
+  if (!existing) throw new Error('MEETING_NOT_FOUND')
+  if (existing.status === 'COMPLETED' || existing.status === 'CANCELLED') throw new Error(`MEETING_${existing.status}`)
+  const previousScheduledAt = existing.scheduledAt ?? new Date()
+
+  const whenIso = input.newScheduledAt.toISOString()
+
+  // Real AI execution: MTG-015 re-prepares the agenda for the new time so
+  // every participant works from fresh context, not a stale brief.
+  const agenda = await runAgent('MTG-015', {
+    input: `A meeting with client ${input.clientIdHuman} (${input.clientName}${input.businessName ? ` — ${input.businessName}` : ''}) was rescheduled from ${previousScheduledAt.toISOString()} to ${whenIso}. Purpose: ${existing.reason || 'project consultation'}. Channel: ${existing.channel}. Prepare an UPDATED agenda for the new time. Client context: business type ${input.businessType ?? 'unknown'}, country ${input.country ?? 'unknown'}, current stage ${input.pipelineStage}.`,
+    clientId: input.clientDbId,
+    projectId: existing.projectId ?? undefined,
+    workflow: 'MEETING_RESCHEDULE',
+  })
+  const agendaText = (agenda.json ? JSON.stringify(agenda.json) : agenda.output).slice(0, 4000)
+
+  const meeting = await db.meeting.update({
+    where: { id: existing.id },
+    data: {
+      scheduledAt: input.newScheduledAt,
+      status: 'SCHEDULED',
+      notes: `${existing.notes ?? ''}\n\n— Rescheduled from ${previousScheduledAt.toISOString()} by ${input.actorEmail} —\n— Updated AI agenda (MTG-015) —\n${agendaText}`.slice(0, 8000),
+    },
+  })
+
+  // Honest outbound record of the change — visible to the client in the portal.
+  await db.communication
+    .create({
+      data: {
+        clientId: input.clientDbId,
+        channel: existing.channel === 'PHONE' || existing.channel === 'WHATSAPP_CALL' ? 'WHATSAPP' : 'EMAIL',
+        direction: 'OUT',
+        subject: `Meeting moved: ${existing.reason}`,
+        body: `The meeting "${existing.reason}" was moved from ${previousScheduledAt.toISOString()} to ${whenIso} (${existing.channel}). The client sees the updated time in their portal (Meetings section).`,
+        status: 'SENT_PLATFORM',
+      },
+    })
+    .catch(() => null)
+
+  await audit({
+    actor: input.actorEmail,
+    action: 'MEETING_RESCHEDULED',
+    clientId: input.clientIdHuman,
+    details: {
+      meetingId: meeting.id,
+      from: previousScheduledAt.toISOString(),
+      to: whenIso,
+      channel: meeting.channel,
+      reason: meeting.reason,
+      trigger: input.trigger,
+      agentRun: agenda.ok ? agenda.executionId : `agent-failed:${agenda.error}`,
+    },
+  })
+
+  await createNotification({
+    type: 'MEETING',
+    severity: 'INFO',
+    title: 'Meeting rescheduled',
+    body: `${input.clientIdHuman} — "${meeting.reason}" moved to ${whenIso.replace('T', ' ').slice(0, 16)} UTC (was ${previousScheduledAt.toISOString().replace('T', ' ').slice(0, 16)} UTC). Agenda refreshed by ${agenda.ok ? 'MTG-015 (Tempo)' : 'agent unavailable — notes kept from original scheduling'}.`,
+    clientId: input.clientIdHuman,
+  })
+
+  return {
+    ok: true,
+    meeting: {
+      id: meeting.id,
+      status: meeting.status,
+      scheduledAt: meeting.scheduledAt ?? input.newScheduledAt,
+      previousScheduledAt,
+      channel: meeting.channel,
+      reason: meeting.reason ?? 'Consultation call',
+    },
+    agent: { ok: agenda.ok, executionId: agenda.executionId, agenda: agendaText.slice(0, 600) },
+  }
+}

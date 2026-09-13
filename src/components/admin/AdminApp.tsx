@@ -16,6 +16,7 @@ import {
   Menu,
   MessageSquare,
   Newspaper,
+  Radar,
   ScrollText,
   Search,
   Settings,
@@ -46,6 +47,7 @@ import { LeadsView } from './LeadsView'
 import { LogsView } from './LogsView'
 import { MemoryView } from './MemoryView'
 import { N8nView } from './N8nView'
+import { OpsView } from './OpsView'
 import { PaymentsView } from './PaymentsView'
 import { ProjectDetailView, ProjectsView } from './ProjectsView'
 import { ReportsView } from './ReportsView'
@@ -66,7 +68,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 type ViewId =
-  | 'dashboard' | 'leads' | 'clients' | 'approvals' | 'communications'
+  | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications'
   | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings'
 
@@ -79,7 +81,10 @@ interface NavItem {
 const NAV: Array<{ section: string; items: NavItem[] }> = [
   {
     section: 'Overview',
-    items: [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'ops', label: 'Ops Monitor', icon: Radar },
+    ],
   },
   {
     section: 'CRM',
@@ -128,6 +133,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
 
 const VIEW_TITLES: Record<ViewId, string> = {
   dashboard: 'Dashboard',
+  ops: 'Ops Monitor',
   leads: 'Leads',
   clients: 'Clients',
   approvals: 'Approvals',
@@ -455,6 +461,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <ProjectDetailView projectId={projectId} onBack={() => setProjectId(null)} />
               ) : view === 'dashboard' ? (
                 <DashboardView onOpenClient={openClient} />
+              ) : view === 'ops' ? (
+                <OpsView />
               ) : view === 'leads' ? (
                 <LeadsView mode="leads" onOpenClient={openClient} />
               ) : view === 'clients' ? (
