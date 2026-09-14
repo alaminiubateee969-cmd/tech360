@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, Database, Download, ExternalLink, Package, Server, XCircle } from 'lucide-react'
+import { CheckCircle2, Database, Download, ExternalLink, FileArchive, Package, Server, XCircle } from 'lucide-react'
 
 import { num, prettify, useApi, type HealthResponse } from '@/lib/admin-client'
 import { EmptyState, KpiCard, PageHeader, SectionCard } from './shared/cards'
@@ -182,6 +182,29 @@ export function SettingsView() {
             <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
               The package contains the deployment bundle, workflow definitions, and an .env template listing every
               variable above (no values included).
+            </p>
+          </SectionCard>
+
+          <SectionCard title="Full Project Source" description="Owner master copy — every project file">
+            <a
+              href="/downloads/tech360-platform-full-source.zip"
+              download
+              className="flex items-center gap-3 rounded-md border border-emerald-700/50 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300 transition-colors hover:border-emerald-500 hover:bg-emerald-500/20 hover:text-emerald-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/60"
+              aria-label="Download full project source archive (zip)"
+            >
+              <FileArchive className="size-5 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                Download Full Project Source
+                <span className="block text-[11px] font-normal text-slate-500">ZIP · 479 files · 21 MB · src, prisma + db, mini-services, deployment, n8n, brand assets, docs</span>
+              </span>
+              <Download className="size-4 shrink-0" aria-hidden="true" />
+            </a>
+            <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+              The owner&apos;s complete master archive: application source, database with live data, autonomous ops
+              services, Cloud Run deployment, n8n workflows, the shared company pad &amp; logo (public/brand), the
+              official letterhead engine (src/lib/letterhead.ts), and the full build log (worklog.md). The real
+              .env is excluded for security — .env.example documents every variable. Client-facing source delivery
+              stays gated by the platform&apos;s two payment gates.
             </p>
           </SectionCard>
 

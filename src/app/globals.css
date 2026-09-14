@@ -125,7 +125,13 @@
    Print styles — legal policy documents print cleanly as PDFs:
    site chrome (hero, sidebar nav, footer, floating buttons,
    consent banner) is stripped; typography goes ink-friendly.
+   [data-print="pad"] blocks are the official company letterhead
+   (pad) — hidden on screen, printed at the head/foot of the doc.
    ------------------------------------------------------------ */
+[data-print="pad"] {
+  display: none;
+}
+
 @media print {
   header,
   footer,
@@ -137,6 +143,41 @@
   #scroll-progress,
   #back-to-top {
     display: none !important;
+  }
+
+  /* official letterhead blocks become visible in print */
+  [data-print="pad"] {
+    display: block !important;
+  }
+
+  .pad-rule {
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #009fe3 0%, #18b83a 62%, #18b83a 100%);
+    margin-top: 12px;
+  }
+
+  .pad-sub {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #7c8da0;
+    padding: 6px 2px 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .pad-footer-line {
+    margin-top: 24px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 10px;
+    font-size: 9.5px;
+    color: #7c8da0;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
   }
 
   main,

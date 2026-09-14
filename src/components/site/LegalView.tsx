@@ -81,6 +81,31 @@ export default function LegalView({ slug }: { slug: string }) {
 
           {/* Document body */}
           <article className="min-w-0 lg:col-span-8 xl:col-span-9">
+            {/* Official company letterhead — printed on every policy PDF */}
+            <div data-print="pad" aria-hidden="true">
+              <div className="flex items-start justify-between gap-6">
+                <img src="/images/tech360-logo-web.png" alt="" className="h-10 w-auto" />
+                <div className="text-right">
+                  <div className="text-[17px] font-black tracking-[0.14em] text-[#0B1F33]">TECH360</div>
+                  <div className="mt-0.5 text-[9px] font-bold tracking-[0.22em] text-[#009FE3]">CONNECT · INNOVATE · GROW</div>
+                  <div className="mt-0.5 text-[8.5px] tracking-[0.05em] text-[#7C8DA0]">Web | Cloud | AI | Data | Tech</div>
+                  <div className="mt-1.5 text-[9.5px] leading-[1.6] text-[#526173]">
+                    <b className="text-[#0B1F33] tracking-wide">TECH360 LLC</b>
+                    <br />
+                    Missouri LLC {COMPANY.missouriLLC} · EIN {COMPANY.ein}
+                    <br />
+                    {COMPANY.address}
+                    <br />
+                    {COMPANY.email} · {COMPANY.whatsappDisplay}
+                  </div>
+                </div>
+              </div>
+              <div className="pad-rule" />
+              <div className="pad-sub">
+                <span>Official company document</span>
+                <span>Legal &amp; policies · {doc ? `Updated ${doc.updated}` : "Policy"}</span>
+              </div>
+            </div>
             {doc ? (
               <Reveal>
                 <div className="flex flex-wrap items-center gap-3">
@@ -149,6 +174,12 @@ export default function LegalView({ slug }: { slug: string }) {
                     with your Client ID. Policy questions are answered by the
                     team that wrote the policy.
                   </p>
+                </div>
+
+                {/* Official company footer — printed on every policy PDF */}
+                <div data-print="pad" className="pad-footer-line" aria-hidden="true">
+                  <span>{COMPANY.legalName} · {COMPANY.domain} · {COMPANY.address}</span>
+                  <span>Issued electronically by the Tech360 client platform</span>
                 </div>
               </Reveal>
             ) : (

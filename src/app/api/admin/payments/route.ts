@@ -20,12 +20,21 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: 'desc' }, take: 200,
     include: { client: { select: { clientId: true, name: true, businessName: true } }, project: { select: { code: true, name: true } } },
   })
-  const [paidAgg, pendingCount, failedCount] = await Promise.all([
+  const [paidAgg, pendingCount, failedCount, invoices] = await Promise.all([
     db.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
     db.payment.count({ where: { status: 'PENDING' } }),
     db.payment.count({ where: { status: 'FAILED' } }),
+    db.invoice.findMany({
+      orderBy: { issuedAt: 'desc' }, take: 200,
+      where: { ...(clientId ? { client: { OR: [{ id: clientId }, { clientId }] } } : {}) },
+      include: { client: { select: { clientId: true, name: true } }, project: { select: { code: true, name: true } } },
+    }),
   ])
-  return Response.json({ payments, summary: { totalReceived: paidAgg._sum.amount ?? 0, pendingCount, failedCount } })
+  return Response.json({
+    payments,
+    invoices,
+    summary: { totalReceived: paidAgg._sum.amount ?? 0, pendingCount, failedCount },
+  })
 }
 
 export async function POST(req: NextRequest) {

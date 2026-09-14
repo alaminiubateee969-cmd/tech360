@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { BadgeDollarSign, Loader2, RefreshCw, Wallet } from 'lucide-react'
+import { BadgeDollarSign, FileText, Loader2, RefreshCw, Wallet } from 'lucide-react'
 
 import {
   api,
@@ -185,7 +185,20 @@ export function PaymentsView({ onOpenClient }: { onOpenClient?: (id: string) => 
         ) : (
           <DataTable
             columns={[
-              { key: 'number', header: 'Invoice', cell: (i) => <span className="font-mono text-xs text-[#009FE3]">{i.number || '—'}</span> },
+              { key: 'number', header: 'Invoice', cell: (i) => (
+                <a
+                  href={`/api/admin/invoices/${encodeURIComponent(i.number ?? '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 font-mono text-xs text-[#009FE3] underline decoration-transparent underline-offset-2 transition-colors hover:decoration-[#009FE3]"
+                  aria-label={`Open official invoice ${i.number} on company letterhead`}
+                  title="Open official invoice (company pad) in a new tab"
+                >
+                  {i.number || '—'}
+                  <FileText className="size-3" aria-hidden="true" />
+                </a>
+              ) },
               { key: 'amount', header: 'Amount', cell: (i) => <span className="tabular-nums text-slate-100">{fmtMoney(num(i.amount), i.currency ?? 'USD')}</span> },
               { key: 'status', header: 'Status', cell: (i) => <StatusBadge status={i.status} /> },
               { key: 'notes', header: 'Notes', cell: (i) => <span className="text-slate-400">{i.notes || '—'}</span> },

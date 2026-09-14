@@ -4,6 +4,7 @@ import { runAgent, rememberMemory, recallMemory } from '@/lib/agents/engine'
 import { sendCommunication, emailTemplate, wrapEmailHtml, escapeHtml } from '@/lib/comms'
 import { newCorrelationId, logError, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
+import { PAD_CSS, padHeader, padMeta, padFooter, padSignatures, docDate } from '@/lib/letterhead'
 
 // Tokenized preview links expire after this many days (env-overridable).
 const PREVIEW_TTL_DAYS = Math.max(1, Number(process.env.PREVIEW_TTL_DAYS ?? 30) || 30)
@@ -476,34 +477,25 @@ function buildPreviewHtml(client: { clientId: string; name: string; businessName
   const pp = (content.paymentPolicy ?? {}) as Record<string, unknown>
   const itemRows = items.map((i) => `<div class="card"><h3>${escapeHtml(i.name ?? '')}</h3><p>${escapeHtml(i.description ?? '')}</p><div class="tag">Deliverable: ${escapeHtml(i.deliverable ?? 'as described')}</div></div>`).join('')
   const timelineRows = timeline.map((t) => `<li><strong>${escapeHtml(t.phase ?? '')}</strong> <span>(${escapeHtml(String(t.weeks ?? '?'))} week${String(t.weeks ?? '') === '1' ? '' : 's'})</span><p>${escapeHtml(t.activities ?? '')}</p></li>`).join('')
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Project Preview — Tech360</title><style>
-:root{--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--acc:#16a34a;--bg:#f8fafc}
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-header{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:48px 24px;text-align:center}
-header .b{font-size:28px;font-weight:800;letter-spacing:.5px}header .b em{color:#4ade80;font-style:normal}
-header p{color:#94a3b8;margin:6px 0 0}
-main{max-width:880px;margin:0 auto;padding:32px 20px}
-.ref{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:99px;padding:8px 18px;font-weight:600;margin-bottom:18px}
-h2{margin:28px 0 12px;font-size:20px}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:12px}
-.card h3{margin:0 0 6px;font-size:16px}.card p{margin:0;color:var(--mut);font-size:14px;line-height:1.6}
-.tag{margin-top:10px;display:inline-block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;font-size:12px;padding:4px 10px;border-radius:99px}
-ol{padding-left:0;list-style:none}ol li{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:10px}
-ol li span{color:var(--acc);font-size:13px}ol li p{color:var(--mut);font-size:14px;margin:6px 0 0}
-.pay{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;gap:16px;flex-wrap:wrap}
-.pay div{flex:1;min-width:140px;text-align:center}.pay b{font-size:24px;color:var(--acc)}.pay small{color:var(--mut)}
-.note{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px 18px;font-size:14px;color:#92400e;margin:22px 0}
-footer{margin:40px 0 24px;text-align:center;color:var(--mut);font-size:12px;line-height:1.7}
-.acts{display:flex;gap:12px;justify-content:center;margin-top:26px;flex-wrap:wrap}
-.btn{padding:13px 30px;border-radius:10px;font-weight:700;text-decoration:none;display:inline-block}
-.btn-a{background:var(--acc);color:#fff}.btn-r{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  const clientDisplayName = escapeHtml(client.name)
+  const issued = docDate()
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex,nofollow"/><title>Scope of Work — ${escapeHtml(client.clientId)} — Tech360</title><style>${PAD_CSS}
+.hello{margin:26px 0 6px;font-size:22px}
+.intro{color:#526173;font-size:14px;line-height:1.7;max-width:64ch}
 </style></head><body>
-<header><div class="b">Tech<em>360</em></div><p>Project Preview — for your review</p></header>
-<main>
-<div class="ref">Reference ${escapeHtml(client.clientId)} · Preview v${version}</div>
-<h2>Hello ${escapeHtml(client.name)}${client.businessName ? ` · ${escapeHtml(client.businessName)}` : ''}</h2>
-<p style="color:var(--mut)">This is the working preview of your project scope, generated from your approved requirements. Review everything below — no payment is due until you approve.</p>
+<div class="sheet">
+${padHeader("Scope of Work — Project Preview")}
+${padMeta([
+    { label: "Client reference", value: escapeHtml(client.clientId), brand: true },
+    { label: "Document", value: `SOW Preview v${version}` },
+    { label: "Issued", value: issued },
+    { label: "Status", value: "For client review" },
+  ])}
+<main class="doc">
+<h1 class="hello">Hello ${clientDisplayName}${client.businessName ? ` · ${escapeHtml(client.businessName)}` : ''}</h1>
+<p class="intro">This is the working preview of your project scope, generated from your approved requirements and presented on official Tech360 company letterhead. Review everything below — <strong>no payment is due until you approve.</strong></p>
 <h2>Deliverables</h2>${itemRows || '<div class="card"><p>Scope items will appear here.</p></div>'}
-<h2>Timeline</h2><ol>${timelineRows}</ol>
+<h2>Timeline</h2><ol class="timeline">${timelineRows}</ol>
 <h2>Payment Plan</h2>
 <div class="pay">
 <div><b>${escapeHtml(String(pp.advancePct ?? '—'))}%</b><br/><small>Advance</small></div>
@@ -511,9 +503,11 @@ footer{margin:40px 0 24px;text-align:center;color:var(--mut);font-size:12px;line
 <div><b>${escapeHtml(String(pp.finalPct ?? '—'))}%</b><br/><small>On final delivery</small></div>
 </div>
 <div class="note"><strong>Our promise:</strong> HTML Preview Before Payment · Source Code After Full Payment · Changes to approved scope may require additional cost/time.</div>
-<div class="acts"><a class="btn btn-a" href="#approve" id="approveBtn">✓ Approve this preview</a><a class="btn btn-r" href="#revise" id="reviseBtn">Request changes</a></div>
+${padSignatures(clientDisplayName, "Client approval of scope preview")}
+<div class="acts no-print"><a class="btn btn-a" href="#approve" id="approveBtn">✓ Approve this preview</a><a class="btn btn-r" href="#revise" id="reviseBtn">Request changes</a></div>
 </main>
-<footer>TECH360 LLC · Harrisonville, MO, USA · info@bdtech360.com · wa.me/8801327100297<br/>This preview is confidential and intended for the addressed recipient.</footer>
+${padFooter("This scope preview is confidential and intended for the addressed recipient only. Not a tax invoice.")}
+</div>
 <script>
 (function(){
   var t = location.pathname.split('/').pop();
