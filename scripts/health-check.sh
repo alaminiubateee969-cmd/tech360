@@ -13,11 +13,25 @@ set -uo pipefail
 PORT="${1:-}"
 BASE="${2:-}"
 
-# --- discover the port the app actually listens on ---
+# --- discover the port the TECH360 app actually listens on ---
+# The app answers /api/health with "tech360-platform"; mini-services do not.
+# Candidates: explicitly running next/node app ports first (never sidecars).
 if [[ -z "$PORT" ]]; then
-  PORT="$(ss -lntp 2>/dev/null | rg 'node|next|bun' | rg -o ':\d+' | head -1 | tr -d ':' || true)"
-  [[ -z "$PORT" ]] && PORT=3000
+  for CAND in $(ss -lntp 2>/dev/null | rg 'next-server|node .*standalone|node .*server' | rg -o ':\d+' | tr -d ':' | sort -u); do
+    if curl -sf -m 5 "http://127.0.0.1:$CAND/api/health" 2>/dev/null | rg -q 'tech360-platform'; then
+      PORT="$CAND"; break
+    fi
+  done
 fi
+if [[ -z "$PORT" ]]; then
+  # wider sweep: any listening port that answers as the Tech360 platform
+  for CAND in $(ss -lntp 2>/dev/null | rg -o ':\d+' | tr -d ':' | sort -un); do
+    if curl -sf -m 3 "http://127.0.0.1:$CAND/api/health" 2>/dev/null | rg -q 'tech360-platform'; then
+      PORT="$CAND"; break
+    fi
+  done
+fi
+[[ -z "$PORT" ]] && PORT=3000
 BASE="${BASE:-http://127.0.0.1:$PORT}"
 
 PASS=0; FAIL=0
@@ -61,8 +75,8 @@ check "AI operations heartbeat fresh (ACTIVE/operating)" "echo '$HEALTH' | rg -q
 echo "────────────────────────────────"
 echo "  $PASS passed · $FAIL failed"
 if [[ $FAIL -gt 0 ]]; then
-  echo "  RESULT: \033[1;31mUNHEALTHY\033[0m — trigger rollback (scripts/deploy-vps.sh auto-rolls-back, or restore releases/last-good-commit.txt)"
+  printf "  RESULT: \033[1;31mUNHEALTHY\033[0m — trigger rollback (scripts/deploy-vps.sh auto-rolls-back, or restore releases/last-good-commit.txt)"
   exit 1
 fi
-echo "  RESULT: \033[1;32mHEALTHY\033[0m"
+printf "  RESULT: \033[1;32mHEALTHY\033[0m\n"
 exit 0

@@ -44,14 +44,16 @@ log "STEP 0/9 — inspecting current production state (before any change)"
 CURRENT_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 log "current commit: $CURRENT_COMMIT"
 
-# Discover the port the CURRENT app process listens on.
+# Discover the port the CURRENT app process listens on. The Tech360 app is
+# the listener whose /api/health identifies as "tech360-platform" — never a
+# bun/mini-service sidecar.
 DISCOVERED_PORT="${TECH360_PORT:-}"
 if [[ -z "$DISCOVERED_PORT" ]]; then
-  DISCOVERED_PORT="$(ss -lntp 2>/dev/null | rg -o ':(3000|3001|3010|3018|8080|4000|8000)\b' | head -1 | tr -d ':' || true)"
-fi
-if [[ -z "$DISCOVERED_PORT" ]]; then
-  # fall back to whatever the running node/next process actually holds
-  DISCOVERED_PORT="$(ss -lntp 2>/dev/null | rg 'node|next|bun' | rg -o ':\d+' | head -1 | tr -d ':' || true)"
+  for CAND in $(ss -lntp 2>/dev/null | rg 'next-server|node|bun' | rg -o ':\d+' | tr -d ':' | sort -un); do
+    if curl -sf -m 5 "http://127.0.0.1:$CAND/api/health" 2>/dev/null | rg -q 'tech360-platform'; then
+      DISCOVERED_PORT="$CAND"; break
+    fi
+  done
 fi
 TECH360_PORT="${DISCOVERED_PORT:-3000}"
 log "TECH360_PORT = $TECH360_PORT (preserving the existing port)"

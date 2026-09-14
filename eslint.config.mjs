@@ -46,6 +46,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
 }, {
   ignores: [
     "deployment/*.cjs",
+    ".zscripts/**",
     "mini-services/**",
     "n8n/**","node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
 }];

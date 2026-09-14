@@ -18,54 +18,22 @@ mkdir -p "$OUT_DIR"
 rm -f "$OUT"
 
 # Archive README lives at archive root
+# Archive README (informational header written into the zip listing) —
+# the repo README.md itself is included AS-IS (full local-setup + CI/CD docs)
 cat > /tmp/tech360-archive-README.md <<EOF
 # TECH360 LLC — Enterprise Platform · Full Source Archive
 
 Generated: ${STAMP}
-Stack: Next.js 16 (App Router) · TypeScript 5 · Tailwind CSS 4 · shadcn/ui · Prisma + SQLite · z-ai-web-dev-sdk (server-side AI)
-
-## What is inside (every project file)
-
-- \`src/\` — the complete application: public website (single-route SPA, hash navigation), admin command center, client portal, ~40 API route groups, AI agent engine (44 agents), journey/CRM engine, ops loop, letterhead engine, security libs.
-- \`prisma/\` — full database schema (38 models).
-- \`db/\` — the SQLite database file with the live data.
-- \`public/\` — all brand assets (including the owner-shared logo + company pad designs in \`public/brand/\`), site images, hero video.
-- \`mini-services/\` — ai-ops (autonomous loop trigger, port 3031) and notify-relay (socket.io ping relay, port 3032). Install with \`bun install\` inside each.
-- \`deployment/\` — Google Cloud Run deploy script, Cloud Scheduler setup, cloudbuild.yaml, scheduler docs.
-- \`n8n/\` — 25 workflow definitions.
-- \`examples/\` — websocket reference used by the relay.
-- \`tests/\`, \`.zscripts/\`, \`agent-ctx/\` — sandbox tooling/scripts used during the build.
-- \`upload/\` — the owner's original shared files (brand/logo/pad sources and build directives).
-- Root configs: package.json, tsconfig.json, next.config.ts, eslint.config.mjs, tailwind.config.ts, postcss.config.mjs, components.json, Caddyfile, bun.lock, .env.example.
-- \`worklog.md\` — the complete build/iteration log (9 autonomous rounds, honest QA state).
-- \`OFFICIAL-DOCUMENTS.md\` — where the company pad is used.
-
-## Run it
-
-\`\`\`bash
-bun install
-bun run db:push        # (re)create/align the SQLite schema
-cp .env.example .env   # fill secrets (see comments inside)
-bun run dev            # http://localhost:3000
-\`\`\`
-
-Mini services (optional but recommended — they drive the autonomous ops loop + real-time notifications):
-
-\`\`\`bash
-cd mini-services/ai-ops && bun install && bun run dev      # port 3031
-cd mini-services/notify-relay && bun install && bun run dev # port 3032
-\`\`\`
-
-Admin console: \`/#/admin\` (super admin). Client portal: \`/#/portal\`.
-
-## Security notes
-
-- The real \`.env\` is intentionally NOT in this archive — only \`.env.example\`.
-- External channels (WhatsApp/SMTP/SMS/social) report NOT_CONFIGURED until credentials are provided; the platform never fakes a SENT status.
-- Source delivery to CLIENTS remains gated by the two payment gates inside the platform itself. This archive is the OWNER's master copy.
+See README.md (included) for full setup, environment, deployment, rollback docs.
+This archive = every project file: src, prisma, db, public, mini-services,
+deployment, n8n, scripts (VPS deploy + health-check + archive builder),
+.github/workflows (CI/CD), examples, tests, .zscripts, agent-ctx, upload,
+DEPLOYMENT.md, SECURITY.md, PAYMENT.md, OFFICIAL-DOCUMENTS.md, worklog.md,
+.env.example (placeholders only — the real .env is NEVER in the archive).
 EOF
 
-cp /tmp/tech360-archive-README.md README.md
+# Do NOT clobber the repo README — it is the source of truth for setup/CI/CD.
+# (Previously this script overwrote README.md; the repo README is now included as-is.)
 
 # Document where the official company pad is used
 cat > OFFICIAL-DOCUMENTS.md <<'EOF'
@@ -90,10 +58,11 @@ EOF
 
 zip -r -q "$OUT" \
   src prisma db public deployment n8n examples tests .zscripts agent-ctx upload mini-services \
+  scripts .github \
   package.json tsconfig.json next.config.ts eslint.config.mjs tailwind.config.ts \
   postcss.config.mjs components.json Caddyfile bun.lock .gitignore \
-  .env.example README.md OFFICIAL-DOCUMENTS.md worklog.md \
-  -x "upload/extract/*" "mini-services/*/node_modules/*" "*.log" "db/*.journal" ".DS_Store"
+  .env.example README.md OFFICIAL-DOCUMENTS.md DEPLOYMENT.md SECURITY.md PAYMENT.md worklog.md \
+  -x "upload/extract/*" "mini-services/*/node_modules/*" "*.log" "db/*.journal" ".DS_Store" ".zscripts/*.png" "tool-results/*"
 
 FILES=$(unzip -l "$OUT" | tail -1 | awk '{print $2}')
 SIZE=$(du -h "$OUT" | cut -f1)
