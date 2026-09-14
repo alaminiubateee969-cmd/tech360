@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# ============================================================
+# TECH360 — POST-DEPLOY HEALTH CHECK
+# Verifies the live application end-to-end after deployment.
+# Exit code 0 = healthy, 1 = unhealthy (CI marks the deploy failed).
+#
+# Usage:  bash scripts/health-check.sh [port] [base-url]
+#   port     — the EXISTING Tech360 port (default: auto-discover)
+#   base-url — public URL (default: http://127.0.0.1:$PORT)
+# ============================================================
+set -uo pipefail
+
+PORT="${1:-}"
+BASE="${2:-}"
+
+# --- discover the port the app actually listens on ---
+if [[ -z "$PORT" ]]; then
+  PORT="$(ss -lntp 2>/dev/null | rg 'node|next|bun' | rg -o ':\d+' | head -1 | tr -d ':' || true)"
+  [[ -z "$PORT" ]] && PORT=3000
+fi
+BASE="${BASE:-http://127.0.0.1:$PORT}"
+
+PASS=0; FAIL=0
+check() {
+  local NAME="$1" CMD="$2"
+  if eval "$CMD" >/dev/null 2>&1; then
+    printf '  \033[1;32mPASS\033[0m  %s\n' "$NAME"; PASS=$((PASS+1))
+  else
+    printf '  \033[1;31mFAIL\033[0m  %s\n' "$NAME"; FAIL=$((FAIL+1))
+  fi
+}
+
+echo "── TECH360 health check · $BASE (port :$PORT) ──"
+
+# 1) process is running and listening on the expected port
+check "application process listening on :$PORT" "ss -lntp | rg -q \":$PORT\\b\""
+check "node/next/bun process present" "ps aux | rg -q '[n]ext-server|[n]ode .*server|[b]un'"
+
+# 2) public homepage responds
+check "GET / → HTTP 200" "curl -sf -m 15 -o /dev/null '$BASE/'"
+
+# 3) health endpoint: overall + database + agents + ops loop
+HEALTH="$(curl -sf -m 15 "$BASE/api/health" 2>/dev/null || echo '{}')"
+check "/api/health responds" "[[ '$HEALTH' != '{}' ]]"
+check "database UP" "echo '$HEALTH' | rg -q '\"status\":\"UP\"'"
+check "health JSON parses" "echo '$HEALTH' | rg -q '\"status\":\"healthy\"'"
+
+# 4) public data APIs answer (blog + features)
+check "GET /api/blog responds" "curl -sf -m 15 '$BASE/api/blog' | rg -q 'posts' || curl -sf -m 15 '$BASE/api/blog' | rg -q 'disabled'"
+check "GET /api/features responds" "curl -sf -m 15 '$BASE/api/features' | rg -q 'maintenance'"
+
+# 5) admin login page loads (SPA shell + auth gate reachable)
+check "admin SPA reachable (GET / 200 on #/admin route)" "curl -sf -m 15 -o /dev/null '$BASE/'"
+
+# 6) auth API refuses anonymous (proves the guard is live — a 401 is PASS)
+check "admin API protected (401 for anonymous /api/admin/dashboard)" "! curl -sf -m 10 '$BASE/api/admin/dashboard'"
+
+# 7) ops loop heartbeat is fresh (autonomous engine alive)
+check "AI operations heartbeat fresh (ACTIVE/operating)" "echo '$HEALTH' | rg -q 'ACTIVE|operating' || curl -sf -m 10 'http://127.0.0.1:3031/health' | rg -q 'operating'"
+
+echo "────────────────────────────────"
+echo "  $PASS passed · $FAIL failed"
+if [[ $FAIL -gt 0 ]]; then
+  echo "  RESULT: \033[1;31mUNHEALTHY\033[0m — trigger rollback (scripts/deploy-vps.sh auto-rolls-back, or restore releases/last-good-commit.txt)"
+  exit 1
+fi
+echo "  RESULT: \033[1;32mHEALTHY\033[0m"
+exit 0

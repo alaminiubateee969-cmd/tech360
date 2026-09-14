@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
-import { verifyPortalToken, PORTAL_COOKIE } from '@/lib/portal'
+import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { readJson, sanitizeText, audit, rateLimit, clientIp } from '@/lib/security'
 import { createNotification } from '@/lib/notify'
 
@@ -11,6 +11,8 @@ export const dynamic = 'force-dynamic'
 // Writes the REAL Review record (rating, content, consent). Publishing only
 // happens after admin moderation, and only when consent=true.
 export async function POST(req: NextRequest) {
+  const portalDisabled = await portalGate()
+  if (portalDisabled) return portalDisabled
   const ip = clientIp(req)
   const rl = rateLimit(`portal-review:${ip}`, 5, 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many attempts, please wait a minute.' }, { status: 429 })
@@ -60,6 +62,8 @@ export async function POST(req: NextRequest) {
 
 // GET /api/portal/review — the client's own review state for the portal card
 export async function GET() {
+  const portalDisabled = await portalGate()
+  if (portalDisabled) return portalDisabled
   const store = await cookies()
   const clientId = verifyPortalToken(store.get(PORTAL_COOKIE)?.value)
   if (!clientId) return Response.json({ error: 'Session expired. Please sign in again.' }, { status: 401 })

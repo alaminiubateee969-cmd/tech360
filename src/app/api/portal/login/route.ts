@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { signPortalToken, PORTAL_COOKIE, PORTAL_TTL_HOURS, normalizeContact } from '@/lib/portal'
+import { signPortalToken, PORTAL_COOKIE, PORTAL_TTL_HOURS, normalizeContact, portalGate } from "@/lib/portal"
 import { readJson, sanitizeText, rateLimit, clientIp, audit } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic'
 // Client portal login: Client ID + email/WhatsApp on file.
 // Rate limited, audit logged. Never reveals which field failed.
 export async function POST(req: NextRequest) {
+  const portalDisabled = await portalGate()
+  if (portalDisabled) return portalDisabled
   const ip = clientIp(req)
   const rl = rateLimit(`portal-login:${ip}`, 10, 10 * 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many attempts. Try again later.' }, { status: 429 })

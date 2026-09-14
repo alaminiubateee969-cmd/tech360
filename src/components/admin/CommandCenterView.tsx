@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, CalendarClock, CalendarDays, Loader2, Send, Sparkles, Terminal, Video, Zap, Phone, MessageCircle } from 'lucide-react'
+import { ArrowRight, CalendarClock, CalendarDays, Loader2, Send, Sparkles, Terminal, Video, XCircle, Zap, Phone, MessageCircle } from 'lucide-react'
 
 import { api, num, useApi, type DashboardResponse } from '@/lib/admin-client'
 import { Markdownish } from './shared/Markdownish'
@@ -69,6 +69,9 @@ function DataPayload({ data, dataKind }: { data: unknown; dataKind?: string | nu
   }
   if (dataKind === 'meeting_reschedule' && typeof data === 'object' && !Array.isArray(data)) {
     return <RescheduleCard data={data as Record<string, unknown>} />
+  }
+  if (dataKind === 'meeting_cancel' && typeof data === 'object' && !Array.isArray(data)) {
+    return <CancelCard data={data as Record<string, unknown>} />
   }
   if (Array.isArray(data)) {
     const objects = data.filter((r) => r && typeof r === 'object' && !Array.isArray(r)) as Array<Record<string, unknown>>
@@ -171,6 +174,47 @@ function RescheduleCard({ data }: { data: Record<string, unknown> }) {
         <p className="flex items-center gap-1.5 text-slate-400 sm:col-span-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Reason</span>
           <span className="truncate text-slate-200">{String(data.reason ?? '—')}</span>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function CancelCard({ data }: { data: Record<string, unknown> }) {
+  const channel = String(data.channel ?? 'GOOGLE_MEET')
+  const status = String(data.status ?? 'CANCELLED').toUpperCase()
+  return (
+    <div className="mt-2 overflow-hidden rounded-md border border-red-500/30 bg-red-500/5" role="status" aria-label="Cancelled meeting confirmation">
+      <div className="flex items-center gap-2 border-b border-red-500/20 bg-red-500/10 px-3 py-2">
+        <XCircle className="size-4 shrink-0 text-red-400" aria-hidden="true" />
+        <p className="text-xs font-semibold text-slate-200">Meeting cancelled</p>
+        <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 font-mono text-[10px] text-red-400">{status}</span>
+      </div>
+      <div className="grid gap-x-4 gap-y-1.5 px-3 py-2.5 text-xs sm:grid-cols-2">
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Client</span>
+          <span className="font-mono text-[#009FE3]">{String(data.clientId ?? '—')}</span>
+          <span className="truncate text-slate-300">{String(data.clientName ?? '')}</span>
+        </p>
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Channel</span>
+          <span className="inline-flex items-center gap-1 text-slate-200">{CHANNEL_ICONS[channel] ?? <Video className="size-3.5" aria-hidden="true" />} {channel}</span>
+        </p>
+        <p className="col-span-full flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-slate-800/80 bg-slate-950/50 px-2.5 py-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Was scheduled for</span>
+          <span className="text-slate-500 line-through decoration-red-500/70">{fmtDhaka(data.wasScheduledAt)}</span>
+        </p>
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Reason</span>
+          <span className="truncate text-slate-200">{String(data.reason ?? '—')}</span>
+        </p>
+        <p className="flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Reason on record</span>
+          <span className="truncate text-red-300">{String(data.cancelReason ?? '—')}</span>
+        </p>
+        <p className="col-span-full flex items-center gap-1.5 text-slate-400">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">Cancelled by</span>
+          <span className="font-mono text-[11px] text-slate-500">{String(data.cancelledBy ?? '—')}</span>
         </p>
       </div>
     </div>

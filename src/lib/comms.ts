@@ -10,7 +10,7 @@ import { COMPANY } from '@/lib/constants'
 
 export type SendResult = {
   ok: boolean
-  status: 'SENT' | 'FAILED' | 'NOT_CONFIGURED'
+  status: 'SENT' | 'FAILED' | 'NOT_CONFIGURED' | 'DISABLED_BY_ADMIN' | 'SENT_PLATFORM'
   providerMessageId?: string
   error?: string
 }
@@ -152,6 +152,21 @@ export async function sendCommunication(entry: {
       status: 'QUEUED',
     },
   })
+
+  // ---- Super Admin channel switches (REAL backend enforcement) ----
+  // When a channel is switched OFF, the send attempt is refused honestly
+  // (the Communication record is still kept, status DISABLED_BY_ADMIN) —
+  // records stay for the audit trail, but nothing is ever sent.
+  const channelFlag: Record<string, 'whatsapp' | 'email' | 'sms'> = { WHATSAPP: 'whatsapp', EMAIL: 'email', SMS: 'sms' }
+  const flag = channelFlag[entry.channel]
+  if (flag) {
+    const { featureEnabled } = await import('@/lib/features')
+    if (!(await featureEnabled(flag))) {
+      const disabled: SendResult = { ok: false, status: 'DISABLED_BY_ADMIN', error: entry.channel + ' channel is switched OFF by Super Admin — send refused (record kept)' }
+      await db.communication.update({ where: { id: comm.id }, data: { status: disabled.status, error: disabled.error ?? null, sentAt: null } })
+      return { communicationId: comm.id, result: disabled }
+    }
+  }
 
   let result: SendResult
   switch (entry.channel) {

@@ -43,6 +43,7 @@ export type CycleSummary = {
   scanned: { unscored: number; overdue: number; failedComms: number; errors: number; staleApprovals: number; failedAutomations: number; expiredPreviews: number; quarantinedDocs: number }
   ceoReport?: { id: string } | { skipped: string } | null
   error?: string
+  message?: string
 }
 
 // ---------- DETECT ----------
@@ -152,6 +153,22 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
   await markCycleRun()
 
   try {
+    // ---- Super Admin AI switch: when AI agents are switched OFF, the loop
+    // still scans + records heartbeat (observability), but performs NO agent
+    // actions — an honest "agents disabled" cycle, never a silent fake. ----
+    const { featureEnabled } = await import('@/lib/features')
+    const aiOn = await featureEnabled('ai_agents')
+    if (!aiOn) {
+      const summary: CycleSummary = {
+        cycle, trigger, startedAt, finishedAt: new Date().toISOString(), ok: true,
+        performed: [],
+        scanned: { unscored: 0, overdue: 0, failedComms: 0, errors: 0, staleApprovals: 0, failedAutomations: 0, expiredPreviews: 0, quarantinedDocs: 0 },
+        ceoReport: null,
+        message: 'AI agents disabled by Super Admin — scan-only cycle (no agent actions performed).',
+      }
+      return summary
+    }
+
     const data = await opsScan()
     scanned.unscored = data.unscoredLeads.length
     scanned.overdue = data.overdueLeads.length

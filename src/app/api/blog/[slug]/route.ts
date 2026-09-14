@@ -1,3 +1,4 @@
+import { featureEnabled } from "@/lib/features"
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { sanitizeText } from '@/lib/security'
@@ -6,6 +7,10 @@ import { publishDueBlogPosts } from '@/lib/blog'
 export const dynamic = 'force-dynamic'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  // feature-gate: blog switch + maintenance mode (Super Admin)
+  if (!(await featureEnabled('blog')) || (await featureEnabled('maintenance_mode'))) {
+    return Response.json({ error: 'Blog is currently unavailable.' }, { status: 503 })
+  }
   const { slug } = await params
   const clean = sanitizeText(slug, 200)
   // defensive promotion so a due scheduled post is never 404 when its time passed

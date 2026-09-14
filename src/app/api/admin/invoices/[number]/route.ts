@@ -4,6 +4,7 @@ import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText } from '@/lib/security'
 import { escapeHtml } from '@/lib/comms'
 import { PAD_CSS, padHeader, padMeta, padFooter, PAD } from '@/lib/letterhead'
+import { featureEnabled, acceptedMethodsPhrase } from '@/lib/features'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,11 @@ const money = (n: number, currency: string) =>
 // GET /api/admin/invoices/[number] — official invoice on the company pad.
 // Admin-session auth (same guard as every admin API). Renders printable HTML.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ number: string }> }) {
+  // feature-gate: invoices switch (Super Admin) — official documents refuse
+  // to render when invoicing is switched off (honest 503, never a blank doc)
+  if (!(await featureEnabled('invoices'))) {
+    return Response.json({ error: 'Invoicing is currently disabled by Super Admin (System → Feature Management).' }, { status: 503 })
+  }
   const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { number } = await params
@@ -40,6 +46,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ numb
   const balance = Math.max(0, invoice.amount - paidOnThis)
   const due = invoice.dueAt ? new Date(invoice.dueAt).toISOString().slice(0, 10) : 'On receipt'
   const issued = new Date(invoice.issuedAt).toISOString().slice(0, 10)
+
+  // ---- Payment instructions quote ONLY the gateways the Super Admin has
+  // enabled (real-time from the governance engine; disabled methods are
+  // never printed as accepted). When payments are globally off, the invoice
+  // says so honestly instead of listing methods. ----
+  const paymentsOn = await featureEnabled('payments')
+  const methodsPhrase = paymentsOn ? await acceptedMethodsPhrase() : ''
+  const payNoteHtml = !paymentsOn
+    ? `<div class="pay-note"><strong>Payment:</strong> Online payment intake is temporarily disabled by the platform administrator. Our finance automation (PAY-016) will contact you directly to settle invoice <b>${escapeHtml(invoice.number)}</b>.</div>`
+    : methodsPhrase
+      ? `<div class="pay-note"><strong>Payment:</strong> Accepted methods: <b>${escapeHtml(methodsPhrase)}</b>. Account details are shared with payment instructions by our finance automation (PAY-016). Quote invoice <b>${escapeHtml(invoice.number)}</b> and your Client ID <b>${escapeHtml(invoice.client.clientId)}</b> as the transaction reference. A receipt is issued after verification.</div>`
+      : `<div class="pay-note"><strong>Payment:</strong> All payment methods are currently disabled by the platform administrator. Our finance automation (PAY-016) will contact you to arrange settlement of invoice <b>${escapeHtml(invoice.number)}</b>.</div>`
+
   const content = `
 <!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex,nofollow"/><title>${escapeHtml(invoice.number)} — Tech360 Invoice</title><style>${PAD_CSS}
 .bill{display:flex;gap:24px;flex-wrap:wrap;margin-top:26px}
@@ -100,7 +119,7 @@ ${padMeta([
 </div>
 ${invoice.status === 'PAID'
   ? `<div class="pay-note"><strong>Payment received — thank you.</strong> This invoice is settled in full and serves as your receipt. Payment verified by the Tech360 finance automation with your Client ID ${escapeHtml(invoice.client.clientId)} quoted as reference.</div>`
-  : `<div class="pay-note"><strong>Payment:</strong> Bank transfer details are shared separately with payment instructions by our finance automation (PAY-016). Quote invoice <b>${escapeHtml(invoice.number)}</b> and your Client ID <b>${escapeHtml(invoice.client.clientId)}</b> as the transaction reference. A receipt is issued after verification.</div>`}
+  : payNoteHtml}
 <p style="font-size:11.5px;color:#7C8DA0;line-height:1.7">Thank you for your business. This invoice was generated electronically by the Tech360 client platform and is valid without a manual signature. Questions: ${PAD.email} · ${PAD.whatsapp}.</p>
 </main>
 ${padFooter('This invoice is confidential and intended for the addressed recipient. TECH360 LLC is a Missouri LLC.')}

@@ -4,9 +4,14 @@ import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText } from '@/lib/security'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { featureEnabled } from '@/lib/features'
 
 export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
+  // feature-gate: n8n switch (Super Admin)
+  if (!(await featureEnabled('n8n'))) {
+    return Response.json({ error: 'n8n integration is currently disabled by Super Admin.' }, { status: 503 })
+  }
   const g = await guard(req)
   if (isResponse(g)) return g
   const { code } = await params

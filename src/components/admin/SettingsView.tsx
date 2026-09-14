@@ -1,12 +1,16 @@
 'use client'
 
-import { CheckCircle2, Database, Download, ExternalLink, FileArchive, Package, Server, XCircle } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, Database, Download, ExternalLink, FileArchive, Loader2, Package, RotateCcw, Server, ShieldAlert, TriangleAlert, XCircle } from 'lucide-react'
 
-import { num, prettify, useApi, type HealthResponse } from '@/lib/admin-client'
+import { fetchJson, num, prettify, useApi, type HealthResponse } from '@/lib/admin-client'
 import { EmptyState, KpiCard, PageHeader, SectionCard } from './shared/cards'
 import { StatusBadge } from './shared/StatusBadge'
 import { CARD } from './shared/styles'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 const ENV_DOCS: Array<{ group: string; vars: Array<{ name: string; purpose: string }> }> = [
@@ -56,6 +60,372 @@ const ENV_DOCS: Array<{ group: string; vars: Array<{ name: string; purpose: stri
   },
 ]
 
+// ------------------------------------------------------------
+// Platform Governance — Super Admin feature flags + payment
+// gateways backed by GET/PUT/DELETE /api/admin/settings (fetchJson
+// attaches the CSRF header on every mutation automatically).
+// The server response is always the source of truth: local state is
+// an optimistic mirror that re-syncs after every mutation.
+// ------------------------------------------------------------
+
+type FlagMap = Record<string, boolean>
+
+interface FlagDefinition {
+  key: string
+  label: string
+  description: string
+  affects: string
+  default: boolean
+}
+
+type GatewayMode = 'SANDBOX' | 'PRODUCTION'
+type GatewayStatusKind = 'ACTIVE' | 'CONFIGURATION_REQUIRED' | 'INTEGRATION_NOT_BUILT' | 'DISABLED'
+type GatewaySettlement = 'PLATFORM_VERIFIED' | 'GATEWAY_CHECKOUT' | 'MANUAL_VERIFIED'
+
+interface GatewayRow {
+  code: string
+  name: string
+  settlement: GatewaySettlement
+  credentialEnvVars?: string[] | null
+  supportsWebhook?: boolean
+  supportsRefund?: boolean
+  instructionsNote?: string | null
+  defaultEnabled?: boolean
+  enabled: boolean
+  mode: GatewayMode
+  credentialsConfigured?: boolean
+  missingCredentials?: string[] | null
+  checkoutBuilt?: boolean
+  status: GatewayStatusKind
+}
+
+interface SettingsPayload {
+  flags?: FlagMap | null
+  flagDefinitions?: FlagDefinition[] | null
+  gateways?: GatewayRow[] | null
+}
+
+interface SettingsMutationResponse {
+  ok?: boolean
+  changed?: string[]
+  flags?: FlagMap | null
+  gateways?: GatewayRow[] | null
+}
+
+/** Super-Admin guard rejects non-super-admins with 403 "Insufficient permissions". */
+const GOVERNANCE_FORBIDDEN_RE = /insufficient permissions|forbidden|\b403\b/i
+
+const GATEWAY_STATUS_TONE: Record<GatewayStatusKind, string> = {
+  ACTIVE: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+  CONFIGURATION_REQUIRED: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  INTEGRATION_NOT_BUILT: 'border-slate-600/40 bg-slate-700/20 text-slate-400',
+  DISABLED: 'border-red-500/30 bg-red-500/10 text-red-400',
+}
+
+const GATEWAY_STATUS_TITLE: Record<GatewayStatusKind, string> = {
+  ACTIVE: 'Enabled, credentials live, checkout built — accepted as a payment method.',
+  CONFIGURATION_REQUIRED: 'Enabled but credentials are missing in the environment — the backend rejects it until configured.',
+  INTEGRATION_NOT_BUILT: 'Enabled but the checkout integration does not exist yet — never treated as processing payments.',
+  DISABLED: 'Disabled by Super Admin — rejected by the backend and never shown as accepted.',
+}
+
+const SETTLEMENT_LABEL: Record<GatewaySettlement, string> = {
+  PLATFORM_VERIFIED: 'Platform-verified',
+  GATEWAY_CHECKOUT: 'Online checkout',
+  MANUAL_VERIFIED: 'Manually verified',
+}
+
+const SETTLEMENT_TITLE: Record<GatewaySettlement, string> = {
+  PLATFORM_VERIFIED: 'Client pays externally and submits proof — the platform verifies and issues the receipt.',
+  GATEWAY_CHECKOUT: 'Server-side checkout session with webhook verification.',
+  MANUAL_VERIFIED: 'Recorded and verified manually with a transaction reference.',
+}
+
+/** Mirrors the server-side status computation so optimistic flips stay honest. */
+function gatewayStatusAfter(row: GatewayRow, enabled: boolean): GatewayStatusKind {
+  if (!enabled) return 'DISABLED'
+  if (row.settlement === 'GATEWAY_CHECKOUT' && row.checkoutBuilt === false) return 'INTEGRATION_NOT_BUILT'
+  const envVars = row.credentialEnvVars ?? []
+  const missing = row.missingCredentials ?? []
+  if (envVars.length > 0 && missing.length > 0) return 'CONFIGURATION_REQUIRED'
+  return 'ACTIVE'
+}
+
+function GovernanceAlert({ error }: { error: string }) {
+  return (
+    <div role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+      Governance API failed: {error}
+    </div>
+  )
+}
+
+function PlatformGovernance() {
+  const { data, loading, error } = useApi<SettingsPayload>('/api/admin/settings')
+  const [flags, setFlags] = useState<FlagMap | null>(null)
+  const [gateways, setGateways] = useState<GatewayRow[] | null>(null)
+  const [busyFlag, setBusyFlag] = useState<string | null>(null)
+  const [busyGateway, setBusyGateway] = useState<string | null>(null)
+  const [resetting, setResetting] = useState(false)
+
+  // Server is the source of truth — mirror the GET payload in local state.
+  useEffect(() => {
+    if (!data) return
+    setFlags({ ...(data.flags ?? {}) })
+    setGateways((data.gateways ?? []).map((g) => ({ ...g })))
+  }, [data])
+
+  const forbidden = error !== null && GOVERNANCE_FORBIDDEN_RE.test(error)
+  const syncing = loading || (data !== null && (flags === null || gateways === null))
+
+  const flagDefs = useMemo<FlagDefinition[]>(() => {
+    if (data?.flagDefinitions && data.flagDefinitions.length > 0) return data.flagDefinitions
+    return Object.keys(flags ?? {}).map((key) => ({ key, label: prettify(key), description: '', affects: '', default: true }))
+  }, [data, flags])
+
+  async function putFlag(key: string, next: boolean) {
+    if (!flags) return
+    const prev = Boolean(flags[key])
+    if (prev === next) return
+    setBusyFlag(key)
+    setFlags({ ...flags, [key]: next }) // optimistic flip
+    try {
+      const res = await fetchJson<SettingsMutationResponse>('/api/admin/settings', {
+        method: 'PUT',
+        body: { flags: { [key]: next } },
+      })
+      if (res.flags) setFlags(res.flags) // re-sync from the server response
+      toast.success(res.changed && res.changed.length > 0 ? res.changed.join(' · ') : `flag ${key}=${next ? 'ON' : 'OFF'}`)
+    } catch (err) {
+      setFlags((f) => (f ? { ...f, [key]: prev } : f)) // revert on error
+      toast.error(err instanceof Error ? err.message : 'Update failed — switch reverted.')
+    } finally {
+      setBusyFlag(null)
+    }
+  }
+
+  async function putGateway(code: string, patch: { enabled?: boolean; mode?: GatewayMode }) {
+    if (!gateways) return
+    const row = gateways.find((g) => g.code === code)
+    if (!row) return
+    const prev = { enabled: row.enabled, mode: row.mode }
+    if (patch.enabled !== undefined && patch.mode === undefined && patch.enabled === prev.enabled) return
+    if (patch.mode !== undefined && patch.enabled === undefined && patch.mode === prev.mode) return
+    setBusyGateway(code)
+    setGateways(gateways.map((g) => {
+      if (g.code !== code) return g
+      const enabled = patch.enabled ?? g.enabled
+      const mode = patch.mode ?? g.mode
+      return { ...g, enabled, mode, status: gatewayStatusAfter(g, enabled) }
+    })) // optimistic flip
+    try {
+      const res = await fetchJson<SettingsMutationResponse>('/api/admin/settings', {
+        method: 'PUT',
+        body: { gateways: { [code]: patch } },
+      })
+      if (res.gateways) setGateways(res.gateways) // re-sync from the server response
+      toast.success(res.changed && res.changed.length > 0 ? res.changed.join(' · ') : `gateway ${code} updated`)
+    } catch (err) {
+      setGateways((gs) =>
+        gs ? gs.map((g) => (g.code === code ? { ...g, enabled: prev.enabled, mode: prev.mode, status: gatewayStatusAfter(g, prev.enabled) } : g)) : gs,
+      ) // revert on error
+      toast.error(err instanceof Error ? err.message : 'Update failed — switch reverted.')
+    } finally {
+      setBusyGateway(null)
+    }
+  }
+
+  async function resetFlagDefaults() {
+    if (resetting) return
+    if (!window.confirm('Reset all feature flags to their platform defaults? Payment gateway settings are kept.')) return
+    setResetting(true)
+    try {
+      const res = await fetchJson<SettingsMutationResponse>('/api/admin/settings', { method: 'DELETE' })
+      if (res.flags) setFlags(res.flags)
+      toast.success('Feature flags reset to platform defaults.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Reset failed.')
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  const forbiddenState = (
+    <EmptyState
+      icon={ShieldAlert}
+      title="Super Admin only"
+      description="These switches control live platform behavior. Ask a Super Admin to change them."
+    />
+  )
+
+  return (
+    <>
+      <SectionCard
+        title="Feature Management"
+        description="Super Admin switches — changes take effect on the live backend immediately."
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void resetFlagDefaults()}
+            disabled={resetting || syncing || forbidden || error !== null || !flags}
+            className="border-slate-700 bg-slate-950/60 text-slate-300 hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-300"
+          >
+            {resetting ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <RotateCcw className="size-3.5" aria-hidden="true" />}
+            Reset to defaults
+          </Button>
+        }
+      >
+        {syncing ? (
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2" aria-hidden="true">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className={cn('h-16 w-full bg-slate-800/50', i === 0 ? 'md:col-span-2' : '')} />
+            ))}
+          </div>
+        ) : forbidden ? (
+          forbiddenState
+        ) : error ? (
+          <GovernanceAlert error={error} />
+        ) : flagDefs.length === 0 ? (
+          <EmptyState title="No feature flags reported" description="The governance API returned no feature flag definitions." />
+        ) : (
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2" role="list" aria-label="Platform feature flags">
+            {flagDefs.map((def) => {
+              const maintenance = def.key === 'maintenance_mode'
+              const on = Boolean(flags?.[def.key])
+              return (
+                <div
+                  key={def.key}
+                  role="listitem"
+                  className={cn(
+                    'flex items-start justify-between gap-3 rounded-md border bg-slate-950/50 px-3 py-2.5',
+                    maintenance ? 'border-amber-500/40 bg-amber-500/5 md:col-span-2' : 'border-slate-800/70',
+                  )}
+                >
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className={cn('flex items-center gap-1.5 text-[13px] font-medium', maintenance ? 'text-amber-300' : 'text-slate-200')}>
+                      {maintenance ? <TriangleAlert className="size-3.5 shrink-0 text-amber-400" aria-hidden="true" /> : null}
+                      {def.label}
+                    </p>
+                    {def.description ? <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{def.description}</p> : null}
+                    {def.affects ? (
+                      <p className="mt-0.5 truncate font-mono text-[10px] text-slate-600" title={def.affects}>
+                        affects {def.affects}
+                      </p>
+                    ) : null}
+                    {maintenance && on ? (
+                      <p className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-amber-400">
+                        <TriangleAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                        Public data APIs return 503 with a maintenance notice. Admin APIs stay live.
+                      </p>
+                    ) : null}
+                  </div>
+                  <Switch
+                    checked={on}
+                    onCheckedChange={(v) => void putFlag(def.key, v)}
+                    disabled={busyFlag === def.key}
+                    aria-label={`${def.label} ${on ? 'on' : 'off'}`}
+                    className={maintenance ? 'data-[state=checked]:bg-amber-500' : 'data-[state=checked]:bg-emerald-500'}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard
+        title="Payment Gateways"
+        description="Live payment methods — disabled gateways are rejected by the backend and never shown as accepted."
+      >
+        {syncing ? (
+          <div className="space-y-2" aria-hidden="true">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full bg-slate-800/50" />
+            ))}
+          </div>
+        ) : forbidden ? (
+          forbiddenState
+        ) : error ? (
+          <GovernanceAlert error={error} />
+        ) : (gateways ?? []).length === 0 ? (
+          <EmptyState title="No payment gateways reported" description="The governance API returned no gateway statuses." />
+        ) : (
+          <ul className="space-y-2" role="list" aria-label="Payment gateways">
+            {(gateways ?? []).map((g) => {
+              const busy = busyGateway === g.code
+              const missing = g.missingCredentials ?? []
+              return (
+                <li key={g.code} role="listitem" className="rounded-md border border-slate-800/70 bg-slate-950/50 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[13px] font-semibold text-slate-200">{g.name}</p>
+                    <StatusBadge status={g.status} title={GATEWAY_STATUS_TITLE[g.status]} className={GATEWAY_STATUS_TONE[g.status]} />
+                    <span
+                      title={SETTLEMENT_TITLE[g.settlement] ?? g.settlement}
+                      className="inline-flex items-center whitespace-nowrap rounded-md border border-slate-700/60 bg-slate-800/30 px-2 py-0.5 text-[10px] font-medium text-slate-400"
+                    >
+                      {SETTLEMENT_LABEL[g.settlement] ?? prettify(g.settlement)}
+                    </span>
+                    {g.supportsWebhook ? (
+                      <span
+                        title="Verified server-side webhooks"
+                        className="inline-flex items-center whitespace-nowrap rounded-md border border-slate-700/60 bg-slate-800/30 px-1.5 py-0.5 text-[10px] text-slate-400"
+                      >
+                        Webhooks
+                      </span>
+                    ) : null}
+                    {g.supportsRefund ? (
+                      <span
+                        title="Refund support"
+                        className="inline-flex items-center whitespace-nowrap rounded-md border border-slate-700/60 bg-slate-800/30 px-1.5 py-0.5 text-[10px] text-slate-400"
+                      >
+                        Refunds
+                      </span>
+                    ) : null}
+                    <div className="ml-auto flex flex-wrap items-center gap-2.5">
+                      <div className="inline-flex overflow-hidden rounded-md border border-slate-800 bg-slate-950/60" role="group" aria-label={`${g.name} mode`}>
+                        {(['SANDBOX', 'PRODUCTION'] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            disabled={busy}
+                            aria-pressed={g.mode === m}
+                            onClick={() => void putGateway(g.code, { mode: m })}
+                            className={cn(
+                              'px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors disabled:opacity-40',
+                              g.mode === m ? 'bg-[#009FE3]/15 text-[#009FE3]' : 'text-slate-500 hover:bg-slate-800/60 hover:text-slate-300',
+                            )}
+                          >
+                            {m === 'SANDBOX' ? 'Sandbox' : 'Production'}
+                          </button>
+                        ))}
+                      </div>
+                      <Switch
+                        checked={g.enabled}
+                        onCheckedChange={(v) => void putGateway(g.code, { enabled: v })}
+                        disabled={busy}
+                        aria-label={`${g.name} ${g.enabled ? 'enabled' : 'disabled'}`}
+                        className="data-[state=checked]:bg-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  {g.status === 'CONFIGURATION_REQUIRED' && missing.length > 0 ? (
+                    <p className="mt-1.5 text-[11px] text-amber-400">Credentials missing: {missing.join(', ')}</p>
+                  ) : null}
+                  {g.status === 'INTEGRATION_NOT_BUILT' ? (
+                    <p className="mt-1.5 text-[11px] font-medium text-slate-400">Checkout integration not implemented — switch stored, integration pending.</p>
+                  ) : null}
+                  {g.instructionsNote ? <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{g.instructionsNote}</p> : null}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </SectionCard>
+    </>
+  )
+}
+
 export function SettingsView() {
   const { data, loading, error } = useApi<HealthResponse>('/api/health')
 
@@ -66,8 +436,11 @@ export function SettingsView() {
     <div className="space-y-4">
       <PageHeader
         title="System Settings"
-        description="Live system status and deployment configuration. Read-only — configuration lives in server environment variables, never in the browser."
+        description="Live system status and deployment configuration. Environment variables are read-only server-side; the Platform Governance switches below are live Super Admin controls."
       />
+
+      {/* Platform governance — feature flags + payment gateways (Super Admin) */}
+      <PlatformGovernance />
 
       {error ? (
         <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">

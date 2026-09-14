@@ -1,3 +1,4 @@
+import { featureEnabled } from "@/lib/features"
 import { db } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -6,6 +7,10 @@ export const dynamic = 'force-dynamic'
 // reviews. No seeded or fabricated testimonials. Empty array is the honest
 // state until clients submit reviews.
 export async function GET() {
+  // feature-gate: public website switch + maintenance mode (Super Admin)
+  if (!(await featureEnabled('public_website')) || (await featureEnabled('maintenance_mode'))) {
+    return Response.json({ reviews: [] })
+  }
   const reviews = await db.review.findMany({
     where: { published: true, status: 'APPROVED', consent: true },
     orderBy: { moderatedAt: 'desc' },

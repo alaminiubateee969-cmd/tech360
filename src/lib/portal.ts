@@ -43,3 +43,19 @@ export function normalizeContact(input: string): { email?: string; phone?: strin
   if (digits.length >= 8) return { phone: digits }
   return {}
 }
+
+// ------------------------------------------------------------
+// Feature governance — the Client Portal Super Admin switch.
+// Every /api/portal/* route calls portalGate() first: when the
+// switch is OFF the backend REFUSES sessions (403 with an honest
+// message), so hiding the button in the frontend alone could
+// never bypass it.
+// ------------------------------------------------------------
+export async function portalGate(): Promise<Response | null> {
+  const { featureEnabled } = await import('@/lib/features')
+  if (await featureEnabled('client_portal')) return null
+  return Response.json(
+    { error: 'The client portal is currently disabled by the platform administrator. Please contact support.', disabled: true },
+    { status: 403 },
+  )
+}

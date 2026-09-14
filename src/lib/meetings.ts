@@ -274,3 +274,99 @@ export async function rescheduleMeeting(input: RescheduleMeetingInput): Promise<
     agent: { ok: agenda.ok, executionId: agenda.executionId, agenda: agendaText.slice(0, 600) },
   }
 }
+
+// ============================================================
+// CANCELLATION — the honest end of the meeting lifecycle.
+// No agent run (an agenda for a meeting that will not happen is
+// wasted compute — the platform refuses to fake one); the record
+// is marked CANCELLED with provenance, the client sees it in the
+// portal, a platform communication is issued, and a notification
+// lands for the team.
+// ============================================================
+
+export type CancelMeetingInput = {
+  clientDbId: string
+  clientIdHuman: string // TECH-YYYY-NNNNNN
+  meetingId: string
+  reason?: string // why it was cancelled (free text from the operator)
+  actorEmail: string
+  trigger: 'MEETINGS_UI' | 'COMMAND_CENTER'
+}
+
+export type CancelMeetingResult = {
+  ok: true
+  meeting: { id: string; status: string; scheduledAt: Date | null; channel: string; reason: string; cancelReason: string }
+}
+
+/**
+ * Cancel an existing REQUESTED/SCHEDULED meeting.
+ * Completed meetings cannot be cancelled (history is immutable);
+ * already-cancelled meetings are an honest no-op with the prior reason.
+ */
+export async function cancelMeeting(input: CancelMeetingInput): Promise<CancelMeetingResult> {
+  const existing = await db.meeting.findFirst({
+    where: { id: input.meetingId, clientId: input.clientDbId },
+  })
+  if (!existing) throw new Error('MEETING_NOT_FOUND')
+  if (existing.status === 'COMPLETED') throw new Error('MEETING_COMPLETED')
+  if (existing.status === 'CANCELLED') throw new Error('MEETING_ALREADY_CANCELLED')
+
+  const cancelReason = sanitizeText(input.reason ?? '', 500) || 'Cancelled by Tech360'
+  const wasAt = existing.scheduledAt?.toISOString() ?? 'unscheduled'
+
+  const meeting = await db.meeting.update({
+    where: { id: existing.id },
+    data: {
+      status: 'CANCELLED',
+      notes: `${existing.notes ?? ''}\n\n— Cancelled by ${input.actorEmail} at ${new Date().toISOString()} — reason: ${cancelReason} —`.slice(0, 8000),
+    },
+  })
+
+  // Honest outbound record — the client sees the cancellation in the portal.
+  await db.communication
+    .create({
+      data: {
+        clientId: input.clientDbId,
+        channel: existing.channel === 'PHONE' || existing.channel === 'WHATSAPP_CALL' ? 'WHATSAPP' : 'EMAIL',
+        direction: 'OUT',
+        subject: `Meeting cancelled: ${existing.reason}`,
+        body: `The meeting "${existing.reason}" (was ${wasAt}) was cancelled. Reason: ${cancelReason}. The client can request a new time from their portal (Meetings section) at any time.`,
+        status: 'SENT_PLATFORM',
+      },
+    })
+    .catch(() => null)
+
+  await audit({
+    actor: input.actorEmail,
+    action: 'MEETING_CANCELLED',
+    clientId: input.clientIdHuman,
+    details: {
+      meetingId: meeting.id,
+      wasScheduledAt: wasAt,
+      channel: meeting.channel,
+      reason: meeting.reason,
+      cancelReason,
+      trigger: input.trigger,
+    },
+  })
+
+  await createNotification({
+    type: 'MEETING',
+    severity: 'WARNING',
+    title: 'Meeting cancelled',
+    body: `${input.clientIdHuman} — "${meeting.reason}" (was ${wasAt.replace('T', ' ').slice(0, 16)} UTC) cancelled by ${input.actorEmail}. Reason: ${cancelReason}.`,
+    clientId: input.clientIdHuman,
+  })
+
+  return {
+    ok: true,
+    meeting: {
+      id: meeting.id,
+      status: meeting.status,
+      scheduledAt: meeting.scheduledAt,
+      channel: meeting.channel,
+      reason: meeting.reason ?? 'Consultation call',
+      cancelReason,
+    },
+  }
+}

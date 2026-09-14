@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
-import { verifyPortalToken, PORTAL_COOKIE } from '@/lib/portal'
+import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { formatScopeForClient } from '@/lib/journey'
 
@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic'
 // Client portal summary — SAFE fields only (no internal notes, agent data,
 // admin identities, costs beyond their own payments/invoices).
 export async function GET(req: NextRequest) {
+  const portalDisabled = await portalGate()
+  if (portalDisabled) return portalDisabled
   const store = await cookies()
   const clientId = verifyPortalToken(store.get(PORTAL_COOKIE)?.value)
   if (!clientId) return Response.json({ error: 'Session expired. Please sign in again.' }, { status: 401 })

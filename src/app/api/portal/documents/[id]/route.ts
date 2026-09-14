@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
-import { verifyPortalToken, PORTAL_COOKIE } from '@/lib/portal'
+import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { audit, rateLimit, clientIp } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
@@ -15,6 +15,8 @@ const INLINE_SAFE_PREFIX = ['image/', 'application/pdf', 'text/']
 // REJECTED files are blocked with an explicit status.
 // ------------------------------------------------------------
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const portalDisabled = await portalGate()
+  if (portalDisabled) return portalDisabled
   const ip = clientIp(req)
   const rl = rateLimit(`portal-doc-dl:${ip}`, 30, 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many requests.' }, { status: 429 })
@@ -68,6 +70,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // Always audited; the admin is notified (retention awareness).
 // ------------------------------------------------------------
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const portalDisabled = await portalGate()
+  if (portalDisabled) return portalDisabled
   const ip = clientIp(req)
   const rl = rateLimit(`portal-doc-del:${ip}`, 10, 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many requests.' }, { status: 429 })

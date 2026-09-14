@@ -1,3 +1,4 @@
+import { featureEnabled, assertGatewayUsable } from '@/lib/features'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -38,6 +39,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // feature-gate: payments switch (Super Admin) + gateway governance
+  if (!(await featureEnabled('payments'))) {
+    return Response.json({ error: 'Payments are currently disabled by Super Admin (System → Feature Management).' }, { status: 503 })
+  }
   const g = await guard(req)
   if (isResponse(g)) return g
   const raw = await readJson(req)
@@ -47,8 +52,13 @@ export async function POST(req: NextRequest) {
   if (!Number.isFinite(amount) || amount <= 0) return Response.json({ error: 'Valid amount required' }, { status: 400 })
   const client = await db.client.findFirst({ where: { OR: [{ id: clientRef }, { clientId: clientRef }] } })
   if (!client) return Response.json({ error: 'Client not found' }, { status: 404 })
+  // Gateway governance: the method's gateway must be enabled + usable —
+  // disabled methods are rejected server-side (never silently accepted).
+  const method = sanitizeText(raw.method, 40) || 'MANUAL'
+  const usable = await assertGatewayUsable(method)
+  if (!usable.ok) return Response.json({ error: usable.error }, { status: usable.status })
   const payment = await recordPayment(client.id, {
-    amount, currency: sanitizeText(raw.currency, 8) || 'USD', method: sanitizeText(raw.method, 40),
+    amount, currency: sanitizeText(raw.currency, 8) || 'USD', method,
     transactionId: sanitizeText(raw.transactionId, 80), milestone: sanitizeText(raw.milestone, 60),
     notes: sanitizeText(raw.notes, 2000),
   })

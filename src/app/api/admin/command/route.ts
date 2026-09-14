@@ -4,7 +4,7 @@ import { guard, isResponse } from '@/lib/api-guard'
 import { runAgent } from '@/lib/agents/engine'
 import { newCorrelationId, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
-import { parseWhenFlexible, scheduleMeeting, rescheduleMeeting, normalizeChannel } from '@/lib/meetings'
+import { parseWhenFlexible, scheduleMeeting, rescheduleMeeting, cancelMeeting, normalizeChannel } from '@/lib/meetings'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +35,7 @@ const CAPABILITIES = `Available actions (choose exactly ONE):
 - create_followup {clientId:string, note?:string} — create follow-up task for a client
 - schedule_meeting {clientId:string, when:string, channel?:string, reason?:string} — schedule a real client meeting. Resolve relative dates ("next Tuesday 3pm") YOURSELF using the current Dhaka date/time in the context and output when as "YYYY-MM-DDTHH:mm" in Asia/Dhaka local time. channel: GOOGLE_MEET (default) | ZOOM | PHONE | WHATSAPP_CALL. Use the client's reference ID (e.g. TECH-2026-000001) from the CLIENT DIRECTORY in the context.
 - reschedule_meeting {clientId:string, when:string, meetingId?:string} — MOVE an existing upcoming meeting to a new time. Match the client (reference ID) and pick the meeting from the UPCOMING MEETINGS directory in the context (pass its meetingId); if the client has several, pick the one the admin most likely means (earliest unless they name a reason). Resolve the new "when" exactly like schedule_meeting ("YYYY-MM-DDTHH:mm" Dhaka). Only REQUESTED/SCHEDULED meetings can be moved.
+- cancel_meeting {clientId:string, meetingId?:string, reason?:string} — CANCEL an upcoming meeting for a client. Pick the meeting from the UPCOMING MEETINGS directory (pass its meetingId; if several, the earliest unless the admin names one). reason: short honest note why (e.g. "client asked to postpone", "team conflict"). Only REQUESTED/SCHEDULED meetings can be cancelled; completed meeting history is immutable.
 - search_knowledge {query:string} — search knowledge base
 - search_memory {query:string} — search AI memory
 - none — ask a short clarifying question (use when the client or time is ambiguous)`
@@ -400,6 +401,71 @@ ${CAPABILITIES}`
         reply = result.agent.ok
           ? `Meeting moved for **${client.clientId}** (${client.name}) — **${result.meeting.reason}** now at ${fmtUtc(result.meeting.scheduledAt)} UTC (was ${fmtUtc(result.meeting.previousScheduledAt)} UTC) via ${result.meeting.channel}. MTG-015 (Tempo) refreshed the agenda, the change is recorded, and the client sees the new time in their portal.`
           : `Meeting moved for **${client.clientId}** to ${fmtUtc(result.meeting.scheduledAt)} UTC — but the agenda agent was unavailable, so the original notes were kept. Update them in the client's Meetings tab if needed.`
+        break
+      }
+      case 'cancel_meeting': {
+        // NL entry point to the REAL cancellation pipeline (record →
+        // CANCELLED with provenance → honest comm → notification).
+        // No agenda agent run (an agenda for a meeting that will not
+        // happen is wasted compute). Only REQUESTED/SCHEDULED can be
+        // cancelled; completed history is immutable.
+        const clientIdParam = sanitizeText(String(params.clientId ?? ''), 40).trim()
+        const meetingIdParam = sanitizeText(String(params.meetingId ?? params.id ?? ''), 40).trim()
+        const cancelReasonRaw = sanitizeText(String(params.reason ?? ''), 500).trim()
+
+        if (!clientIdParam) {
+          reply = 'To cancel a meeting I need a client reference — e.g. "cancel TECH-2026-000001\'s meeting on Thursday".'
+          break
+        }
+        const client = await db.client.findFirst({
+          where: { OR: [{ clientId: clientIdParam }, { name: { contains: clientIdParam } }, { businessName: { contains: clientIdParam } }] , deletedAt: null },
+        })
+        if (!client) { reply = `I could not find a client matching "${clientIdParam}". Use show_clients to list references first.`; break }
+
+        const target = meetingIdParam
+          ? await db.meeting.findFirst({ where: { id: meetingIdParam, clientId: client.id }, orderBy: { scheduledAt: 'asc' } })
+          : await db.meeting.findFirst({ where: { clientId: client.id, status: { in: ['REQUESTED', 'SCHEDULED'] } }, orderBy: [{ scheduledAt: 'asc' }] })
+        if (!target) {
+          reply = `${client.clientId} has no upcoming meeting to cancel. Use schedule_meeting to create one instead.`
+          break
+        }
+
+        let result
+        try {
+          result = await cancelMeeting({
+            clientDbId: client.id,
+            clientIdHuman: client.clientId,
+            meetingId: target.id,
+            reason: cancelReasonRaw || undefined,
+            actorEmail: g.user.email,
+            trigger: 'COMMAND_CENTER',
+          })
+        } catch (e) {
+          const code = e instanceof Error ? e.message : 'UNKNOWN'
+          reply = code === 'MEETING_NOT_FOUND'
+            ? `That meeting no longer exists for ${client.clientId}. Use show_meetings to see current ones.`
+            : code === 'MEETING_COMPLETED'
+              ? 'That meeting is already completed — meeting history is immutable and cannot be cancelled.'
+              : code === 'MEETING_ALREADY_CANCELLED'
+                ? 'That meeting was already cancelled earlier.'
+                : `Cancellation failed: ${code}`
+          break
+        }
+
+        const fmtUtc = (d: Date | null) => (d ? d.toISOString().replace('T', ' ').slice(0, 16) : 'unscheduled')
+        data = {
+          meetingId: result.meeting.id,
+          clientId: client.clientId,
+          clientName: client.name,
+          reason: result.meeting.reason,
+          channel: result.meeting.channel,
+          wasScheduledAt: result.meeting.scheduledAt,
+          status: result.meeting.status,
+          cancelReason: result.meeting.cancelReason,
+          cancelledBy: g.user.email,
+        }
+        dataKind = 'meeting_cancel'
+        reply = `Meeting cancelled for **${client.clientId}** (${client.name}) — **${result.meeting.reason}** (was ${fmtUtc(result.meeting.scheduledAt)} UTC via ${result.meeting.channel}). Reason on record: ${result.meeting.cancelReason}. The client sees the cancellation in their portal and can request a new time anytime.`
         break
       }
       case 'search_knowledge': {

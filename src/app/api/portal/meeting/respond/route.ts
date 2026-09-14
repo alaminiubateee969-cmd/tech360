@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
-import { verifyPortalToken, PORTAL_COOKIE } from '@/lib/portal'
+import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { sanitizeText, audit, rateLimit, clientIp } from '@/lib/security'
 import { createNotification } from '@/lib/notify'
 
@@ -12,6 +12,8 @@ export const dynamic = 'force-dynamic'
 // updates the REAL meeting record, creates an inbound communication (visible
 // in admin Communications), notifies the team, and is audited.
 export async function POST(req: NextRequest) {
+  const portalDisabled = await portalGate()
+  if (portalDisabled) return portalDisabled
   const ip = clientIp(req)
   const rl = rateLimit(`portal-meeting:${ip}`, 20, 10 * 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many responses in a short time. Please slow down.' }, { status: 429 })

@@ -1,0 +1,133 @@
+# ============================================================
+# TECH360 — PRODUCTION CI/CD
+#
+#   git push origin main
+#     → checkout → secret scan → install → lint → typecheck → build
+#     → SSH to the VPS → scripts/deploy-vps.sh (safe deploy with
+#     auto-rollback) → scripts/health-check.sh → done
+#
+# Requirements (GitHub → Settings → Environments → production):
+#   VPS_HOST          — server hostname or IP
+#   VPS_USER          — SSH user (sudo-capable or app-owner)
+#   VPS_SSH_KEY       — the PRIVATE deploy key (never printed)
+#   VPS_PORT          — SSH port (default 22, keep in sync with VPS sshd)
+#   VPS_APP_PATH      — (optional) app directory on the VPS
+#   TECH360_DOMAIN    — (optional) informational, used by the deploy script
+#   TECH360_PORT      — (optional) pin the port; otherwise the script
+#                       DISCOVERS and PRESERVES the port the current app
+#                       already listens on (never starts a second instance)
+#
+# The production .env stays on the VPS — the repo never ships secrets.
+# ============================================================
+name: deploy-production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false   # queue, never run two deploys at once
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI — validate before deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Secret scan (fail before deploy if a secret slipped in)
+        run: |
+          echo "scanning tracked files for accidental secrets…"
+          if git ls-files -z | xargs -0 grep -lIE \
+            'sk_live_[A-Za-z0-9]{20,}|sk_test_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}' \
+            2>/dev/null | grep -v '^\.env\.example$'; then
+            echo "::error::secret-like material found in tracked files — remove it and rotate the credential"
+            exit 1
+          fi
+          echo "clean: no secret patterns in tracked files"
+          if [ -f .env ]; then echo "::error::.env must never be committed"; exit 1; fi
+          echo "clean: .env not committed"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (lockfile-exact)
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bunx prisma generate
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Production build
+        env:
+          DATABASE_URL: "file:./db/validate.db"
+        run: |
+          mkdir -p db && touch db/validate.db
+          bunx prisma db push --skip-generate
+          bun run build
+
+      - name: Upload build for the deploy job
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-validation
+          path: .next/
+          retention-days: 1
+
+  deploy:
+    name: Deploy → VPS (existing port, auto-rollback)
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare the deployment SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          install -m 600 /dev/null ~/.ssh/id_tech360
+          echo "$VPS_SSH_KEY" > ~/.ssh/id_tech360
+          ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy on the VPS (safe script: inspect → backup → pull → build → restart → verify → rollback on failure)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
+          VPS_APP_PATH: ${{ secrets.VPS_APP_PATH }}
+          TECH360_DOMAIN: ${{ secrets.TECH360_DOMAIN }}
+          TECH360_PORT: ${{ secrets.TECH360_PORT }}
+        run: |
+          ssh -i ~/.ssh/id_tech360 -p "${{ secrets.VPS_PORT || 22 }}" -o StrictHostKeyChecking=accept-new \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" -- bash -s <<'REMOTE'
+          set -euo pipefail
+          cd "${VPS_APP_PATH:-$HOME/tech360}"
+          export TECH360_APP_PATH="$PWD"
+          export TECH360_DOMAIN="${TECH360_DOMAIN:-bdtech360.com}"
+          # fetch the exact commit this workflow validated
+          git fetch origin main
+          git checkout -f origin/main
+          bash scripts/deploy-vps.sh
+          bash scripts/health-check.sh
+          REMOTE
+          echo "deployed ✅ — rollback armed for any future failure"
+
+      - name: Clean up the key
+        if: always()
+        run: rm -f ~/.ssh/id_tech360

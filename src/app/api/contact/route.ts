@@ -1,3 +1,4 @@
+import { featureEnabled } from "@/lib/features"
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { intakeLead } from '@/lib/journey'
@@ -8,6 +9,13 @@ export const dynamic = 'force-dynamic'
 
 // PUBLIC CONTACT FORM → real CRM lead with Client ID + AI journey start
 export async function POST(req: NextRequest) {
+  // feature-gate: support/contact switch + maintenance mode (Super Admin)
+  if (!(await featureEnabled('support'))) {
+    return Response.json({ error: 'Contact form intake is currently disabled. Please try again later or email hello@bdtech360.com.' }, { status: 503 })
+  }
+  if (await featureEnabled('maintenance_mode')) {
+    return Response.json({ error: 'We are performing scheduled maintenance. Please try again shortly.' }, { status: 503 })
+  }
   const ip = clientIp(req)
   const rl = rateLimit(`contact:${ip}`, 5, 10 * 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many submissions. Please try again later or message us on WhatsApp.' }, { status: 429 })

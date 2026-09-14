@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
-import { verifyPortalToken, PORTAL_COOKIE } from '@/lib/portal'
+import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { readJson, sanitizeText, audit, rateLimit, clientIp } from '@/lib/security'
 import { createNotification } from '@/lib/notify'
 
@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic'
 // POST /api/portal/referral — client refers another business from the portal.
 // Writes the REAL Referral record with status RECEIVED.
 export async function POST(req: NextRequest) {
+  const portalDisabled = await portalGate()
+  if (portalDisabled) return portalDisabled
   const ip = clientIp(req)
   const rl = rateLimit(`portal-referral:${ip}`, 5, 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many attempts, please wait a minute.' }, { status: 429 })
