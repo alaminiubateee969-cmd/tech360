@@ -61,7 +61,7 @@ zip -r -q "$OUT" \
   scripts .github \
   package.json tsconfig.json next.config.ts eslint.config.mjs tailwind.config.ts \
   postcss.config.mjs components.json Caddyfile bun.lock .gitignore \
-  .env.example README.md OFFICIAL-DOCUMENTS.md DEPLOYMENT.md SECURITY.md PAYMENT.md worklog.md \
+  .env.example README.md OFFICIAL-DOCUMENTS.md COVERAGE-AUDIT.md DEPLOYMENT.md SECURITY.md PAYMENT.md worklog.md \
   -x "upload/extract/*" "mini-services/*/node_modules/*" "*.log" "db/*.journal" ".DS_Store" ".zscripts/*.png" "tool-results/*"
 
 FILES=$(unzip -l "$OUT" | tail -1 | awk '{print $2}')
