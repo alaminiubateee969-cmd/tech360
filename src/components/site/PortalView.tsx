@@ -18,6 +18,7 @@ import {
   Download, KeyRound, Eye, Package, ArrowRight, CheckCircle2, Clock, Lock,
   Star, Handshake, LinkIcon, Undo2, Paperclip, Trash2, FileUp, FileCheck2,
   ShieldAlert, File as FileIcon, Upload, CalendarDays, Video, CalendarX, Send,
+  Receipt, Loader2, X,
 } from 'lucide-react'
 
 type PortalData = {
@@ -247,6 +248,9 @@ export default function PortalView() {
               </div>
             ) : <EmptyLine text="No payments recorded yet. Payment milestones appear here after you approve your preview." />}
           </SectionCard>
+
+          {/* Invoices — per-invoice payment allocation, Pay Now via the real Stripe checkout API */}
+          <InvoicesCard invoices={data.invoices} supportContact={data.policy.supportContact} />
 
           {/* Communications */}
           <SectionCard icon={<MessageSquare className="h-5 w-5" />} title="Our communication history">
@@ -1065,5 +1069,106 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
         </motion.div>
       </div>
     </div>
+  )
+}
+
+// ---------------- Invoices card (per-invoice allocation + Pay Now) ----------------
+
+type PortalInvoice = { number: string; amount: number; currency: string; status: string; notes: string | null }
+
+function invoiceTone(s: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  if (s === 'PAID') return 'default'
+  if (s === 'OVERDUE') return 'destructive'
+  if (s === 'CANCELLED') return 'outline'
+  return 'secondary' // DRAFT | SENT | PARTIAL
+}
+
+function InvoicesCard({ invoices, supportContact }: { invoices: PortalInvoice[]; supportContact: string }) {
+  const [paying, setPaying] = useState<string | null>(null) // invoice number in flight
+  const [payError, setPayError] = useState<string | null>(null)
+
+  async function payNow(invoiceNumber: string) {
+    if (paying) return
+    setPaying(invoiceNumber)
+    setPayError(null)
+    try {
+      const res = await fetch('/api/payments/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceNumber }),
+      })
+      const j = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
+      if (!res.ok || !j.url) throw new Error(j.error ?? `Payment could not start (HTTP ${res.status}).`)
+      window.location.href = j.url
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : 'Payment could not start.')
+    } finally {
+      setPaying(null)
+    }
+  }
+
+  return (
+    <SectionCard icon={<Receipt className="h-5 w-5" />} title="Invoices">
+      {invoices.length > 0 ? (
+        <div>
+          {payError ? (
+            <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+              <p className="leading-relaxed">
+                {payError}{' '}
+                <span className="block text-amber-700">
+                  You can also pay by bank transfer — <a href={`mailto:${supportContact}`} className="font-medium underline underline-offset-2">contact us</a> and we&rsquo;ll send details.
+                </span>
+              </p>
+              <button type="button" onClick={() => setPayError(null)} aria-label="Dismiss payment error" className="shrink-0 rounded p-1 hover:bg-amber-100">
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          ) : null}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wide text-slate-400">
+                  <th className="py-2 pr-4 font-medium">Invoice</th>
+                  <th className="py-2 pr-4 font-medium">Amount</th>
+                  <th className="py-2 pr-4 font-medium">Status</th>
+                  <th className="py-2 font-medium text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv) => (
+                  <tr key={inv.number} className="border-b border-slate-100 last:border-0">
+                    <td className="py-2.5 pr-4 font-mono text-[13px] font-medium text-[#063B8F]">{inv.number}</td>
+                    <td className="py-2.5 pr-4 font-semibold text-[#0B1F33]">{fmtMoney(inv.amount, inv.currency)}</td>
+                    <td className="py-2.5 pr-4"><Badge variant={invoiceTone(inv.status)} className="capitalize">{inv.status.toLowerCase()}</Badge></td>
+                    <td className="py-2.5 text-right">
+                      {inv.status === 'PAID' ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#18B83A]">
+                          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Paid
+                        </span>
+                      ) : inv.status === 'CANCELLED' ? (
+                        <span className="text-xs text-slate-400">—</span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => payNow(inv.number)}
+                          disabled={paying !== null}
+                          aria-label={`Pay invoice ${inv.number} now`}
+                          className="h-8 gap-1.5 bg-[#063B8F] px-3 text-xs font-semibold text-white hover:bg-[#0B1F33] disabled:opacity-50"
+                        >
+                          {paying === inv.number ? <><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Opening…</> : <><CreditCard className="h-3.5 w-3.5" aria-hidden="true" /> Pay Now</>}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">
+            Each invoice is settled from its own payments — a partially paid invoice shows PARTIAL until the remainder arrives. Card payments are processed by Stripe.
+          </p>
+        </div>
+      ) : <EmptyLine text="No invoices yet. Invoices appear here per payment milestone once work is underway." />}
+    </SectionCard>
   )
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { Mail, MapPin, Phone } from "lucide-react";
+import { useState } from "react";
+import { Loader2, Mail, MapPin, Phone } from "lucide-react";
 import { COMPANY, SERVICES, INDUSTRIES, LEGAL_DOCS } from "@/data/site";
 
 /**
@@ -9,6 +10,42 @@ import { COMPANY, SERVICES, INDUSTRIES, LEGAL_DOCS } from "@/data/site";
  */
 export default function SiteFooter() {
   const year = 2026;
+
+  // Newsletter signup — writes the real subscriber via POST /api/newsletter.
+  const [email, setEmail] = useState("");
+  const [subBusy, setSubBusy] = useState(false);
+  const [subResult, setSubResult] = useState<
+    { ok: true; message: string } | { ok: false; message: string } | null
+  >(null);
+
+  async function subscribe(e: React.FormEvent) {
+    e.preventDefault();
+    if (subBusy || !email.trim()) return;
+    setSubBusy(true);
+    setSubResult(null);
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+      };
+      if (res.ok && data.ok) {
+        setSubResult({ ok: true, message: "Subscribed ✓" });
+        setEmail("");
+      } else {
+        setSubResult({ ok: false, message: data.error ?? "Subscription failed — please try again." });
+      }
+    } catch {
+      setSubResult({ ok: false, message: "Network error — please try again." });
+    } finally {
+      setSubBusy(false);
+    }
+  }
 
   const companyLinks = [
     { label: "About", href: "#/about" },
@@ -81,6 +118,50 @@ export default function SiteFooter() {
                 <MapPin className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
                 <span>{COMPANY.address}</span>
               </address>
+            </div>
+
+            {/* Newsletter signup */}
+            <div className="mt-7 rounded-lg border border-white/10 bg-white/5 p-4">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+                TECH360 insights
+              </h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-white/70">
+                Occasional engineering notes — no spam, unsubscribe anytime.
+              </p>
+              <form onSubmit={subscribe} className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <label htmlFor="footer-newsletter-email" className="sr-only">
+                  Email address for the TECH360 newsletter
+                </label>
+                <input
+                  id="footer-newsletter-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  aria-label="Email address for the TECH360 newsletter"
+                  className="min-h-11 w-full rounded-lg border border-white/15 bg-[#0B1F33] px-3.5 text-sm text-white placeholder:text-white/40 outline-none transition-colors focus-visible:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]/50"
+                />
+                <button
+                  type="submit"
+                  disabled={subBusy || !email.trim()}
+                  aria-label="Subscribe to the TECH360 newsletter"
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white transition hover:bg-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3] disabled:opacity-60"
+                >
+                  {subBusy ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  ) : null}
+                  Subscribe
+                </button>
+              </form>
+              {subResult ? (
+                <p
+                  role="status"
+                  className={`mt-2.5 text-xs leading-relaxed ${subResult.ok ? "text-[#18B83A]" : "text-amber-300"}`}
+                >
+                  {subResult.message}
+                </p>
+              ) : null}
             </div>
           </div>
 

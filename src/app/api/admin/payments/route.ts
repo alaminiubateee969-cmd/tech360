@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       ...(clientId ? { client: { OR: [{ id: clientId }, { clientId }] } } : {}),
     },
     orderBy: { createdAt: 'desc' }, take: 200,
-    include: { client: { select: { clientId: true, name: true, businessName: true } }, project: { select: { code: true, name: true } } },
+    include: { client: { select: { clientId: true, name: true, businessName: true } }, project: { select: { code: true, name: true } }, invoice: { select: { number: true } } },
   })
   const [paidAgg, pendingCount, failedCount, invoices] = await Promise.all([
     db.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
@@ -57,11 +57,34 @@ export async function POST(req: NextRequest) {
   const method = sanitizeText(raw.method, 40) || 'MANUAL'
   const usable = await assertGatewayUsable(method)
   if (!usable.ok) return Response.json({ error: usable.error }, { status: usable.status })
-  const payment = await recordPayment(client.id, {
-    amount, currency: sanitizeText(raw.currency, 8) || 'USD', method,
-    transactionId: sanitizeText(raw.transactionId, 80), milestone: sanitizeText(raw.milestone, 60),
-    notes: sanitizeText(raw.notes, 2000),
-  })
-  await audit({ actor: g.user.email, action: 'PAYMENT_RECORDED', userId: g.user.id, clientId: client.clientId, entityId: payment.id, details: { amount } })
-  return Response.json({ ok: true, payment, message: 'Payment recorded as PENDING — verify to confirm receipt.' })
+  // Per-invoice allocation (optional): resolve + validate the invoice
+  // against this client before recording. Both invoiceNumber and the raw
+  // row id are accepted; validation lives in recordPayment (defense in depth).
+  let invoiceId: string | undefined
+  const invoiceRef = sanitizeText(raw.invoiceNumber, 30) || sanitizeText(raw.invoiceId, 40)
+  if (invoiceRef) {
+    const invoice = await db.invoice.findFirst({
+      where: { OR: [{ number: invoiceRef }, { id: invoiceRef }], client: { id: client.id } },
+    })
+    if (!invoice) return Response.json({ error: 'Invoice not found for this client.' }, { status: 404 })
+    if (invoice.status === 'PAID' || invoice.status === 'CANCELLED') {
+      return Response.json({ error: `Invoice ${invoice.number} is ${invoice.status} — it cannot receive more payments.` }, { status: 409 })
+    }
+    if (amount > invoice.amount) {
+      return Response.json({ error: `Payment of ${amount} exceeds invoice ${invoice.number} (outstanding ${invoice.amount}) — allocate at most the invoice amount.` }, { status: 400 })
+    }
+    invoiceId = invoice.id
+  }
+  try {
+    const payment = await recordPayment(client.id, {
+      amount, currency: sanitizeText(raw.currency, 8) || 'USD', method,
+      transactionId: sanitizeText(raw.transactionId, 80), milestone: sanitizeText(raw.milestone, 60),
+      notes: sanitizeText(raw.notes, 2000), invoiceId,
+    })
+    await audit({ actor: g.user.email, action: 'PAYMENT_RECORDED', userId: g.user.id, clientId: client.clientId, entityId: payment.id, details: { amount, invoice: invoiceId ?? null } })
+    return Response.json({ ok: true, payment, message: invoiceId ? 'Payment recorded as PENDING against the invoice — verify it to settle the allocation.' : 'Payment recorded as PENDING — verify to confirm receipt.' })
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Could not record the payment.'
+    return Response.json({ error: message }, { status: 400 })
+  }
 }

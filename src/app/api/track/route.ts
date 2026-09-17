@@ -4,7 +4,7 @@ import { readJson, sanitizeText, rateLimit, clientIp } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
-const ALLOWED = ['page_view', 'lead', 'contact', 'whatsapp_click', 'form_submit', 'preview_view', 'approval', 'conversion', 'cta_click']
+const ALLOWED = ['page_view', 'lead', 'contact', 'whatsapp_click', 'form_submit', 'preview_view', 'approval', 'conversion', 'cta_click', 'chat_open']
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req)

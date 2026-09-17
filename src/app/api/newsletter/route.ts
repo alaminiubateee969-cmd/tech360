@@ -19,6 +19,16 @@ export async function POST(req: NextRequest) {
   await db.formSubmission.create({
     data: { form: 'NEWSLETTER', name: 'Newsletter Subscriber', email, status: 'PROCESSED', ip, details: sanitizeText(raw.interest, 200) || null },
   })
+  // NewsletterSubscriber — idempotent by email. A previously
+  // unsubscribed visitor who signs up again simply returns to ACTIVE
+  // (resubscribe by action, not by a new row).
+  await db.newsletterSubscriber
+    .upsert({
+      where: { email },
+      create: { email, source: 'FOOTER' },
+      update: { status: 'ACTIVE', unsubscribedAt: null },
+    })
+    .catch(() => null)
   await db.trackingEvent.create({ data: { name: 'form_submit', path: '/newsletter', consent: raw.consent === true, meta: '{"form":"NEWSLETTER"}' } }).catch(() => null)
   return Response.json({ ok: true, message: 'Subscribed. Expect occasional engineering insights — no spam.' })
 }

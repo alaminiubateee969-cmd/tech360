@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Eye, RefreshCw, Search } from 'lucide-react'
+import { Download, Eye, RefreshCw, Search } from 'lucide-react'
 
 import { fmtDateShort, useApi, type ClientsResponse } from '@/lib/admin-client'
 import { DataTable, type Column } from './shared/DataTable'
@@ -121,16 +121,30 @@ export function LeadsView({
             : 'Every record with a TECH-YYYY-NNNNNN Client ID, from first message to closure.'
         }
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refresh}
-            disabled={loading}
-            className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
-            aria-label="Refresh list"
-          >
-            <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {isLeads ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open('/api/admin/leads/export', '_blank', 'noopener')}
+                className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
+                aria-label="Export leads as CSV"
+                title="Download every non-deleted lead/client as CSV (guard-protected)"
+              >
+                <Download className="size-4" aria-hidden="true" /> Export CSV
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refresh}
+              disabled={loading}
+              className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
+              aria-label="Refresh list"
+            >
+              <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
+            </Button>
+          </div>
         }
       />
 

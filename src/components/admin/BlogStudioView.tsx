@@ -29,6 +29,7 @@ import { DataTable, type Column } from './shared/DataTable'
 import { KpiCard, SectionCard, EmptyState } from './shared/cards'
 import { StatusBadge } from './shared/StatusBadge'
 import { INPUT } from './shared/styles'
+import { ReviewPanel } from './shared/ReviewPanel'
 
 interface EditorState {
   id: string | null
@@ -514,6 +515,7 @@ export function BlogStudioView() {
           </div>
 
           <DialogFooter className="gap-2">
+            <ReviewPanel subject={editor.title} body={editor.content} kind="blog" />
             <Button variant="outline" size="sm" onClick={() => setEditorOpen(false)} disabled={busy} className="border-slate-700">
               Cancel
             </Button>

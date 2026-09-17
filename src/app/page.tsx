@@ -7,6 +7,7 @@ import { ArrowUp } from 'lucide-react'
 // Public site views (single-route SPA with hash navigation)
 import SiteHeader from '@/components/site/SiteHeader'
 import SiteFooter from '@/components/site/SiteFooter'
+import ChatWidget from '@/components/site/ChatWidget'
 import HomeView from '@/components/site/HomeView'
 import AboutView from '@/components/site/AboutView'
 import ServicesView from '@/components/site/ServicesView'
@@ -79,12 +80,27 @@ function injectAnalytics() {
   document.body.appendChild(noscript)
 }
 
+function visitorAnonId(): string | null {
+  try {
+    let id = localStorage.getItem('t360_anid')
+    if (!id) {
+      id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`
+      localStorage.setItem('t360_anid', id)
+    }
+    return id
+  } catch { return null }
+}
+
 function trackServerEvent(name: string, path: string) {
   try {
+    const meta: Record<string, string> = { hash: path }
+    if (document.referrer) meta.referrer = document.referrer
     fetch('/api/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, path, consent: localStorage.getItem('t360_consent') === 'granted', meta: { hash: path } }),
+      body: JSON.stringify({ name, path, anonId: visitorAnonId(), consent: localStorage.getItem('t360_consent') === 'granted', meta }),
       keepalive: true,
     }).catch(() => null)
   } catch { /* ignore */ }
@@ -277,6 +293,7 @@ export default function Page() {
           </main>
           <BackToTop />
           <SiteFooter />
+          <ChatWidget />
         </>
       )}
       {consent === null && !isAdmin && <ConsentBanner onDecide={decide} />}

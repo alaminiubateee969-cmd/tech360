@@ -421,6 +421,7 @@ export interface PaymentRecord {
   id: string
   clientId?: string | null
   projectId?: string | null
+  invoiceId?: string | null
   milestone?: string | null
   amount?: number | null
   currency?: string | null
@@ -432,6 +433,7 @@ export interface PaymentRecord {
   notes?: string | null
   createdAt?: string | null
   client?: { clientId?: string; name?: string } | string | null
+  invoice?: { number?: string } | null
 }
 export interface InvoiceRecord {
   id: string
@@ -796,6 +798,7 @@ export const api = {
     transactionId?: string
     milestone?: string
     notes?: string
+    invoiceNumber?: string
   }) => fetchJson<PaymentMutationResponse>('/api/admin/payments', { method: 'POST', body }),
   verifyPayment: (paymentId: string) =>
     fetchJson<{ ok?: boolean; message?: string }>('/api/admin/payments/verify', {

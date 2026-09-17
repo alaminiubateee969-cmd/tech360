@@ -566,13 +566,27 @@ export async function requestPayment(clientRowId: string, actor: string) {
   return { instructions, results }
 }
 
-export async function recordPayment(clientRowId: string, input: { amount: number; currency?: string; method?: string; transactionId?: string; milestone?: string; notes?: string }) {
+export async function recordPayment(clientRowId: string, input: { amount: number; currency?: string; method?: string; transactionId?: string; milestone?: string; notes?: string; invoiceId?: string }) {
   const client = await db.client.findUnique({ where: { id: clientRowId }, include: { projects: true } })
   if (!client) throw new Error('Client not found')
-  const project = client.projects.filter((p) => !['COMPLETED', 'CANCELLED'].includes(p.status)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+  // Per-invoice allocation (idurar/frappe parity): when an invoice is linked,
+  // validate it belongs to this client and inherit its project when known.
+  let invoiceId: string | null = null
+  let invoiceProjectId: string | null = null
+  if (input.invoiceId) {
+    const invoice = await db.invoice.findUnique({ where: { id: input.invoiceId } })
+    if (!invoice || invoice.clientId !== client.id) throw new Error('Invoice not found for this client')
+    if (invoice.status === 'PAID' || invoice.status === 'CANCELLED') throw new Error(`Invoice ${invoice.number} is ${invoice.status} — cannot allocate more payments to it`)
+    if (input.amount > invoice.amount) throw new Error(`Payment exceeds invoice ${invoice.number} (amount ${invoice.amount}) — record at most the outstanding balance`)
+    invoiceId = invoice.id
+    invoiceProjectId = invoice.projectId
+  }
+  const fallbackProject = client.projects.filter((p) => !['COMPLETED', 'CANCELLED'].includes(p.status)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+  const project = invoiceProjectId ?? fallbackProject?.id ?? null
   const payment = await db.payment.create({
     data: {
-      clientId: client.id, projectId: project?.id ?? null,
+      clientId: client.id, projectId: project,
+      invoiceId,
       amount: input.amount, currency: input.currency ?? 'USD',
       method: input.method ?? null, transactionId: input.transactionId || undefined,
       milestone: input.milestone ?? null, notes: sanitizeText(input.notes, 2000) || null,
@@ -582,8 +596,24 @@ export async function recordPayment(clientRowId: string, input: { amount: number
   return payment
 }
 
+/**
+ * Per-invoice payment allocation: recompute an invoice's status from the
+ * sum of its VERIFIED (PAID) payments. Never touches CANCELLED invoices.
+ * Returns the new status (or null when nothing changed).
+ */
+export async function recalcInvoiceStatus(invoiceId: string): Promise<string | null> {
+  const invoice = await db.invoice.findUnique({ where: { id: invoiceId } })
+  if (!invoice || invoice.status === 'CANCELLED') return null
+  const paidAgg = await db.payment.aggregate({ where: { invoiceId: invoice.id, status: 'PAID' }, _sum: { amount: true } })
+  const paidSum = paidAgg._sum.amount ?? 0
+  const next = paidSum >= invoice.amount && invoice.amount > 0 ? 'PAID' : paidSum > 0 ? 'PARTIAL' : null
+  if (!next || next === invoice.status) return invoice.status
+  await db.invoice.update({ where: { id: invoice.id }, data: { status: next } })
+  return next
+}
+
 export async function verifyPayment(paymentId: string, adminUserId: string) {
-  const payment = await db.payment.findUnique({ where: { id: paymentId }, include: { client: true, project: true } })
+  const payment = await db.payment.findUnique({ where: { id: paymentId }, include: { client: true, project: true, invoice: true } })
   if (!payment) throw new Error('Payment not found')
   await db.payment.update({ where: { id: payment.id }, data: { status: 'PAID', verifiedBy: adminUserId, verifiedAt: new Date() } })
   const client = payment.client
@@ -594,7 +624,10 @@ export async function verifyPayment(paymentId: string, adminUserId: string) {
     const paidSum = paid._sum.amount ?? 0
     const paymentStatus = paidSum >= project.totalAmount && project.totalAmount > 0 ? 'PAID' : paidSum > 0 ? 'PARTIAL' : 'PENDING'
     await db.project.update({ where: { id: project.id }, data: { paidAmount: paidSum, paymentStatus } })
-    await db.invoice.updateMany({ where: { projectId: project.id }, data: { status: paymentStatus } }).catch(() => null)
+    // NOTE: invoices are deliberately NOT stamped with the project-level status
+    // here — an invoice is only ever PARTIAL/PAID via its OWN linked verified
+    // payments (per-invoice allocation, see the recalc pass below). The old
+    // coarse stamp wrongly marked every project invoice PAID on any verify.
   }
 
   // First verified payment → project activation (project is created if it doesn't exist yet)
@@ -608,6 +641,22 @@ export async function verifyPayment(paymentId: string, adminUserId: string) {
     const paymentStatus = paidSum >= activation.project.totalAmount && activation.project.totalAmount > 0 ? 'PAID' : paidSum > 0 ? 'PARTIAL' : 'PENDING'
     await db.project.update({ where: { id: activation.project.id }, data: { paidAmount: paidSum, paymentStatus } })
   }
+
+  // Per-invoice allocation (idurar/frappe parity): every invoice of this
+  // client that has at least one linked payment gets its status recomputed
+  // from ITS OWN verified payments. Invoices without linked payments keep
+  // their current status (DRAFT/SENT/OVERDUE) until a payment is allocated
+  // to them — no project-level coarse stamping.
+  if (client) {
+    const linked = await db.payment.findMany({
+      where: { clientId: client.id, invoiceId: { not: null } },
+      select: { invoiceId: true },
+      distinct: ['invoiceId'],
+    })
+    for (const row of linked) {
+      if (row.invoiceId) await recalcInvoiceStatus(row.invoiceId).catch(() => null)
+    }
+  }
   // confirmation email
   if (client?.email) {
     await sendCommunication({
@@ -615,7 +664,7 @@ export async function verifyPayment(paymentId: string, adminUserId: string) {
       body: emailTemplate('PAYMENT_CONFIRMED', { name: client.name, extra: `<p>Payment of <strong>${payment.amount} ${payment.currency}</strong> verified on ${new Date().toDateString()}.</p>` }).body, agentCode: 'EML-012',
     })
   }
-  await audit({ actor: `admin:${adminUserId}`, action: 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency } })
+  await audit({ actor: `admin:${adminUserId}`, action: 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null } })
   return { ok: true }
 }
 

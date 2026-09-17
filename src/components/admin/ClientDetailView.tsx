@@ -1,26 +1,33 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   BadgeDollarSign,
   Bot,
+  Building2,
+  CalendarClock,
   CalendarDays,
   CheckCircle2,
   Clock,
   ExternalLink,
   FileText,
+  Globe,
+  Info,
+  Layers,
   Loader2,
   Mail,
   MessageSquare,
   Paperclip,
   Phone,
   RefreshCw,
+  Route,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   Star,
   Trash2,
+  TrendingUp,
   Upload,
   Users,
 } from 'lucide-react'
@@ -28,6 +35,7 @@ import {
 import {
   api,
   clientDisplayName,
+  fetchJson,
   fmtDate,
   fmtDateShort,
   fmtMoney,
@@ -585,6 +593,7 @@ export function ClientDetailView({
             ['meetings', `Meetings (${(data?.meetings ?? []).length})`],
             ['memory', `Memory (${(data?.memories ?? []).length})`],
             ['automation', `Automation (${(data?.automationLogs ?? []).length})`],
+            ['research', 'AI Research'],
           ].map(([v, label]) => (
             <TabsTrigger
               key={v}
@@ -856,6 +865,10 @@ export function ClientDetailView({
               maxHeightClass="max-h-[60vh]"
             />
           </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="research" className="mt-3">
+          <AiResearchPanel clientId={client.clientId} clientLabel={clientDisplayName(client)} />
         </TabsContent>
       </Tabs>
 
@@ -1535,5 +1548,384 @@ function MeetingsPanel({
         </DialogContent>
       </Dialog>
     </SectionCard>
+  )
+}
+
+// ---------------- AI Research panel (CRM-003 lead enrichment dossier) ----------------
+
+interface EnrichRecommendedService {
+  service: string
+  reasoning: string
+}
+
+interface EnrichDossier {
+  companySnapshot: string
+  industryAnalysis: string
+  recommendedServices: EnrichRecommendedService[]
+  talkingPoints: string[]
+  risks: string[]
+  budgetExpectation: string
+  recommendedPlan: string
+  priorityScore: number
+  followUpRecommendation: string
+  confidenceNote: string
+}
+
+interface EnrichWebResearch {
+  ok: boolean
+  url: string
+  fetchedAt?: string
+  error?: string
+  chars?: number
+  title?: string
+}
+
+interface EnrichResponse {
+  ok?: boolean
+  dossier: EnrichDossier | null
+  agentCode?: string
+  executedAt?: string | null
+  executionId?: string | null
+  cached?: boolean
+  webResearch?: EnrichWebResearch | null
+  suggestedWebsiteUrl?: string | null
+}
+
+function scoreTone(score: number): { chip: string; text: string; label: string } {
+  if (score >= 70) return { chip: 'bg-red-500/15 text-red-300', text: 'text-red-300', label: 'Hot lead' }
+  if (score >= 40) return { chip: 'bg-amber-500/15 text-amber-300', text: 'text-amber-300', label: 'Warm lead' }
+  return { chip: 'bg-slate-700/50 text-slate-400', text: 'text-slate-400', label: 'Low priority' }
+}
+
+function scoreRingColor(score: number): string {
+  if (score >= 70) return '#EF4444'
+  if (score >= 40) return '#F59E0B'
+  return '#64748B'
+}
+
+function PriorityRing({ score }: { score: number }) {
+  const clamped = Math.max(0, Math.min(100, Math.round(score)))
+  const r = 26
+  const circumference = 2 * Math.PI * r
+  const tone = scoreTone(clamped)
+  return (
+    <div className="relative size-16 shrink-0">
+      <svg
+        viewBox="0 0 64 64"
+        className="size-16 -rotate-90"
+        role="img"
+        aria-label={`AI priority score ${clamped} out of 100 — ${tone.label}`}
+      >
+        <circle cx="32" cy="32" r={r} fill="none" stroke="#1e293b" strokeWidth="6" />
+        <circle
+          cx="32"
+          cy="32"
+          r={r}
+          fill="none"
+          stroke={scoreRingColor(clamped)}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference - (circumference * clamped) / 100}
+          className="transition-[stroke-dashoffset] duration-700"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className={`text-lg font-bold tabular-nums ${tone.text}`}>{clamped}</span>
+      </div>
+    </div>
+  )
+}
+
+function AiResearchPanel({ clientId, clientLabel }: { clientId: string; clientLabel: string }) {
+  const enrichApi = useApi<EnrichResponse>(`/api/admin/clients/${encodeURIComponent(clientId)}/enrich`)
+
+  const [running, setRunning] = useState(false)
+  const [runError, setRunError] = useState<string | null>(null)
+  const [override, setOverride] = useState<EnrichResponse | null>(null)
+  const [websiteUrl, setWebsiteUrl] = useState('')
+
+  // prefill from the suggested URL extracted out of the lead record (once)
+  useEffect(() => {
+    if (!websiteUrl && enrichApi.data?.suggestedWebsiteUrl) {
+      setWebsiteUrl(enrichApi.data.suggestedWebsiteUrl)
+    }
+  }, [enrichApi.data?.suggestedWebsiteUrl, websiteUrl])
+
+  const record = override ?? enrichApi.data
+  const dossier = record?.dossier ?? null
+
+  async function runResearch() {
+    if (running) return
+    setRunning(true)
+    setRunError(null)
+    try {
+      const res = await fetchJson<EnrichResponse>(`/api/admin/clients/${encodeURIComponent(clientId)}/enrich`, {
+        method: 'POST',
+        body: { websiteUrl: websiteUrl.trim() || undefined },
+      })
+      setOverride(res)
+      if (res.cached) {
+        toast.info('Recent research returned — generated less than 2 minutes ago (agent quota protected).')
+      } else if (res.webResearch?.ok) {
+        toast.success('AI research completed with live web research.')
+      } else if (res.webResearch && !res.webResearch.ok) {
+        toast.warning(`Website fetch failed (${res.webResearch.error ?? 'unknown error'}) — the dossier was generated from CRM data only.`)
+      } else {
+        toast.success('AI research completed.')
+      }
+    } catch (e) {
+      // honest failure — surface the real API error, keep any existing dossier visible
+      setRunError(e instanceof Error ? e.message : 'AI research failed.')
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const websiteInput = (
+    <div className="relative w-full">
+      <Globe className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+      <Input
+        type="url"
+        value={websiteUrl}
+        onChange={(e) => setWebsiteUrl(e.target.value)}
+        placeholder="https://client-website.com — optional, fetched live as primary evidence"
+        aria-label="Client website URL for live research"
+        className="h-8 w-full border-slate-700 bg-slate-900/60 pl-8 text-xs text-slate-200"
+      />
+    </div>
+  )
+
+  if (enrichApi.loading && !record) {
+    return (
+      <SectionCard title="AI Research" description="CRM-003 “Ledger” — market-intelligence dossier for this client">
+        <div className="space-y-3">
+          <Skeleton className="h-24 w-full bg-slate-800/50" />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Skeleton className="h-40 w-full bg-slate-800/40" />
+            <Skeleton className="h-40 w-full bg-slate-800/40" />
+          </div>
+        </div>
+      </SectionCard>
+    )
+  }
+
+  if (enrichApi.error && !record) {
+    return (
+      <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+        <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        Could not load AI research: {enrichApi.error}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {runError ? (
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 break-words">{runError}</span>
+        </div>
+      ) : null}
+
+      {!dossier ? (
+        <SectionCard
+          title="AI Research"
+          description="CRM-003 “Ledger” — market-intelligence dossier for this client"
+        >
+          <EmptyState
+            icon={Sparkles}
+            title="No AI research yet"
+            description={
+              <>
+                Ledger (CRM-003) builds a market-intelligence dossier for {clientLabel}: company snapshot, industry
+                analysis, recommended TECH360 services with reasoning, talking points, risks, budget expectation, a
+                phased plan and a follow-up recommendation.
+              </>
+            }
+            action={
+              <div className="flex w-full max-w-md flex-col gap-2">
+                {websiteInput}
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  Leave empty for CRM-only research, or paste the client&apos;s website to fetch it live (firecrawl-style)
+                  and feed it to the agent as primary evidence.
+                </p>
+                <Button
+                  onClick={runResearch}
+                  disabled={running}
+                  className="mt-1 w-full font-semibold"
+                  style={{ background: ACCENT }}
+                >
+                  {running ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Sparkles className="size-4" aria-hidden="true" />}
+                  Run AI research on this client
+                </Button>
+              </div>
+            }
+          />
+        </SectionCard>
+      ) : (
+        <>
+          {/* Dossier header — priority, re-run controls and evidence provenance */}
+          <section className={CARD} aria-label="AI research dossier header">
+            <div className="p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <PriorityRing score={dossier.priorityScore} />
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${scoreTone(dossier.priorityScore).chip}`}>
+                        {scoreTone(dossier.priorityScore).label}
+                      </span>
+                      <span className={`text-sm font-semibold tabular-nums ${scoreTone(dossier.priorityScore).text}`}>
+                        {Math.max(0, Math.min(100, Math.round(dossier.priorityScore)))}/100
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500">Hot ≥ 70 · Warm 40–69 · Low &lt; 40</p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="sm:w-80">{websiteInput}</div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={runResearch}
+                    disabled={running}
+                    className="h-8 gap-1.5 border border-slate-800 bg-transparent text-xs text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
+                  >
+                    {running ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-3.5" aria-hidden="true" />}
+                    Re-run research
+                  </Button>
+                </div>
+              </div>
+
+              <p className="mt-3 text-[11px] text-slate-600">
+                Generated {record?.executedAt ? fmtDate(record.executedAt) : '—'} by {record?.agentCode ?? 'CRM-003'}
+                {record?.executionId ? ` · execution ${record.executionId.slice(0, 8)}` : ''}
+                {record?.cached ? ' · cached (generated less than 2 minutes ago)' : ''}
+              </p>
+
+              {record?.webResearch ? (
+                record.webResearch.ok ? (
+                  <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-emerald-400/90">
+                    <Globe className="size-3 shrink-0" aria-hidden="true" />
+                    Web research included — {record.webResearch.title || record.webResearch.url}
+                    {record.webResearch.chars ? ` · ${num(record.webResearch.chars)} chars fetched live from ` : ' · '}
+                    <a
+                      href={record.webResearch.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-300 underline-offset-2 hover:underline"
+                    >
+                      {record.webResearch.url}
+                    </a>
+                  </p>
+                ) : (
+                  <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-amber-400/90">
+                    <ShieldAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                    Web research failed ({record.webResearch.error ?? 'unknown error'}) — this dossier is based on CRM data only.
+                  </p>
+                )
+              ) : null}
+            </div>
+          </section>
+
+          {/* Dossier body */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <SectionCard title="Company Snapshot" description="Who this business is and how they sell">
+              <p className="text-[13px] leading-relaxed text-slate-300">{dossier.companySnapshot}</p>
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-600">
+                <Building2 className="size-4 text-[#7dd3fc]" aria-hidden="true" /> Grounded in the CRM record{record?.webResearch?.ok ? ' + live website evidence' : ''}
+              </p>
+            </SectionCard>
+
+            <SectionCard title="Industry Analysis" description="Vertical, pains and buying behavior">
+              <p className="text-[13px] leading-relaxed text-slate-300">{dossier.industryAnalysis}</p>
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-600">
+                <TrendingUp className="size-4 text-[#7dd3fc]" aria-hidden="true" /> Market context for the pitch
+              </p>
+            </SectionCard>
+
+            <SectionCard title="Budget Expectation" description="What they are realistically able to spend">
+              <p className="text-[13px] leading-relaxed text-slate-300">{dossier.budgetExpectation}</p>
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-600">
+                <BadgeDollarSign className="size-4 text-[#7dd3fc]" aria-hidden="true" /> Stated range + agent estimate
+              </p>
+            </SectionCard>
+
+            <SectionCard title="Recommended Plan" description="Phased engagement plan">
+              <p className="text-[13px] leading-relaxed text-slate-300">{dossier.recommendedPlan}</p>
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-600">
+                <Route className="size-4 text-[#7dd3fc]" aria-hidden="true" /> First milestone included
+              </p>
+            </SectionCard>
+
+            <SectionCard title="Follow-up Recommendation" description="Concrete next step with timing" className="lg:col-span-2">
+              <p className="text-[13px] leading-relaxed text-slate-300">{dossier.followUpRecommendation}</p>
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-600">
+                <CalendarClock className="size-4 text-[#7dd3fc]" aria-hidden="true" /> Act on this, not the score alone
+              </p>
+            </SectionCard>
+
+            <SectionCard title="Recommended Services" description="From the TECH360 catalog, with reasoning">
+              <div className="space-y-2.5">
+                {dossier.recommendedServices.length > 0 ? (
+                  dossier.recommendedServices.map((s, i) => (
+                    <div key={i} className="rounded-md border border-slate-800 bg-slate-950/40 p-2.5">
+                      <p className="flex items-center gap-1.5 text-[13px] font-medium text-slate-200">
+                        <Layers className="size-4 shrink-0 text-[#7dd3fc]" aria-hidden="true" /> {s.service}
+                      </p>
+                      {s.reasoning ? <p className="mt-1 text-xs leading-relaxed text-slate-400">{s.reasoning}</p> : null}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-500">No services recommended.</p>
+                )}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Talking Points" description="Conversation openers for the next call">
+              {dossier.talkingPoints.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {dossier.talkingPoints.map((t, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-slate-300">
+                      <MessageSquare className="mt-0.5 size-4 shrink-0 text-[#7dd3fc]" aria-hidden="true" />
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-slate-500">No talking points returned.</p>
+              )}
+            </SectionCard>
+
+            <SectionCard
+              title="Risks"
+              description="Deal and delivery risks observed in the record"
+              className="border-amber-500/25 bg-amber-500/[0.03]"
+            >
+              {dossier.risks.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {dossier.risks.map((r, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[13px] leading-relaxed text-amber-200/90">
+                      <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-400/80" aria-hidden="true" />
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-slate-500">No specific risks returned.</p>
+              )}
+            </SectionCard>
+
+            <SectionCard title="AI Confidence" description="What this dossier is grounded in">
+              <p className="text-[13px] leading-relaxed text-slate-300">{dossier.confidenceNote}</p>
+              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-600">
+                <Info className="size-4 text-[#7dd3fc]" aria-hidden="true" /> Advisory — verify before committing
+              </p>
+            </SectionCard>
+          </div>
+        </>
+      )}
+    </div>
   )
 }

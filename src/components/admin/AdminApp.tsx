@@ -26,6 +26,8 @@ import {
   UserPlus,
   Wallet,
   Workflow,
+  Mail,
+  MessagesSquare,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -40,12 +42,14 @@ import { BlogStudioView } from './BlogStudioView'
 import { ClientDetailView } from './ClientDetailView'
 import { CommandCenterView } from './CommandCenterView'
 import { CommunicationsView } from './CommunicationsView'
+import { ConversationsView } from './ConversationsView'
 import { ContentStudioView } from './ContentStudioView'
 import { DashboardView } from './DashboardView'
 import { KnowledgeView } from './KnowledgeView'
 import { LeadsView } from './LeadsView'
 import { LogsView } from './LogsView'
 import { MemoryView } from './MemoryView'
+import { NewsletterView } from './NewsletterView'
 import { N8nView } from './N8nView'
 import { OpsView } from './OpsView'
 import { PaymentsView } from './PaymentsView'
@@ -68,8 +72,8 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 type ViewId =
-  | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications'
-  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory'
+  | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
+  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings'
 
 interface NavItem {
@@ -93,6 +97,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'clients', label: 'Clients', icon: Building2 },
       { id: 'approvals', label: 'Approvals', icon: ShieldCheck },
       { id: 'communications', label: 'Communications', icon: MessageSquare },
+      { id: 'chat', label: 'Live Chat', icon: MessagesSquare },
     ],
   },
   {
@@ -107,6 +112,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     items: [
       { id: 'reviews', label: 'Reviews & Referrals', icon: Star },
       { id: 'blog', label: 'Blog Studio', icon: Newspaper },
+      { id: 'newsletter', label: 'Newsletter', icon: Mail },
     ],
   },
   {
@@ -138,12 +144,14 @@ const VIEW_TITLES: Record<ViewId, string> = {
   clients: 'Clients',
   approvals: 'Approvals',
   communications: 'Communications',
+  chat: 'Live Chat',
   payments: 'Payments',
   projects: 'Projects',
   reviews: 'Reviews & Referrals',
   agents: 'AI Workforce',
   command: 'Command Center',
   memory: 'AI Memory',
+  newsletter: 'Newsletter',
   knowledge: 'Knowledge Base',
   content: 'Content Studio',
   blog: 'Blog Studio',
@@ -471,6 +479,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <ApprovalsView />
               ) : view === 'communications' ? (
                 <CommunicationsView />
+              ) : view === 'chat' ? (
+                <ConversationsView />
               ) : view === 'payments' ? (
                 <PaymentsView onOpenClient={openClient} />
               ) : view === 'projects' ? (
@@ -483,6 +493,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <CommandCenterView />
               ) : view === 'memory' ? (
                 <MemoryView />
+              ) : view === 'newsletter' ? (
+                <NewsletterView />
               ) : view === 'knowledge' ? (
                 <KnowledgeView />
               ) : view === 'content' ? (
