@@ -2,7 +2,7 @@ import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'crypto'
 import { db } from '@/lib/db'
 import { Session } from '@prisma/client'
 import { cookies } from 'next/headers'
-import { SESSION_COOKIE, SESSION_TTL_HOURS, CSRF_COOKIE } from '@/lib/constants'
+import { SESSION_COOKIE, SESSION_TTL_HOURS, CSRF_COOKIE, ROLE_RANK } from '@/lib/constants'
 
 // ------------------------------------------------------------
 // Password hashing — scrypt (no plaintext, constant-time compare)
@@ -40,7 +40,7 @@ export async function createSession(userId: string, ip?: string, userAgent?: str
   })
 }
 
-export type SessionWithUser = Session & { user: { id: string; email: string; name: string | null; role: string; title: string | null; isActive: boolean; mustChangePassword: boolean } }
+export type SessionWithUser = Session & { user: { id: string; email: string; name: string | null; role: string; title: string | null; isActive: boolean; mustChangePassword: boolean; twoFactorEnabled: boolean } }
 
 export async function getSession(token: string | undefined | null): Promise<SessionWithUser | null> {
   if (!token) return null
@@ -70,9 +70,8 @@ export function sessionTokenFromCookieStore(store: { get: (n: string) => { value
 }
 
 // ------------------------------------------------------------
-// RBAC
+// RBAC — ROLE_RANK lives in constants.ts (shared with the client nav)
 // ------------------------------------------------------------
-export const ROLE_RANK: Record<string, number> = { SUPER_ADMIN: 4, ADMIN: 3, MANAGER: 2, STAFF: 1 }
 
 export function hasRole(user: { role: string } | null, minRole: string): boolean {
   if (!user) return false

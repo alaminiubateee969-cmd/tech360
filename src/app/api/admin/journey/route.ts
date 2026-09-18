@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 
 // Manual journey advancement from the admin console — same real engine as automation
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
 
   const raw = await readJson(req)

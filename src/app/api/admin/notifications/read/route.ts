@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // body { id?: string } marks one · { all: true } marks every unread row.
 // Both paths are audited — clearing the feed is an operator action.
 export async function POST(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
   const raw = await readJson(req)
   const id = sanitizeText(raw.id, 40)

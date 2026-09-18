@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 // Manual message send from admin console — uses the real channel adapters
 export async function POST(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const raw = await readJson(req)
   const clientRef = sanitizeText(raw.clientId, 40)

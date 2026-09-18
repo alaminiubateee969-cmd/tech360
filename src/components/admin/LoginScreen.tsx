@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label'
 export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLoggedIn: () => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [totp, setTotp] = useState('')
+  const [needsTotp, setNeedsTotp] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -24,11 +26,18 @@ export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLogg
     }
     setBusy(true)
     try {
-      await api.login(email.trim(), password)
+      await api.login(email.trim(), password, needsTotp ? totp.trim() : undefined)
       onLoggedIn()
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) setError(err.message)
-      else if (err instanceof Error) setError(err.message)
+      if (err instanceof ApiError && err.status === 401) {
+        const data = err.data as { code?: string } | null
+        if (data?.code === 'TOTP_REQUIRED') {
+          setNeedsTotp(true)
+          setError('Your account is protected with two-factor authentication. Enter the 6-digit code from your authenticator app.')
+        } else {
+          setError(err.message)
+        }
+      } else if (err instanceof Error) setError(err.message)
       else setError('Login failed. Try again.')
     } finally {
       setBusy(false)
@@ -108,6 +117,28 @@ export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLogg
                 />
               </div>
             </div>
+            {needsTotp ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="login-totp" className="text-xs font-medium text-slate-400">
+                  Two-factor code
+                </Label>
+                <div className="relative">
+                  <ShieldCheck className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-600" aria-hidden="true" />
+                  <Input
+                    id="login-totp"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    autoFocus
+                    value={totp}
+                    onChange={(e) => setTotp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="6-digit code"
+                    className="h-10 border-slate-800 bg-slate-950/60 pl-9 font-mono tracking-[0.3em] text-slate-200 placeholder:text-slate-600"
+                  />
+                </div>
+              </div>
+            ) : null}
 
             {error ? (
               <div

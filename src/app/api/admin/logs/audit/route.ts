@@ -5,7 +5,7 @@ import { sanitizeText } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1)

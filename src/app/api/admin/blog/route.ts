@@ -32,7 +32,7 @@ async function uniqueSlug(base: string, ignoreId?: string): Promise<string> {
 
 // GET /api/admin/blog?q=&status=&take=&skip= — full list including drafts
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const q = sanitizeText(url.searchParams.get('q') ?? '', 120).toLowerCase()
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/admin/blog — create a post (DRAFT or PUBLISHED)
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const raw = await readJson(req)
 

@@ -16,7 +16,7 @@ const ACTIONS = ['RELEASE', 'REJECT'] as const
 // accountability). Every action is audited and notifies.
 // ------------------------------------------------------------
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
 
   const { id } = await params

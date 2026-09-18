@@ -24,6 +24,7 @@ import {
   Star,
   Terminal,
   UserPlus,
+  Users,
   Wallet,
   Workflow,
   Mail,
@@ -32,9 +33,11 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
+import { ROLE_RANK } from '@/lib/constants'
 import { ChangePasswordScreen } from './ChangePasswordScreen'
 import { LoginScreen } from './LoginScreen'
 import { NotificationCenter } from './NotificationCenter'
+import { TwoFactorDialog } from './TwoFactorDialog'
 import { AgentsView } from './AgentsView'
 import { AnalyticsView } from './AnalyticsView'
 import { ApprovalsView } from './ApprovalsView'
@@ -57,6 +60,7 @@ import { ProjectDetailView, ProjectsView } from './ProjectsView'
 import { ReportsView } from './ReportsView'
 import { ReviewsView } from './ReviewsView'
 import { SettingsView } from './SettingsView'
+import { TeamView } from './TeamView'
 import { ACCENT } from './shared/styles'
 import { Button } from '@/components/ui/button'
 import {
@@ -74,7 +78,36 @@ import { cn } from '@/lib/utils'
 type ViewId =
   | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
   | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter'
-  | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings'
+  | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
+
+// Minimum console role required to see (and use) each view. Mirrors the
+// server-side minRole on the backing API routes — the nav never advertises
+// a view whose data the role cannot actually load.
+const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN'> = {
+  dashboard: 'STAFF',
+  ops: 'ADMIN',
+  leads: 'STAFF',
+  clients: 'STAFF',
+  approvals: 'MANAGER',
+  communications: 'STAFF',
+  chat: 'STAFF',
+  payments: 'MANAGER',
+  projects: 'MANAGER',
+  reviews: 'MANAGER',
+  agents: 'MANAGER',
+  command: 'ADMIN',
+  memory: 'MANAGER',
+  newsletter: 'MANAGER',
+  knowledge: 'MANAGER',
+  content: 'ADMIN',
+  blog: 'MANAGER',
+  analytics: 'MANAGER',
+  logs: 'MANAGER',
+  n8n: 'MANAGER',
+  reports: 'MANAGER',
+  settings: 'SUPER_ADMIN',
+  team: 'SUPER_ADMIN',
+}
 
 interface NavItem {
   id: ViewId
@@ -132,6 +165,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'logs', label: 'Logs', icon: ScrollText },
       { id: 'n8n', label: 'n8n Workflows', icon: Workflow },
       { id: 'reports', label: 'Reports', icon: FileBarChart },
+      { id: 'team', label: 'Team', icon: Users },
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -160,11 +194,13 @@ const VIEW_TITLES: Record<ViewId, string> = {
   n8n: 'n8n Workflows',
   reports: 'Reports',
   settings: 'Settings',
+  team: 'Team',
 }
 
 export default function AdminApp({ onExit }: { onExit: () => void }) {
   const [me, setMe] = useState<AdminUser | null | undefined>(undefined) // undefined = checking
   const [meTick, setMeTick] = useState(0)
+  const [twoFactorOpen, setTwoFactorOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
   const [view, setView] = useState<ViewId>('dashboard')
@@ -255,6 +291,13 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
 
   const viewKey = useMemo(() => `${view}:${clientId ?? ''}:${projectId ?? ''}`, [view, clientId, projectId])
 
+  // Role-gated navigation: only advertise views this role can actually load.
+  const roleRank = me ? (ROLE_RANK[me.role ?? 'STAFF'] ?? 1) : 0
+  const visibleNav = NAV.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => roleRank >= (ROLE_RANK[VIEW_MIN_ROLE[item.id]] ?? 4)),
+  })).filter((group) => group.items.length > 0)
+
   // ---------------- auth states ----------------
   if (me === undefined) {
     return (
@@ -286,7 +329,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
   // ---------------- console ----------------
   const navContent = (
     <nav aria-label="Admin navigation" className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
-      {NAV.map((group) => (
+      {visibleNav.map((group) => (
         <div key={group.section}>
           <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{group.section}</p>
           <ul className="space-y-0.5">
@@ -433,6 +476,15 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                   <p className="mt-0.5 text-[10px] uppercase tracking-wider text-slate-600">{me.role ?? 'ADMIN'}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-slate-800" />
+                <DropdownMenuItem onClick={() => setTwoFactorOpen(true)} className="gap-2 text-[13px]">
+                  <ShieldCheck className="size-3.5" aria-hidden="true" />
+                  Two-factor authentication
+                  {me.twoFactorEnabled ? (
+                    <span className="ml-auto text-[10px] font-semibold text-emerald-400">ON</span>
+                  ) : (
+                    <span className="ml-auto text-[10px] font-semibold text-amber-400">OFF</span>
+                  )}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={onExit} className="gap-2 text-[13px]">
                   <ExternalLink className="size-3.5" aria-hidden="true" /> Back to website
                 </DropdownMenuItem>
@@ -509,6 +561,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <N8nView />
               ) : view === 'reports' ? (
                 <ReportsView />
+              ) : view === 'team' ? (
+                <TeamView />
               ) : (
                 <SettingsView />
               )}
@@ -522,6 +576,16 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
           </p>
         </footer>
       </div>
+
+      <TwoFactorDialog
+        open={twoFactorOpen}
+        onOpenChange={(o) => {
+          setTwoFactorOpen(o)
+          if (!o) refreshMe()
+        }}
+        enabled={me.twoFactorEnabled === true}
+        email={me.email}
+      />
     </div>
   )
 }

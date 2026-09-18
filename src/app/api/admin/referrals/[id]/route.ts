@@ -10,7 +10,7 @@ const STATUSES = ['REQUESTED', 'RECEIVED', 'CONVERTED', 'CLOSED']
 // POST /api/admin/referrals/[id] — body { status, notes? }
 // Tracks the real referral lifecycle: requested → received → converted/closed.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { id } = await params
   const raw = await readJson(req)

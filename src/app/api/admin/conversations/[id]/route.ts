@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> }
 
 // ADMIN — open a conversation: full thread (asc) + reset unreadCount to 0.
 export async function GET(req: NextRequest, { params }: Ctx) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
   const { id } = await params
   const conversationId = sanitizeText(id, 40)
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
 // ADMIN — actions on a conversation: reply | close | reopen | convert-to-lead.
 export async function POST(req: NextRequest, { params }: Ctx) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
   const { id } = await params
   const conversationId = sanitizeText(id, 40)

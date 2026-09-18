@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyPassword, createSession, makeCsrfToken } from '@/lib/auth'
+import { verifyTotp } from '@/lib/totp'
 import { SESSION_COOKIE, CSRF_COOKIE, SESSION_TTL_HOURS } from '@/lib/constants'
 import { rateLimit, clientIp, readJson, audit, logError, sanitizeText, sanitizeEmail } from '@/lib/security'
 
@@ -38,6 +39,25 @@ export async function POST(req: NextRequest) {
     })
     await audit({ actor: email, action: 'LOGIN_FAILED', details: { attempt: failed }, ip })
     return Response.json({ error: 'Invalid email or password' }, { status: 401 })
+  }
+
+  // ---- TOTP second factor (only when enrolled) ----
+  if (user.twoFactorEnabled && user.twoFactorSecret) {
+    const code = typeof body.totp === 'string' ? body.totp.trim() : ''
+    if (!code) {
+      // Password correct but second factor missing — ask for it WITHOUT creating a session.
+      await audit({ actor: email, action: 'LOGIN_2FA_CHALLENGE', ip })
+      return Response.json({ error: 'Two-factor code required', code: 'TOTP_REQUIRED' }, { status: 401 })
+    }
+    if (!verifyTotp(user.twoFactorSecret, code)) {
+      const failed = user.failedLogins + 1
+      await db.user.update({
+        where: { id: user.id },
+        data: { failedLogins: failed, lockedUntil: failed >= 5 ? new Date(Date.now() + 15 * 60_000) : null },
+      })
+      await audit({ actor: email, action: 'LOGIN_2FA_FAILED', details: { attempt: failed }, ip })
+      return Response.json({ error: 'Invalid two-factor code', code: 'TOTP_INVALID' }, { status: 401 })
+    }
   }
 
   const session = await createSession(user.id, ip, req.headers.get('user-agent') ?? undefined)

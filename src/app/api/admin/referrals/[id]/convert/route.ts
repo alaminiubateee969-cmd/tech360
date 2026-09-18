@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
 // it produced — attribution that survives forever.
 // ============================================================
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { id } = await params
   const raw = await readJson(req)

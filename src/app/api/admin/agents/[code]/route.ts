@@ -6,7 +6,7 @@ import { sanitizeText } from '@/lib/security'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { code } = await params
   const clean = sanitizeText(code, 20).toUpperCase()

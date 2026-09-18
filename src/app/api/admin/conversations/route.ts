@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // ?status=OPEN|CLOSED filters the list; tab counts for both statuses are
 // always included so the UI can show live counts without extra requests.
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
 
   const url = new URL(req.url)

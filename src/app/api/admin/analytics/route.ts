@@ -37,7 +37,7 @@ function referrerSource(meta: string | null): string {
 }
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
 
   const cutoff30 = new Date(Date.now() - 30 * DAY_MS)

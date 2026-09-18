@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // itself (journey events, AI operations loop, error triage, approvals).
 // GET  /api/admin/notifications?unread=1&take=30
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const unreadOnly = url.searchParams.get('unread') === '1'

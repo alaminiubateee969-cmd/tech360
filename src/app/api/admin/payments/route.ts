@@ -8,7 +8,7 @@ import { recordPayment } from '@/lib/journey'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const status = sanitizeText(url.searchParams.get('status') ?? '', 20).toUpperCase()
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   if (!(await featureEnabled('payments'))) {
     return Response.json({ error: 'Payments are currently disabled by Super Admin (System → Feature Management).' }, { status: 503 })
   }
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const raw = await readJson(req)
   const clientRef = sanitizeText(raw.clientId, 40)

@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!(await featureEnabled('n8n'))) {
     return Response.json({ error: 'n8n integration is currently disabled by Super Admin.' }, { status: 503 })
   }
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const workflows = await db.n8nWorkflow.findMany({ orderBy: { code: 'asc' } })
   return Response.json({ workflows })

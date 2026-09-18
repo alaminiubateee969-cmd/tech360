@@ -16,6 +16,7 @@ export async function GET() {
       role: session.user.role,
       title: session.user.title,
       mustChangePassword: session.user.mustChangePassword,
+      twoFactorEnabled: session.user.twoFactorEnabled,
     },
   })
 }

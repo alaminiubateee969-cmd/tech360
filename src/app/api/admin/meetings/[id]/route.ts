@@ -13,7 +13,7 @@ const RESCHEDULABLE = ['REQUESTED', 'SCHEDULED', 'DECLINED']
 // Every transition updates the real record, is audited, and (when it affects
 // the client) creates a communication + notification.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
 
   const { id } = await params

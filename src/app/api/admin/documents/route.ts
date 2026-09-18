@@ -15,7 +15,7 @@ const CLASSIFICATIONS = ['PUBLIC', 'PRIVATE', 'CONFIDENTIAL', 'HIGHLY_SENSITIVE'
 // the team), including scan verdicts and download counters.
 // ------------------------------------------------------------
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
 
   const clientId = req.nextUrl.searchParams.get('clientId')
@@ -66,7 +66,7 @@ function safeParse(s: string): unknown {
 // CLEAN files become visible in the client portal immediately.
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
 
   try {

@@ -6,7 +6,7 @@ import { readJson, sanitizeText, audit } from '@/lib/security'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { id } = await params
   const error = await db.errorLog.findUnique({ where: { id: sanitizeText(id, 40) } })

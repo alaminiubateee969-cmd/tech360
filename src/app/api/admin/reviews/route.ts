@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 // GET /api/admin/reviews?status=&take= — reviews with client context for moderation
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const status = sanitizeText(url.searchParams.get('status') ?? '', 20).toUpperCase()

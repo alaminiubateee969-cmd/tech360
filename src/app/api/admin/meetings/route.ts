@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 // writes the meeting record + outbound communication + audit + notification.
 // Core execution lives in lib/meetings.ts (shared with the NL Command Center).
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
 
   const body = await req.json().catch(() => ({} as Record<string, unknown>))

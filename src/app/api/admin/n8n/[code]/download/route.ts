@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   if (!(await featureEnabled('n8n'))) {
     return Response.json({ error: 'n8n integration is currently disabled by Super Admin.' }, { status: 503 })
   }
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { code } = await params
   const clean = sanitizeText(code, 30).toUpperCase().replace(/[^A-Z0-9_]/g, '')

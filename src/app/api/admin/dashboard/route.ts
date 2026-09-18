@@ -5,7 +5,7 @@ import { guard, isResponse } from '@/lib/api-guard'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
 
   const dayAgo = new Date(Date.now() - 24 * 3600 * 1000)

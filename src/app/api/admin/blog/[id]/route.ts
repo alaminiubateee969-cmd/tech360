@@ -31,7 +31,7 @@ async function uniqueSlug(base: string, ignoreId: string): Promise<string> {
 
 // GET /api/admin/blog/[id] — full content for the editor
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { id } = await params
   const post = await db.blogPost.findUnique({ where: { id: sanitizeText(id, 40) } })
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 // PATCH /api/admin/blog/[id] — edit fields / publish / unpublish
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { id } = await params
   const raw = await readJson(req)
@@ -109,7 +109,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 // DELETE /api/admin/blog/[id]
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { id } = await params
   const post = await db.blogPost.findUnique({ where: { id: sanitizeText(id, 40) } })

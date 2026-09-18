@@ -90,6 +90,10 @@ export const SENSITIVE_APPROVAL_TYPES = [
 ] as const
 
 export const ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'] as const
+
+// Role hierarchy (higher = more authority). Shared by server guard() and
+// client-side role-gated navigation — single source of truth.
+export const ROLE_RANK: Record<string, number> = { SUPER_ADMIN: 4, ADMIN: 3, MANAGER: 2, STAFF: 1 }
 export type Role = (typeof ROLES)[number]
 
 export const SESSION_COOKIE = 't360_session'

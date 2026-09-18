@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 // Update a project task: status transitions + evidence notes (real DB writes)
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; taskId: string }> }) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { id, taskId } = await params
   const project = await db.project.findFirst({ where: { OR: [{ id: sanitizeText(id, 40) }, { code: sanitizeText(id, 40) }] } })

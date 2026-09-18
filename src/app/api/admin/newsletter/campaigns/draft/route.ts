@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
 // NO campaign row is created.
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
 
   if (!(await featureEnabled('ai_agents'))) {

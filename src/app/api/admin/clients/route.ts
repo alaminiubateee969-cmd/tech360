@@ -7,7 +7,7 @@ import { PIPELINE_STAGES } from '@/lib/constants'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const query = sanitizeText(url.searchParams.get('query') ?? '', 100)

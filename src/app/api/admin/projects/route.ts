@@ -6,7 +6,7 @@ import { sanitizeText } from '@/lib/security'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const status = sanitizeText(url.searchParams.get('status') ?? '', 30).toUpperCase()

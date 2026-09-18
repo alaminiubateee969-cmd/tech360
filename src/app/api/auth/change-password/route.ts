@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const rl = rateLimit(`chpwd:${req.headers.get('x-real-ip') ?? 'unknown'}`, 10, 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many requests' }, { status: 429 })
   const store = await cookies()
-  const g = await guard(req, { csrf: true })
+  const g = await guard(req, { csrf: true, minRole: 'STAFF' })
   if (isResponse(g)) return g
 
   const body = await readJson(req)

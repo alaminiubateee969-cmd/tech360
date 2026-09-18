@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic'
 // after the first pass it copies nothing.
 // ------------------------------------------------------------
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
 
   // --- legacy migration (idempotent) ---

@@ -589,3 +589,56 @@ Stage Summary:
 - Owner delivery: COVERAGE-AUDIT.md (96 references) + rebuilt ZIP at /downloads/tech360-platform-full-source.zip + git repo ready for GitHub push → VPS auto-deploy (DEPLOYMENT.md §3 secrets). Honest limit unchanged: no GitHub/VPS credentials in this sandbox — the push is the owner's action.
 - Admin: admin@bdtech360.com / Tech360@Secure2026. Portal: TECH-2026-000001 / testclient@example.com. Demo: Sarah Mitchell chat, Q3 newsletter draft, planted dossier (labeled), DEMO-BANK payments showing full allocation lifecycle.
 - Open risks: (1) LLM provider quota outage persists — enrich/review/draft success paths await one live E2E when it recovers; (2) sandbox restores remain the top operational risk — commit early, commit often; (3) .env + cron wipe on every restore (6th occurrence this session).
+
+---
+Task ID: round-15-full-reverification
+Agent: main (verification commander)
+Task: Owner strict re-audit directive — "virtual/browser check shows many instructions not actually completed" · evidence-based audit of every page/dashboard/API/schema/auth file · fix every real gap found · rebuild archive
+
+Work Log:
+- READ the full re-pasted master prompt (upload/Pasted Content_1789691534538.txt, 5729 lines) + worklog rounds 1-14 + live codebase inventory (251 src files, 43 Prisma models, 106 route.ts, all admin components).
+- BROWSER AUDIT (agent-browser, evidence only): home page zero errors → admin login → ALL 22 admin views clicked through (Dashboard, Ops, Leads, Clients, Approvals, Communications, Live Chat, Payments, Projects, Reviews, Blog, Newsletter, AI Workforce, Command, Memory, Knowledge, Content, Analytics, Logs, n8n, Reports, Settings) — every one rendered with real DB data, ZERO console errors; Client Detail TECH-2026-000001 all 11 tabs (Timeline, Communications 36, Scope, Payments, Projects, Approvals, Documents 6 with scan status + moderation, Meetings, Memory, Automation, AI Research) verified; contact form full submission (dropdowns included) → TECH-2026-000003 created in DB (verified via Prisma count); portal login (TECH-2026-000001) → real payment milestones rendered; DB counts cross-checked (2 leads / 2 clients / 1 project / 5 invoices / 4 payments / 44 agents / 8 blog).
+- GAPS FOUND (real, fixed this round):
+  1. NO team/user management — only 1 seeded user, no way to create staff, no UI/API.
+  2. NO password reset — neither admin-initiated nor self-service.
+  3. Nav NOT role-filtered — MANAGER/STAFF would see all 22 views then hit 403s.
+  4. twoFactorEnabled schema field declared but TOTP never implemented ("OTP, if used" on the checklist).
+  5. STAFF/MANAGER roles had near-zero usable routes (everything defaulted to ADMIN minimum) — "all role dashboards" undemonstrable.
+  6. Latent bugs: newsletter/send updated non-existent `recipients`/`sentBy` columns (TS errors); change-password guard defaulted to ADMIN so STAFF could not change their own password (found live in browser: "Insufficient permissions").
+- FIXED — NEW FILES:
+  - src/lib/totp.ts — RFC 6238 TOTP from node:crypto only (base32 codec, HMAC-SHA1 hotp, ±1 step drift, otpauth:// URI). No new dependencies.
+  - src/app/api/auth/2fa/route.ts — session+CSRF gated setup/enable/disable (secret not activated until a valid code proves enrollment; disable requires password + live code).
+  - src/app/api/admin/team/route.ts — GET list (safe fields only) + POST create (SUPER_ADMIN; crypto-random one-time password, mustChangePassword=true).
+  - src/app/api/admin/team/[id]/route.ts — PATCH role/title/isActive/reset_password with safety rails (cannot demote/disable last SUPER_ADMIN, cannot disable self; disable + reset revoke all sessions; reset re-arms mustChangePassword).
+  - src/components/admin/TeamView.tsx — full Team dashboard (KPIs, user table, create dialog, one-time-password reveal-once dialogs, role-change dialog, enable/disable, reset password; disabled self-actions).
+  - src/components/admin/TwoFactorDialog.tsx — per-user TOTP enrollment + disable UI in the admin user menu.
+- FIXED — MODIFIED FILES:
+  - prisma/schema.prisma — User += twoFactorSecret (base32, kept only while enabled), twoFactorEnrolledAt.
+  - src/app/api/auth/login/route.ts — TOTP second factor: password-correct-but-no-code → 401 code TOTP_REQUIRED (no session created); invalid code → 401 TOTP_INVALID + lockout accounting; valid code → session.
+  - src/app/api/auth/me/route.ts — += twoFactorEnabled.
+  - src/app/api/auth/change-password/route.ts — minRole STAFF (was default ADMIN — the live-found bug).
+  - src/components/admin/LoginScreen.tsx — TOTP challenge field appears on TOTP_REQUIRED.
+  - src/components/admin/AdminApp.tsx — role-gated navigation (VIEW_MIN_ROLE mirrors server minRole per view; visibleNav filters by ROLE_RANK), Team view wired, 2FA menu item with ON/OFF badge, TwoFactorDialog mounted.
+  - src/lib/constants.ts — ROLE_RANK single source of truth (moved from server-only auth.ts so the client can import it).
+  - src/lib/auth.ts — imports ROLE_RANK from constants; SessionWithUser += twoFactorEnabled.
+  - src/lib/admin-client.ts — api.login(totp), api.twoFactor.{setup,enable,disable}, api.team.{list,create,update} + TeamMember/TwoFactorSetupResponse types; AdminUser += id/title/twoFactorEnabled.
+  - src/app/api/admin/newsletter/send/route.ts — recipients→recipientCount, dropped non-existent sentBy (TS errors).
+  - RBAC REBALANCE (server-enforced on every route): STAFF (11 routes: dashboard, clients list/detail, conversations+reply, communications read, notifications, meetings) · MANAGER (49 routes: payments, projects, tasks, approvals, reviews/moderate, referrals+convert, blog, newsletter suite, memory, knowledge+status+search, analytics, logs suite, n8n+download, documents+moderation, communications/send, journey, agents list/detail) · ADMIN (content studio, enrich, ops-status, command, agents run, agents/leads exports, deploy-package) · SUPER_ADMIN (settings, team, team/[id], approvals/decision, payments/verify, projects/close, agents/create).
+- BROWSER E2E VERIFICATION (all live, all evidence-captured):
+  - Team: created STAFF staff.sara@bdtech360.com (one-time pw shown once, forced rotation on first login) + MANAGER manager.omar@bdtech360.com (same flow).
+  - Role dashboards: STAFF Sara sees exactly 5 views (Dashboard, Leads, Clients, Communications, Live Chat) — payments/team/settings fetch → 403, dashboard → 200 with live KPIs. MANAGER Omar sees 18 views — payments 200, settings/team/command 403. SUPER_ADMIN sees all 23.
+  - Password reset: admin reset Sara → one-time pw → old pw "Invalid email or password" → temp pw → forced change screen → new pw → dashboard. All sessions revoked at reset.
+  - 2FA full lifecycle on Sara: setup (secret + otpauth URI shown) → code computed from the same RFC 6238 lib → enable (badge ON) → logout → password-only login REJECTED with challenge → valid code login OK → invalid 000000 rejected → disable with password+code (badge OFF).
+  - CSRF negatives: POST without header 403, POST wrong token 403, GET fine.
+  - Exports as ADMIN: leads CSV 200 real rows, agents JSON evidence 200, STAFF 403 both.
+  - Audit trail verified: TEAM_USER_CREATED ×2, 2FA_SETUP_STARTED/2FA_ENABLED/LOGIN_2FA_CHALLENGE/LOGIN_2FA_FAILED/2FA_DISABLED, TEAM_PASSWORD_RESET, PASSWORD_CHANGED, LOGIN_FAILED, CONTACT_FORM_SUBMITTED, LEADS_EXPORTED, AGENT_EVIDENCE_EXPORTED, OPS_CYCLE running.
+  - Responsive: 390px viewport OK, footer bottom == docHeight (pushed naturally, no overlap).
+- REGRESSION: bunx tsc --noEmit clean (src), bun run lint 0 problems, dev.log no new errors, all three services 200, chat_open + ops cycles still flowing.
+- CRON: registry wiped AGAIN (5th time) → recreated job 394294 (fixed_rate 900s webDevReview).
+- ARCHIVE: rebuilt public/downloads/tech360-platform-full-source.zip with all round-15 changes.
+
+Stage Summary:
+- The 4 checklist gaps are now real features with browser-proven E2E: Team management (create/roles/reset/disable), admin-initiated password reset with forced rotation, role-gated dashboards for ALL 4 roles (nav mirrors server RBAC), TOTP 2FA (RFC 6238, zero new deps).
+- 3 latent bugs fixed (newsletter send columns, change-password RBAC, ROLE_RANK client import).
+- Demo credentials (documented for owner): admin@bdtech360.com / Tech360@Secure2026 (SUPER_ADMIN) · manager.omar@bdtech360.com / Omar@Tech360-2026!Secure (MANAGER) · staff.sara@bdtech360.com / Sara@Tech360-2026!Secure (STAFF, no 2FA left enabled) · portal TECH-2026-000001 / testclient@example.com.
+- Remaining honest limits (unchanged): GitHub push + VPS deploy are owner actions (no credentials in sandbox); SMTP/WhatsApp/social/Stripe live sends stay honestly NOT_CONFIGURED until production secrets are set; AI provider 429 quota exhaustion means AI happy-paths were verified via their honest failure chains.

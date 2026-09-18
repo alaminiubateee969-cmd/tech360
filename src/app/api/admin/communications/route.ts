@@ -8,7 +8,7 @@ import { COMM_CHANNELS } from '@/lib/constants'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const channel = sanitizeText(url.searchParams.get('channel') ?? '', 20).toUpperCase()

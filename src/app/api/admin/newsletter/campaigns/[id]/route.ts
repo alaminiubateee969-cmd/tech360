@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 // out, so editing is refused with 409 instead of rewriting history.
 // ------------------------------------------------------------
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
 
   const { id } = await params

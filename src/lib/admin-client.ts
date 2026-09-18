@@ -128,15 +128,41 @@ export function useApi<T>(url: string | null): ApiState<T> {
 // ------------------------------------------------------------
 
 export interface AdminUser {
+  id?: string
   email: string
   name?: string | null
   role?: string | null
+  title?: string | null
   mustChangePassword?: boolean
+  twoFactorEnabled?: boolean
 }
 export interface MeResponse { user: AdminUser }
 export interface LoginResponse {
   ok?: boolean
   user?: AdminUser
+  error?: string
+  code?: string // TOTP_REQUIRED | TOTP_INVALID
+}
+
+export interface TeamMember {
+  id: string
+  email: string
+  name: string | null
+  role: string
+  title: string | null
+  isActive: boolean
+  mustChangePassword: boolean
+  twoFactorEnabled: boolean
+  lastLoginAt: string | null
+  failedLogins: number
+  lockedUntil: string | null
+  createdAt: string
+}
+export interface TwoFactorSetupResponse {
+  ok?: boolean
+  secret: string
+  otpauthUri: string
+  secretGrouped: string
   error?: string
 }
 
@@ -772,8 +798,29 @@ export interface HealthResponse {
 
 export const api = {
   me: () => fetchJson<MeResponse>('/api/auth/me'),
-  login: (email: string, password: string) =>
-    fetchJson<LoginResponse>('/api/auth/login', { method: 'POST', body: { email, password } }),
+  login: (email: string, password: string, totp?: string) =>
+    fetchJson<LoginResponse>('/api/auth/login', { method: 'POST', body: { email, password, totp } }),
+  twoFactor: {
+    setup: () =>
+      fetchJson<TwoFactorSetupResponse>('/api/auth/2fa', { method: 'POST', body: { action: 'setup' } }),
+    enable: (code: string) =>
+      fetchJson<{ ok?: boolean }>('/api/auth/2fa', { method: 'POST', body: { action: 'enable', code } }),
+    disable: (password: string, code: string) =>
+      fetchJson<{ ok?: boolean }>('/api/auth/2fa', { method: 'POST', body: { action: 'disable', password, code } }),
+  },
+  team: {
+    list: () => fetchJson<{ users: TeamMember[] }>('/api/admin/team'),
+    create: (input: { email: string; name: string; role: string; title: string }) =>
+      fetchJson<{ ok?: boolean; user?: { id: string; email: string; role: string }; tempPassword?: string; error?: string }>(
+        '/api/admin/team',
+        { method: 'POST', body: input },
+      ),
+    update: (id: string, body: { role?: string; title?: string; isActive?: boolean; action?: 'reset_password' }) =>
+      fetchJson<{ ok?: boolean; tempPassword?: string; error?: string }>(
+        `/api/admin/team/${encodeURIComponent(id)}`,
+        { method: 'PATCH', body },
+      ),
+  },
   changePassword: (currentPassword: string, newPassword: string) =>
     fetchJson<{ ok?: boolean }>('/api/auth/change-password', {
       method: 'POST',

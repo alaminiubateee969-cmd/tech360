@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 // PUBLISH is consent-enforced: a review cannot go public without the client's
 // explicit consent flag captured at submission time.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
   const { id } = await params
   const raw = await readJson(req)

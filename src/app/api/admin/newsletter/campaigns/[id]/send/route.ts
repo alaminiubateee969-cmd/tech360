@@ -19,7 +19,7 @@ const MAX_RECIPIENTS_PER_SEND = 1000
 // recipientCount. Nothing is ever faked.
 // ------------------------------------------------------------
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'MANAGER' })
   if (isResponse(g)) return g
 
   const { id } = await params
