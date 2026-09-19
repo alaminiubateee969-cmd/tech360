@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleAlert, CheckCircle2, Compass, Star } from "lucide-react";
+import { CircleAlert, CheckCircle2, Compass, Lock, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { CASE_STUDIES, SERVICES } from "@/data/site";
@@ -9,7 +9,46 @@ import { PageHero } from "./PageHero";
 import { CtaBand } from "./CtaBand";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
+import { ImageView } from "./ImageView";
 import { CardLinkAffordance } from "./buttons";
+
+/**
+ * Honest browser-frame showcase: an illustrative design concept of the calibre
+ * of website Tech360 delivers. Real client work ships under NDA — so we show
+ * a labelled concept, never a claimed client screenshot.
+ */
+function ConceptShowcase() {
+  return (
+    <Reveal>
+      <figure className="mb-12 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_18px_44px_rgba(6,59,143,0.08)]">
+        {/* Browser chrome */}
+        <div className="flex items-center gap-3 border-b border-[#E2E8F0] bg-[#F4FAFF] px-4 py-2.5">
+          <span className="flex shrink-0 gap-1.5" aria-hidden="true">
+            <span className="size-2.5 rounded-full bg-[#B4472A]/70" />
+            <span className="size-2.5 rounded-full bg-amber-400/80" />
+            <span className="size-2.5 rounded-full bg-[#18B83A]/70" />
+          </span>
+          <span className="mx-auto flex min-w-0 items-center gap-1.5 rounded-md border border-[#E2E8F0] bg-white px-3 py-1 text-[11px] font-medium text-[#526173]">
+            <Lock className="size-3 shrink-0 text-[#18B83A]" aria-hidden="true" />
+            <span className="truncate">bdtech360.com — concept preview</span>
+          </span>
+          <span className="hidden w-14 shrink-0 sm:block" aria-hidden="true" />
+        </div>
+        <ImageView
+          src="/images/website-mockup.png"
+          alt="Illustrative website design concept — a modern business website with hero, services and trust sections in the Tech360 visual style"
+          aspect="16/9"
+        />
+        <figcaption className="border-t border-[#E2E8F0] bg-white px-4 py-3 text-xs leading-relaxed text-[#526173] sm:px-5">
+          <span className="font-semibold text-[#0B1F33]">Illustrative design concept.</span>{" "}
+          Representative of the calibre of website we deliver — real client work
+          ships under NDA, so we show labelled concepts rather than client
+          screenshots.
+        </figcaption>
+      </figure>
+    </Reveal>
+  );
+}
 
 interface PublicReviewItem {
   id: string;
@@ -160,6 +199,8 @@ export default function WorkView() {
               </p>
             </div>
           </Reveal>
+
+          <ConceptShowcase />
 
           <h2 id="cases-heading" className="sr-only">Case study list</h2>
           <RevealList className="grid grid-cols-1 gap-6 lg:grid-cols-2">

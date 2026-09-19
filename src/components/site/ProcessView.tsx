@@ -99,9 +99,9 @@ export default function ProcessView() {
             id="lifecycle-heading"
             eyebrow="Under the process"
             title="What the machine looks like"
-            description="Every phase above is supported by a working pipeline — from development lifecycle management to the quality checklist that gates delivery."
+            description="Every phase above is supported by a working pipeline — from development lifecycle management and the quality checklist that gates delivery to the structured handover that ends every engagement."
           />
-          <RevealList className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <RevealList className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             <RevealItem className="h-full">
               <Card className="h-full overflow-hidden border-[#E2E8F0] bg-white">
                 <div className="overflow-hidden">
@@ -136,6 +136,25 @@ export default function ProcessView() {
                     Delivery is a structured event: functional, performance,
                     security and content checks verified together — with you,
                     before sign-off.
+                  </p>
+                </CardContent>
+              </Card>
+            </RevealItem>
+            <RevealItem className="h-full md:col-span-2 lg:col-span-1">
+              <Card className="h-full overflow-hidden border-[#E2E8F0] bg-white">
+                <div className="overflow-hidden">
+                  <ImageView
+                    src="/images/delivery-handover.png"
+                    alt="Delivery and handover concept — source code, credentials and documentation transferred to the client"
+                    aspect="16/9"
+                  />
+                </div>
+                <CardContent className="p-5">
+                  <h3 className="text-base font-semibold text-[#0B1F33]">Delivery &amp; handover</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#526173]">
+                    Nothing ends at “done” — code, credentials, documentation
+                    and the roadmap for what comes next are transferred to you
+                    as a structured, recorded event. You own everything.
                   </p>
                 </CardContent>
               </Card>

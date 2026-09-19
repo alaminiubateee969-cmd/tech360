@@ -9,6 +9,7 @@ import { SERVICES, type Service } from "@/data/site";
 import { PageHero } from "./PageHero";
 import { CtaBand } from "./CtaBand";
 import { Icon } from "./icons";
+import { ImageView } from "./ImageView";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
 
@@ -229,23 +230,39 @@ export default function ServicesView() {
 
       {/* How engagement starts */}
       <section className="bg-[#F4FAFF]">
-        <div className="mx-auto w-full max-w-4xl px-4 py-14 text-center sm:px-6 lg:px-8">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-8">
           <Reveal>
-            <h2 className="text-2xl font-bold tracking-tight text-[#0B1F33] sm:text-3xl">
-              Not sure which service you need?
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-[#526173]">
-              That is what discovery is for. Send one message about your
-              business and your goal — the recommended scope comes back in
-              writing, and you decide with a preview in hand.
-            </p>
-            <a
-              href="#/contact"
-              className="mt-7 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#009FE3] px-6 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#0090CC] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
-            >
-              Get a scoped recommendation
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </a>
+            <figure className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_18px_44px_rgba(6,59,143,0.08)]">
+              <ImageView
+                src="/images/features-modules.png"
+                alt="Illustrative overview of how delivered system modules connect — website, CRM, automation and reporting working as one platform"
+                aspect="16/10"
+              />
+              <figcaption className="border-t border-[#E2E8F0] px-4 py-3 text-xs leading-relaxed text-[#526173]">
+                <span className="font-semibold text-[#0B1F33]">Illustrative overview.</span>{" "}
+                How the modules of a delivered system connect — services you pick
+                combine into one platform, not separate tools.
+              </figcaption>
+            </figure>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <div className="text-center lg:text-left">
+              <h2 className="text-2xl font-bold tracking-tight text-[#0B1F33] sm:text-3xl">
+                Not sure which service you need?
+              </h2>
+              <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-[#526173] lg:mx-0">
+                That is what discovery is for. Send one message about your
+                business and your goal — the recommended scope comes back in
+                writing, and you decide with a preview in hand.
+              </p>
+              <a
+                href="#/contact"
+                className="mt-7 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#009FE3] px-6 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#0090CC] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
+              >
+                Get a scoped recommendation
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </a>
+            </div>
           </Reveal>
         </div>
       </section>

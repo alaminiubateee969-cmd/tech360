@@ -667,3 +667,25 @@ Stage Summary:
 - Cron registry re-armed (job 394785) — 6th wipe this session; check on every future entry.
 - Honest limits (unchanged, credential-dependent only): GitHub push + VPS deploy are owner actions (no credentials in sandbox); SMTP/WhatsApp/SMS/social/Stripe live dispatch stay honestly NOT_CONFIGURED until production secrets land; AI provider 429 quota exhaustion means AI happy-paths (enrich/review/draft) are verified only through their honest failure chains — no fabricated AI output anywhere.
 - No code changes needed this round — zero gaps found between the report and reality.
+
+---
+Task ID: round-17-unused-asset-integration
+Agent: main (asset integration)
+Task: Owner's final delivery report referenced upload/extract/public/images/website-mockup.png — audit found the file (plus 4 companions) shipped in public/images/ but was NEVER referenced by any page (not even in the original Laravel source). Integrated all 5 unused assets with honest illustrative-concept labelling.
+
+Work Log:
+- ENTRY ROUTINE: all 3 services 200, .env intact, but cron registry wiped a 7th time → recreated job 397669 (webDevReview, fixed_rate 900s).
+- AUDIT: grep of /images/ references vs public/images/ contents → 5 unused assets: website-mockup.png, admin-dashboard.png, crm-dashboard.png, features-modules.png, delivery-handover.png (all actually JPEGs at 1344x768 from the original project generation, extension mismatch is harmless — browsers sniff content; hero-platform.png with the same signature already renders fine).
+- VLM analysis of the mockup was attempted first (z-ai vision CLI) but the provider remains 429-quota-exhausted — honest failure, no fabrication; placements were decided from filename provenance + site context, and every visual is captioned "illustrative concept" so nothing is claimed beyond what the asset plausibly shows.
+- INTEGRATED (5 files modified):
+  - WorkView.tsx — new ConceptShowcase component: browser-frame figure (traffic-light dots + "bdtech360.com — concept preview" address pill with Lock icon) rendering /images/website-mockup.png 16/9 with figcaption "Illustrative design concept... real client work ships under NDA, so we show labelled concepts rather than client screenshots." Placed between the "How to read these" note and the case-study grid.
+  - ServiceDetailView.tsx — new SERVICE_VISUALS map (custom-crm-development → crm-dashboard.png "CRM console — concept"; business-dashboards → admin-dashboard.png "Operations dashboard — concept") rendered as a conditional browser-frame visual band between Features and Workflow; services without an entry render exactly as before.
+  - ProcessView.tsx — lifecycle imagery grid 2→3 cards (new "Delivery & handover" card with delivery-handover.png; md:col-span-2 lg:col-span-1 so the 3rd card spans full-width on tablet); section description updated to mention the structured handover.
+  - ServicesView.tsx — "Not sure which service you need?" section converted from centered text to a 2-col lg split: features-modules.png figure with honest caption + the discovery CTA text (text-center lg:text-left).
+- All 13 named public/images assets now referenced exactly where they belong (verified by grep matrix: every asset ≥1 reference).
+- VERIFICATION: bunx tsc --noEmit → 0 src errors; bun run lint → 0 problems; agent-browser E2E: Work mockup img naturalWidth 1344 loaded + figcaption present; CRM + dashboards service visual bands loaded; api-integrations correctly has NO band; Services overview features-modules lazy-loads on scroll (loaded: true); Process page renders all 3 lifecycle cards incl. delivery-handover (loaded); mobile 390px check → figure width 358, no horizontal overflow, caption not clipped; 0 page errors + 0 console errors across every page visited; screenshots captured (/tmp/work-concept.png, /tmp/work-concept-desktop.png, /tmp/process-lifecycle.png).
+
+Stage Summary:
+- The user-flagged unused asset (website-mockup.png) is now the visual anchor of the Work page, and ALL shipped image assets are used — no dead weight in the package.
+- Honesty preserved: every new visual is explicitly labelled an illustrative concept; no client screenshots are claimed, consistent with the NDA policy stated on the same pages.
+- ZIP rebuilt with the 5 modified source files; commit recorded.
