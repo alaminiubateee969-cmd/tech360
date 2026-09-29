@@ -74,7 +74,13 @@ jobs:
         run: bun run lint
 
       - name: Typecheck
-        run: bunx tsc --noEmit
+        run: bun run typecheck
+
+      - name: Business policy tests
+        run: bun run test
+
+      - name: Checked-in database integrity (read-only)
+        run: bun run db:verify
 
       - name: Production build
         env:
@@ -89,6 +95,7 @@ jobs:
         with:
           name: build-validation
           path: .next/
+          include-hidden-files: true
           retention-days: 1
 
   deploy:
