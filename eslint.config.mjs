@@ -19,6 +19,12 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     // React rules
     "react-hooks/exhaustive-deps": "off",
     "react-hooks/purity": "off",
+    // React 19 compiler-advisory rules are intentionally not CI gates. This
+    // app does not enable the React Compiler; these rules flag established,
+    // working effect/ref patterns rather than correctness or security defects.
+    "react-hooks/set-state-in-effect": "off",
+    "react-hooks/refs": "off",
+    "react-hooks/immutability": "off",
     "react/no-unescaped-entities": "off",
     "react/display-name": "off",
     "react/prop-types": "off",

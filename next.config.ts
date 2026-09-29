@@ -7,13 +7,10 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  // Dev-server OOM mitigation: this container has ~3.9GB RAM and the kernel
-  // OOM-killer was killing next-server at ~2.9GB RSS during Turbopack dev
-  // compilation. This target makes Turbopack trim caches before that point.
-  // (Dev only — production Cloud Run does not use Turbopack.)
-  experimental: {
-    turbopackMemoryLimit: 1_500_000_000,
-  },
+  // Keep this configuration on documented, typed Next.js options. Runtime
+  // memory limits belong in the process manager/container configuration; the
+  // previous experimental `turbopackMemoryLimit` key is not supported by the
+  // installed Next.js version and broke the CI typecheck.
 };
 
 export default nextConfig;
