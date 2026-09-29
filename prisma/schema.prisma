@@ -627,7 +627,7 @@ model ContentAsset {
   client     Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   projectId  String?
   project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  type       String   // RESEARCH | OPPORTUNITY | HOOK | SCRIPT | IMAGE_PROMPT | VIDEO_PLAN | VOICEOVER | CAPTIONS | THUMBNAIL | MUSIC_BRIEF | EDIT_PLAN
+  type       String   // MARKETING_KIT | SEO_BRIEF | RESEARCH | OPPORTUNITY | HOOK | SCRIPT | IMAGE_PROMPT | VIDEO_PLAN | VOICEOVER | CAPTIONS | THUMBNAIL | MUSIC_BRIEF | EDIT_PLAN
   language   String   @default("EN") // EN | BN
   voice      String?  // Bangla / English voice config
   durationSec Int?

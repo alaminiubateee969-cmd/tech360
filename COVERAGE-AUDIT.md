@@ -150,7 +150,7 @@ All of these map to TECH360's unified CRM lifecycle: leads → pipeline → clie
 | dani-garcia/vaultwarden | Password manager | ⛔ | Platform security = audit logs, CSRF, HMAC tokens, rate limits, RBAC (R10 security audit) — not a password vault product |
 | omacom/omarchy | Arch Linux WM setup | ⛔ | Operating-system tooling |
 | tt-a1i/archify | Architecture visualizations | ⛔ | Different domain |
-| cathrynlavery/diagram-design | Diagram design system | ⛔ | Design tooling |
+| cathrynlavery/diagram-design | Diagram design system | ✅ | Eight responsive, accessible infographic components plus three product-concept diagrams in `src/components/site/diagrams.tsx` and `concepts.tsx`; consistent title bands, numbered roadmaps, connectors, legends and English labels (R18) |
 | bilawalsidhu/gods-eye-view | Geospatial visualization | ⛔ | Different domain |
 | vastsa/PI-Desktop | Desktop environment | ⛔ | Desktop OS project |
 | armory3d/armorpaint | 3D texture painting | ⛔ | 3D authoring tool |
@@ -189,7 +189,7 @@ All of these map to TECH360's unified CRM lifecycle: leads → pipeline → clie
 | affaan-m/ECC | Unrelated project | ⛔ | Different domain |
 | alsk1992/CloddsBot | Bot project | ⛔ | TECH360's bots are the 44 in-product agents, not a chat-platform bot |
 | bugcrowd/bugcrowd_university | Security training curriculum | ◐ | SECURITY.md + secret scanning + audit trail cover the applicable security posture; a training curriculum is not a feature |
-| coreyhaines31/marketingskills | Marketing playbooks | ✅ | SMM campaigns + LRN-042 learning agent + content studio (R7–R9) |
+| coreyhaines31/marketingskills | Marketing playbooks | ✅ | Content Studio now generates a persisted, implementation-ready Marketing Kit (positioning, ICPs, messaging, channel plan, launch calendar, landing-page outline, social/ads/email assets, KPIs, UTMs and compliance checklist) plus dedicated SEO briefs; backed by CST-020 with honest-claims constraints |
 
 ---
 
