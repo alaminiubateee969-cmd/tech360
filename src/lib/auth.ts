@@ -2,7 +2,8 @@ import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'crypto'
 import { db } from '@/lib/db'
 import { Session } from '@prisma/client'
 import { cookies } from 'next/headers'
-import { SESSION_COOKIE, SESSION_TTL_HOURS, CSRF_COOKIE, ROLE_RANK } from '@/lib/constants'
+import { SESSION_COOKIE, SESSION_TTL_HOURS, CSRF_COOKIE } from '@/lib/constants'
+export { hasRole, isSuperAdmin } from '@/lib/access-policy'
 
 // ------------------------------------------------------------
 // Password hashing — scrypt (no plaintext, constant-time compare)
@@ -67,19 +68,6 @@ export async function currentUser(): Promise<SessionWithUser['user'] | null> {
 
 export function sessionTokenFromCookieStore(store: { get: (n: string) => { value: string } | undefined }) {
   return store.get(SESSION_COOKIE)?.value
-}
-
-// ------------------------------------------------------------
-// RBAC — ROLE_RANK lives in constants.ts (shared with the client nav)
-// ------------------------------------------------------------
-
-export function hasRole(user: { role: string } | null, minRole: string): boolean {
-  if (!user) return false
-  return (ROLE_RANK[user.role] ?? 0) >= (ROLE_RANK[minRole] ?? 0)
-}
-
-export function isSuperAdmin(user: { role: string } | null): boolean {
-  return user?.role === 'SUPER_ADMIN'
 }
 
 // ------------------------------------------------------------

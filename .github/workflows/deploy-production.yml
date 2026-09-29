@@ -23,6 +23,10 @@ name: deploy-production
 
 on:
   push:
+    branches:
+      - main
+      - 'arena/**'
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -89,6 +93,9 @@ jobs:
 
   deploy:
     name: Deploy → VPS (existing port, auto-rollback)
+    # Validation runs on working branches and pull requests; production deploys
+    # only from a validated push to the protected default branch.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 30

@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { verifyPayment } from '@/lib/journey'
 import { createNotification } from '@/lib/notify'
 import { audit } from '@/lib/security'
+import { evaluateStripePayment, verifyStripeSignature } from '@/lib/commerce-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,44 +21,6 @@ export const dynamic = 'force-dynamic'
 //  5. Settlement ONLY on `checkout.session.completed`.
 // The browser success URL is never evidence of payment.
 // ============================================================
-
-const TOLERANCE_SECONDS = 300
-
-async function verifyStripeSignature(rawBody: string, header: string | null, secret: string): Promise<{ ok: true; timestamp: number } | { ok: false; error: string }> {
-  if (!header) return { ok: false, error: 'Missing Stripe-Signature header' }
-  const parts = header.split(',').reduce<Record<string, string[]>>((acc, part) => {
-    const [k, v] = part.split('=', 2)
-    if (k && v) (acc[k.trim()] ??= []).push(v.trim())
-    return acc
-  }, {})
-  const timestamp = Number(parts.t?.[0])
-  if (!timestamp || !Number.isFinite(timestamp)) return { ok: false, error: 'Invalid timestamp in signature' }
-  const signatures = parts.v1 ?? []
-  if (signatures.length === 0) return { ok: false, error: 'Missing v1 signature' }
-
-  const age = Math.abs(Math.floor(Date.now() / 1000) - timestamp)
-  if (age > TOLERANCE_SECONDS) return { ok: false, error: `Signature timestamp outside ${TOLERANCE_SECONDS}s tolerance (age ${age}s)` }
-
-  const signedPayload = `${timestamp}.${rawBody}`
-  const subtle = globalThis.crypto?.subtle ?? (await import('node:crypto')).webcrypto.subtle
-  const key = await subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  const mac = await subtle.sign('HMAC', key, new TextEncoder().encode(signedPayload))
-  const expected = Array.from(new Uint8Array(mac))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-
-  // constant-time-ish compare over candidates
-  let match = false
-  for (const sig of signatures) {
-    if (sig.length === expected.length) {
-      let diff = 0
-      for (let i = 0; i < expected.length; i++) diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i)
-      if (diff === 0) match = true
-    }
-  }
-  if (!match) return { ok: false, error: 'Signature verification failed' }
-  return { ok: true, timestamp }
-}
 
 export async function POST(req: Request) {
   const rawBody = await req.text()
@@ -106,21 +69,29 @@ export async function POST(req: Request) {
     return Response.json({ error: 'No matching checkout session' }, { status: 404 })
   }
 
+  const settlement = evaluateStripePayment({
+    currentStatus: payment.status,
+    expectedAmount: payment.amount,
+    expectedCurrency: payment.currency,
+    receivedMinor: amountTotal,
+    receivedCurrency: currency,
+  })
+
   // Duplicate-processing guard (idempotency for Stripe retries)
-  if (payment.status === 'PAID') {
+  if (settlement.action === 'DUPLICATE') {
     return Response.json({ received: true, duplicate: true, paymentId: payment.id })
   }
 
   // Amount + currency verification against the platform record
-  const expectedMinor = Math.round(payment.amount * 100)
-  if (amountTotal !== expectedMinor) {
+  if (settlement.action === 'REJECT_AMOUNT') {
+    const expectedMinor = settlement.expectedMinor
     await db.payment
       .update({ where: { id: payment.id }, data: { status: 'FAILED', notes: `${payment.notes ?? ''}\nWebhook amount mismatch: expected ${expectedMinor}, received ${amountTotal} minor units — REJECTED.` } })
       .catch(() => null)
     await audit({ actor: 'system:stripe-webhook', action: 'PAYMENT_AMOUNT_MISMATCH', details: { paymentId: payment.id, expectedMinor, receivedMinor: amountTotal, sessionId } })
     return Response.json({ error: `Amount mismatch: expected ${expectedMinor}, received ${amountTotal}` }, { status: 400 })
   }
-  if (currency && currency !== payment.currency.toUpperCase()) {
+  if (settlement.action === 'REJECT_CURRENCY') {
     await db.payment
       .update({ where: { id: payment.id }, data: { status: 'FAILED', notes: `${payment.notes ?? ''}\nWebhook currency mismatch: expected ${payment.currency}, received ${currency} — REJECTED.` } })
       .catch(() => null)

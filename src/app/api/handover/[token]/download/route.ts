@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { sanitizeText, clientIp, audit, logError } from '@/lib/security'
 import { escapeHtml } from '@/lib/comms'
 import { PAD_CSS, padHeader, padMeta, padFooter, padSignatures, PAD } from '@/lib/letterhead'
+import { evaluateHandoverGate } from '@/lib/commerce-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,19 +23,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const handover = await db.handoverRecord.findUnique({ where: { packageToken: clean }, include: { project: { include: { payments: true, client: true } } } })
   if (!handover) return Response.json({ error: 'Package not found' }, { status: 404 })
 
-  if (handover.status !== 'RELEASED' && handover.status !== 'DOWNLOADED' && handover.status !== 'CONFIRMED') {
+  // Re-verify release, full payment and expiry at download time (defense in depth).
+  const paid = handover.project.payments.filter((p) => p.status === 'PAID').reduce((a, p) => a + p.amount, 0)
+  const gate = evaluateHandoverGate({
+    status: handover.status,
+    totalAmount: handover.project.totalAmount,
+    paidAmount: paid,
+    expiryAt: handover.expiryAt,
+  })
+  if (!gate.allowed && gate.code === 'NOT_RELEASED') {
     await logError({ source: 'SECURITY', code: 'HANDOVER_ACCESS_BLOCKED', message: `Download attempt on unreleased package ${clean.slice(0, 8)} from ${clientIp(req)}`, clientId: handover.clientId })
     return Response.json({ error: 'This package is not released. Source code becomes available only after full payment verification and admin release.' }, { status: 403 })
   }
-
-  // Re-verify payment at download time (defense in depth)
-  const paid = handover.project.payments.filter((p) => p.status === 'PAID').reduce((a, p) => a + p.amount, 0)
-  if (handover.project.totalAmount > 0 && paid < handover.project.totalAmount) {
+  if (!gate.allowed && gate.code === 'PAYMENT_INCOMPLETE') {
     await logError({ source: 'SECURITY', code: 'HANDOVER_PAYMENT_GATE', message: `Download blocked: payment incomplete for ${handover.project.code}`, clientId: handover.clientId })
     return Response.json({ error: 'Payment verification incomplete. Contact info@bdtech360.com.' }, { status: 403 })
   }
-
-  if (handover.expiryAt && handover.expiryAt < new Date()) {
+  if (!gate.allowed && gate.code === 'EXPIRED') {
     return Response.json({ error: 'This package link has expired. Contact info@bdtech360.com for renewal.' }, { status: 410 })
   }
 
