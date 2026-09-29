@@ -25,10 +25,14 @@ Final GitHub Actions run **36629870815** on commit `5012df43ffe1e71f651e2821a083
 
 Command: `npx tsx --test tests/**/*.test.ts`
 
-Result: **10 passed, 0 failed** across three suites:
+Result: **15 passed, 0 failed** across the policy and isolated-database suites in CI run **36632382301**:
 
 - RBAC hierarchy and anonymous denial;
 - Super Administrator authority for pending approval decisions;
+- two-client private-file IDOR denial;
+- cross-tenant and admin-shared deletion denial;
+- draft proposal persistence, unique version enforcement and approval-history linkage;
+- failed payment mismatch leaves both payment and project pending;
 - handover release gate;
 - handover full-payment gate;
 - handover expiry gate;
@@ -67,9 +71,9 @@ The script opens SQLite in read-only mode and does not change records.
 The current suite is a meaningful first regression gate, not complete lifecycle certification. Still required:
 
 - database-backed session and CSRF route tests;
-- tenant/IDOR tests with two isolated portal clients;
-- persisted proposal version and approval execution tests;
-- failed settlement proving no project activation;
+- HTTP-level portal route tests in addition to the now-passing two-client database IDOR tests;
+- full approval executor tests beyond persisted proposal versions/history;
+- failed signed-webhook settlement proving no project activation at the route level;
 - complete isolated CRM → project → acceptance lifecycle;
 - file upload/quarantine/access tests;
 - provider sandbox acceptance tests;
