@@ -25,7 +25,7 @@ Final GitHub Actions run **36629870815** on commit `5012df43ffe1e71f651e2821a083
 
 Command: `npx tsx --test tests/**/*.test.ts`
 
-Result: **15 passed, 0 failed** across the policy and isolated-database suites in CI run **36632382301**:
+Result: **20 passed, 0 failed** across the policy and isolated-database suites in CI run **36635558177**:
 
 - RBAC hierarchy and anonymous denial;
 - Super Administrator authority for pending approval decisions;
@@ -33,6 +33,10 @@ Result: **15 passed, 0 failed** across the policy and isolated-database suites i
 - cross-tenant and admin-shared deletion denial;
 - draft proposal persistence, unique version enforcement and approval-history linkage;
 - failed payment mismatch leaves both payment and project pending;
+- MIME/extension agreement and traversal-name normalization;
+- executable/script/encoded-payload and forged-binary quarantine;
+- structural binary inspection honestly records that external malware scanning is unavailable;
+- project closure requires payment, completed tasks, delivery acceptance and handover acceptance;
 - handover release gate;
 - handover full-payment gate;
 - handover expiry gate;
