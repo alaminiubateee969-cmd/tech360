@@ -76,8 +76,14 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
-      - name: Business policy tests
-        run: bun run test
+      - name: Business and database isolation tests
+        env:
+          DATABASE_URL: "file:./db/test.db"
+        run: |
+          rm -f db/test.db
+          bunx prisma db push --skip-generate
+          bun run test
+          rm -f db/test.db
 
       - name: Checked-in database integrity (read-only)
         run: bun run db:verify
