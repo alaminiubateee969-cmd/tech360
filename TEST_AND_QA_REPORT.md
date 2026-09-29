@@ -19,7 +19,7 @@ Passed steps:
 
 Production deployment was correctly skipped because the validated ref was not `main`. No production infrastructure was changed.
 
-A later run added the new automated tests and database gate; every validation/build step passed, but artifact upload rejected a Turbopack filename containing `:`. The deploy job never consumed that artifact (the VPS performs an exact-commit build), so the redundant upload step was removed rather than renaming framework output. A final run is required after that workflow-only fix.
+Final GitHub Actions run **36629870815** on commit `5012df43ffe1e71f651e2821a0836febbc59cb91` passed exact dependency installation, Prisma generation, lint, full typecheck, all business-policy tests, read-only database verification, and the production build. The production deploy job was correctly skipped for the Arena branch.
 
 ## Local automated policy suite
 

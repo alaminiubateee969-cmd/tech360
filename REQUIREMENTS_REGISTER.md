@@ -51,7 +51,7 @@ Status vocabulary: `VERIFIED_COMPLETE`, `PARTIALLY_IMPLEMENTED`, `MISSING`, `BRO
 | R-040 | CI/CD safe deploy and rollback | Master §21 | DevOps | PARTIALLY_IMPLEMENTED | Workflow, deploy, backup and health scripts exist; production secret/config and run unverified | GitHub environment + VPS | P0 | Validate YAML/scripts; require approval | CI + remote evidence | PARTIALLY_IMPLEMENTED |
 | R-041 | Required project documentation | Master §24 | Documentation | PARTIALLY_IMPLEMENTED | README/DEPLOYMENT/SECURITY/PAYMENT/official docs/coverage exist; master register and audit added; several requested operator guides still need consolidation | None | P1 | Add non-duplicative guides | Link/file review | IN_PROGRESS |
 | R-042 | Reference inventory, licensing and accessibility | Master §3 | Audit | PARTIALLY_IMPLEMENTED | 139-reference capability audit exists; per-reference live accessibility/license evidence is incomplete | Network/time | P1 | Never claim all inspected; extend inventory incrementally | URL/README/license evidence | PARTIALLY_IMPLEMENTED |
-| R-043 | Git commit/push verification | Master §25 | Git | PARTIALLY_IMPLEMENTED | Commits through `f0f6f9c` pushed to the required Arena branch; remote synchronization verified; CI run 36629219425 passed | None | P0 | Continue checkpoint commits on session branch only | local/remote SHA + CI | VERIFIED_COMPLETE |
+| R-043 | Git commit/push verification | Master §25 | Git | PARTIALLY_IMPLEMENTED | Commits through `5012df4` pushed to the required Arena branch; remote synchronization verified; final CI run 36629870815 passed | None | P0 | Continue checkpoint commits on session branch only | local/remote SHA + CI | VERIFIED_COMPLETE |
 
 ## Reconciled decisions
 
