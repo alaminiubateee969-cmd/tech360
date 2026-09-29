@@ -5,6 +5,7 @@ import { sendCommunication, emailTemplate, wrapEmailHtml, escapeHtml } from '@/l
 import { newCorrelationId, logError, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { PAD_CSS, padHeader, padMeta, padFooter, padSignatures, docDate } from '@/lib/letterhead'
+import { evaluateProjectClosure } from '@/lib/lifecycle-policy'
 
 // Tokenized preview links expire after this many days (env-overridable).
 const PREVIEW_TTL_DAYS = Math.max(1, Number(process.env.PREVIEW_TTL_DAYS ?? 30) || 30)
@@ -849,13 +850,30 @@ export async function requestReviewAndReferral(clientRowId: string) {
 }
 
 export async function closeProject(projectId: string, actor: string) {
-  const project = await db.project.findUnique({ where: { id: projectId }, include: { client: true, payments: true } })
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    include: { client: true, payments: true, tasks: true, deliveries: true, handovers: true },
+  })
   if (!project) throw new Error('Project not found')
   const paid = project.payments.filter((p) => p.status === 'PAID').reduce((a, p) => a + p.amount, 0)
-  const fullPayment = project.totalAmount > 0 ? paid >= project.totalAmount : paid > 0
-  const handover = await db.handoverRecord.findFirst({ where: { projectId, type: 'SOURCE_CODE' } })
-  if (!fullPayment) throw new Error('Cannot close: full payment not verified.')
-  if (project.status !== 'HANDOVER' && !handover) throw new Error('Cannot close: handover not completed.')
+  const delivery = project.deliveries.find((row) => row.status === 'CONFIRMED')
+  const handover = project.handovers.find((row) => row.type === 'SOURCE_CODE')
+  const closure = evaluateProjectClosure({
+    totalAmount: project.totalAmount,
+    paidAmount: paid,
+    taskStatuses: project.tasks.map((task) => task.status),
+    deliveryStatus: delivery?.status,
+    handoverStatus: handover?.status,
+  })
+  if (!closure.allowed) {
+    const reasons = {
+      PAYMENT_INCOMPLETE: 'full payment not verified',
+      TASKS_INCOMPLETE: 'one or more project tasks are incomplete',
+      DELIVERY_NOT_ACCEPTED: 'client delivery acceptance is not confirmed',
+      HANDOVER_NOT_CONFIRMED: 'source handover acceptance is not confirmed',
+    }
+    throw new Error(`Cannot close: ${reasons[closure.code]}.`)
+  }
   await db.project.update({ where: { id: projectId }, data: { status: 'COMPLETED', closedAt: new Date() } })
   await setStage(project.clientId, 'COMPLETED', 'Project completed')
   await db.client.update({ where: { id: project.clientId }, data: { status: 'COMPLETED' } })

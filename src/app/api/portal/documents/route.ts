@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { sanitizeText, audit, rateLimit, clientIp } from '@/lib/security'
 import { createNotification } from '@/lib/notify'
-import { DOC_MIME, DOC_EXT_LIST, DOC_MAX_BYTES, scanDocumentBytes, serializeScanResult } from '@/lib/files'
+import { DOC_EXT_LIST, DOC_MAX_BYTES, normalizeUploadName, resolveExt, scanDocumentBytes, serializeScanResult } from '@/lib/files'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,17 +40,16 @@ export async function POST(req: NextRequest) {
     }
 
     const declaredMime = file.type || ''
-    const fromName = (file.name.split('.').pop() ?? '').toLowerCase()
-    const ext = DOC_MIME[declaredMime] ?? (DOC_EXT_LIST.includes(fromName) ? fromName : null)
+    const ext = resolveExt(declaredMime, file.name)
     if (!ext) {
-      return Response.json({ error: `Unsupported file type. Allowed: ${DOC_EXT_LIST.join(', ')}.` }, { status: 415 })
+      return Response.json({ error: `Unsupported file type or MIME/extension mismatch. Allowed: ${DOC_EXT_LIST.join(', ')}.` }, { status: 415 })
     }
 
     const bytes = Buffer.from(await file.arrayBuffer())
     const scan = scanDocumentBytes(bytes, declaredMime, file.name)
     const scanStatus = scan.status === 'SCANNED' ? 'CLEAN' : 'QUARANTINED'
 
-    const originalName = sanitizeText(file.name, 200) || `document.${scan.ext}`
+    const originalName = normalizeUploadName(sanitizeText(file.name, 240), `document.${scan.ext}`)
     // stored filename: never trust a raw client filename in disk-facing fields
     const safeFilename = `${Date.now()}-${scan.sha256.slice(0, 10)}.${scan.ext}`
 
