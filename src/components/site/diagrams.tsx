@@ -17,10 +17,14 @@ const BG = "#F4FAFF";
 
 function Wrap({
   label,
+  title,
+  titleIcon,
   children,
   className = "",
 }: {
   label: string;
+  title?: string;
+  titleIcon?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -28,50 +32,65 @@ function Wrap({
     <div
       role="img"
       aria-label={label}
-      className={`w-full overflow-hidden rounded-xl border border-[#E2E8F0] bg-white ${className}`}
+      className={`w-full overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_10px_30px_rgba(6,59,143,0.06)] ${className}`}
     >
+      {title ? (
+        <div className="flex items-center gap-2.5 bg-gradient-to-r from-[#063B8F] to-[#009FE3] px-5 py-3">
+          {titleIcon ? (
+            <span className="flex size-6 items-center justify-center rounded-full bg-white/15 text-white">{titleIcon}</span>
+          ) : null}
+          <span className="text-xs font-black uppercase tracking-[0.18em] text-white">{title}</span>
+        </div>
+      ) : null}
       {children}
     </div>
   );
 }
 
 /* -------------------------------------------------------------- */
-/* 1. Development lifecycle — 7-phase pipeline with feedback loop  */
+/* 1. Development lifecycle — 7-phase roadmap with feedback loop   */
 /* -------------------------------------------------------------- */
 export function DevLifecycleDiagram() {
   const phases = [
-    { n: "01", t: "Discovery", d: "Requirements & business context" },
-    { n: "02", t: "Scope", d: "Written scope, milestone plan" },
-    { n: "03", t: "Design", d: "Architecture & data model" },
-    { n: "04", t: "Build", d: "Version-controlled sprints" },
-    { n: "05", t: "Review", d: "Preview approval gate" },
-    { n: "06", t: "Verify", d: "Quality & security checks" },
-    { n: "07", t: "Release", d: "Deploy, hand over, support" },
+    { n: "01", t: "Discovery", d: "Requirements & business context", c: "#009FE3" },
+    { n: "02", t: "Scope", d: "Written scope, milestone plan", c: "#0AA6E8" },
+    { n: "03", t: "Design", d: "Architecture & data model", c: "#063B8F" },
+    { n: "04", t: "Build", d: "Version-controlled sprints", c: "#0753B4" },
+    { n: "05", t: "Review", d: "Preview approval gate", c: "#18B83A" },
+    { n: "06", t: "Verify", d: "Quality & security checks", c: "#129C2F" },
+    { n: "07", t: "Release", d: "Deploy, hand over, support", c: "#0B1F33" },
   ];
   return (
-    <Wrap label="Development lifecycle diagram: seven phases from discovery to release, with a feedback loop from verification back to build">
+    <Wrap
+      label="Development lifecycle roadmap: seven phases from discovery to release, with a feedback loop from verification back to build"
+      title="Delivery roadmap — 7 phases"
+      titleIcon={
+        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+          <path d="M4 6h10M4 12h16M4 18h7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        </svg>
+      }
+    >
       <div className="bg-white p-5 sm:p-7">
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {phases.map((p, i) => (
-            <div
-              key={p.n}
-              className="relative rounded-lg border border-[#E2E8F0] bg-[#F8FCFF] p-3"
-            >
-              <div
-                className="text-[10px] font-black tracking-widest"
-                style={{ color: i === 4 ? GREEN : CYAN }}
+            <div key={p.n} className="relative flex flex-col items-center rounded-lg p-3 text-center">
+              {/* gradient number circle */}
+              <span
+                className="flex size-11 items-center justify-center rounded-full text-sm font-black text-white shadow-md"
+                style={{ background: `linear-gradient(135deg, ${p.c} 0%, ${p.c}CC 100%)` }}
+                aria-hidden="true"
               >
                 {p.n}
-              </div>
-              <div className="mt-1 text-xs font-bold text-[#0B1F33]">{p.t}</div>
+              </span>
+              <div className="mt-2.5 text-xs font-bold text-[#0B1F33]">{p.t}</div>
               <div className="mt-1 text-[10px] leading-snug text-[#526173]">{p.d}</div>
               {i < phases.length - 1 && (
                 <svg
                   viewBox="0 0 24 12"
-                  className="absolute -right-3 top-1/2 hidden h-2.5 w-6 -translate-y-1/2 lg:block"
+                  className="absolute -right-3.5 top-6 hidden h-3 w-7 lg:block"
                   aria-hidden="true"
                 >
-                  <path d="M0 6h18m0 0-4-4m4 4-4 4" stroke={CYAN} strokeWidth="2" fill="none" />
+                  <path d="M0 6h18m0 0-4-4m4 4-4 4" stroke="#009FE3" strokeWidth="2.2" fill="none" strokeLinecap="round" />
                 </svg>
               )}
             </div>
@@ -80,13 +99,13 @@ export function DevLifecycleDiagram() {
         <svg viewBox="0 0 800 34" className="mt-2 h-8 w-full" aria-hidden="true">
           <path
             d="M720 4 C720 26 80 26 80 8"
-            stroke={GREEN}
+            stroke="#18B83A"
             strokeWidth="2"
             strokeDasharray="6 4"
             fill="none"
           />
-          <path d="M80 8 76 16m4-8 8 2" stroke={GREEN} strokeWidth="2" fill="none" />
-          <text x="400" y="22" textAnchor="middle" fontSize="10" fontWeight="600" fill={GREEN}>
+          <path d="M80 8 76 16m4-8 8 2" stroke="#18B83A" strokeWidth="2" fill="none" />
+          <text x="400" y="22" textAnchor="middle" fontSize="10" fontWeight="600" fill="#18B83A">
             feedback loops — findings flow back before release
           </text>
         </svg>
@@ -122,7 +141,15 @@ export function QualityChecklistDiagram() {
     },
   ];
   return (
-    <Wrap label="Quality checklist diagram: functional, performance, security and delivery gates verified together before sign-off">
+    <Wrap
+      label="Quality checklist diagram: functional, performance, security and delivery gates verified together before sign-off"
+      title="The delivery gate — 4 check groups"
+      titleIcon={
+        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+          <path d="m5 12.5 4.5 4.5L19 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+        </svg>
+      }
+    >
       <div className="bg-white p-5 sm:p-7">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {groups.map((g) => (
@@ -176,7 +203,16 @@ export function TechStackDiagram() {
     { t: "Automation", tech: "n8n · WhatsApp Cloud API · LLM agent runtime", c: SLATE },
   ];
   return (
-    <Wrap label="Technology stack diagram: interface, application, data, infrastructure and automation layers">
+    <Wrap
+      label="Technology stack diagram: interface, application, data, infrastructure and automation layers"
+      title="The stack — 5 layers"
+      titleIcon={
+        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+          <path d="m12 3 9 5-9 5-9-5 9-5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+          <path d="m3 13 9 5 9-5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+      }
+    >
       <div className="space-y-2 bg-white p-5 sm:p-7">
         {layers.map((l, i) => (
           <div key={l.t} className="flex items-stretch gap-3">
@@ -222,7 +258,15 @@ function CloudBox({
 
 export function CloudArchitectureDiagram() {
   return (
-    <Wrap label="Cloud architecture diagram: users connect through a CDN and load balancer to Google Cloud Run services, backed by Cloud SQL, Secret Manager and monitoring">
+    <Wrap
+      label="Cloud architecture diagram: users connect through a CDN and load balancer to Google Cloud Run services, backed by Cloud SQL, Secret Manager and monitoring"
+      title="Cloud architecture — Google Cloud"
+      titleIcon={
+        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+          <path d="M7 17a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 8.3 3.5 3.5 0 0 1 16.5 17H7Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+      }
+    >
       <div className="bg-white p-5 sm:p-7">
         <div className="flex items-center justify-center">
           <div className="flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-[#F8FCFF] px-4 py-2">
@@ -274,7 +318,15 @@ export function SecurityArchitectureDiagram() {
     { t: "Audit & recovery", d: "Immutable audit trail · error logs · backups · CI secret scan", w: "42%", c: SLATE },
   ];
   return (
-    <Wrap label="Security architecture diagram: five concentric defense layers — identity, access control, request defenses, data protection, audit and recovery">
+    <Wrap
+      label="Security architecture diagram: five concentric defense layers — identity, access control, request defenses, data protection, audit and recovery"
+      title="Security — defense in depth"
+      titleIcon={
+        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+          <path d="M12 3 5 6v5c0 4.4 3 8.4 7 10 4-1.6 7-5.6 7-10V6l-7-3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+      }
+    >
       <div className="space-y-2 bg-white p-5 sm:p-7">
         {rings.map((r) => (
           <div key={r.t} className="flex items-center gap-3">
@@ -306,7 +358,15 @@ export function AutomationWorkflowDiagram() {
     { t: "Record", d: "Logged to the Client ID" },
   ];
   return (
-    <Wrap label="Automation workflow diagram: trigger, AI agent, guardrails, channel and record — every run is logged and verified">
+    <Wrap
+      label="Automation workflow diagram: trigger, AI agent, guardrails, channel and record — every run is logged and verified"
+      title="Automation flow — every run recorded"
+      titleIcon={
+        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+          <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+      }
+    >
       <div className="bg-white p-5 sm:p-7">
         <div className="flex flex-col items-stretch gap-2 lg:flex-row lg:items-center">
           {steps.map((s, i) => (
@@ -359,7 +419,20 @@ export function FeaturesModulesDiagram() {
     { t: "Analytics", d: "Reports & dashboards" },
   ];
   return (
-    <Wrap label="Platform modules diagram: six connected modules — website, CRM, automation, payments, portal and analytics — all linked to one Client ID">
+    <Wrap
+      label="Platform modules diagram: six connected modules — website, CRM, automation, payments, portal and analytics — all linked to one Client ID"
+      title="One platform — 6 connected modules"
+      titleIcon={
+        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="2.4" fill="currentColor" />
+          <circle cx="12" cy="4.5" r="1.8" fill="currentColor" />
+          <circle cx="19.5" cy="12" r="1.8" fill="currentColor" />
+          <circle cx="12" cy="19.5" r="1.8" fill="currentColor" />
+          <circle cx="4.5" cy="12" r="1.8" fill="currentColor" />
+          <path d="M12 6.9v3.7m3.4 4.5-2.7-1.6m-6.1 1.6 2.7-1.6M8.6 8.5l2.7 1.6" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
+      }
+    >
       <div className="bg-white p-5 sm:p-7">
         <div className="mx-auto mb-3 flex w-fit items-center gap-2 rounded-lg bg-[#063B8F] px-5 py-2.5">
           <svg viewBox="0 0 24 24" className="size-4 text-[#7FD4FF]" aria-hidden="true">
@@ -429,7 +502,16 @@ export function DeliveryHandoverDiagram() {
     ),
   };
   return (
-    <Wrap label="Delivery and handover diagram: source code, credentials, documentation and roadmap transferred to the client as a structured event">
+    <Wrap
+      label="Delivery and handover diagram: source code, credentials, documentation and roadmap transferred to the client as a structured event"
+      title="Handover — you own everything"
+      titleIcon={
+        <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
+          <path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      }
+    >
       <div className="bg-white p-5 sm:p-7">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {items.map((it) => (
