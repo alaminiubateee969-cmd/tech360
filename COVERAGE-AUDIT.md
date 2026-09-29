@@ -1,7 +1,7 @@
 # TECH360 — Reference Coverage Audit
 
-**Date:** September 17, 2026 (recovered + extended after the round-14 sandbox restore)
-**Scope:** Every website and repository link shared by the owner across the project conversations (96 unique references), audited against the delivered TECH360 platform.
+**Date:** September 17, 2026 (recovered + extended after the round-14 sandbox restore; extended again September 19 with the video-cluster + dev-tooling batch)
+**Scope:** Every website and repository link shared by the owner across the project conversations (139 unique references), audited against the delivered TECH360 platform.
 **Method:** Each reference was inspected for its core capability, then mapped to the platform's shipped features (43 Prisma models, 44 AI agents, 24 admin views, 3 services). "Round" numbers refer to the work-log entries in `worklog.md` where each feature was built and verified. After a workspace revert destroyed rounds 11–13 from disk, every listed feature was REBUILT and re-verified in round 14 — see the recovery entry in the worklog.
 
 **Legend**
@@ -13,7 +13,7 @@
 | ◐ | Partially applicable — the applicable core is covered; the rest is honestly out of scope |
 | ⛔ | Not applicable to TECH360 — a different product category, with the reason stated |
 
-**Totals:** 96 references audited → ✅ 42 covered · ➕ 2 added by audit · ◐ 11 partially applicable · ⛔ 41 not applicable (documented reasons). Every reference appears in a table below.
+**Totals:** 139 references audited → ✅ 45 covered · ➕ 2 added by audit · ◐ 20 partially applicable · ⛔ 72 not applicable (documented reasons). Every reference appears in a table below.
 
 ---
 
@@ -200,3 +200,63 @@ All of these map to TECH360's unified CRM lifecycle: leads → pipeline → clie
 3. **Sandbox limits:** this sandbox has no GitHub credentials and no VPS — the push and the live deploy are the owner's actions. The full pipeline (CI workflow, deploy script, health check, docs) is in the archive: see `DEPLOYMENT.md`.
 
 *This document is part of the project archive and travels with the source ZIP: `public/downloads/tech360-platform-full-source.zip`.*
+
+---
+
+## Extension — round 18 audit (owner's September 19 link batch)
+
+**Scope:** 43 additional unique references from the owner's latest message (the video-production cluster and the developer/AI-tooling references). Every link was dispositioned against the delivered platform; no link was skipped.
+
+## P. Video production & processing tools (33)
+
+The applicable capability — *planning* video content (scripts, shot plans, storyboards) — is covered by agent VID-022. Actually rendering, editing, subtitling or super-resolving video files is a different product category: TECH360 is a business-management platform, not a video render farm. No fake video features are shipped.
+
+| Reference | What it is | TECH360 | Where / Round |
+| --- | --- | --- | --- |
+| WEIFENG2333/VideoCaptioner | Video captioning tool | ⛔ | Video file processing — different product |
+| ATH-MaaS/Pixelle-Video | Video generation service | ⛔ | Video rendering — different product |
+| remotion-dev/remotion | Programmatic video in React | ◐ | VID-022 produces the *content plan* (script + shots); rendering rendered video files is out of scope |
+| MarkTechStation/VideoCode | Code-to-video tool | ⛔ | Same rendering boundary |
+| 3b1b/videos | Manim math-video source | ⛔ | Educational animation source — different domain |
+| ytdl-org/youtube-dl | Video downloader | ⛔ | Downloader tooling — no business fit |
+| bradautomates/claude-video | AI video workflow demo | ⛔ | Demo project — the agent-registry is the in-product analog |
+| MeiGen-AI/InfiniteTalk | Talking-avatar video | ⛔ | Avatar rendering — different product |
+| qdrzwd/VideoRecorder | Screen recorder | ⛔ | Desktop tooling |
+| zai-org/CogVideo | Video generation model | ⛔ | Model research — TECH360 uses hosted SDK models |
+| Tencent-Hunyuan/HunyuanVideo | Video generation model | ⛔ | Same |
+| elebumm/RedditVideoMakerBot | Reddit→TTS video bot | ◐ | VID-022 covers the script/storyboard half; TTS+render is out of scope |
+| Lightricks/LTX-Video | Video generation model | ⛔ | Model research |
+| YaoFANGUK/video-subtitle-remover | Subtitle removal | ⛔ | Video file processing |
+| leandromoreira/digital_video_introduction | Video-learning material | ⛔ | Educational content, not a capability |
+| OpenTalker/video-retalking | Lip-sync video | ⛔ | Video processing |
+| meituan-longcat/LongCat-Video | Video generation model | ⛔ | Model research |
+| 0voice/audio_video_streaming | Streaming resource list | ⛔ | Resource directory |
+| HITsz-TMG/VideoClaw | Video understanding | ◐ | The platform's video-understanding capability ships via the SDK on the backend (skills system); no fake in-product video feature is claimed |
+| jitsi/jitsi-videobridge | WebRTC video bridge | ⛔ | SFU infrastructure — TECH360 meetings are scheduled + channel-followed, not a video-conference product |
+| HKUDS/VideoAgent | Video-understanding agent | ◐ | Same as VideoClaw |
+| LoSealL/VideoSuperResolution | Video upscaling | ⛔ | Video file processing |
+| Augani/openreel-video | Video reel tool | ⛔ | Video product |
+| Kosinkadink/ComfyUI-VideoHelperSuite | ComfyUI nodes | ⛔ | Pipeline tooling for image/video workflows |
+| dunossauro/videomaker-helper | Video maker helper | ⛔ | Video tooling |
+| burhankocabiyik/videomaker | Video maker | ⛔ | Video tooling |
+| wtz2017/VideoMaker | Video maker | ⛔ | Video tooling |
+| viniciusenari/slideshow-videomaker | Slideshow video maker | ⛔ | Video tooling |
+| WuTao-CS/VideoMaker | Video maker | ⛔ | Video tooling |
+| shubhamdevhouse/Animated-VideoMaker | Animated video maker | ⛔ | Video tooling |
+| seed0001/videoMaker | Video maker | ⛔ | Video tooling |
+| Bilal-Belli/videoMakerBOT | Video maker bot | ⛔ | Video tooling |
+| Nncstudio/VideoMakerPro | Video maker pro | ⛔ | Video tooling |
+
+## Q. Developer & AI-tooling references (10)
+
+| Reference | What it is | TECH360 | Where / Round |
+| --- | --- | --- | --- |
+| cline/cline | AI coding IDE/agent | ⛔ | Developer IDE — TECH360's 44-agent registry with tools/permissions is the in-product analog (R7) |
+| coder.qwen.ai | Qwen AI coder | ⛔ | Same category as cline |
+| openrouter.ai | Model gateway | ⛔ | Model routing is provided by the SDK; no self-hosted gateway needed |
+| openrouter.ai blog (tool-calling agent loop) | Agent-loop tutorial | ✅ | The pattern is implemented for real in `src/lib/agents/engine.ts` — structured tool use, strict JSON, retries, execution records, honest failures (R7–R8) |
+| developer.meta.com/ai + astryx.atmeta.com | Meta AI dev platform | ⛔ | The WhatsApp Cloud API integration (Meta) is already the shipped Meta touchpoint (R5) |
+| meta-models/meta-model-cookbook | Meta AI cookbook | ◐ | Multi-modal agent patterns; the platform's agents + SDK cover the applicable core |
+| mureka.ai | AI music generation | ⛔ | Music synthesis — different product |
+| buffer.com | Social media scheduling | ✅/◐ | SMM campaign studio + AI drafting + scheduled publishing cover the applicable core; multi-account social scheduling stays honestly channel-gated until credentials land (R7–R11) |
+| stackoverflow.com | Q&A reference site | ⛔ | Reference site, not a capability |

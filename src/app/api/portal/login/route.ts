@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const raw = await readJson(req)
   const clientId = sanitizeText(raw.clientId, 40).toUpperCase()
   const contact = sanitizeText(raw.contact, 320)
-  if (!clientId || !contact) return Response.json({ error: 'Client ID and email/WhatsApp are required' }, { status: 400 })
+  if (!clientId || !contact) return Response.json({ error: 'Client ID and your registered contact (email or phone) are required' }, { status: 400 })
 
   const client = await db.client.findFirst({
     where: { clientId, deletedAt: null },
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   if (!client || (!emailMatch && !phoneMatch)) {
     await audit({ actor: `portal:${clientId || 'unknown'}`, action: 'PORTAL_LOGIN_FAILED', ip, details: { reason: 'no matching record' } })
-    return Response.json({ error: 'We could not match those details. Check your Client ID (e.g. TECH-2026-000001) and the email/WhatsApp you used when you contacted us.' }, { status: 401 })
+    return Response.json({ error: 'We could not match those details. Check your Client ID (e.g. TECH-2026-000001) and the email or phone number you used when you contacted us.' }, { status: 401 })
   }
 
   await audit({ actor: `client:${client.clientId}`, action: 'PORTAL_LOGIN', clientId: client.clientId, ip })

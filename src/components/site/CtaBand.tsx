@@ -1,11 +1,11 @@
 "use client";
 
 import { SectionHeading } from "./SectionHeading";
-import { PrimaryLink, WhatsAppLink } from "./buttons";
+import { AIAssistantLink, PrimaryLink } from "./buttons";
 
 /**
  * Closing call-to-action band used across views: deep gradient,
- * one message, two honest next steps (project form / WhatsApp).
+ * one message, two honest next steps (project form / AI assistant chat).
  */
 export function CtaBand({
   title = "Ready to see your project before you pay for it?",
@@ -37,7 +37,7 @@ export function CtaBand({
         />
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <PrimaryLink href={primaryHref}>{primaryLabel}</PrimaryLink>
-          <WhatsAppLink />
+          <AIAssistantLink />
         </div>
         <p className="mt-6 text-xs text-white/50">
           Every engagement is on-record: Client ID, written scope, verified payments, full handover.

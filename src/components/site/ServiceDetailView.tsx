@@ -1,40 +1,25 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SERVICES, getService } from "@/data/site";
 import { PageHero } from "./PageHero";
 import { CtaBand } from "./CtaBand";
 import { Icon } from "./icons";
-import { ImageView } from "./ImageView";
+import { AdminDashboardConcept, CrmConsoleConcept } from "./concepts";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
-import { PrimaryLink, WhatsAppLink, CardLinkAffordance } from "./buttons";
+import { PrimaryLink, AIAssistantLink, CardLinkAffordance } from "./buttons";
 
 /**
  * Optional illustrative interface concepts for specific services. These are
- * labelled concepts — never claimed client screenshots (client work ships
- * under NDA). Only services listed here render the visual band.
+ * hand-coded concept mockups — never claimed client screenshots (client work
+ * ships under NDA). Only services listed here render the visual band.
  */
-const SERVICE_VISUALS: Record<
-  string,
-  { src: string; alt: string; label: string; caption: string }
-> = {
-  "custom-crm-development": {
-    src: "/images/crm-dashboard.png",
-    alt: "Illustrative CRM interface concept — pipeline stages, client records and activity timeline in one console",
-    label: "CRM console — concept",
-    caption:
-      "Every lead, message, approval, payment and file linked to one Client ID — this illustrative concept shows the shape of the console we build around your pipeline.",
-  },
-  "business-dashboards": {
-    src: "/images/admin-dashboard.png",
-    alt: "Illustrative analytics dashboard concept — KPI cards, revenue trends and operational monitor panels",
-    label: "Operations dashboard — concept",
-    caption:
-      "KPIs, trends and operational signals in one view — this illustrative concept shows the kind of dashboard we assemble from your real business data.",
-  },
+const SERVICE_VISUALS: Record<string, React.ReactNode> = {
+  "custom-crm-development": <CrmConsoleConcept />,
+  "business-dashboards": <AdminDashboardConcept />,
 };
 
 export default function ServiceDetailView({ slug }: { slug: string }) {
@@ -153,32 +138,7 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
           className="bg-white"
         >
           <div className="mx-auto w-full max-w-5xl px-4 pb-16 sm:px-6 sm:pb-20 lg:px-8">
-            <Reveal>
-              <figure className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_18px_44px_rgba(6,59,143,0.08)]">
-                {/* Browser chrome */}
-                <div className="flex items-center gap-3 border-b border-[#E2E8F0] bg-[#F4FAFF] px-4 py-2.5">
-                  <span className="flex shrink-0 gap-1.5" aria-hidden="true">
-                    <span className="size-2.5 rounded-full bg-[#B4472A]/70" />
-                    <span className="size-2.5 rounded-full bg-amber-400/80" />
-                    <span className="size-2.5 rounded-full bg-[#18B83A]/70" />
-                  </span>
-                  <span className="mx-auto flex min-w-0 items-center gap-1.5 rounded-md border border-[#E2E8F0] bg-white px-3 py-1 text-[11px] font-medium text-[#526173]">
-                    <Lock className="size-3 shrink-0 text-[#18B83A]" aria-hidden="true" />
-                    <span className="truncate">{SERVICE_VISUALS[service.slug].label}</span>
-                  </span>
-                  <span className="hidden w-14 shrink-0 sm:block" aria-hidden="true" />
-                </div>
-                <ImageView
-                  src={SERVICE_VISUALS[service.slug].src}
-                  alt={SERVICE_VISUALS[service.slug].alt}
-                  aspect="16/9"
-                />
-                <figcaption className="border-t border-[#E2E8F0] bg-white px-4 py-3 text-xs leading-relaxed text-[#526173] sm:px-5">
-                  <span className="font-semibold text-[#0B1F33]">Illustrative concept.</span>{" "}
-                  {SERVICE_VISUALS[service.slug].caption}
-                </figcaption>
-              </figure>
-            </Reveal>
+            <Reveal>{SERVICE_VISUALS[service.slug]}</Reveal>
           </div>
         </section>
       ) : null}
@@ -264,7 +224,7 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
                   Start Your Project
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </PrimaryLink>
-                <WhatsAppLink />
+                <AIAssistantLink />
               </div>
             </div>
           </Reveal>

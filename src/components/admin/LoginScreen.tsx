@@ -62,11 +62,11 @@ export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLogg
       <div className="relative w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <img
-            src="/images/tech360-logo-web.png"
+            src="/brand/tech360-logo-original.jpg"
             alt="Tech360 LLC logo"
-            className="h-10 w-auto"
-            width={96}
-            height={40}
+            className="h-14 w-auto rounded-lg"
+            width={56}
+            height={56}
           />
           <div>
             <h1 className="text-lg font-bold tracking-tight text-slate-100">Super Admin Console</h1>

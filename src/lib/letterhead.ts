@@ -10,15 +10,14 @@
 // ------------------------------------------------------------
 
 export const PAD = {
-  logoUrl: "/images/tech360-logo-web.png",
-  logoUrl2x: "/images/tech360-logo@2x.png",
+  logoUrl: "/brand/tech360-logo-original.jpg",
+  logoUrl2x: "/brand/tech360-logo-original.jpg",
   legalName: "TECH360 LLC",
   missouriLLC: "LC014737249",
   ein: "98-1940053",
   address: "117 S Lexington St Ste 100, Harrisonville, MO 64701, USA",
   email: "info@bdtech360.com",
   phone: "+1 (347) 433 1200",
-  whatsapp: "+880 1327-100297",
   domain: "bdtech360.com",
   tagline: "CONNECT · INNOVATE · GROW",
   servicesLine: "Web | Cloud | AI | Data | Tech",
@@ -134,7 +133,7 @@ export function padFooter(confidentialNote: string): string {
   <div class="rule" aria-hidden="true"></div>
   <div class="blocks">
     <div class="blk"><h3>Address</h3><p>117 S Lexington St Ste 100<br/>Harrisonville, MO 64701, USA</p></div>
-    <div class="blk"><h3>Phone</h3><p>${PAD.phone}<br/>WhatsApp ${PAD.whatsapp}</p></div>
+    <div class="blk"><h3>Phone</h3><p>${PAD.phone}</p></div>
     <div class="blk"><h3>Website</h3><p>www.${PAD.domain}</p></div>
     <div class="blk"><h3>Email</h3><p>${PAD.email}</p></div>
   </div>

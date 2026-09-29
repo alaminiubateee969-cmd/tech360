@@ -161,7 +161,16 @@ export default function ChatWidget() {
       if (nowHidden) setOpen(false)
     }
     window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+    // External "AI assistant" CTAs (AIAssistantLink and header chips) open the
+    // chat through this event — the AI agent is the site's contact channel.
+    const onOpenChat = () => {
+      if (!isHashRouteHidden()) setOpen(true)
+    }
+    window.addEventListener('tech360:open-chat', onOpenChat)
+    return () => {
+      window.removeEventListener('hashchange', onHash)
+      window.removeEventListener('tech360:open-chat', onOpenChat)
+    }
   }, [])
 
   // ---------------- thread fetch ----------------
@@ -484,7 +493,7 @@ export default function ChatWidget() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold leading-tight">TECH360 Support</p>
                 <p className="mt-0.5 text-[11px] leading-tight text-white/85">
-                  We reply during business hours — a real person, not a bot
+                  AI agents answer instantly — engineers step in when needed
                 </p>
               </div>
               <button

@@ -376,7 +376,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
 
   const brandHeader = (
     <div className="flex items-center gap-2.5 border-b border-slate-800 px-4 py-3.5">
-      <img src="/images/tech360-logo-web.png" alt="Tech360 LLC logo" className="h-7 w-auto" width={70} height={28} />
+      <img src="/brand/tech360-logo-original.jpg" alt="Tech360 LLC logo" className="h-9 w-auto rounded-md" width={36} height={36} />
       <div className="min-w-0 leading-tight">
         <p className="truncate text-[13px] font-bold text-slate-100">Command Center</p>
         <p className="text-[10px] text-slate-500">Super Admin Console</p>

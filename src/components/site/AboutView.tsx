@@ -182,7 +182,7 @@ export default function AboutView() {
                   { term: "EIN", detail: COMPANY.ein },
                   { term: "Registered address", detail: COMPANY.address },
                   { term: "Email", detail: COMPANY.email },
-                  { term: "WhatsApp", detail: COMPANY.whatsappDisplay },
+                  { term: "Contact", detail: "AI assistant chat — on every page" },
                   { term: "Founded", detail: COMPANY.founded },
                 ].map((row) => (
                   <div

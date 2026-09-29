@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CheckCircle2, Loader2, Mail, MapPin, Phone, Send } from "lucide-react";
+import { Bot, CheckCircle2, Loader2, Mail, MapPin, Phone, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -48,7 +48,7 @@ const contactSchema = z.object({
   email: z.email("Enter a valid email address."),
   whatsapp: z
     .string()
-    .min(7, "Enter a reachable WhatsApp number including country code."),
+    .min(7, "Enter a reachable phone or WhatsApp number including country code."),
   country: z.string().min(1, "Select your country."),
   projectType: z.string().min(1, "Select the type of project."),
   budgetRange: z.string().min(1, "Select a budget range (or the guidance option)."),
@@ -84,7 +84,7 @@ export default function ContactView() {
       projectType: "",
       budgetRange: "",
       details: "",
-      preferredContact: "WhatsApp",
+      preferredContact: "Email",
       consent: false,
     },
   });
@@ -122,7 +122,7 @@ export default function ContactView() {
         setApiError(
           data?.error ??
             data?.message ??
-            `The request could not be submitted (HTTP ${res.status}). Please try again or reach us directly on WhatsApp.`
+            `The request could not be submitted (HTTP ${res.status}). Please try again — or start a chat with our AI assistant.`
         );
         return;
       }
@@ -134,7 +134,7 @@ export default function ContactView() {
       });
     } catch {
       setApiError(
-        "Network error — the request never left your browser. Check your connection and try again, or message us on WhatsApp."
+        "Network error — the request never left your browser. Check your connection and try again, or start a chat with our AI assistant."
       );
     } finally {
       setSubmitting(false);
@@ -194,15 +194,14 @@ export default function ContactView() {
                           </p>
                         </div>
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                          <a
-                            href={COMPANY.whatsappLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
                             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#18B83A] px-5 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#16A433] focus-visible:ring-2 focus-visible:ring-[#18B83A] focus-visible:ring-offset-2"
                           >
-                            <Phone className="size-4" aria-hidden="true" />
-                            Message us on WhatsApp
-                          </a>
+                            <Bot className="size-4" aria-hidden="true" />
+                            Chat with our AI assistant
+                          </button>
                           <a
                             href="#/process"
                             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#063B8F]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#063B8F] outline-none transition-colors hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
@@ -286,7 +285,7 @@ export default function ContactView() {
                             name="whatsapp"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[#0B1F33]">WhatsApp number *</FormLabel>
+                                <FormLabel className="text-[#0B1F33]">Phone / WhatsApp number *</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="tel"
@@ -571,21 +570,21 @@ export default function ContactView() {
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
                       <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#18B83A]/10 text-[#18B83A]">
-                        <Phone className="size-5" aria-hidden="true" />
+                        <Bot className="size-5" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-[#0B1F33]">WhatsApp</h3>
-                        <a
-                          href={COMPANY.whatsappLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1 block text-sm font-medium text-[#009FE3] underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm outline-none"
+                        <h3 className="text-sm font-semibold text-[#0B1F33]">AI assistant — live chat</h3>
+                        <button
+                          type="button"
+                          onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
+                          className="mt-1 block min-h-9 text-sm font-medium text-[#009FE3] underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm outline-none"
                         >
-                          {COMPANY.whatsappDisplay}
-                        </a>
+                          Open the chat now
+                        </button>
                         <p className="mt-2 text-xs leading-relaxed text-[#526173]">
-                          Fastest first response — messages arrive in our
-                          system, not a personal phone.
+                          Fastest first response — our AI agents answer in
+                          seconds, escalate to engineers, and every message lands
+                          on your client record.
                         </p>
                       </div>
                     </div>

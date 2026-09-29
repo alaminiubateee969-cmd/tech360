@@ -12,8 +12,6 @@ export const COMPANY = {
   ein: '98-1940053',
   address: '117 S Lexington St Ste 100, Harrisonville, MO 64701, USA',
   email: 'info@bdtech360.com',
-  whatsapp: '+8801327100297',
-  whatsappLink: 'https://wa.me/8801327100297',
   phone: '+1 (816) 380-8660',
   founded: 2021,
 } as const

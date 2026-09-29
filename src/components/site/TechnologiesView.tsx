@@ -7,7 +7,12 @@ import { CtaBand } from "./CtaBand";
 import { Icon } from "./icons";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
-import { ImageView } from "./ImageView";
+import {
+  AutomationWorkflowDiagram,
+  CloudArchitectureDiagram,
+  SecurityArchitectureDiagram,
+  TechStackDiagram,
+} from "./diagrams";
 
 export default function TechnologiesView() {
   return (
@@ -23,14 +28,7 @@ export default function TechnologiesView() {
       <section aria-labelledby="philosophy-heading" className="bg-white">
         <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:py-20">
           <Reveal>
-            <div className="overflow-hidden rounded-xl border border-[#E2E8F0]">
-              <ImageView
-                src="/images/tech-stack.png"
-                alt="Diagram of the Tech360 technology stack across frontend, backend, data, cloud and automation layers"
-                aspect="16/10"
-                eager
-              />
-            </div>
+            <TechStackDiagram />
           </Reveal>
           <Reveal delay={0.12}>
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[#009FE3]">
@@ -109,38 +107,48 @@ export default function TechnologiesView() {
             description="Cloud-native for platforms that scale; hardened shared hosting for applications that do not need a platform team. Both get the same release, backup and handover discipline."
           />
           <RevealList className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {[
-              {
-                src: "/images/cloud-architecture.png",
-                alt: "Google Cloud architecture diagram — Cloud Run, Cloud SQL, Secret Manager and storage layers",
-                caption: "Cloud-native deployment",
-                text: "Cloud Run containers, managed database, secret management and observability — near-zero ops overhead.",
-              },
-              {
-                src: "/images/security-architecture.png",
-                alt: "Security architecture diagram — access control, secret handling and audit logging layers",
-                caption: "Security model",
-                text: "Role-restricted access, encrypted secret storage, audit logging and verified backups across every system.",
-              },
-              {
-                src: "/images/automation-workflow.png",
-                alt: "Automation workflow diagram — triggers, processing, retries and failure logging stages",
-                caption: "Automation backbone",
-                text: "Every workflow versioned, every run logged, every failure retried and escalated — no silent drops.",
-              },
-            ].map((img) => (
-              <RevealItem key={img.caption} className="h-full">
-                <Card className="h-full overflow-hidden border-[#E2E8F0] bg-white">
-                  <div className="overflow-hidden">
-                    <ImageView src={img.src} alt={img.alt} aspect="16/10" />
-                  </div>
-                  <CardContent className="p-5">
-                    <h3 className="text-base font-semibold text-[#0B1F33]">{img.caption}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-[#526173]">{img.text}</p>
-                  </CardContent>
-                </Card>
-              </RevealItem>
-            ))}
+            <RevealItem className="h-full">
+              <Card className="h-full overflow-hidden border-[#E2E8F0] bg-white">
+                <div className="overflow-hidden">
+                  <CloudArchitectureDiagram />
+                </div>
+                <CardContent className="p-5">
+                  <h3 className="text-base font-semibold text-[#0B1F33]">Cloud-native deployment</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#526173]">
+                    Cloud Run containers, managed database, secret management and
+                    observability — near-zero ops overhead.
+                  </p>
+                </CardContent>
+              </Card>
+            </RevealItem>
+            <RevealItem className="h-full">
+              <Card className="h-full overflow-hidden border-[#E2E8F0] bg-white">
+                <div className="overflow-hidden">
+                  <SecurityArchitectureDiagram />
+                </div>
+                <CardContent className="p-5">
+                  <h3 className="text-base font-semibold text-[#0B1F33]">Security model</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#526173]">
+                    Role-restricted access, encrypted secret storage, audit logging
+                    and verified backups across every system.
+                  </p>
+                </CardContent>
+              </Card>
+            </RevealItem>
+            <RevealItem className="h-full">
+              <Card className="h-full overflow-hidden border-[#E2E8F0] bg-white">
+                <div className="overflow-hidden">
+                  <AutomationWorkflowDiagram />
+                </div>
+                <CardContent className="p-5">
+                  <h3 className="text-base font-semibold text-[#0B1F33]">Automation backbone</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#526173]">
+                    Every workflow versioned, every run logged, every failure retried
+                    and escalated — no silent drops.
+                  </p>
+                </CardContent>
+              </Card>
+            </RevealItem>
           </RevealList>
         </div>
       </section>

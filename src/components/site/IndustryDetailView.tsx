@@ -11,7 +11,7 @@ import { ImageView } from "./ImageView";
 import { Icon } from "./icons";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
-import { PrimaryLink, WhatsAppLink } from "./buttons";
+import { PrimaryLink, AIAssistantLink } from "./buttons";
 
 export default function IndustryDetailView({ slug }: { slug: string }) {
   const industry = getIndustry(slug);
@@ -235,7 +235,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
                   Start Your Project
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </PrimaryLink>
-                <WhatsAppLink />
+                <AIAssistantLink />
               </div>
             </div>
           </Reveal>

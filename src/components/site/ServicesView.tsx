@@ -9,7 +9,7 @@ import { SERVICES, type Service } from "@/data/site";
 import { PageHero } from "./PageHero";
 import { CtaBand } from "./CtaBand";
 import { Icon } from "./icons";
-import { ImageView } from "./ImageView";
+import { FeaturesModulesDiagram } from "./diagrams";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
 
@@ -232,18 +232,7 @@ export default function ServicesView() {
       <section className="bg-[#F4FAFF]">
         <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-14 lg:px-8">
           <Reveal>
-            <figure className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_18px_44px_rgba(6,59,143,0.08)]">
-              <ImageView
-                src="/images/features-modules.png"
-                alt="Illustrative overview of how delivered system modules connect — website, CRM, automation and reporting working as one platform"
-                aspect="16/10"
-              />
-              <figcaption className="border-t border-[#E2E8F0] px-4 py-3 text-xs leading-relaxed text-[#526173]">
-                <span className="font-semibold text-[#0B1F33]">Illustrative overview.</span>{" "}
-                How the modules of a delivered system connect — services you pick
-                combine into one platform, not separate tools.
-              </figcaption>
-            </figure>
+            <FeaturesModulesDiagram />
           </Reveal>
           <Reveal delay={0.1}>
             <div className="text-center lg:text-left">

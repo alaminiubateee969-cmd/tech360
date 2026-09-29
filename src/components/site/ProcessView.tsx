@@ -5,7 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PROCESS } from "@/data/site";
 import { PageHero } from "./PageHero";
 import { CtaBand } from "./CtaBand";
-import { ImageView } from "./ImageView";
+import {
+  DeliveryHandoverDiagram,
+  DevLifecycleDiagram,
+  QualityChecklistDiagram,
+} from "./diagrams";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
 
@@ -105,11 +109,7 @@ export default function ProcessView() {
             <RevealItem className="h-full">
               <Card className="h-full overflow-hidden border-[#E2E8F0] bg-white">
                 <div className="overflow-hidden">
-                  <ImageView
-                    src="/images/dev-lifecycle.png"
-                    alt="Development lifecycle diagram — from planning through build, review and release"
-                    aspect="16/9"
-                  />
+                  <DevLifecycleDiagram />
                 </div>
                 <CardContent className="p-5">
                   <h3 className="text-base font-semibold text-[#0B1F33]">Development lifecycle</h3>
@@ -124,11 +124,7 @@ export default function ProcessView() {
             <RevealItem className="h-full">
               <Card className="h-full overflow-hidden border-[#E2E8F0] bg-white">
                 <div className="overflow-hidden">
-                  <ImageView
-                    src="/images/quality-checklist.png"
-                    alt="Quality checklist diagram — functional, performance, security and delivery checks"
-                    aspect="16/9"
-                  />
+                  <QualityChecklistDiagram />
                 </div>
                 <CardContent className="p-5">
                   <h3 className="text-base font-semibold text-[#0B1F33]">Quality checklist</h3>
@@ -143,11 +139,7 @@ export default function ProcessView() {
             <RevealItem className="h-full md:col-span-2 lg:col-span-1">
               <Card className="h-full overflow-hidden border-[#E2E8F0] bg-white">
                 <div className="overflow-hidden">
-                  <ImageView
-                    src="/images/delivery-handover.png"
-                    alt="Delivery and handover concept — source code, credentials and documentation transferred to the client"
-                    aspect="16/9"
-                  />
+                  <DeliveryHandoverDiagram />
                 </div>
                 <CardContent className="p-5">
                   <h3 className="text-base font-semibold text-[#0B1F33]">Delivery &amp; handover</h3>

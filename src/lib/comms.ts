@@ -223,7 +223,7 @@ export function wrapEmailHtml(subject: string, bodyHtml: string): string {
       </td></tr>
       <tr><td style="padding:20px 28px;background:#f8fafc;border-top:1px solid #e5e7eb;color:#64748b;font-size:12px;line-height:1.6;">
         ${COMPANY.legalName} · ${COMPANY.address}<br/>
-        ${COMPANY.email} · WhatsApp ${COMPANY.whatsapp} · ${COMPANY.url}<br/>
+        ${COMPANY.email} · ${COMPANY.url}<br/>
         This message contains confidential business information intended for the addressed recipient.
       </td></tr>
     </table>
@@ -241,7 +241,7 @@ export function emailTemplate(type: string, vars: { name?: string; link?: string
   const map: Record<string, { subject: string; body: string }> = {
     WELCOME: { subject: 'Welcome to Tech360 — we received your request', body: `<p>Hi ${n},</p><p>Thank you for reaching out to Tech360. Your request has been registered and our team is reviewing your requirements right now.</p><p>Your reference: <strong>{{clientId}}</strong>. Please keep it for future communication.${vars.extra ?? ''}</p>${linkBtn}<p>We will be in touch shortly.</p><p>— Team Tech360</p>` },
     SCOPE_QUESTIONS: { subject: 'A few questions about your project', body: `<p>Hi ${n},</p><p>To prepare the right solution for your business, we need a few details:${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` },
-    FINAL_SCOPE: { subject: 'Your Final Scope of Work — Tech360', body: `<p>Hi ${n},</p><p>Please find your Final Scope of Work attached below. It includes deliverables, timeline and our payment policy.</p><p>Reply to this email or message us on WhatsApp with <strong>APPROVED</strong> or any revision notes.${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` },
+    FINAL_SCOPE: { subject: 'Your Final Scope of Work — Tech360', body: `<p>Hi ${n},</p><p>Please find your Final Scope of Work attached below. It includes deliverables, timeline and our payment policy.</p><p>Reply to this email or start a chat with our AI assistant at bdtech360.com with <strong>APPROVED</strong> or any revision notes.${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` },
     REVISION: { subject: 'Updated scope — revision ready for your review', body: `<p>Hi ${n},</p><p>We have updated the scope based on your feedback. Please review the revised version.${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` },
     PREVIEW: { subject: 'Your project preview is ready', body: `<p>Hi ${n},</p><p>Your HTML preview is ready. You can review it before any payment is due — we build trust first.</p>${linkBtn}<p>After reviewing, reply APPROVED or let us know your change requests.</p><p>— Team Tech360</p>` },
     PAYMENT: { subject: 'Payment instructions for your project', body: `<p>Hi ${n},</p><p>Thank you for approving the preview. Here are the payment details for your project milestones.${vars.extra ?? ''}</p><p>Work begins immediately after payment confirmation.</p><p>— Team Tech360</p>` },

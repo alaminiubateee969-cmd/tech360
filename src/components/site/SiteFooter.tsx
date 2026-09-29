@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Mail, MapPin, Phone } from "lucide-react";
+import { Bot, Loader2, Mail, MapPin } from "lucide-react";
 import { COMPANY, SERVICES, INDUSTRIES, LEGAL_DOCS } from "@/data/site";
 
 /**
@@ -84,12 +84,11 @@ export default function SiteFooter() {
               className="inline-flex items-center rounded-lg bg-white/95 px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]"
             >
               <img
-                src="/images/tech360-logo-web.png"
-                srcSet="/images/tech360-logo@2x.png 2x"
+                src="/brand/tech360-logo-original.jpg"
                 alt="Tech360 logo"
-                className="h-7 w-auto object-contain"
-                width={132}
-                height={32}
+                className="h-10 w-auto rounded-md object-contain"
+                width={40}
+                height={40}
               />
             </a>
             <p className="mt-5 max-w-sm text-sm leading-relaxed">
@@ -105,15 +104,15 @@ export default function SiteFooter() {
                 <Mail className="size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
                 {COMPANY.email}
               </a>
-              <a
-                href={COMPANY.whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-11 items-center gap-2.5 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm"
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
+                aria-label="Chat with the Tech360 AI assistant"
+                className="inline-flex min-h-11 items-center gap-2.5 text-left outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm"
               >
-                <Phone className="size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />
-                WhatsApp {COMPANY.whatsappDisplay}
-              </a>
+                <Bot className="size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />
+                AI assistant — 24/7 chat
+              </button>
               <address className="inline-flex items-start gap-2.5 not-italic">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
                 <span>{COMPANY.address}</span>

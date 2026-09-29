@@ -171,7 +171,7 @@ async function main() {
 
   // 6) Company memory
   const memories: Array<{ scope: string; key: string; content: string; importance: number }> = [
-    { scope: 'COMPANY', key: 'identity', content: `${COMPANY.legalName} (brand: Tech360), Missouri LLC ${COMPANY.missouriLLC}, EIN ${COMPANY.ein}. Address: ${COMPANY.address}. Domain ${COMPANY.domain}. Primary email ${COMPANY.email}. WhatsApp ${COMPANY.whatsapp}.`, importance: 10 },
+    { scope: 'COMPANY', key: 'identity', content: `${COMPANY.legalName} (brand: Tech360), Missouri LLC ${COMPANY.missouriLLC}, EIN ${COMPANY.ein}. Address: ${COMPANY.address}. Domain ${COMPANY.domain}. Primary email ${COMPANY.email}. Contact channel: AI assistant chat at ${COMPANY.url}.`, importance: 10 },
     { scope: 'BRAND', key: 'voice', content: 'Professional, warm, confident, business-first. Never mention AI generation to clients. Sign messages "Team Tech360". No emojis in formal email.', importance: 9 },
     { scope: 'SERVICES', key: 'portfolio', content: 'Business/Enterprise Websites, eCommerce, Custom CRM, Client Portals, Dashboards, WhatsApp Automation, Email/SMS Automation, n8n Automation, AI Agent Systems, API Integrations, Database Systems, Cloud Deployment (Google Cloud, cPanel/StackCP), Maintenance & Support, Digital Transformation.', importance: 9 },
     { scope: 'PRICING', key: 'policy', content: 'Payment policy: advance / milestone / final split per scope (commonly 40/30/30). HTML Preview Before Payment. Source Code After Full Payment. Scope changes after approval may require additional cost/time.', importance: 10 },

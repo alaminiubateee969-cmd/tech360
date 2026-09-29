@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { Menu, Phone } from "lucide-react";
+import { Bot, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,12 +78,11 @@ export default function SiteHeader({ currentHash }: { currentHash?: string }) {
           )}
         >
           <img
-            src="/images/tech360-logo-web.png"
-            srcSet="/images/tech360-logo@2x.png 2x"
+            src="/brand/tech360-logo-original.jpg"
             alt="Tech360 logo"
-            className="h-7 w-auto object-contain sm:h-8"
-            width={132}
-            height={32}
+            className="h-9 w-auto rounded-md object-contain sm:h-10"
+            width={40}
+            height={40}
           />
         </a>
 
@@ -125,19 +124,18 @@ export default function SiteHeader({ currentHash }: { currentHash?: string }) {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a
-            href={COMPANY.whatsappLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`WhatsApp ${COMPANY.whatsappDisplay}`}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
+            aria-label="Chat with the Tech360 AI assistant"
             className={cn(
               "hidden min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#009FE3] xl:inline-flex",
               solid ? "text-[#063B8F] hover:text-[#009FE3]" : "text-white/85 hover:text-white"
             )}
           >
-            <Phone className="size-4" aria-hidden="true" />
-            {COMPANY.whatsappDisplay}
-          </a>
+            <Bot className="size-4" aria-hidden="true" />
+            AI Assistant
+          </button>
           <Button
             asChild
             className="hidden min-h-11 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(6,59,143,0.25)] hover:bg-[#0090CC] sm:inline-flex"
@@ -172,10 +170,9 @@ export default function SiteHeader({ currentHash }: { currentHash?: string }) {
             <SheetTitle asChild>
               <a href="#/" className="inline-flex items-center" aria-label="Tech360 home">
                 <img
-                  src="/images/tech360-logo-web.png"
-                  srcSet="/images/tech360-logo@2x.png 2x"
+                  src="/brand/tech360-logo-original.jpg"
                   alt="Tech360 logo"
-                  className="h-7 w-auto object-contain"
+                  className="h-9 w-auto rounded-md object-contain"
                 />
               </a>
             </SheetTitle>
@@ -219,14 +216,13 @@ export default function SiteHeader({ currentHash }: { currentHash?: string }) {
               variant="outline"
               className="min-h-11 rounded-lg border-[#18B83A]/40 text-sm font-semibold text-[#158029] hover:bg-[#18B83A]/10 hover:text-[#128025]"
             >
-              <a
-                href={COMPANY.whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
                 className="focus-visible:outline-none"
               >
-                WhatsApp {COMPANY.whatsappDisplay}
-              </a>
+                Chat with our AI assistant
+              </button>
             </Button>
           </div>
         </SheetContent>

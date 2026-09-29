@@ -120,7 +120,7 @@ ${padMeta([
 ${invoice.status === 'PAID'
   ? `<div class="pay-note"><strong>Payment received — thank you.</strong> This invoice is settled in full and serves as your receipt. Payment verified by the Tech360 finance automation with your Client ID ${escapeHtml(invoice.client.clientId)} quoted as reference.</div>`
   : payNoteHtml}
-<p style="font-size:11.5px;color:#7C8DA0;line-height:1.7">Thank you for your business. This invoice was generated electronically by the Tech360 client platform and is valid without a manual signature. Questions: ${PAD.email} · ${PAD.whatsapp}.</p>
+<p style="font-size:11.5px;color:#7C8DA0;line-height:1.7">Thank you for your business. This invoice was generated electronically by the Tech360 client platform and is valid without a manual signature. Questions: ${PAD.email} · AI assistant chat at www.${PAD.domain}.</p>
 </main>
 ${padFooter('This invoice is confidential and intended for the addressed recipient. TECH360 LLC is a Missouri LLC.')}
 </div>

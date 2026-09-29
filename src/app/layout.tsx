@@ -37,8 +37,8 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
   },
   icons: {
-    icon: [{ url: '/images/tech360-logo-sm.png', type: 'image/png' }],
-    apple: [{ url: '/images/tech360-logo-sm.png' }],
+    icon: [{ url: '/brand/tech360-logo-original.jpg', type: 'image/jpeg' }],
+    apple: [{ url: '/brand/tech360-logo-original.jpg' }],
   },
 }
 

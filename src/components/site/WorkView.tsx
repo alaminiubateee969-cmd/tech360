@@ -1,51 +1,176 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleAlert, CheckCircle2, Compass, Lock, Star } from "lucide-react";
+import { ArrowRight, CircleAlert, CheckCircle2, Compass, Star, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { CASE_STUDIES, SERVICES } from "@/data/site";
+import { CASE_STUDIES, SERVICES, type CaseStudy } from "@/data/site";
 import { PageHero } from "./PageHero";
 import { CtaBand } from "./CtaBand";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
-import { ImageView } from "./ImageView";
-import { CardLinkAffordance } from "./buttons";
+import { WebsiteConceptMockup } from "./concepts";
+import { CardLinkAffordance, PrimaryLink } from "./buttons";
 
 /**
- * Honest browser-frame showcase: an illustrative design concept of the calibre
+ * Expanded case-study detail — the card opens this dialog so an example
+ * engagement reads like real work: full narrative, the standard 7-phase
+ * delivery pattern applied to this industry, stack, and next steps.
+ * Still honestly labelled a representative pattern (NDA policy unchanged).
+ */
+function CaseStudyDialog({
+  study,
+  open,
+  onClose,
+}: {
+  study: CaseStudy | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!study || !open) return null;
+
+  const phases = [
+    { t: "Discovery", d: `Business context gathered — ${study.industry.toLowerCase()} specifics first.` },
+    { t: "Written scope", d: "Deliverables, milestones and payment policy fixed in writing." },
+    { t: "Design & build", d: "Version-controlled sprints with weekly progress updates." },
+    { t: "Preview gate", d: "You approve a working preview before payment is due." },
+    { t: "Verify", d: "Quality, security and performance checks run together." },
+    { t: "Launch & handover", d: "Deploy, transfer source + credentials, document everything." },
+    { t: "Support", d: "Maintenance window with response-time commitments." },
+  ];
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${study.title} — engagement detail`}
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-[#0B1F33]/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[92svh] w-full max-w-3xl overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[#E2E8F0] bg-white/95 px-5 py-4 backdrop-blur sm:px-7">
+          <div>
+            <Badge className="rounded-md bg-[#063B8F]/10 text-xs font-medium text-[#063B8F] hover:bg-[#063B8F]/10">
+              {study.industry} · representative pattern
+            </Badge>
+            <h3 className="mt-2 text-lg font-bold leading-snug text-[#0B1F33] sm:text-xl">
+              {study.title}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close engagement detail"
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#526173] outline-none transition-colors hover:bg-[#F4FAFF] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="px-5 py-6 sm:px-7">
+          {/* Narrative */}
+          <div className="space-y-5">
+            {[
+              ["Challenge", study.challenge, "#B4472A", CircleAlert],
+              ["Approach", study.approach, "#063B8F", Compass],
+              ["Outcome", study.outcome, "#18B83A", CheckCircle2],
+            ].map(([label, text, color, IconC]) => {
+              const IconComp = IconC as typeof CircleAlert;
+              return (
+              <div key={label as string} className="flex items-start gap-3.5">
+                <span
+                  className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg"
+                  style={{ background: `${color}14`, color: color as string }}
+                >
+                  <IconComp className="size-4" aria-hidden="true" />
+                </span>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#526173]">
+                    {label as string}
+                  </h4>
+                  <p className="mt-1.5 text-sm leading-relaxed text-[#0B1F33]">{text as string}</p>
+                </div>
+              </div>
+              );
+            })}
+          </div>
+
+          {/* Delivery pattern */}
+          <div className="mt-8 rounded-xl border border-[#E2E8F0] bg-[#F8FCFF] p-5">
+            <h4 className="text-sm font-bold text-[#0B1F33]">How this engagement runs</h4>
+            <p className="mt-1 text-xs leading-relaxed text-[#526173]">
+              Every project — this pattern included — follows the same seven-phase
+              discipline. Two gates protect you: preview approval and verified delivery.
+            </p>
+            <ol className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {phases.map((p, i) => (
+                <li key={p.t} className="flex items-start gap-2.5">
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-[#009FE3] bg-white text-[10px] font-bold text-[#009FE3]">
+                    {i + 1}
+                  </span>
+                  <div>
+                    <span className="text-xs font-bold text-[#0B1F33]">{p.t}</span>
+                    <span className="ml-1.5 text-[11px] leading-snug text-[#526173]">{p.d}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {/* Stack */}
+          <div className="mt-6">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#526173]">Stack</h4>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {study.stack.map((tech) => (
+                <span
+                  key={tech}
+                  className="rounded-md border border-[#E2E8F0] bg-[#F4FAFF] px-2.5 py-1 text-[11px] font-medium text-[#526173]"
+                >
+                  {tech}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="mt-8 flex flex-col gap-3 rounded-xl bg-gradient-to-br from-[#063B8F] to-[#0B1F33] p-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm leading-relaxed text-white/85">
+              <span className="font-semibold text-white">Want the real references?</span>{" "}
+              Under NDA we connect you with clients whose situation matches this pattern.
+            </p>
+            <PrimaryLink href="#/contact" className="shrink-0">
+              Start your version
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </PrimaryLink>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Honest showcase: a hand-coded illustrative design concept of the calibre
  * of website Tech360 delivers. Real client work ships under NDA — so we show
  * a labelled concept, never a claimed client screenshot.
  */
 function ConceptShowcase() {
   return (
     <Reveal>
-      <figure className="mb-12 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_18px_44px_rgba(6,59,143,0.08)]">
-        {/* Browser chrome */}
-        <div className="flex items-center gap-3 border-b border-[#E2E8F0] bg-[#F4FAFF] px-4 py-2.5">
-          <span className="flex shrink-0 gap-1.5" aria-hidden="true">
-            <span className="size-2.5 rounded-full bg-[#B4472A]/70" />
-            <span className="size-2.5 rounded-full bg-amber-400/80" />
-            <span className="size-2.5 rounded-full bg-[#18B83A]/70" />
-          </span>
-          <span className="mx-auto flex min-w-0 items-center gap-1.5 rounded-md border border-[#E2E8F0] bg-white px-3 py-1 text-[11px] font-medium text-[#526173]">
-            <Lock className="size-3 shrink-0 text-[#18B83A]" aria-hidden="true" />
-            <span className="truncate">bdtech360.com — concept preview</span>
-          </span>
-          <span className="hidden w-14 shrink-0 sm:block" aria-hidden="true" />
-        </div>
-        <ImageView
-          src="/images/website-mockup.png"
-          alt="Illustrative website design concept — a modern business website with hero, services and trust sections in the Tech360 visual style"
-          aspect="16/9"
-        />
-        <figcaption className="border-t border-[#E2E8F0] bg-white px-4 py-3 text-xs leading-relaxed text-[#526173] sm:px-5">
-          <span className="font-semibold text-[#0B1F33]">Illustrative design concept.</span>{" "}
-          Representative of the calibre of website we deliver — real client work
-          ships under NDA, so we show labelled concepts rather than client
-          screenshots.
-        </figcaption>
-      </figure>
+      <div className="mb-12">
+        <WebsiteConceptMockup />
+      </div>
     </Reveal>
   );
 }
@@ -177,12 +302,14 @@ function WorkReviews() {
 }
 
 export default function WorkView() {
+  const [activeStudy, setActiveStudy] = useState<CaseStudy | null>(null);
+
   return (
     <main id="main-content">
       <PageHero
         eyebrow="Our work"
         title="Representative engagements"
-        description="Anonymised delivery patterns from real client work across eight sectors. We do not publish client names or fabricated metrics — client references are available on request under NDA."
+        description="Anonymised delivery patterns from real client work across eight sectors. Click any engagement to read the full story. We do not publish client names or fabricated metrics — client references are available on request under NDA."
         breadcrumb={[{ label: "Work" }]}
       />
 
@@ -206,8 +333,13 @@ export default function WorkView() {
           <RevealList className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {CASE_STUDIES.map((study) => (
               <RevealItem key={study.slug} className="h-full">
-                <Card className="flex h-full flex-col border-[#E2E8F0] bg-white transition-all duration-300 hover:border-[#009FE3]/40 hover:shadow-[0_12px_32px_rgba(6,59,143,0.08)]">
-                  <CardContent className="flex h-full flex-col p-6 sm:p-7">
+                <Card className="flex h-full flex-col border-[#E2E8F0] bg-white text-left transition-all duration-300 hover:border-[#009FE3]/40 hover:shadow-[0_12px_32px_rgba(6,59,143,0.08)]">
+                  <button
+                    type="button"
+                    onClick={() => setActiveStudy(study)}
+                    aria-label={`Read the full engagement: ${study.title}`}
+                    className="flex h-full flex-col rounded-xl p-6 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] sm:p-7"
+                  >
                     <div className="flex flex-wrap items-center gap-3">
                       <Badge className="rounded-md bg-[#063B8F]/10 text-xs font-medium text-[#063B8F] hover:bg-[#063B8F]/10">
                         {study.industry}
@@ -254,7 +386,7 @@ export default function WorkView() {
                     </div>
 
                     <div className="mt-5 flex flex-wrap gap-1.5 border-t border-[#E2E8F0] pt-5">
-                      {study.stack.map((tech) => (
+                      {study.stack.slice(0, 4).map((tech) => (
                         <span
                           key={tech}
                           className="rounded-md border border-[#E2E8F0] bg-[#F4FAFF] px-2 py-1 text-[11px] font-medium text-[#526173]"
@@ -262,8 +394,16 @@ export default function WorkView() {
                           {tech}
                         </span>
                       ))}
+                      {study.stack.length > 4 && (
+                        <span className="rounded-md border border-[#E2E8F0] bg-white px-2 py-1 text-[11px] font-medium text-[#009FE3]">
+                          +{study.stack.length - 4} more
+                        </span>
+                      )}
                     </div>
-                  </CardContent>
+                    <CardLinkAffordance className="mt-4">
+                      Read the full engagement
+                    </CardLinkAffordance>
+                  </button>
                 </Card>
               </RevealItem>
             ))}
@@ -307,6 +447,13 @@ export default function WorkView() {
       <CtaBand
         title="Ask for references — then start your own"
         description="Under NDA we connect you with clients whose situation matches yours. And when you are ready, your project starts with the same preview-before-payment standard."
+      />
+
+      {/* Expanded engagement detail */}
+      <CaseStudyDialog
+        study={activeStudy}
+        open={activeStudy !== null}
+        onClose={() => setActiveStudy(null)}
       />
     </main>
   );

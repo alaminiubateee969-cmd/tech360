@@ -84,7 +84,7 @@ export default function LegalView({ slug }: { slug: string }) {
             {/* Official company letterhead — printed on every policy PDF */}
             <div data-print="pad" aria-hidden="true">
               <div className="flex items-start justify-between gap-6">
-                <img src="/images/tech360-logo-web.png" alt="" className="h-10 w-auto" />
+                <img src="/brand/tech360-logo-original.jpg" alt="" className="h-12 w-auto rounded-md" />
                 <div className="text-right">
                   <div className="text-[17px] font-black tracking-[0.14em] text-[#0B1F33]">TECH360</div>
                   <div className="mt-0.5 text-[9px] font-bold tracking-[0.22em] text-[#009FE3]">CONNECT · INNOVATE · GROW</div>
@@ -96,7 +96,7 @@ export default function LegalView({ slug }: { slug: string }) {
                     <br />
                     {COMPANY.address}
                     <br />
-                    {COMPANY.email} · {COMPANY.whatsappDisplay}
+                    {COMPANY.email}
                   </div>
                 </div>
               </div>
@@ -162,16 +162,8 @@ export default function LegalView({ slug }: { slug: string }) {
                     >
                       {COMPANY.email}
                     </a>{" "}
-                    or message{" "}
-                    <a
-                      href={COMPANY.whatsappLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-[#009FE3] underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm outline-none"
-                    >
-                      {COMPANY.whatsappDisplay}
-                    </a>{" "}
-                    with your Client ID. Policy questions are answered by the
+                    or start a chat with our AI assistant (on any page) quoting your
+                    Client ID. Policy questions are answered by the
                     team that wrote the policy.
                   </p>
                 </div>

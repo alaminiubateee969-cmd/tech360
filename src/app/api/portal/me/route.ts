@@ -135,7 +135,6 @@ export async function GET(req: NextRequest) {
       previewBeforePayment: true,
       sourceAfterFullPayment: true,
       supportContact: 'info@bdtech360.com',
-      whatsapp: '+8801327100297',
     },
   })
 }

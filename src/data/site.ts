@@ -15,8 +15,6 @@ export const COMPANY = {
   ein: "98-1940053",
   address: "117 S Lexington St Ste 100, Harrisonville, MO 64701, USA",
   email: "info@bdtech360.com",
-  whatsappDisplay: "+880 1327-100297",
-  whatsappLink: "https://wa.me/8801327100297",
   founded: "2021",
   tagline: "Strategy. Software. Automation. Growth.",
   subline:
@@ -1339,7 +1337,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "How do we start working together?",
-    a: "Send one message — through the contact form or WhatsApp. You receive a Client ID for all future communication, we run discovery on your business, and you get a written scope and then an HTML preview before any payment decision. Starting costs you nothing but the message.",
+    a: "Send one message — through the contact form or a chat with our AI assistant. You receive a Client ID for all future communication, we run discovery on your business, and you get a written scope and then an HTML preview before any payment decision. Starting costs you nothing but the message.",
   },
   {
     q: "What technologies do you build with?",
@@ -1554,7 +1552,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "7. Governing terms and contact",
         body: [
           "These Terms are governed by the laws applicable to contracts formed in the State of Missouri, USA, without regard to conflict-of-law principles. Disputes will first be addressed through good-faith negotiation; unresolved disputes shall be brought in the courts of competent jurisdiction for Cass County, Missouri.",
-          "Questions about these Terms: info@bdtech360.com or 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA. WhatsApp: +880 1327-100297.",
+          "Questions about these Terms: info@bdtech360.com or 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA — or start a chat with our AI assistant from any page.",
         ],
       },
     ],

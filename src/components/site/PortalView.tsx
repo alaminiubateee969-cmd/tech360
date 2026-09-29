@@ -330,7 +330,7 @@ export default function PortalView() {
                 <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#18B83A]" /> Scope changes require written approval</li>
               </ul>
               <Separator className="my-4 bg-white/15" />
-              <p className="text-xs text-slate-300">Questions? <a className="font-semibold text-white underline underline-offset-2" href={`mailto:${data.policy.supportContact}`}>{data.policy.supportContact}</a> · WhatsApp <a className="font-semibold text-white underline underline-offset-2" href="https://wa.me/8801327100297" target="_blank" rel="noopener noreferrer">{data.policy.whatsapp}</a></p>
+              <p className="text-xs text-slate-300">Questions? <a className="font-semibold text-white underline underline-offset-2" href={`mailto:${data.policy.supportContact}`}>{data.policy.supportContact}</a> · Live chat with our AI assistant — bottom-right of any page</p>
             </CardContent>
           </Card>
 
@@ -602,7 +602,7 @@ function RequestFreshLink({ onDone }: { onDone: () => void }) {
         <p className="flex items-center gap-2 rounded-xl bg-[#18B83A]/10 p-3 text-sm text-[#116b26]">
           <CheckCircle2 className="h-4 w-4" /> Request sent — our team will regenerate your preview link.
         </p>
-        <p className="text-xs text-slate-500">We will share the fresh link over your configured channel (email/WhatsApp) once it is ready.</p>
+        <p className="text-xs text-slate-500">We will share the fresh link over your configured channel once it is ready.</p>
       </div>
     )
   }
@@ -1053,7 +1053,7 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
                 <div className="space-y-1.5">
                   <Label htmlFor="portal-contact">Email or WhatsApp number</Label>
                   <Input id="portal-contact" placeholder="you@company.com or +8801XXXXXXXXX" value={contact} onChange={(e) => setContact(e.target.value)} autoComplete="off" className="h-11" aria-required />
-                  <p className="text-xs text-slate-400">Must match the email/WhatsApp you gave when you contacted us.</p>
+                  <p className="text-xs text-slate-400">Must match the email or phone number you gave when you contacted us.</p>
                 </div>
                 <AnimatePresence>
                   {error && (

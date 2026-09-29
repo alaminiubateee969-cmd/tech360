@@ -16,7 +16,8 @@ import { SectionHeading } from "./SectionHeading";
 import { StatChip } from "./StatChip";
 import { CtaBand } from "./CtaBand";
 import { ImageView } from "./ImageView";
-import { PrimaryLink, OutlineLink, WhatsAppLink, LinkArrow } from "./buttons";
+import { FeaturesModulesDiagram } from "./diagrams";
+import { PrimaryLink, OutlineLink, AIAssistantLink, LinkArrow } from "./buttons";
 
 /* ------------------------------------------------------------------ */
 /* Cinematic hero                                                      */
@@ -173,7 +174,7 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
           <OutlineLink href="#/work" dark>
             Explore Our Work
           </OutlineLink>
-          <WhatsAppLink label="Talk to Tech360" />
+          <AIAssistantLink label="Talk to Tech360" />
         </motion.div>
 
         {/* Trust strip */}
@@ -341,12 +342,7 @@ function WhyTech360() {
               align="left"
             />
             <div className="mt-8 hidden overflow-hidden rounded-xl border border-[#E2E8F0] lg:block">
-              <ImageView
-                src="/images/hero-platform.png"
-                alt="Tech360 platform overview — websites, CRM, automation and dashboards"
-                aspect="16/10"
-                eager
-              />
+              <FeaturesModulesDiagram />
             </div>
           </div>
           <RevealList className="grid gap-6 sm:grid-cols-2 lg:col-span-7">
