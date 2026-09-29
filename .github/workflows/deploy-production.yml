@@ -90,14 +90,6 @@ jobs:
           bunx prisma db push --skip-generate
           bun run build
 
-      - name: Upload build for the deploy job
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-validation
-          path: .next/
-          include-hidden-files: true
-          retention-days: 1
-
   deploy:
     name: Deploy → VPS (existing port, auto-rollback)
     # Validation runs on working branches and pull requests; production deploys

@@ -19,7 +19,7 @@ Passed steps:
 
 Production deployment was correctly skipped because the validated ref was not `main`. No production infrastructure was changed.
 
-The run warned that hidden `.next` files were not uploaded. CI has since been corrected with `include-hidden-files: true`. This warning did not affect the successful build result.
+A later run added the new automated tests and database gate; every validation/build step passed, but artifact upload rejected a Turbopack filename containing `:`. The deploy job never consumed that artifact (the VPS performs an exact-commit build), so the redundant upload step was removed rather than renaming framework output. A final run is required after that workflow-only fix.
 
 ## Local automated policy suite
 
