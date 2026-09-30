@@ -1,23 +1,21 @@
 # ============================================================
-# TECH360 — PRODUCTION CI/CD
+# TECH360 — PRODUCTION CI/CD (Hostinger)
 #
-#   git push origin main
-#     → checkout → secret scan → install → lint → typecheck → build
-#     → SSH to the VPS → scripts/deploy-vps.sh (safe deploy with
-#     auto-rollback) → scripts/health-check.sh → done
+#   push to main
+#     → ci (MySQL service, the real production engine)
+#     → preflight (read-only Hostinger inspection, no mutation)
+#     → deploy (only if BOTH pass)
 #
-# Requirements (GitHub → Settings → Environments → production):
-#   VPS_HOST          — server hostname or IP
-#   VPS_USER          — SSH user (sudo-capable or app-owner)
-#   VPS_SSH_KEY       — the PRIVATE deploy key (never printed)
-#   VPS_PORT          — SSH port (default 22, keep in sync with VPS sshd)
-#   VPS_APP_PATH      — (optional) app directory on the VPS
-#   TECH360_DOMAIN    — (optional) informational, used by the deploy script
-#   TECH360_PORT      — (optional) pin the port; otherwise the script
-#                       DISCOVERS and PRESERVES the port the current app
-#                       already listens on (never starts a second instance)
+# Required secrets — GitHub → Settings → Environments → production:
+#   HOSTINGER_HOST      server IP / hostname   (e.g. 189.49.97.102)
+#   HOSTINGER_PORT      SSH port               (Hostinger uses 65002, never 22)
+#   HOSTINGER_USER      SSH user               (e.g. u394009794)
+#   HOSTINGER_SSH_KEY   PRIVATE deploy key, PEM, never printed
+#   HOSTINGER_APP_DIR   ABSOLUTE path to the checkout on the server
+#                       — discovered by preflight, never guessed
 #
-# The production .env stays on the VPS — the repo never ships secrets.
+# The production .env (including DATABASE_URL) lives ONLY on the server.
+# This repository never ships secrets and never prints a connection string.
 # ============================================================
 name: deploy-production
 
@@ -37,14 +35,45 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Disposable CI database. NEVER the production database.
+  CI_MYSQL_DB: tech360_ci
+  CI_MYSQL_USER: tech360
+  CI_MYSQL_PASSWORD: ci_only_not_a_secret
+  CI_MYSQL_ROOT_PASSWORD: ci_only_not_a_secret
+
 jobs:
+  # ------------------------------------------------------------------
+  # CI — validated against MySQL, the engine production actually runs
+  # ------------------------------------------------------------------
   ci:
-    name: CI — validate before deploy
-    runs-on: ubuntu-latest
+    name: CI — validate against MySQL
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_only_not_a_secret
+          MYSQL_DATABASE: tech360_ci
+          MYSQL_USER: tech360
+          MYSQL_PASSWORD: ci_only_not_a_secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci_only_not_a_secret"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DATABASE_URL: mysql://tech360:ci_only_not_a_secret@127.0.0.1:3306/tech360_ci
+      SHADOW_DATABASE_URL: mysql://root:ci_only_not_a_secret@127.0.0.1:3306/tech360_ci_shadow
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Secret scan (fail before deploy if a secret slipped in)
         run: |
@@ -67,79 +96,273 @@ jobs:
       - name: Install dependencies (lockfile-exact)
         run: bun install --frozen-lockfile
 
+      # --- provider gates -------------------------------------------------
+      - name: Prisma schema is in sync with the MySQL type map
+        run: node scripts/convert-schema-to-mysql.mjs --check
+
+      - name: Prisma provider matches DATABASE_URL scheme
+        run: |
+          PROVIDER="$(sed -n 's/^[[:space:]]*provider[[:space:]]*=[[:space:]]*"\([a-z]*\)".*/\1/p' prisma/schema.prisma | head -1)"
+          SCHEME="$(printf '%s' "$DATABASE_URL" | sed -n 's|^\([a-z0-9+]*\):.*|\1|p')"
+          echo "prisma provider = $PROVIDER · DATABASE_URL scheme = $SCHEME"
+          if [ "$PROVIDER" != "mysql" ] || [ "$SCHEME" != "mysql" ]; then
+            echo "::error::provider/URL mismatch — CI must exercise the production engine (mysql)"
+            exit 1
+          fi
+
+      - name: Validate Prisma schema
+        run: bunx prisma validate
+
       - name: Generate Prisma client
         run: bunx prisma generate
 
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 40); do
+            if mysqladmin ping -h 127.0.0.1 -P 3306 -uroot -p"$CI_MYSQL_ROOT_PASSWORD" --silent 2>/dev/null; then
+              echo "mysql is up"; mysql -h 127.0.0.1 -uroot -p"$CI_MYSQL_ROOT_PASSWORD" -e "SELECT VERSION();"; exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::MySQL service never became ready"; exit 1
+
+      # --- migration baseline --------------------------------------------
+      # The committed baseline is the single source of truth. CI replays it
+      # exactly as production would (migrate deploy — never db push, never
+      # migrate dev, never migrate reset).
+      - name: Migration baseline exists
+        run: |
+          if [ ! -d prisma/migrations ] || [ -z "$(ls -A prisma/migrations 2>/dev/null)" ]; then
+            echo "::error::prisma/migrations is missing or empty — no reviewed baseline to replay"
+            exit 1
+          fi
+          echo "baseline migrations:"; ls -1 prisma/migrations
+
+      - name: Apply migrations to the disposable MySQL (as production would)
+        run: bunx prisma migrate deploy
+
+      - name: Baseline must leave zero schema drift
+        run: |
+          bunx prisma migrate diff \
+            --from-url "$DATABASE_URL" \
+            --to-schema-datamodel prisma/schema.prisma \
+            --exit-code --script > /tmp/drift.sql && DRIFT=0 || DRIFT=$?
+          if [ "${DRIFT:-0}" = "2" ]; then
+            echo "::error::schema drift — the committed baseline does not reproduce schema.prisma"
+            cat /tmp/drift.sql
+            exit 1
+          fi
+          echo "no drift: migrations reproduce schema.prisma exactly"
+
+      # --- quality gates ---------------------------------------------------
       - name: Lint
         run: bun run lint
 
       - name: Typecheck
         run: bun run typecheck
 
-      - name: Business and database isolation tests
-        env:
-          DATABASE_URL: "file:./db/test.db"
-        run: |
-          rm -f db/test.db
-          bunx prisma db push --skip-generate
-          bun run test
-          rm -f db/test.db
+      - name: Business and database isolation tests (MySQL)
+        run: bun run test
 
-      - name: Checked-in database integrity (read-only)
+      - name: Database integrity (MySQL, read-only)
         run: bun run db:verify
 
       - name: Production build
-        env:
-          DATABASE_URL: "file:./db/validate.db"
-        run: |
-          mkdir -p db && touch db/validate.db
-          bunx prisma db push --skip-generate
-          bun run build
+        run: bun run build
 
-  deploy:
-    name: Deploy → VPS (existing port, auto-rollback)
-    # Validation runs on working branches and pull requests; production deploys
-    # only from a validated push to the protected default branch.
+  # ------------------------------------------------------------------
+  # PREFLIGHT — read-only Hostinger inspection. Mutates nothing.
+  # ------------------------------------------------------------------
+  preflight:
+    name: Preflight — Hostinger (read-only)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: ci
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Required deployment secrets are present
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+        run: |
+          fail=0
+          for v in HOSTINGER_HOST HOSTINGER_PORT HOSTINGER_USER HOSTINGER_SSH_KEY HOSTINGER_APP_DIR; do
+            if [ -z "${!v}" ]; then echo "::error::secret $v is not set"; fail=1; else echo "✓ $v is set"; fi
+          done
+          # the app directory must be absolute — never guessed, never relative
+          case "$HOSTINGER_APP_DIR" in
+            /*) echo "✓ HOSTINGER_APP_DIR is absolute" ;;
+            "") ;;
+            *) echo "::error::HOSTINGER_APP_DIR must be an absolute path"; fail=1 ;;
+          esac
+          # Hostinger SSH is 65002; port 22 is not used for this deployment
+          if [ -n "$HOSTINGER_PORT" ] && [ "$HOSTINGER_PORT" = "22" ]; then
+            echo "::error::port 22 is not the Hostinger SSH port — refusing"; fail=1
+          fi
+          exit $fail
+
+      - name: Prepare the deployment SSH key (strict host verification)
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          [ -n "$HOSTINGER_SSH_KEY" ] || { echo "::error::HOSTINGER_SSH_KEY is empty"; exit 1; }
+          [ -n "$HOSTINGER_HOST" ]    || { echo "::error::HOSTINGER_HOST is empty"; exit 1; }
+          mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/id_tech360"
+          chmod 600 "$HOME/.ssh/id_tech360"
+          : > "$HOME/.ssh/known_hosts_tech360"; chmod 600 "$HOME/.ssh/known_hosts_tech360"
+          ssh-keyscan -T 20 -p "$HOSTINGER_PORT" "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts_tech360" 2>/dev/null
+          if [ ! -s "$HOME/.ssh/known_hosts_tech360" ]; then
+            echo "::error::could not fetch the host key from $HOSTINGER_HOST:$HOSTINGER_PORT"
+            exit 1
+          fi
+          echo "✓ host key pinned ($(wc -l < "$HOME/.ssh/known_hosts_tech360") entries)"
+
+      - name: Inspect the server (read-only — changes nothing)
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/id_tech360" \
+              -p "$HOSTINGER_PORT" \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$HOME/.ssh/known_hosts_tech360" \
+              -o ConnectTimeout=20 \
+              "$HOSTINGER_USER@$HOSTINGER_HOST" \
+              "APP_DIR='$HOSTINGER_APP_DIR' bash -s" <<'REMOTE'
+          set -uo pipefail
+          echo "── identity ─────────────────────────────"
+          echo "hostname : $(hostname 2>/dev/null || echo '?')"
+          echo "user     : $(id -un) (uid $(id -u))"
+          echo "home     : $HOME"
+          echo "kernel   : $(uname -srm 2>/dev/null || echo '?')"
+          echo "── runtime ──────────────────────────────"
+          for b in node npm bun git curl rsync mysql mysqldump pm2 systemctl passenger; do
+            p="$(command -v "$b" 2>/dev/null || true)"
+            printf '%-10s %s\n' "$b" "${p:-— not installed}"
+          done
+          echo "node     : $(node -v 2>/dev/null || echo '—')"
+          echo "npm      : $(npm -v 2>/dev/null || echo '—')"
+          echo "── application directory ────────────────"
+          if [ -d "$APP_DIR" ]; then
+            echo "path     : $APP_DIR"
+            echo "owner    : $(stat -c '%U:%G %a' "$APP_DIR" 2>/dev/null || echo '?')"
+            echo "git      : $(git -C "$APP_DIR" rev-parse --short HEAD 2>/dev/null || echo 'not a git checkout')"
+            echo "branch   : $(git -C "$APP_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '—')"
+            for f in package.json prisma/schema.prisma scripts/deploy-vps.sh scripts/health-check.sh; do
+              [ -e "$APP_DIR/$f" ] && echo "have     : $f" || echo "MISSING  : $f"
+            done
+            [ -d "$APP_DIR/prisma/migrations" ] && echo "have     : prisma/migrations ($(ls -1 "$APP_DIR/prisma/migrations" 2>/dev/null | wc -l) entries)" || echo "MISSING  : prisma/migrations"
+            # presence + scheme only — the value is never printed
+            if [ -f "$APP_DIR/.env" ]; then
+              echo "env      : present ($(stat -c '%a' "$APP_DIR/.env" 2>/dev/null))"
+              if grep -q '^DATABASE_URL=' "$APP_DIR/.env" 2>/dev/null; then
+                echo "db scheme: $(sed -n 's|^DATABASE_URL="\{0,1\}\([a-z0-9+]*\):.*|\1|p' "$APP_DIR/.env" | head -1)"
+              else
+                echo "db scheme: DATABASE_URL not set in .env"
+              fi
+            else
+              echo "env      : MISSING"
+            fi
+          else
+            echo "::error::application directory '$APP_DIR' does not exist on the server"
+            exit 1
+          fi
+          echo "── capacity ─────────────────────────────"
+          df -h "$APP_DIR" 2>/dev/null | tail -1
+          echo "── listeners ────────────────────────────"
+          (ss -lntp 2>/dev/null || netstat -lntp 2>/dev/null || echo 'no socket tool') | head -15
+          echo "── preflight completed (nothing modified) ──"
+          REMOTE
+
+      - name: Clean up the key
+        if: always()
+        run: rm -f "$HOME/.ssh/id_tech360" "$HOME/.ssh/known_hosts_tech360"
+
+  # ------------------------------------------------------------------
+  # DEPLOY — only after CI (MySQL) and preflight both pass
+  # ------------------------------------------------------------------
+  deploy:
+    name: Deploy → Hostinger (existing port, auto-rollback)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [ci, preflight]
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: production
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Prepare the deployment SSH key
+      - name: Prepare the deployment SSH key (strict host verification)
         env:
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
         run: |
-          install -m 600 /dev/null ~/.ssh/id_tech360
-          echo "$VPS_SSH_KEY" > ~/.ssh/id_tech360
-          ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
-
-      - name: "Deploy on the VPS — inspect, backup, pull, build, restart, verify, rollback"
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
-          VPS_APP_PATH: ${{ secrets.VPS_APP_PATH }}
-          TECH360_DOMAIN: ${{ secrets.TECH360_DOMAIN }}
-          TECH360_PORT: ${{ secrets.TECH360_PORT }}
-        run: |
-          ssh -i ~/.ssh/id_tech360 -p "${{ secrets.VPS_PORT || 22 }}" -o StrictHostKeyChecking=accept-new \
-            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" -- bash -s <<'REMOTE'
           set -euo pipefail
-          cd "${VPS_APP_PATH:-$HOME/tech360}"
+          [ -n "$HOSTINGER_SSH_KEY" ] || { echo "::error::HOSTINGER_SSH_KEY is empty"; exit 1; }
+          [ -n "$HOSTINGER_HOST" ]    || { echo "::error::HOSTINGER_HOST is empty"; exit 1; }
+          mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/id_tech360"
+          chmod 600 "$HOME/.ssh/id_tech360"
+          : > "$HOME/.ssh/known_hosts_tech360"; chmod 600 "$HOME/.ssh/known_hosts_tech360"
+          ssh-keyscan -T 20 -p "$HOSTINGER_PORT" "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts_tech360" 2>/dev/null
+          [ -s "$HOME/.ssh/known_hosts_tech360" ] || { echo "::error::host key fetch failed"; exit 1; }
+
+      - name: Deploy — backup, migrate, build, restart, verify, rollback on failure
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/id_tech360" \
+              -p "$HOSTINGER_PORT" \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$HOME/.ssh/known_hosts_tech360" \
+              -o ConnectTimeout=20 \
+              "$HOSTINGER_USER@$HOSTINGER_HOST" \
+              "APP_DIR='$HOSTINGER_APP_DIR' DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
+          set -Eeuo pipefail
+          cd "$APP_DIR"
           export TECH360_APP_PATH="$PWD"
-          export TECH360_DOMAIN="${TECH360_DOMAIN:-bdtech360.com}"
-          # fetch the exact commit this workflow validated
-          git fetch origin main
-          git checkout -f origin/main
+          export TECH360_DOMAIN="bdtech360.com"
+          # deploy the exact commit CI validated — never a moving branch ref
+          git fetch --no-tags origin "$DEPLOY_SHA"
+          git checkout -f "$DEPLOY_SHA"
           bash scripts/deploy-vps.sh
           bash scripts/health-check.sh
           REMOTE
-          echo "deployed ✅ — rollback armed for any future failure"
+          echo "deployed ✅"
+
+      - name: Public verification (HTTPS + health identity)
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 https://bdtech360.com/)
+          echo "https://bdtech360.com/ → $code"
+          [ "$code" = "200" ] || { echo "::error::site did not return 200"; exit 1; }
+          body=$(curl -sS --max-time 30 https://bdtech360.com/api/health)
+          echo "$body"
+          echo "$body" | grep -q 'tech360-platform' \
+            || { echo "::error::health endpoint did not identify as tech360-platform"; exit 1; }
 
       - name: Clean up the key
         if: always()
-        run: rm -f ~/.ssh/id_tech360
+        run: rm -f "$HOME/.ssh/id_tech360" "$HOME/.ssh/known_hosts_tech360"

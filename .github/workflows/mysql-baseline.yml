@@ -1,0 +1,143 @@
+# ============================================================
+# TECH360 — MySQL migration baseline generator
+#
+# Produces the FIRST Prisma migration for the MySQL schema, in a
+# reproducible, reviewable way, against a disposable MySQL 8 service.
+#
+#   prisma migrate diff --from-empty --to-schema-datamodel  →  0_init/migration.sql
+#
+# It then proves the baseline by applying it to an empty database with
+# `prisma migrate deploy` (exactly what production runs) and asserting
+# that zero drift remains.
+#
+# The generated SQL is uploaded as an artifact to be reviewed and
+# committed. Nothing here ever touches a production database.
+# ============================================================
+name: mysql-baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['arena/**']
+    paths:
+      - 'prisma/schema.prisma'
+      - 'scripts/mysql-schema-map.json'
+      - 'scripts/convert-schema-to-mysql.mjs'
+      - '.github/workflows/mysql-baseline.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    name: Generate + prove the MySQL baseline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_only_not_a_secret
+          MYSQL_DATABASE: tech360_baseline
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci_only_not_a_secret"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DATABASE_URL: mysql://root:ci_only_not_a_secret@127.0.0.1:3306/tech360_baseline
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Schema is in sync with the MySQL type map
+        run: node scripts/convert-schema-to-mysql.mjs --check
+
+      - name: Validate schema
+        run: bunx prisma validate
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 40); do
+            if mysqladmin ping -h 127.0.0.1 -uroot -pci_only_not_a_secret --silent 2>/dev/null; then
+              mysql -h 127.0.0.1 -uroot -pci_only_not_a_secret -e "SELECT VERSION();"; exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::MySQL never became ready"; exit 1
+
+      - name: Generate the baseline migration (from empty → schema)
+        run: |
+          set -euo pipefail
+          mkdir -p prisma/migrations/0_init
+          bunx prisma migrate diff \
+            --from-empty \
+            --to-schema-datamodel prisma/schema.prisma \
+            --script > prisma/migrations/0_init/migration.sql
+          echo "--- generated DDL (first 40 lines) ---"
+          head -40 prisma/migrations/0_init/migration.sql
+          echo "--- statements: $(grep -c ';' prisma/migrations/0_init/migration.sql) ---"
+
+      - name: Baseline must contain no destructive statement
+        run: |
+          set -euo pipefail
+          if grep -inE '^\s*(DROP\s+(TABLE|DATABASE|SCHEMA)|TRUNCATE)' prisma/migrations/0_init/migration.sql; then
+            echo "::error::baseline contains a destructive statement — refusing"
+            exit 1
+          fi
+          echo "✓ no DROP TABLE / DROP DATABASE / TRUNCATE in the baseline"
+
+      - name: Apply the baseline exactly as production would
+        run: bunx prisma migrate deploy
+
+      - name: Prove zero drift against schema.prisma
+        run: |
+          set -euo pipefail
+          bunx prisma migrate diff \
+            --from-url "$DATABASE_URL" \
+            --to-schema-datamodel prisma/schema.prisma \
+            --exit-code --script > /tmp/drift.sql && rc=0 || rc=$?
+          if [ "${rc:-0}" = "2" ]; then
+            echo "::error::baseline does not reproduce schema.prisma"
+            cat /tmp/drift.sql
+            exit 1
+          fi
+          echo "✓ baseline reproduces schema.prisma exactly (zero drift)"
+
+      - name: Prisma client generates against MySQL
+        run: bunx prisma generate
+
+      - name: Read-only integrity check
+        run: bun run db:verify
+
+      - name: Record the applied schema for review
+        run: |
+          mysql -h 127.0.0.1 -uroot -pci_only_not_a_secret tech360_baseline \
+            -e "SELECT TABLE_NAME, ENGINE, TABLE_COLLATION FROM information_schema.TABLES WHERE TABLE_SCHEMA='tech360_baseline' ORDER BY TABLE_NAME;" \
+            > /tmp/tables.txt
+          mysql -h 127.0.0.1 -uroot -pci_only_not_a_secret tech360_baseline \
+            -e "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='tech360_baseline' ORDER BY TABLE_NAME, ORDINAL_POSITION;" \
+            > /tmp/columns.txt
+          echo "tables: $(( $(wc -l < /tmp/tables.txt) - 1 ))"
+          echo "columns: $(( $(wc -l < /tmp/columns.txt) - 1 ))"
+          echo "--- long-text columns (must NOT be varchar(191)) ---"
+          grep -iE 'text|blob' /tmp/columns.txt | head -30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mysql-baseline
+          path: |
+            prisma/migrations/0_init/migration.sql
+            /tmp/tables.txt
+            /tmp/columns.txt
+          if-no-files-found: error

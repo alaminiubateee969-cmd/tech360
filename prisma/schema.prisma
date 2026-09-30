@@ -10,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -46,7 +46,7 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   ip        String?
-  userAgent String?
+  userAgent String? @db.Text
   expiresAt DateTime
   createdAt DateTime @default(now())
 
@@ -70,7 +70,7 @@ model Client {
   pipelineStage String   @default("NEW") // see lib/pipeline.ts PIPELINE_STAGES
   score         Int      @default(0)
   preferredContact String?
-  notes         String?
+  notes         String? @db.Text
   deletedAt     DateTime?
 
   createdAt DateTime @default(now())
@@ -108,12 +108,12 @@ model Lead {
   id          String  @id @default(cuid())
   clientId    String  @unique
   client      Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  requirements String?
+  requirements String? @db.Text
   budgetRange String?
   projectType String?
   interest    String?
-  tracking    String? // JSON: utm, referrer, anon id
-  sourceDetails String?
+  tracking    String? @db.Text // JSON: utm, referrer, anon id
+  sourceDetails String? @db.Text
   contactedAt DateTime?
   qualifiedAt DateTime?
 
@@ -129,7 +129,7 @@ model Project {
   clientId    String
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   name        String
-  description String?
+  description String? @db.Text
   plan        String?  // recommended plan
   status      String   @default("PLANNING") // PLANNING | ACTIVE | DEVELOPMENT | TESTING | CLIENT_REVIEW | DELIVERY | HANDOVER | COMPLETED | ON_HOLD | CANCELLED
   currency    String   @default("USD")
@@ -166,7 +166,7 @@ model ProjectTask {
   projectId   String
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title       String
-  description String?
+  description String? @db.Text
   status      String   @default("TODO") // TODO | IN_PROGRESS | REVIEW | DONE | BLOCKED
   priority    String   @default("MEDIUM")
   assigneeType String  @default("AGENT") // AGENT | HUMAN
@@ -174,7 +174,7 @@ model ProjectTask {
   order       Int      @default(0)
   dueAt       DateTime?
   completedAt DateTime?
-  evidence    String?  // JSON array of file ids / notes
+  evidence    String? @db.Text // JSON array of file ids / notes
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -192,9 +192,9 @@ model ScopeOfWork {
   project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   version     Int      @default(1)
   status      String   @default("DRAFT") // DRAFT | AI_REVIEWED | AWAITING_ADMIN_APPROVAL | APPROVED | FINAL | SUPERSEDED
-  summary     String?
-  content     String   @default("{}") // JSON: items, timeline, paymentPolicy, deliverables
-  aiNotes     String?  // AI review notes / recommended updates
+  summary     String? @db.Text
+  content     String @default(dbgenerated("(_utf8mb4'{}')")) @db.LongText // JSON: items, timeline, paymentPolicy, deliverables
+  aiNotes     String? @db.Text // AI review notes / recommended updates
   generatedBy String?  // agent code
   reviewedBy  String?  // admin user id
   approvedBy  String?  // admin user id
@@ -216,7 +216,7 @@ model ScopeApproval {
   clientId    String
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   decision    String   // APPROVED | REVISION_REQUESTED | CLARIFICATION_REQUESTED | REJECTED
-  notes       String?
+  notes       String? @db.Text
   meetingRequested Boolean @default(false)
   decidedAt   DateTime @default(now())
 
@@ -235,9 +235,9 @@ model Preview {
   scopeVersion Int?
   version     Int      @default(1)
   status      String   @default("GENERATED") // GENERATED | SENT | VIEWED | REVISION_REQUESTED | APPROVED | EXPIRED
-  html        String
+  html        String @db.LongText
   viewCount   Int      @default(0)
-  revisionNotes String?
+  revisionNotes String? @db.Text
   lastIp      String?
   expiresAt   DateTime? // security: tokenized preview links expire (default 30 days)
   createdAt   DateTime @default(now())
@@ -256,7 +256,7 @@ model PreviewEvent {
   previewId String
   preview   Preview  @relation(fields: [previewId], references: [id], onDelete: Cascade)
   type      String   // SENT | VIEWED | APPROVED | REVISION_REQUESTED | EXPIRED
-  meta      String?
+  meta      String? @db.Text
   createdAt DateTime @default(now())
 
   @@index([previewId])
@@ -274,7 +274,7 @@ model Invoice {
   currency  String   @default("USD")
   amount    Float
   status    String   @default("DRAFT") // DRAFT | SENT | PARTIAL | PAID | OVERDUE | CANCELLED
-  notes     String?
+  notes     String? @db.Text
   issuedAt  DateTime @default(now())
   dueAt     DateTime?
 
@@ -301,7 +301,7 @@ model Payment {
   proofFileId   String?
   verifiedBy    String?  // admin user id
   verifiedAt    DateTime?
-  notes         String?
+  notes         String? @db.Text
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -320,17 +320,17 @@ model Communication {
   direction         String   // IN | OUT
   recipient         String?
   sender            String?
-  subject           String?
-  body              String
+  subject           String? @db.Text
+  body              String @db.LongText
   messageType       String   @default("TEXT") // TEXT | TEMPLATE | MEDIA | DOCUMENT | SYSTEM
   templateName      String?
   providerMessageId String?
   status            String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | RECEIVED | FAILED | NOT_CONFIGURED
-  error             String?
+  error             String? @db.Text
   workflowId        String?  // automation log id / n8n workflow code
   agentCode         String?  // originating agent
   approvalId        String?  // linked approval request
-  metadata          String?  // JSON
+  metadata          String? @db.Text // JSON
 
   createdAt DateTime @default(now())
   sentAt    DateTime?
@@ -346,12 +346,12 @@ model Meeting {
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  reason    String?
+  reason    String? @db.Text
   status    String   @default("REQUESTED") // REQUESTED | SCHEDULED | COMPLETED | CANCELLED | DECLINED
   channel   String   @default("GOOGLE_MEET") // GOOGLE_MEET | ZOOM | PHONE | WHATSAPP_CALL
   scheduledAt DateTime?
-  bookingLink String?
-  notes     String?
+  bookingLink String? @db.Text
+  notes     String? @db.Text
   clientResponse String? // CONFIRMED | DECLINED | RESCHEDULE_REQUESTED (set via client portal)
   clientRespondedAt DateTime?
   createdAt DateTime @default(now())
@@ -370,11 +370,11 @@ model Delivery {
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   status    String   @default("PREPARING") // PREPARING | READY | DELIVERED | CONFIRMED | PARTIAL
-  checklist String   @default("{}") // JSON: scope, files, docs, deployment, credentials, testing
-  evidence  String?  // JSON
+  checklist String @default(dbgenerated("(_utf8mb4'{}')")) @db.Text // JSON: scope, files, docs, deployment, credentials, testing
+  evidence  String? @db.Text // JSON
   deliveredAt DateTime?
   clientConfirmedAt DateTime?
-  confirmationAnswers String? // JSON answers from client review
+  confirmationAnswers String? @db.Text // JSON answers from client review
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -390,7 +390,7 @@ model HandoverRecord {
   type      String   @default("SOURCE_CODE") // SOURCE_CODE | FILES | CREDENTIALS | DOCUMENTATION
   packageToken String @unique
   status    String   @default("PENDING_APPROVAL") // PENDING_APPROVAL | PREPARED | RELEASED | DOWNLOADED | CONFIRMED | EXPIRED
-  contents  String?  // JSON manifest of package
+  contents  String? @db.Text // JSON manifest of package
   paymentVerifiedAt DateTime?
   releasedBy String?
   releasedAt DateTime?
@@ -412,7 +412,7 @@ model Review {
   projectId   String?
   project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
   rating      Int?
-  content     String?
+  content     String? @db.Text
   published   Boolean   @default(false)
   consent     Boolean   @default(false)
   status      String    @default("PENDING") // PENDING | SUBMITTED | APPROVED | REJECTED
@@ -430,7 +430,7 @@ model Referral {
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   name      String?
   contact   String?
-  notes     String?
+  notes     String? @db.Text
   status    String   @default("REQUESTED") // REQUESTED | RECEIVED | CONVERTED | CLOSED
   convertedClientId String? // row id of the Client created from this referral (when CONVERTED)
   convertedClient   Client? @relation("ReferralConverted", fields: [convertedClientId], references: [id], onDelete: SetNull)
@@ -456,9 +456,9 @@ model FormSubmission {
   country      String?
   projectType  String?
   budgetRange  String?
-  details      String?
+  details      String? @db.Text
   preferredContact String?
-  tracking     String? // JSON
+  tracking     String? @db.Text // JSON
   ip           String?
   status       String  @default("NEW") // NEW | PROCESSING | PROCESSED | FAILED
   createdAt    DateTime @default(now())
@@ -470,11 +470,11 @@ model BlogPost {
   id          String   @id @default(cuid())
   slug        String   @unique
   title       String
-  excerpt     String?
-  content     String
+  excerpt     String? @db.Text
+  content     String @db.LongText
   category    String?
-  tags        String?  // JSON array
-  coverImage  String?
+  tags        String? @db.Text // JSON array
+  coverImage  String? @db.Text
   author      String   @default("Tech360 Team")
   status      String   @default("PUBLISHED") // DRAFT | SCHEDULED | PUBLISHED
   views       Int      @default(0)
@@ -492,7 +492,7 @@ model Department {
   code        String  @unique // D001...
   name        String
   category    String  // EXECUTIVE | REVENUE | DELIVERY | TECHNOLOGY | CONTENT | OPERATIONS | GOVERNANCE | SUPPORT
-  description String?
+  description String? @db.Text
   createdAt   DateTime @default(now())
 
   agents AiAgent[]
@@ -505,10 +505,10 @@ model AiAgent {
   title        String?
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  purpose      String
-  systemPrompt String
-  tools        String   @default("[]") // JSON array of tool names
-  permissions  String   @default("[]") // JSON
+  purpose      String @db.Text
+  systemPrompt String @db.LongText
+  tools        String @default(dbgenerated("(_utf8mb4'[]')")) @db.Text // JSON array of tool names
+  permissions  String @default(dbgenerated("(_utf8mb4'[]')")) @db.Text // JSON
   requiresApproval Boolean @default(false)
   status       String   @default("ACTIVE") // ACTIVE | PAUSED | RETIRED
   model        String   @default("default")
@@ -536,12 +536,12 @@ model AiAgentExecution {
   clientId      String?
   projectId     String?
   workflow      String?
-  input         String
-  output        String?
+  input         String @db.LongText
+  output        String? @db.LongText
   status        String   @default("RUNNING") // RUNNING | SUCCESS | FAILED | TIMEOUT | AWAITING_APPROVAL
   tokensUsed    Int      @default(0)
   durationMs    Int?
-  error         String?
+  error         String? @db.Text
   createdAt     DateTime @default(now())
 
   @@index([agentCode])
@@ -553,7 +553,7 @@ model AiMemory {
   id        String   @id @default(cuid())
   scope     String   // COMPANY | BRAND | SERVICES | PRICING | POLICIES | CLIENT | PROJECT | COMMUNICATION | WORKFLOW | KNOWLEDGE | AGENT | TASK | LESSON
   key       String
-  content   String
+  content   String @db.LongText
   clientId  String?
   client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   projectId String?
@@ -576,8 +576,8 @@ model KnowledgeDocument {
   size           Int
   classification String   @default("PRIVATE") // PUBLIC | PRIVATE | CONFIDENTIAL | HIGHLY_SENSITIVE
   status         String   @default("UPLOADED") // UPLOADED | SCANNED | QUARANTINED | INDEXED | APPROVED | ARCHIVED
-  extractedText  String?
-  scanResult     String?  // JSON
+  extractedText  String? @db.LongText
+  scanResult     String? @db.Text // JSON
   sha256         String?
   uploadedBy     String?
   approvedBy     String?
@@ -594,8 +594,8 @@ model PromptTemplate {
   name       String
   category   String
   agentCode  String?
-  template   String
-  variables  String   @default("[]") // JSON
+  template   String @db.LongText
+  variables  String @default(dbgenerated("(_utf8mb4'[]')")) @db.Text // JSON
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -607,13 +607,13 @@ model PromptTemplate {
 model Campaign {
   id        String   @id @default(cuid())
   name      String
-  goal      String?
+  goal      String? @db.Text
   channel   String?  // YOUTUBE | FACEBOOK | INSTAGRAM | LINKEDIN | X | TIKTOK
-  audience  String?
+  audience  String? @db.Text
   status    String   @default("RESEARCHING") // RESEARCHING | SCORING | SCRIPTING | PRODUCING | PUBLISHED | LEARNING
-  hooks     String?  // JSON A/B hooks
-  metrics   String   @default("{}") // JSON performance
-  lessons   String   @default("[]") // JSON self-learning lessons
+  hooks     String? @db.Text // JSON A/B hooks
+  metrics   String @default(dbgenerated("(_utf8mb4'{}')")) @db.Text // JSON performance
+  lessons   String @default(dbgenerated("(_utf8mb4'[]')")) @db.Text // JSON self-learning lessons
   assets    ContentAsset[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -633,10 +633,10 @@ model ContentAsset {
   durationSec Int?
   aspect     String?  // 16:9 | 9:16 | 1:1 | 4:5
   title      String
-  content    String   @default("{}") // JSON structured asset
+  content    String @default(dbgenerated("(_utf8mb4'{}')")) @db.LongText // JSON structured asset
   status     String   @default("DRAFT") // DRAFT | APPROVED | PRODUCING | READY | PUBLISHED | FAILED
   safeContent Boolean @default(true)
-  metrics    String   @default("{}")
+  metrics    String @default(dbgenerated("(_utf8mb4'{}')")) @db.Text
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -650,19 +650,19 @@ model ApprovalRequest {
   id          String   @id @default(cuid())
   type        String   // FINAL_SCOPE_SEND | PAYMENT_INSTRUCTION | REFUND | SOURCE_HANDOVER | CREDENTIAL_OP | DELETION | SOCIAL_PUBLISH | LEGAL_COMM | SENSITIVE_COMM | AGENT_CREATE | EXTERNAL_SEND
   title       String
-  description String?
+  description String? @db.Text
   clientId    String?
   client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   projectId   String?
   agentCode   String?
-  payload     String   @default("{}") // JSON: generated content, target channel, risk
+  payload     String @default(dbgenerated("(_utf8mb4'{}')")) @db.LongText // JSON: generated content, target channel, risk
   risk        String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
   status      String   @default("PENDING") // PENDING | APPROVED | REJECTED | EXECUTED | FAILED
   requestedBy String?  // agent code or user id
   decidedBy   String?
-  decisionNote String?
+  decisionNote String? @db.Text
   executedAt  DateTime?
-  result      String?  // execution outcome JSON
+  result      String? @db.Text // execution outcome JSON
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -680,9 +680,9 @@ model AuditLog {
   entityId   String?
   clientId   String?
   projectId  String?
-  details    String?  // JSON
+  details    String? @db.Text // JSON
   ip         String?
-  userAgent  String?
+  userAgent  String? @db.Text
   createdAt  DateTime @default(now())
 
   @@index([action])
@@ -694,8 +694,8 @@ model ErrorLog {
   id            String   @id @default(cuid())
   source        String   // API | AUTOMATION | AGENT | COMMS | DB | WEBHOOK | AUTH
   code          String?
-  message       String
-  stack         String?
+  message       String @db.Text
+  stack         String? @db.LongText
   correlationId String?
   clientId      String?
   projectId     String?
@@ -718,9 +718,9 @@ model AutomationLog {
   clientId      String?
   client        Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   projectId     String?
-  input         String?  // JSON
-  output        String?  // JSON
-  steps         String   @default("[]") // JSON step log
+  input         String? @db.LongText // JSON
+  output        String? @db.LongText // JSON
+  steps         String @default(dbgenerated("(_utf8mb4'[]')")) @db.LongText // JSON step log
   status        String   @default("RUNNING") // RUNNING | SUCCESS | FAILED | AWAITING_APPROVAL | RETRYING
   attempts      Int      @default(1)
   error         String?
@@ -738,8 +738,8 @@ model AgentMessage {
   sessionId String
   userId    String?
   role      String   // user | assistant | system
-  content   String
-  meta      String?  // JSON: action executed, data
+  content   String @db.LongText
+  meta      String? @db.Text // JSON: action executed, data
   createdAt DateTime @default(now())
 
   @@index([sessionId])
@@ -749,10 +749,10 @@ model Notification {
   id        String   @id @default(cuid())
   type      String   // APPROVAL | ERROR | LEAD | PAYMENT | DELIVERY | REVIEW | REFERRAL | SYSTEM
   title     String
-  body      String?
+  body      String? @db.Text
   severity  String   @default("INFO") // INFO | WARNING | CRITICAL
   read      Boolean  @default(false)
-  link      String?
+  link      String? @db.Text
   createdAt DateTime @default(now())
 
   @@index([read])
@@ -761,7 +761,7 @@ model Notification {
 model CeoReport {
   id          String   @id @default(cuid())
   title       String   @default("CEO Daily Report")
-  content     String   // markdown compiled by Oracle + Pulse agents from live data
+  content     String @db.LongText // markdown compiled by Oracle + Pulse agents from live data
   trigger     String   @default("MANUAL") // MANUAL | SCHEDULED (ai-ops daily 08:00) 
   generatedBy String   @default("RPT-039") // primary agent code
   agentRuns   Int      @default(0)  // number of real agent executions behind this report
@@ -775,11 +775,11 @@ model CeoReport {
 model TrackingEvent {
   id        String   @id @default(cuid())
   name      String   // page_view | lead | contact | whatsapp_click | form_submit | preview_view | approval | conversion
-  path      String?
+  path      String? @db.Text
   clientId  String?
   anonId    String?
   consent   Boolean  @default(false)
-  meta      String?  // JSON
+  meta      String? @db.Text // JSON
   createdAt DateTime @default(now())
 
   @@index([name])
@@ -795,13 +795,13 @@ model FileRecord {
   sha256         String?
   classification String   @default("PRIVATE")
   scanStatus     String   @default("PENDING") // PENDING | CLEAN | QUARANTINED | REJECTED
-  scanResult     String?  // JSON
-  storagePath    String?
+  scanResult     String? @db.Text // JSON
+  storagePath    String? @db.Text
   // Client Documents Hub: bytes stored in DB (≤ CLIENT_DOC_MAX_BYTES) so files
   // survive restarts on Cloud Run's ephemeral filesystem; production hardening
   // can move blobs to Cloud Storage while keeping the same records.
-  content        Bytes?
-  note           String?  // description supplied by uploader
+  content        Bytes? @db.LongBlob
+  note           String? @db.Text // description supplied by uploader
   downloads      Int      @default(0)
   clientId       String?
   client         Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
@@ -822,10 +822,10 @@ model N8nWorkflow {
   id          String   @id @default(cuid())
   code        String   @unique // W01_LEAD_INTAKE
   name        String
-  description String?
+  description String? @db.Text
   category    String
   trigger     String?
-  definition  String   @default("{}") // importable n8n JSON (no secrets)
+  definition  String @default(dbgenerated("(_utf8mb4'{}')")) @db.LongText // importable n8n JSON (no secrets)
   status      String   @default("AVAILABLE") // AVAILABLE | IMPORTED | RUNNING | ERROR
   lastRunAt   DateTime?
   lastRunStatus String?
@@ -838,7 +838,7 @@ model N8nWorkflow {
 model Setting {
   id        String   @id @default(cuid())
   key       String   @unique
-  value     String   // JSON
+  value     String @db.LongText // JSON
   updatedAt DateTime @updatedAt
 
   @@index([key])
@@ -855,8 +855,8 @@ model ChatConversation {
   visitorName        String?
   visitorEmail       String?
   visitorPhone       String?
-  subject            String?
-  lastMessagePreview String?
+  subject            String? @db.Text
+  lastMessagePreview String? @db.Text
   lastMessageAt      DateTime @default(now())
   unreadCount        Int      @default(0)
   createdAt          DateTime @default(now())
@@ -873,7 +873,7 @@ model ChatMessage {
   conversationId String
   conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender          String // VISITOR | ADMIN | SYSTEM
-  body            String
+  body            String @db.Text
   agentEmail      String?
   createdAt       DateTime        @default(now())
 
@@ -896,8 +896,8 @@ model NewsletterSubscriber {
 model EmailCampaign {
   id             String    @id @default(cuid())
   name           String
-  subject        String
-  body           String
+  subject        String @db.Text
+  body           String @db.LongText
   status         String    @default("DRAFT") // DRAFT | QUEUED | SENT
   scheduledAt    DateTime?
   sentAt         DateTime?

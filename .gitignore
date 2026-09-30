@@ -57,3 +57,6 @@ server.log
 
 # QA tooling artifacts
 tool-results/
+
+# npm lockfile — this project installs with bun (bun.lock is authoritative)
+package-lock.json

@@ -85,8 +85,54 @@ fi
 log "STEP 1/9 — backup current release + database"
 mkdir -p "$BACKUP_ROOT"
 git bundle create "$BACKUP_ROOT/repo-$TS.bundle" --all 2>/dev/null || warn "git bundle backup skipped (no git history?)"
-if [[ -f "$APP_PATH/db/custom.db" ]]; then
-  cp "$APP_PATH/db/custom.db" "$BACKUP_ROOT/db-$TS.bak" && log "database backed up → $BACKUP_ROOT/db-$TS.bak"
+# Database backup — engine aware. The dump must exist AND be non-empty AND
+# structurally terminated; a zero exit code from the dump tool is not proof.
+DB_BACKUP=""
+case "$(node -e 'const u=process.env.DATABASE_URL||"";const m=/^([a-z0-9+]+):/i.exec(u);process.stdout.write(m?m[1].toLowerCase():"")' 2>/dev/null || true)" in
+  file)
+    if [[ -f "$APP_PATH/db/custom.db" ]]; then
+      cp "$APP_PATH/db/custom.db" "$BACKUP_ROOT/db-$TS.bak" && DB_BACKUP="$BACKUP_ROOT/db-$TS.bak"
+    fi
+    ;;
+  mysql)
+    DUMP="$BACKUP_ROOT/db-$TS.sql"
+    if command -v mysqldump >/dev/null 2>&1; then
+      # credentials come from DATABASE_URL via a 0600 defaults-file so they
+      # never appear in the process list or in any log line
+      CNF="$(mktemp)"; chmod 600 "$CNF"
+      node -e '
+        const u=new URL(process.env.DATABASE_URL);
+        const q=(s)=>String(s).replace(/"/g,"\\\"");
+        process.stdout.write(`[client]\nhost="${q(u.hostname)}"\nport=${u.port||3306}\nuser="${q(decodeURIComponent(u.username))}"\npassword="${q(decodeURIComponent(u.password))}"\n`);
+      ' > "$CNF"
+      DBNAME="$(node -e 'process.stdout.write(new URL(process.env.DATABASE_URL).pathname.slice(1))')"
+      if mysqldump --defaults-extra-file="$CNF" \
+           --single-transaction --quick --routines --triggers --events \
+           --set-gtid-purged=OFF --no-tablespaces "$DBNAME" > "$DUMP" 2>"$BACKUP_ROOT/db-$TS.err"; then
+        DB_BACKUP="$DUMP"
+      else
+        warn "mysqldump reported an error — see $BACKUP_ROOT/db-$TS.err"
+      fi
+      rm -f "$CNF"
+    else
+      warn "mysqldump not installed on this host — cannot take a logical backup"
+    fi
+    ;;
+esac
+
+if [[ -n "$DB_BACKUP" ]]; then
+  # verify the dump is real, not just "exit code 0"
+  if [[ ! -s "$DB_BACKUP" ]]; then
+    err "database backup $DB_BACKUP is empty — refusing to continue"; false
+  fi
+  if [[ "$DB_BACKUP" == *.sql ]] && ! tail -5 "$DB_BACKUP" | grep -q "Dump completed"; then
+    err "mysqldump output is truncated (no completion marker) — refusing to continue"; false
+  fi
+  log "database backed up → $DB_BACKUP ($(wc -c <"$DB_BACKUP") bytes, verified)"
+else
+  err "no verified database backup was produced — refusing to deploy"
+  err "production schema changes require a recoverable backup first"
+  false
 fi
 echo "$CURRENT_COMMIT" > "$BACKUP_ROOT/last-good-commit.txt"
 [[ -f "$APP_PATH/.env" ]] && sha256sum "$APP_PATH/.env" > "$BACKUP_ROOT/env-$TS.sha" && log "env fingerprint recorded (values never copied)"
@@ -94,9 +140,17 @@ echo "$CURRENT_COMMIT" > "$BACKUP_ROOT/last-good-commit.txt"
 ROLLBACK() {
   err "DEPLOYMENT FAILED — rolling back to the previous known-good release"
   set +e
-  # restore database if this deploy migrated it
+  # Database rollback is deliberately NOT automatic for server-hosted engines.
+  # Overwriting a live MySQL database is itself a destructive act: any row
+  # written after the dump would be lost. Code is rolled back automatically;
+  # data recovery stays an explicit, operator-approved step.
   if [[ -f "$BACKUP_ROOT/db-$TS.bak" && -f "$APP_PATH/db/custom.db" ]]; then
-    cp "$BACKUP_ROOT/db-$TS.bak" "$APP_PATH/db/custom.db" && log "database restored from pre-deploy backup"
+    cp "$BACKUP_ROOT/db-$TS.bak" "$APP_PATH/db/custom.db" && log "database file restored from pre-deploy backup"
+  elif [[ -n "${DB_BACKUP:-}" && "$DB_BACKUP" == *.sql ]]; then
+    warn "database NOT auto-restored (would discard post-backup writes)"
+    warn "verified pre-deploy dump: $DB_BACKUP"
+    warn "restore only after an operator confirms data loss is acceptable:"
+    warn "  mysql --defaults-extra-file=<0600 cnf> <database> < $DB_BACKUP"
   fi
   # restore code
   if [[ -s "$BACKUP_ROOT/last-good-commit.txt" ]]; then
@@ -190,7 +244,38 @@ npm run build
 # STEP 7 — database migration (non-destructive)
 # ------------------------------------------------------------
 log "STEP 7/9 — applying database schema (non-destructive)"
-npx prisma migrate deploy 2>/dev/null || npx prisma db push || warn "prisma step skipped — verify schema manually"
+
+# --- provider / URL agreement gate -------------------------------------
+# A Prisma client generated for one engine cannot talk to another. Detect the
+# DATABASE_URL *scheme* only — the value itself is never printed or logged.
+DB_SCHEME="$(node -e 'const u=process.env.DATABASE_URL||"";const m=/^([a-z0-9+]+):/i.exec(u);process.stdout.write(m?m[1].toLowerCase():"")' 2>/dev/null || true)"
+PRISMA_PROVIDER="$(sed -n 's/^[[:space:]]*provider[[:space:]]*=[[:space:]]*"\([a-z]*\)".*/\1/p' prisma/schema.prisma | head -1)"
+log "prisma provider: ${PRISMA_PROVIDER:-unknown} · DATABASE_URL scheme: ${DB_SCHEME:-unset}"
+
+[[ -n "$DB_SCHEME" ]] || { err "DATABASE_URL is not set on the server — refusing to migrate"; false; }
+
+case "$PRISMA_PROVIDER:$DB_SCHEME" in
+  mysql:mysql) : ;;
+  sqlite:file)  : ;;
+  postgresql:postgres|postgresql:postgresql) : ;;
+  *)
+    err "provider/URL mismatch: prisma='$PRISMA_PROVIDER' url-scheme='$DB_SCHEME'"
+    err "a client generated for '$PRISMA_PROVIDER' cannot be used against '$DB_SCHEME' — refusing to deploy"
+    false
+    ;;
+esac
+
+# --- migration baseline gate -------------------------------------------
+# `prisma db push` is NEVER acceptable in production: it reconciles the
+# database to the schema by dropping/altering whatever disagrees. Production
+# only ever replays reviewed, committed migrations.
+if [[ ! -d prisma/migrations ]] || [[ -z "$(ls -A prisma/migrations 2>/dev/null)" ]]; then
+  err "prisma/migrations is missing or empty — no reviewed migration baseline exists"
+  err "refusing to modify the production schema without one (db push is not a fallback)"
+  false
+fi
+
+npx prisma migrate deploy || { err "prisma migrate deploy failed — NOT falling back to db push"; false; }
 
 # ------------------------------------------------------------
 # STEP 8 — restore env + restart on the SAME port
