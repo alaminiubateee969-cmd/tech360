@@ -40,4 +40,4 @@ CI creates `db/validate.db`, runs `prisma db push --skip-generate`, builds, and 
 
 ## Recovery
 
-The VPS deployment script backs up the database before deployment and restores it in its error trap. Recovery must still be tested on the actual target before the first schema-changing deployment. See `DEPLOYMENT.md` and `scripts/deploy-hostinger.sh`.
+Hostinger owns the production database/runtime deployment. Recovery must be handled through Hostinger's supported database backup and normal Git revert procedures; this repository does not perform remote rollback. See `DEPLOYMENT.md`.

@@ -212,13 +212,13 @@ A green Hostinger deployment badge on its own proves none of this.
 
 ---
 
-## 7. Deployment is not performed by GitHub Actions
+## 7. Deployment ownership
 
-`.github/workflows/ci.yml` validates a commit and stops. It has no SSH, no
-rsync, no scp and no remote restart, because a second deployment mechanism
-could overwrite production behind Hostinger's back.
+`.github/workflows/ci.yml` validates source changes only: npm install, Prisma
+validation/generation, lint, typecheck, tests, database checks, and build. It
+does not hold or require an SSH private key and does not restart production.
 
-`scripts/deploy-hostinger.sh` is retained as a **manual** operator tool for
-the things Hostinger's pipeline does not do — a verified `mysqldump` backup
-before schema changes, a strict migration gate, and code rollback. Nothing
-invokes it automatically.
+Hostinger's Node.js Web App Git integration owns the production pull from
+`main`, build, startup/restart, environment variables, runtime logs, HTTPS,
+and domain. `scripts/deploy-hostinger.sh` is a fail-fast retirement notice,
+not a manual deployment mechanism.

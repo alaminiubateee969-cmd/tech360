@@ -167,7 +167,7 @@ review the resulting DDL by hand, and register the already-present state with
 
 - The production database is **never** the CI or test database. CI uses a
   throwaway `tech360_ci`.
-- `scripts/deploy-hostinger.sh` takes an engine-aware backup **before** any schema
+- Hostinger owns production backups and runtime migration execution. The repository CI applies migrations only to a disposable MySQL database; it does not take a production backup. Any schema
   change: `mysqldump --single-transaction --quick --routines --triggers --events`.
 - The dump is verified three ways: file exists, file is non-empty, and the
   `Dump completed` trailer is present. A zero exit code alone is not accepted.
