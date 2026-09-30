@@ -1,12 +1,14 @@
 import { NextRequest } from 'next/server'
 import { opsScan } from '@/lib/ops-loop'
-import { rateLimit, clientIp } from '@/lib/security'
+import { rateLimit, clientIp, constantTimeEquals } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
 function authorized(req: NextRequest): boolean {
   const secret = process.env.OPS_SECRET
-  return Boolean(secret) && req.headers.get('x-ops-secret') === secret
+  // already fails closed on an unset secret; compare in constant time so the
+  // value cannot be recovered byte-by-byte through response timing
+  return constantTimeEquals(req.headers.get('x-ops-secret'), secret)
 }
 
 // AI Operations scan: everything the autonomous loop needs to decide.

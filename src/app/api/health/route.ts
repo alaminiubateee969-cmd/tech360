@@ -4,11 +4,12 @@ import { channelStatuses } from '@/lib/comms'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+  const dbProvider = (process.env.DATABASE_URL ?? '').split(':')[0].toLowerCase() === 'mysql' ? 'MySQL' : (process.env.DATABASE_URL ?? '').startsWith('file:') ? 'SQLite' : 'database'
   const checks: Record<string, { status: string; detail?: string }> = {}
   let healthy = true
   try {
     await db.$queryRaw`SELECT 1`
-    checks.database = { status: 'UP', detail: 'SQLite/Prisma connected' }
+    checks.database = { status: 'UP', detail: `${dbProvider} via Prisma — connected` }
   } catch (e) {
     healthy = false
     checks.database = { status: 'DOWN', detail: e instanceof Error ? e.message : 'unknown' }

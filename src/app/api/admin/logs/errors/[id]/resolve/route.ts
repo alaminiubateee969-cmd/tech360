@@ -1,3 +1,4 @@
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -6,7 +7,7 @@ import { readJson, sanitizeText, audit } from '@/lib/security'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const { id } = await params
   const error = await db.errorLog.findUnique({ where: { id: sanitizeText(id, 40) } })

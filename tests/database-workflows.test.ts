@@ -66,7 +66,7 @@ describe('proposal versioning and approval persistence', () => {
     assert.equal(v1.status, 'DRAFT')
     assert.notEqual(v1.id, v2.id)
     assert.equal(await db.scopeOfWork.count({ where: { clientId: alphaId } }), 2)
-    await assert.rejects(() => db.scopeOfWork.create({ data: { clientId: alphaId, version: 2, status: 'DRAFT' } }))
+    await assert.rejects(() => db.scopeOfWork.create({ data: { clientId: alphaId, version: 2, status: 'DRAFT', content: '{}' } }))
   })
 
   it('records client approval history against a specific scope version', async () => {

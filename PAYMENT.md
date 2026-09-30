@@ -54,7 +54,7 @@ Without `STRIPE_WEBHOOK_SECRET` the endpoint **refuses to act** (503, audited) â
 ## 4. Configuring Stripe (when you have the keys)
 
 ```
-# VPS .env
+# Hostinger .env
 STRIPE_SECRET_KEY=sk_live_...        # sk_test_... for sandbox
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```

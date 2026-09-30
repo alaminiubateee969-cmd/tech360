@@ -9,4 +9,4 @@
 7. Run health, authentication, public, portal and data-integrity checks.
 8. Record timestamps and evidence.
 
-`scripts/deploy-vps.sh` contains an automatic error trap, but it is not considered verified on production until tested against the actual target.
+`scripts/deploy-hostinger.sh` contains an automatic error trap, but it is not considered verified on production until tested against the actual target.

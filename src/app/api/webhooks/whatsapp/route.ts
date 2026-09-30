@@ -1,7 +1,8 @@
+import { createHmac } from 'crypto'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { intakeLead, detectBusiness } from '@/lib/journey'
-import { sanitizeText, sanitizePhone, rateLimit, clientIp, logError, audit } from '@/lib/security'
+import { sanitizeText, sanitizePhone, rateLimit, clientIp, logError, audit, constantTimeEquals } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,8 +32,25 @@ export async function POST(req: NextRequest) {
   const ip = clientIp(req)
   const rl = rateLimit(`wa-hook:${ip}`, 60, 60_000)
   if (!rl.ok) return Response.json({ ok: true })
+
+  // Meta signs every delivery with HMAC-SHA256 over the RAW body using the
+  // app secret. Without this check anyone could POST a forged inbound message
+  // and create CRM/communication records attributed to a real client.
+  // Read the body as text first — re-serialising JSON would change the bytes
+  // and break the signature.
+  const rawBody = await req.text()
+  const appSecret = process.env.WHATSAPP_APP_SECRET
+  if (!appSecret) {
+    await logError({ source: 'WEBHOOK', code: 'WA_APP_SECRET_MISSING', message: 'WhatsApp webhook rejected: WHATSAPP_APP_SECRET is not configured' })
+    return Response.json({ ok: false, error: 'Webhook not configured' }, { status: 503 })
+  }
+  const expected = 'sha256=' + createHmac('sha256', appSecret).update(rawBody).digest('hex')
+  if (!constantTimeEquals(req.headers.get('x-hub-signature-256'), expected)) {
+    return Response.json({ ok: false, error: 'Invalid signature' }, { status: 401 })
+  }
+
   let payload: Record<string, unknown>
-  try { payload = await req.json() } catch { return Response.json({ ok: true }) }
+  try { payload = JSON.parse(rawBody) as Record<string, unknown> } catch { return Response.json({ ok: true }) }
 
   try {
     const entry = (payload.entry as Array<Record<string, unknown>>)?.[0]

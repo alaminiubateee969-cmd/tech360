@@ -1,0 +1,234 @@
+# ============================================================
+# TECH360 — CONTINUOUS INTEGRATION
+#
+# Production deployment is NOT performed here.
+#
+# Production is deployed by Hostinger's own Node.js web-app Git
+# integration, which pulls main and runs install -> build -> start on the
+# Hostinger server. See docs/HOSTINGER_DEPLOYMENT.md.
+#
+# This workflow only PROVES a commit is safe to deploy:
+#   - the Prisma schema targets MySQL, the real production engine
+#   - the committed migration baseline applies with zero drift
+#   - lint, typecheck, tests and the production build all pass
+#
+# There is deliberately no SSH, no rsync, no scp and no remote restart:
+# a second deployment mechanism alongside Hostinger's would be able to
+# overwrite production behind Hostinger's back.
+# ============================================================
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - 'arena/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Disposable CI database. NEVER the production database.
+  CI_MYSQL_DB: tech360_ci
+  CI_MYSQL_USER: tech360
+  CI_MYSQL_PASSWORD: ci_only_not_a_secret
+  CI_MYSQL_ROOT_PASSWORD: ci_only_not_a_secret
+
+jobs:
+  # ------------------------------------------------------------------
+  # CI — validated against MySQL, the engine production actually runs
+  # ------------------------------------------------------------------
+  ci:
+    name: Validate against MySQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_only_not_a_secret
+          MYSQL_DATABASE: tech360_ci
+          MYSQL_USER: tech360
+          MYSQL_PASSWORD: ci_only_not_a_secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci_only_not_a_secret"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DATABASE_URL: mysql://tech360:ci_only_not_a_secret@127.0.0.1:3306/tech360_ci
+      SHADOW_DATABASE_URL: mysql://root:ci_only_not_a_secret@127.0.0.1:3306/tech360_ci_shadow
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Secret scan (fail before deploy if a secret slipped in)
+        run: |
+          echo "scanning tracked files for accidental secrets…"
+          if git ls-files -z | xargs -0 grep -lIE \
+            'sk_live_[A-Za-z0-9]{20,}|sk_test_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}' \
+            2>/dev/null | grep -v '^\.env\.example$'; then
+            echo "::error::secret-like material found in tracked files — remove it and rotate the credential"
+            exit 1
+          fi
+          echo "clean: no secret patterns in tracked files"
+          if [ -f .env ]; then echo "::error::.env must never be committed"; exit 1; fi
+          echo "clean: .env not committed"
+
+      - name: Setup Node.js 22 (the Hostinger production runtime)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Hostinger installs with npm on Node 22. Prove that exact path works
+      # here, against the committed package-lock.json, or the first real
+      # deployment is the first time it is ever exercised.
+      - name: npm ci on Node 22 (mirrors Hostinger's install step)
+        run: |
+          node --version
+          npm --version
+          npm ci --no-audit --no-fund
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (lockfile-exact)
+        run: bun install --frozen-lockfile
+
+      # --- provider gates -------------------------------------------------
+      - name: Prisma schema is in sync with the MySQL type map
+        run: node scripts/convert-schema-to-mysql.mjs --check
+
+      - name: Prisma provider matches DATABASE_URL scheme
+        run: |
+          PROVIDER="$(sed -n 's/^[[:space:]]*provider[[:space:]]*=[[:space:]]*"\([a-z]*\)".*/\1/p' prisma/schema.prisma | head -1)"
+          SCHEME="$(printf '%s' "$DATABASE_URL" | sed -n 's|^\([a-z0-9+]*\):.*|\1|p')"
+          echo "prisma provider = $PROVIDER · DATABASE_URL scheme = $SCHEME"
+          if [ "$PROVIDER" != "mysql" ] || [ "$SCHEME" != "mysql" ]; then
+            echo "::error::provider/URL mismatch — CI must exercise the production engine (mysql)"
+            exit 1
+          fi
+
+      - name: Validate Prisma schema
+        run: bunx prisma validate
+
+      - name: Generate Prisma client
+        run: bunx prisma generate
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 40); do
+            if mysqladmin ping -h 127.0.0.1 -P 3306 -uroot -p"$CI_MYSQL_ROOT_PASSWORD" --silent 2>/dev/null; then
+              echo "mysql is up"; mysql -h 127.0.0.1 -uroot -p"$CI_MYSQL_ROOT_PASSWORD" -e "SELECT VERSION();"; exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::MySQL service never became ready"; exit 1
+
+      # --- migration baseline --------------------------------------------
+      # The committed baseline is the single source of truth. CI replays it
+      # exactly as production would (migrate deploy — never db push, never
+      # migrate dev, never migrate reset).
+      - name: Migration baseline exists
+        run: |
+          if [ ! -d prisma/migrations ] || [ -z "$(ls -A prisma/migrations 2>/dev/null)" ]; then
+            echo "::error::prisma/migrations is missing or empty — no reviewed baseline to replay"
+            exit 1
+          fi
+          echo "baseline migrations:"; ls -1 prisma/migrations
+
+      - name: Apply migrations to the disposable MySQL (as production would)
+        run: bunx prisma migrate deploy
+
+      - name: Baseline must leave zero schema drift
+        run: |
+          bunx prisma migrate diff \
+            --from-url "$DATABASE_URL" \
+            --to-schema-datamodel prisma/schema.prisma \
+            --exit-code --script > /tmp/drift.sql && DRIFT=0 || DRIFT=$?
+          if [ "${DRIFT:-0}" = "2" ]; then
+            echo "::error::schema drift — the committed baseline does not reproduce schema.prisma"
+            cat /tmp/drift.sql
+            exit 1
+          fi
+          echo "no drift: migrations reproduce schema.prisma exactly"
+
+      # --- quality gates ---------------------------------------------------
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Business and database isolation tests (MySQL)
+        run: bun run test
+
+      - name: Database integrity (MySQL, read-only)
+        run: bun run db:verify
+
+      - name: Production build
+        run: bun run build
+
+  # ------------------------------------------------------------------
+  # DIAGNOSTICS — manual only, strictly read-only.
+  # This is NOT a deployment path. It exists so the Hostinger server can
+  # be inspected from CI when something is wrong in production.
+  # ------------------------------------------------------------------
+  hostinger-diagnostics:
+    name: Hostinger diagnostics (read-only, manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check the Hostinger access configuration
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+        run: bash .github/scripts/hostinger-identity-check.sh
+
+      - name: Open an SSH session
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+        run: bash .github/scripts/hostinger-ssh-setup.sh
+
+      - name: Inspect the server (changes nothing)
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+        run: |
+          set -euo pipefail
+          trap 'rm -f "$HOME/.ssh/id_hostinger_tech360"' EXIT
+          REMOTE_ENV="APP_DIR='$HOSTINGER_APP_DIR'" \
+            bash .github/scripts/hostinger-ssh.sh \
+            < .github/scripts/hostinger-preflight-remote.sh
+
+      - name: Probe the public domain
+        run: bash .github/scripts/verify-production.sh || true
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$HOME/.ssh/id_hostinger_tech360" "$HOME/.ssh/known_hosts_hostinger_tech360"

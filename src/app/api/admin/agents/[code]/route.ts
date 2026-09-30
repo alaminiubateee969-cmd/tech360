@@ -1,3 +1,4 @@
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -6,7 +7,7 @@ import { sanitizeText } from '@/lib/security'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const { code } = await params
   const clean = sanitizeText(code, 20).toUpperCase()

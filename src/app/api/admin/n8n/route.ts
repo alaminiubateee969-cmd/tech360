@@ -1,3 +1,4 @@
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { featureEnabled } from "@/lib/features"
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (!(await featureEnabled('n8n'))) {
     return Response.json({ error: 'n8n integration is currently disabled by Super Admin.' }, { status: 503 })
   }
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const workflows = await db.n8nWorkflow.findMany({ orderBy: { code: 'asc' } })
   return Response.json({ workflows })

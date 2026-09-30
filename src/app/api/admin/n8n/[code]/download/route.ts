@@ -1,3 +1,4 @@
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   if (!(await featureEnabled('n8n'))) {
     return Response.json({ error: 'n8n integration is currently disabled by Super Admin.' }, { status: 503 })
   }
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const { code } = await params
   const clean = sanitizeText(code, 30).toUpperCase().replace(/[^A-Z0-9_]/g, '')

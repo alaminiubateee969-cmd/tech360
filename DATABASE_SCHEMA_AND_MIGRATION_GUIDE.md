@@ -40,4 +40,4 @@ CI creates `db/validate.db`, runs `prisma db push --skip-generate`, builds, and 
 
 ## Recovery
 
-The VPS deployment script backs up the database before deployment and restores it in its error trap. Recovery must still be tested on the actual target before the first schema-changing deployment. See `DEPLOYMENT.md` and `scripts/deploy-vps.sh`.
+The VPS deployment script backs up the database before deployment and restores it in its error trap. Recovery must still be tested on the actual target before the first schema-changing deployment. See `DEPLOYMENT.md` and `scripts/deploy-hostinger.sh`.

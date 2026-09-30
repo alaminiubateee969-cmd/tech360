@@ -721,7 +721,7 @@ export async function activateProject(clientRowId: string, projectId?: string) {
     }
   }
   // Delivery record
-  await db.delivery.create({ data: { clientId: client.id, projectId: project.id } })
+  await db.delivery.create({ data: { clientId: client.id, projectId: project.id, checklist: '{}' } })
   return { project, taskRun: run }
 }
 
@@ -801,12 +801,12 @@ export async function confirmDelivery(clientRowId: string, answers: { received: 
   if (!project) throw new Error('Project not found')
   const delivery = await db.delivery.upsert({
     where: { id: (await db.delivery.findFirst({ where: { projectId: project.id } }))?.id ?? 'none' },
-    create: { clientId: client.id, projectId: project.id, status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) },
+    create: { clientId: client.id, projectId: project.id, checklist: '{}', status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) },
     update: { status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) },
   }).catch(async () => {
     const existing = await db.delivery.findFirst({ where: { projectId: project.id } })
     if (existing) return db.delivery.update({ where: { id: existing.id }, data: { status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) } })
-    return db.delivery.create({ data: { clientId: client.id, projectId: project.id, status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) } })
+    return db.delivery.create({ data: { clientId: client.id, projectId: project.id, checklist: '{}', status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) } })
   })
   const handover = await db.handoverRecord.findFirst({ where: { projectId: project.id, type: 'SOURCE_CODE' } })
   if (handover && answers.passwordsChanged) {

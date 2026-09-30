@@ -57,3 +57,7 @@ server.log
 
 # QA tooling artifacts
 tool-results/
+
+# NOTE: package-lock.json IS committed. Hostinger's Node.js pipeline installs
+# with npm, so production needs a deterministic npm lockfile. bun.lock remains
+# authoritative for local development and CI.
