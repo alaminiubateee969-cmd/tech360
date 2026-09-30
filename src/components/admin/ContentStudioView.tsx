@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Clapperboard, Film, Loader2, Megaphone, RefreshCw, Sparkles } from 'lucide-react'
+import { Clapperboard, Film, Loader2, Megaphone, PackageOpen, RefreshCw, SearchCheck, Sparkles } from 'lucide-react'
 
 import {
   api,
@@ -26,7 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-const TYPES = ['SCRIPT', 'VIDEO_PLAN', 'IMAGE_PROMPT', 'HOOK', 'VOICEOVER', 'CAPTIONS'] as const
+const TYPES = ['MARKETING_KIT', 'SEO_BRIEF', 'SCRIPT', 'VIDEO_PLAN', 'IMAGE_PROMPT', 'HOOK', 'VOICEOVER', 'CAPTIONS'] as const
 const ASPECTS = ['16:9', '9:16', '1:1', '4:5'] as const
 const LANGS = ['EN', 'BN'] as const
 
@@ -42,7 +42,7 @@ export function ContentStudioView() {
   const campaigns = data?.campaigns ?? []
 
   // generate form
-  const [type, setType] = useState<string>('SCRIPT')
+  const [type, setType] = useState<string>('MARKETING_KIT')
   const [topic, setTopic] = useState('')
   const [language, setLanguage] = useState('EN')
   const [aspect, setAspect] = useState('16:9')
@@ -92,7 +92,7 @@ export function ContentStudioView() {
     <div>
       <PageHeader
         title="Content Studio"
-        description="AI-generated video, script, and creative assets for campaigns — every asset below is real pipeline output."
+        description="Generate complete marketing kits, SEO briefs, scripts, video plans, and campaign creative — every saved asset is real pipeline output."
         actions={
           <Button
             variant="outline"
@@ -178,6 +178,18 @@ export function ContentStudioView() {
 
         <div className="space-y-4">
           <SectionCard title="Generate Asset" description="Real AI generation via the content pipeline">
+            <div className="mb-3 grid grid-cols-2 gap-2" aria-label="Featured marketing generators">
+              <button type="button" onClick={() => setType('MARKETING_KIT')} className={cn('rounded-lg border p-2.5 text-left transition-colors', type === 'MARKETING_KIT' ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-200' : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700')}>
+                <PackageOpen className="mb-1 size-4" aria-hidden="true" />
+                <span className="block text-xs font-semibold">Marketing kit</span>
+                <span className="mt-0.5 block text-[9px] leading-snug opacity-70">Positioning, launch, ads, email & KPIs</span>
+              </button>
+              <button type="button" onClick={() => setType('SEO_BRIEF')} className={cn('rounded-lg border p-2.5 text-left transition-colors', type === 'SEO_BRIEF' ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-200' : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700')}>
+                <SearchCheck className="mb-1 size-4" aria-hidden="true" />
+                <span className="block text-xs font-semibold">SEO brief</span>
+                <span className="mt-0.5 block text-[9px] leading-snug opacity-70">Intent, outline, schema & conversion path</span>
+              </button>
+            </div>
             <form onSubmit={generate} className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cs-type" className="text-xs text-slate-400">Type</Label>

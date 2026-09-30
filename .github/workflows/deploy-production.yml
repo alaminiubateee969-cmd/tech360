@@ -23,6 +23,10 @@ name: deploy-production
 
 on:
   push:
+    branches:
+      - main
+      - 'arena/**'
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -70,7 +74,19 @@ jobs:
         run: bun run lint
 
       - name: Typecheck
-        run: bunx tsc --noEmit
+        run: bun run typecheck
+
+      - name: Business and database isolation tests
+        env:
+          DATABASE_URL: "file:./db/test.db"
+        run: |
+          rm -f db/test.db
+          bunx prisma db push --skip-generate
+          bun run test
+          rm -f db/test.db
+
+      - name: Checked-in database integrity (read-only)
+        run: bun run db:verify
 
       - name: Production build
         env:
@@ -80,15 +96,11 @@ jobs:
           bunx prisma db push --skip-generate
           bun run build
 
-      - name: Upload build for the deploy job
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-validation
-          path: .next/
-          retention-days: 1
-
   deploy:
     name: Deploy → VPS (existing port, auto-rollback)
+    # Validation runs on working branches and pull requests; production deploys
+    # only from a validated push to the protected default branch.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -105,7 +117,7 @@ jobs:
           echo "$VPS_SSH_KEY" > ~/.ssh/id_tech360
           ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Deploy on the VPS (safe script: inspect → backup → pull → build → restart → verify → rollback on failure)
+      - name: "Deploy on the VPS — inspect, backup, pull, build, restart, verify, rollback"
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}

@@ -212,6 +212,21 @@ function parseHash(raw: string) {
 
 const PUBLIC_SECTIONS = new Set(['', 'about', 'services', 'industries', 'work', 'technologies', 'process', 'blog', 'careers', 'contact', 'legal', 'faq', 'portal'])
 
+function UnknownPublicRoute({ navigate }: { navigate: (h: string) => void }) {
+  return (
+    <main id="main-content" className="grid min-h-[65vh] place-items-center bg-[#F7FAFC] px-5 py-20">
+      <section className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12">
+        <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#009FE3]">404 · Page not found</p>
+        <h1 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33]">That Tech360 page does not exist.</h1>
+        <p className="mt-4 leading-7 text-slate-600">Check the address or return to a verified section of the website.</p>
+        <button type="button" onClick={() => navigate('/')} className="mt-8 min-h-11 rounded-lg bg-[#063B8F] px-6 text-sm font-semibold text-white transition hover:bg-[#052f72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">
+          Return home
+        </button>
+      </section>
+    </main>
+  )
+}
+
 function PublicView({ section, param, navigate }: { section: string; param: string; navigate: (h: string) => void }) {
   switch (section) {
     case '': return <HomeView onNavigate={navigate} />
@@ -227,7 +242,7 @@ function PublicView({ section, param, navigate }: { section: string; param: stri
     case 'legal': return <LegalView slug={param || 'terms'} />
     case 'faq': return <FaqView />
     case 'portal': return <PortalView />
-    default: return <HomeView onNavigate={navigate} />
+    default: return <UnknownPublicRoute navigate={navigate} />
   }
 }
 
