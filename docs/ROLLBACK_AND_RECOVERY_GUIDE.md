@@ -9,4 +9,4 @@
 7. Run health, authentication, public, portal and data-integrity checks.
 8. Record timestamps and evidence.
 
-`scripts/deploy-hostinger.sh` contains an automatic error trap, but it is not considered verified on production until tested against the actual target.
+Hostinger owns deployment/runtime rollback facilities. This repository does not SSH into production or perform remote rollback; use a normal Git revert and Hostinger's deployment history after verifying the target configuration.

@@ -1,0 +1,44 @@
+# TECH360 Hostinger environment variables
+
+This is a configuration manifest, not a secrets file. Values below are intentionally omitted. Set them in **Hostinger → Node.js Web App → Environment Variables**; do not commit `.env` or paste production credentials into GitHub.
+
+## Required for the application
+
+| Variable | Purpose | Secret/non-secret | Source | Required |
+|---|---|---|---|---|
+| `DATABASE_URL` | Prisma MySQL connection | Secret | Hostinger MySQL details from hPanel; use the actual database host, not an SSH IP | Yes |
+| `NODE_ENV` | Production runtime behavior | Non-secret | Set to `production` | Yes |
+| `APP_PUBLIC_URL` | Public links, sitemap and email links | Non-secret | `https://bdtech360.com` | Yes |
+| `APP_ORIGIN` | Checkout origin | Non-secret | `https://bdtech360.com` | Yes |
+| `SESSION_SECRET` | Fallback signing secret for portal/newsletter tokens | Secret | Generate a unique random value | Yes |
+| `PORTAL_SECRET` | Client portal token signing | Secret | Generate a unique random value | Yes |
+| `OPS_SECRET` | Authenticates operations endpoints | Secret | Generate a unique random value | Yes if operations endpoints are enabled |
+| `ADMIN_EMAIL` | First-boot Super Admin seed account | Non-secret | Owner-selected account | Yes for first seed |
+| `ADMIN_PASSWORD` | First-boot Super Admin seed account | Secret | Owner-generated password, at least 12 characters; change at first login | Yes for first seed |
+
+`NOTIFY_RELAY_TOKEN`, `NOTIFY_RELAY_URL`, `OPS_INTERVAL_SEC`, and `PLATFORM_URL` are referenced by the operations/notification code. Configure the relay only if that separately deployed service is actually used; the Hostinger web app must not depend on localhost.
+
+## Optional integrations (empty values fail closed or remain not configured)
+
+| Variable(s) | Purpose | Secret/non-secret | Source | Required |
+|---|---|---|---|---|
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Stripe checkout and webhook verification | Secret | Stripe dashboard | Optional; required before Stripe is enabled |
+| `BANK_TRANSFER_DETAILS`, `BKASH_MERCHANT_NUMBER`, `NAGAD_MERCHANT_NUMBER` | Payment instructions | Sensitive business configuration | Owner | Optional |
+| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` | PayPal integration flags | Mixed; secrets marked by name | PayPal dashboard | Optional; integration is not enabled by empty values |
+| `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD` | SSLCommerz integration flags | Mixed; password is secret | SSLCommerz dashboard | Optional |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp Cloud API and webhook verification | Secret | Meta developer console | Optional |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | SMTP email delivery | `SMTP_PASS` secret; others configuration | Mail provider | Optional; required before email sending |
+| `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` | SMS delivery | `SMS_API_KEY` secret; others configuration | SMS provider | Optional |
+| `FACEBOOK_PAGE_TOKEN`, `INSTAGRAM_TOKEN`, `LINKEDIN_TOKEN`, `X_TOKEN` | Social publishing | Secret | Respective provider | Optional |
+| `SOCIAL_WEBHOOK_SECRET` | Social inbound webhook auth | Secret | Owner-generated | Optional; required to enable endpoint |
+| `N8N_WEBHOOK_SECRET`, `N8N_WEBHOOK_BASE` | n8n bridge auth and URL | Secret/URL | n8n deployment | Optional; required to enable endpoint |
+| `PREVIEW_TTL_DAYS` | Preview expiry policy | Non-secret | Owner policy; current template uses `7` | Optional |
+
+The repository also contains dynamic feature metadata for the payment credentials above (`src/lib/features.ts`), so those names are included even though they are not accessed using a literal `process.env.NAME` expression.
+
+## Production safety
+
+- Do not use the template's local-development values in production.
+- Do not use `127.0.0.1` or the web-server/SSH host as the MySQL host.
+- Do not commit a production `.env` file.
+- Empty integration credentials are expected to produce `NOT_CONFIGURED`/a refusal, not a fake success.

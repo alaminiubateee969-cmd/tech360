@@ -45,55 +45,35 @@ cd mini-services/notify-relay && bun install && bun run dev   # :3032 socket.io 
 
 ## 3. Database
 
-- Prisma + SQLite (`db/custom.db`), 38 models — see `prisma/schema.prisma`.
-- Non-destructive alignment in dev: `bun run db:push`.
-- Production migration: `npx prisma migrate deploy` (run by `scripts/deploy-hostinger.sh`).
-- Seed (`bun run db:seed`) is idempotent-safe for first boot; it never overwrites production records.
+- Prisma with MySQL (`prisma/schema.prisma`).
+- Production migrations use `npx prisma migrate deploy`; destructive reset and data-loss schema pushes are not production commands.
+- The seed is idempotent-safe for first boot and requires a production `ADMIN_PASSWORD`.
 
 ## 4. Build · test · verify
 
 ```bash
-bun run lint          # ESLint (also the CI gate)
-bunx tsc --noEmit     # TypeScript strict check (CI gate)
-bun run build         # production build (output: standalone)
-bun run start         # runs .next/standalone/server.js
-bash scripts/health-check.sh   # end-to-end post-deploy verification
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run start
 ```
 
-There is no separate unit-test suite (QA is real-browser driven; see `worklog.md` for the full E2E evidence trail). CI = secret scan → install → prisma generate → lint → typecheck → build.
+GitHub Actions validates the same npm/Node.js 22 path against disposable MySQL.
 
-## 5. Production deployment (GitHub → Hostinger)
+## 5. Production deployment ownership
 
-**Repository layout for CI/CD:**
+Hostinger owns the production Node.js Web App, environment variables, filesystem, process lifecycle, HTTPS, domain, logs, and deployment from its configured GitHub integration. GitHub Actions owns CI validation only.
 
-```
-.github/workflows/deploy-production.yml          # push to main → CI (MySQL) → preflight → deploy → HTTPS verify
-.github/workflows/mysql-baseline.yml             # generates + proves the Prisma MySQL baseline
-.github/scripts/hostinger-identity-check.sh      # asserts the deploy target is the Tech360 server
-.github/scripts/hostinger-ssh-setup.sh           # creates ~/.ssh, writes the key, pins the host key
-.github/scripts/hostinger-ssh.sh                 # BatchMode + StrictHostKeyChecking SSH wrapper
-.github/scripts/hostinger-preflight-remote.sh    # read-only server/runtime/database inspection
-.github/scripts/verify-production.sh             # real HTTPS + health verification
-scripts/deploy-hostinger.sh                      # safe deploy: inspect → backup → migrate → build → restart → verify → rollback
-scripts/health-check.sh                          # live verification
+```text
+Pull Request → GitHub Actions CI → merge to main
+  → Hostinger pulls main → npm ci → npm run hostinger:build → npm run start
 ```
 
-**One-time Hostinger + GitHub setup** (full walkthrough in `DEPLOYMENT.md`):
+There is no production SSH, VPS, PM2, rsync, scp, or manual server-copy path. `scripts/deploy-hostinger.sh` is retained only as a fail-fast retirement notice.
 
-1. Hostinger: clone this repo into the application directory, copy `.env.example → .env`, fill production secrets (including the MySQL `DATABASE_URL`).
-2. GitHub → Settings → Environments → **production**, add:
-   `HOSTINGER_HOST`, `HOSTINGER_PORT`, `HOSTINGER_USER`, `HOSTINGER_SSH_KEY`, `HOSTINGER_APP_DIR`.
-   The SSH private key and the database password are entered **only** in
-   GitHub/Hostinger secret storage — never in the repository, chat or YAML.
-3. Push to `main`. GitHub Actions: CI on MySQL → read-only Hostinger preflight →
-   `deploy-hostinger.sh` (preserves the **existing port** and process manager, verified
-   backup + automatic rollback) → `health-check.sh` → HTTPS verification of
-   `https://bdtech360.com/` and `/api/health`.
-
-Hostinger SSH uses port **65002**. There is no port-22 fallback and no
-`VPS_*` secret is read anywhere in the pipeline.
-
-**Rollback** is automatic on failure (ERR trap restores code + DB from `releases/`); manual: `git checkout $(cat releases/last-good-commit.txt) && bash scripts/deploy-hostinger.sh`.
+Hostinger settings and environment requirements are documented in `docs/HOSTINGER_DEPLOYMENT_MATRIX.md` and `docs/HOSTINGER_ENVIRONMENT_VARIABLES.md`.
 
 ## 6. Payments & governance
 

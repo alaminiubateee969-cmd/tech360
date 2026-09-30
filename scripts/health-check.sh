@@ -75,7 +75,7 @@ check "AI operations heartbeat fresh (ACTIVE/operating)" "echo '$HEALTH' | grep 
 echo "────────────────────────────────"
 echo "  $PASS passed · $FAIL failed"
 if [[ $FAIL -gt 0 ]]; then
-  printf "  RESULT: \033[1;31mUNHEALTHY\033[0m — trigger rollback (scripts/deploy-hostinger.sh auto-rolls-back, or restore releases/last-good-commit.txt)"
+  printf "  RESULT: \033[1;31mUNHEALTHY\033[0m — inspect the Hostinger deployment logs and use a normal Git revert; this repository does not perform remote rollback"
   exit 1
 fi
 printf "  RESULT: \033[1;32mHEALTHY\033[0m\n"
