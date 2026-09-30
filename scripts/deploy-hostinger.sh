@@ -50,8 +50,8 @@ log "current commit: $CURRENT_COMMIT"
 # bun/mini-service sidecar.
 DISCOVERED_PORT="${TECH360_PORT:-}"
 if [[ -z "$DISCOVERED_PORT" ]]; then
-  for CAND in $(ss -lntp 2>/dev/null | rg 'next-server|node|bun' | rg -o ':\d+' | tr -d ':' | sort -un); do
-    if curl -sf -m 5 "http://127.0.0.1:$CAND/api/health" 2>/dev/null | rg -q 'tech360-platform'; then
+  for CAND in $(ss -lntp 2>/dev/null | grep -E 'next-server|node|bun' | grep -oE ':[0-9]+' | tr -d ':' | sort -un); do
+    if curl -sf -m 5 "http://127.0.0.1:$CAND/api/health" 2>/dev/null | grep -qE 'tech360-platform'; then
       DISCOVERED_PORT="$CAND"; break
     fi
   done
@@ -63,7 +63,7 @@ log "TECH360_PORT = $TECH360_PORT (preserving the existing port)"
 PM2_OK=0; SYSTEMD_UNIT=""
 command -v pm2 >/dev/null 2>&1 && pm2 pid tech360 >/dev/null 2>&1 && PM2_OK=1 || PM2_OK=0
 if [[ $PM2_OK -eq 0 ]]; then
-  SYSTEMD_UNIT="$(systemctl list-units --type=service --no-legend 2>/dev/null | rg -io 'tech360[a-z0-9-]*\.service' | head -1 || true)"
+  SYSTEMD_UNIT="$(systemctl list-units --type=service --no-legend 2>/dev/null | grep -ioE 'tech360[a-z0-9-]*\.service' | head -1 || true)"
 fi
 if [[ $PM2_OK -eq 1 ]]; then
   log "process manager: PM2 (app 'tech360', pid $(pm2 pid tech360))"
@@ -167,6 +167,7 @@ ROLLBACK() {
   (cd "$APP_PATH" && (command -v bun >/dev/null 2>&1 && bun install --frozen-lockfile || npm ci --no-audit --no-fund)) >/dev/null 2>&1
   (cd "$APP_PATH" && npm run build) >/dev/null 2>&1
   RESTART_APP
+  RESTART_AI_OPS
   sleep 3
   if curl -sf -m 15 "$HEALTH_URL" >/dev/null 2>&1; then
     log "ROLLBACK COMPLETE — previous release is serving again on :$TECH360_PORT"
@@ -175,14 +176,13 @@ ROLLBACK() {
   fi
   exit 1
 }
-trap ROLLBACK ERR
 
 # ------------------------------------------------------------
 # helpers — restart with the DISCOVERED process manager + verify
 # ------------------------------------------------------------
 RESTART_APP() {
   if [[ $PM2_OK -eq 1 ]]; then
-    pm2 restart tech360 --update-env >/dev/null 2>&1 || pm2 start npm --name tech360 --start "npm run start" >/dev/null 2>&1
+    pm2 restart tech360 --update-env >/dev/null 2>&1 || pm2 start npm --name tech360 -- start >/dev/null 2>&1
   elif [[ -n "$SYSTEMD_UNIT" ]]; then
     systemctl restart "$SYSTEMD_UNIT"
   else
@@ -195,6 +195,47 @@ RESTART_APP() {
     fi
   fi
 }
+
+# ------------------------------------------------------------
+# The autonomous AI Operations loop (mini-services/ai-ops) is what keeps the
+# AI Employee workforce actually working: it writes the `ops.heartbeat`
+# setting that /api/health reports as aiOperations ACTIVE.
+#
+# It was never started by this script. On the existing live preview the
+# heartbeat is stale by ~41 hours, i.e. the workforce is deployed but not
+# operating. Start it with the SAME process manager the app uses — nothing
+# is assumed about the host.
+# ------------------------------------------------------------
+RESTART_AI_OPS() {
+  local dir="$APP_PATH/mini-services/ai-ops"
+  [[ -d "$dir" ]] || { warn "mini-services/ai-ops not present — skipping AI ops loop"; return 0; }
+
+  # the worker is bun-first; fall back to node only if bun is absent
+  local runner=""
+  if command -v bun >/dev/null 2>&1; then runner="bun"
+  elif command -v node >/dev/null 2>&1; then runner="node"
+  else warn "neither bun nor node available — cannot start the AI ops loop"; return 0; fi
+
+  if command -v pm2 >/dev/null 2>&1; then
+    pm2 restart tech360-ai-ops --update-env >/dev/null 2>&1 \
+      || pm2 start "$dir/index.ts" --name tech360-ai-ops --interpreter "$runner" >/dev/null 2>&1 \
+      || warn "could not start tech360-ai-ops under PM2"
+    pm2 save >/dev/null 2>&1 || true
+    log "AI operations loop registered with PM2 (tech360-ai-ops)"
+  elif [[ -n "$SYSTEMD_UNIT" ]] && systemctl list-units --type=service --no-legend 2>/dev/null | grep -qiE 'tech360-ai-ops'; then
+    systemctl restart tech360-ai-ops && log "AI operations loop restarted (systemd)"
+  else
+    # no supervisor on this plan — restart the bare process, replacing any old one
+    pkill -f 'mini-services/ai-ops' >/dev/null 2>&1 || true
+    ( cd "$dir" && nohup "$runner" index.ts > "$APP_PATH/ai-ops.log" 2>&1 & )
+    warn "AI operations loop started bare (nohup) — it will not survive a reboot."
+    warn "register it with PM2 or a Hostinger process entry for durability."
+  fi
+}
+
+# Arm the rollback trap only now: ROLLBACK calls RESTART_APP and
+# RESTART_AI_OPS, so it must not be armed before both exist.
+trap ROLLBACK ERR
 
 # ------------------------------------------------------------
 # STEP 2 — fetch + checkout the latest main
@@ -287,6 +328,7 @@ if [[ "${PRESERVED_ENV:-0}" = "1" ]]; then
   log "production .env preserved (repo never owns secrets)"
 fi
 RESTART_APP
+RESTART_AI_OPS
 
 # ------------------------------------------------------------
 # STEP 9 — verify (health + port + HTTP) — failure = rollback
@@ -303,7 +345,7 @@ done
 # port verification — the app MUST be listening on the SAME port,
 # and no second tech360 process may exist
 LISTEN_OK=0
-ss -lntp 2>/dev/null | rg -q ":$TECH360_PORT\b" && LISTEN_OK=1
+ss -lntp 2>/dev/null | grep -qE ":$TECH360_PORT\b" && LISTEN_OK=1
 if [[ $LISTEN_OK -eq 0 ]]; then
   err "expected port :$TECH360_PORT is not listening — refusing to leave a broken deploy"
   false
