@@ -72,26 +72,42 @@ Prisma emits these as literal defaults, which MySQL rejects. Since MySQL 8.0.13
 the same value is legal written as an *expression*, which is also the form
 Prisma introspects back.
 
-Handling: the converter rewrites, for text columns only:
-
-```
-@default("{}")  →  @default(dbgenerated("(_utf8mb4'{}')"))
-```
-
-Semantics are unchanged — the column still defaults to `{}` / `[]`, so the
-existing `create()` calls that omit these fields keep working. No application
-code change was required.
-
 Affected columns: `ScopeOfWork.content`, `Delivery.checklist`, `AiAgent.tools`,
 `AiAgent.permissions`, `PromptTemplate.variables`, `Campaign.metrics`,
 `Campaign.lessons`, `ContentAsset.content`, `ContentAsset.metrics`,
 `ApprovalRequest.payload`, `AutomationLog.steps`, `N8nWorkflow.definition`.
 
-> **Engine constraint:** this form requires **MySQL ≥ 8.0.13**. On MariaDB the
-> literal form would have worked and this expression form would not. The
-> production engine is stated to be MySQL; the exact server version is
-> **still unverified** (see blockers) and is asserted by the CI gate against
-> MySQL 8.0.
+**First attempt — expression defaults (rejected on evidence).** Since MySQL
+8.0.13 the same value is legal written as an expression, so the converter
+initially emitted `@default(dbgenerated("(_utf8mb4'{}')"))`. CI run
+[36725454493](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36725454493)
+proved this **applies correctly** — MySQL stored
+`Delivery.checklist :: text :: default=[_utf8mb4'{}']` — but also proved it is
+unusable: Prisma cannot read expression defaults back during introspection
+([prisma/prisma#2600](https://github.com/prisma/prisma/issues/2600)), so
+`migrate diff` re-emits the identical `ALTER TABLE … MODIFY … DEFAULT (…)`
+forever. The schema would be permanently drifted and no migration could ever
+be proven correct.
+
+**Adopted — no database-level default.** The default is dropped from the
+column and supplied at the call sites that previously relied on it. The stored
+value is byte-for-byte identical, there is zero drift, and it works on MySQL
+5.7, MySQL 8.x and MariaDB alike — so it does not depend on the production
+engine version, which is still unverified.
+
+Eight call sites relied on the database default and now pass it explicitly:
+
+| Site | Field |
+|---|---|
+| `src/lib/journey.ts` ×3 | `Delivery.checklist = '{}'` |
+| `src/app/api/webhooks/n8n/route.ts` | `AutomationLog.steps = '[]'` |
+| `src/app/api/admin/approvals/[id]/decision/route.ts` | `AutomationLog.steps = '[]'` |
+| `src/app/api/admin/content/generate/route.ts` | `ContentAsset.metrics = '{}'` |
+| `prisma/seed.ts` | `N8nWorkflow.definition = '{}'` |
+| `tests/database-workflows.test.ts` | `ScopeOfWork.content = '{}'` |
+
+All other create/upsert sites already supplied the value; this was verified
+field-by-field, and the MySQL CI typecheck enforces it from here on.
 
 ### 3.3 Other differences reviewed
 

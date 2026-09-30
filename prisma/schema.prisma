@@ -193,7 +193,7 @@ model ScopeOfWork {
   version     Int      @default(1)
   status      String   @default("DRAFT") // DRAFT | AI_REVIEWED | AWAITING_ADMIN_APPROVAL | APPROVED | FINAL | SUPERSEDED
   summary     String? @db.Text
-  content     String @default(dbgenerated("(_utf8mb4'{}')")) @db.LongText // JSON: items, timeline, paymentPolicy, deliverables
+  content     String @db.LongText // JSON: items, timeline, paymentPolicy, deliverables
   aiNotes     String? @db.Text // AI review notes / recommended updates
   generatedBy String?  // agent code
   reviewedBy  String?  // admin user id
@@ -370,7 +370,7 @@ model Delivery {
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   status    String   @default("PREPARING") // PREPARING | READY | DELIVERED | CONFIRMED | PARTIAL
-  checklist String @default(dbgenerated("(_utf8mb4'{}')")) @db.Text // JSON: scope, files, docs, deployment, credentials, testing
+  checklist String @db.Text // JSON: scope, files, docs, deployment, credentials, testing
   evidence  String? @db.Text // JSON
   deliveredAt DateTime?
   clientConfirmedAt DateTime?
@@ -507,8 +507,8 @@ model AiAgent {
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   purpose      String @db.Text
   systemPrompt String @db.LongText
-  tools        String @default(dbgenerated("(_utf8mb4'[]')")) @db.Text // JSON array of tool names
-  permissions  String @default(dbgenerated("(_utf8mb4'[]')")) @db.Text // JSON
+  tools        String @db.Text // JSON array of tool names
+  permissions  String @db.Text // JSON
   requiresApproval Boolean @default(false)
   status       String   @default("ACTIVE") // ACTIVE | PAUSED | RETIRED
   model        String   @default("default")
@@ -595,7 +595,7 @@ model PromptTemplate {
   category   String
   agentCode  String?
   template   String @db.LongText
-  variables  String @default(dbgenerated("(_utf8mb4'[]')")) @db.Text // JSON
+  variables  String @db.Text // JSON
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -612,8 +612,8 @@ model Campaign {
   audience  String? @db.Text
   status    String   @default("RESEARCHING") // RESEARCHING | SCORING | SCRIPTING | PRODUCING | PUBLISHED | LEARNING
   hooks     String? @db.Text // JSON A/B hooks
-  metrics   String @default(dbgenerated("(_utf8mb4'{}')")) @db.Text // JSON performance
-  lessons   String @default(dbgenerated("(_utf8mb4'[]')")) @db.Text // JSON self-learning lessons
+  metrics   String @db.Text // JSON performance
+  lessons   String @db.Text // JSON self-learning lessons
   assets    ContentAsset[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -633,10 +633,10 @@ model ContentAsset {
   durationSec Int?
   aspect     String?  // 16:9 | 9:16 | 1:1 | 4:5
   title      String
-  content    String @default(dbgenerated("(_utf8mb4'{}')")) @db.LongText // JSON structured asset
+  content    String @db.LongText // JSON structured asset
   status     String   @default("DRAFT") // DRAFT | APPROVED | PRODUCING | READY | PUBLISHED | FAILED
   safeContent Boolean @default(true)
-  metrics    String @default(dbgenerated("(_utf8mb4'{}')")) @db.Text
+  metrics    String @db.Text
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -655,7 +655,7 @@ model ApprovalRequest {
   client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   projectId   String?
   agentCode   String?
-  payload     String @default(dbgenerated("(_utf8mb4'{}')")) @db.LongText // JSON: generated content, target channel, risk
+  payload     String @db.LongText // JSON: generated content, target channel, risk
   risk        String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
   status      String   @default("PENDING") // PENDING | APPROVED | REJECTED | EXECUTED | FAILED
   requestedBy String?  // agent code or user id
@@ -720,7 +720,7 @@ model AutomationLog {
   projectId     String?
   input         String? @db.LongText // JSON
   output        String? @db.LongText // JSON
-  steps         String @default(dbgenerated("(_utf8mb4'[]')")) @db.LongText // JSON step log
+  steps         String @db.LongText // JSON step log
   status        String   @default("RUNNING") // RUNNING | SUCCESS | FAILED | AWAITING_APPROVAL | RETRYING
   attempts      Int      @default(1)
   error         String?
@@ -825,7 +825,7 @@ model N8nWorkflow {
   description String? @db.Text
   category    String
   trigger     String?
-  definition  String @default(dbgenerated("(_utf8mb4'{}')")) @db.LongText // importable n8n JSON (no secrets)
+  definition  String @db.LongText // importable n8n JSON (no secrets)
   status      String   @default("AVAILABLE") // AVAILABLE | IMPORTED | RUNNING | ERROR
   lastRunAt   DateTime?
   lastRunStatus String?

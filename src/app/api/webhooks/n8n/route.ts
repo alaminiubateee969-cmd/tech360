@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const clientRef = sanitizeText(raw.clientId, 40)
 
   try {
-    const log = await db.automationLog.create({ data: { workflow: `N8N:${workflow || action}`, trigger: 'WEBHOOK', correlationId: `n8n-${Date.now()}`, status: 'RUNNING', input: JSON.stringify(raw).slice(0, 4000) } })
+    const log = await db.automationLog.create({ data: { workflow: `N8N:${workflow || action}`, trigger: 'WEBHOOK', correlationId: `n8n-${Date.now()}`, status: 'RUNNING', steps: '[]', input: JSON.stringify(raw).slice(0, 4000) } })
 
     const findClient = async () => {
       const c = await db.client.findFirst({ where: { OR: [{ id: clientRef }, { clientId: clientRef }] } })

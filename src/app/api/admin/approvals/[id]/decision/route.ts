@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         await db.automationLog.create({
           data: {
             workflow: `APPROVAL:${approval.type}`, trigger: 'ADMIN_APPROVAL', correlationId: `appr-${approval.id}`,
-            clientId: approval.clientId, status: 'SUCCESS',
+            clientId: approval.clientId, status: 'SUCCESS', steps: '[]',
             input: JSON.stringify({ approvalId: approval.id, type: approval.type }),
             output: JSON.stringify({ approved: true, note }),
           },

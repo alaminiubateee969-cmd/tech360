@@ -164,7 +164,7 @@ async function main() {
     await db.n8nWorkflow.upsert({
       where: { code: w.code },
       update: { name: w.name, category: w.category, trigger: w.trigger, description: w.description },
-      create: { code: w.code, name: w.name, category: w.category, trigger: w.trigger, description: w.description },
+      create: { code: w.code, name: w.name, category: w.category, trigger: w.trigger, description: w.description, definition: '{}' },
     })
   }
   console.log(`  ✓ ${N8N_WORKFLOWS.length} n8n workflows registered`)

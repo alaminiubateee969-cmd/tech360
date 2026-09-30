@@ -68,17 +68,21 @@ for (const raw of lines) {
         // idempotent: drop any previously-applied @db.* for this field
         attrs = attrs.replace(/\s*@db\.\w+(\([^)]*\))?/g, '').trimEnd()
 
-        // MySQL rejects literal DEFAULTs on BLOB/TEXT/JSON columns (errno 1101).
-        // Since MySQL 8.0.13 the same value is legal when written as an
-        // expression, which is what Prisma introspects back as
-        // `(_utf8mb4'...')`. Rewriting here keeps the column default — and
-        // therefore `create()` calls that omit the field — working unchanged,
-        // instead of silently breaking at migration time.
+        // MySQL rejects literal DEFAULTs on BLOB/TEXT/JSON columns (errno 1101),
+        // so a text column simply cannot carry one.
+        //
+        // The expression form MySQL 8.0.13+ accepts, `DEFAULT (_utf8mb4'{}')`,
+        // does apply cleanly — verified in CI — but Prisma cannot read
+        // expression defaults back during introspection (prisma/prisma#2600).
+        // The diff therefore re-emits the same ALTER forever, so the schema is
+        // permanently "drifted" and no migration can ever be proven correct.
+        //
+        // We drop the database-level default instead. The value is supplied at
+        // the (few) call sites that previously relied on it, which keeps the
+        // stored value identical while working on MySQL 5.7, 8.x and MariaDB
+        // alike, with zero drift.
         if (want === '@db.Text' || want === '@db.LongText') {
-          attrs = attrs.replace(
-            /@default\("((?:[^"\\]|\\.)*)"\)/g,
-            (_m, lit) => `@default(dbgenerated("(_utf8mb4'${lit}')"))`,
-          )
+          attrs = attrs.replace(/\s*@default\((?:"(?:[^"\\]|\\.)*"|[^)]*)\)/g, '').trimEnd()
         }
 
         attrs = attrs ? `${attrs} ${want}` : want

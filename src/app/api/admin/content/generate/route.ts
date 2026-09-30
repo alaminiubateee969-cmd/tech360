@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     data: {
       type, language, aspect, durationSec, title: topic.slice(0, 200),
       content: JSON.stringify(run.json ?? { raw: run.output }),
-      status: 'DRAFT', safeContent: true,
+      status: 'DRAFT', safeContent: true, metrics: '{}',
     },
   })
   await audit({ actor: g.user.email, action: 'CONTENT_GENERATED', userId: g.user.id, entityId: asset.id, details: { type, topic: topic.slice(0, 100) } })
