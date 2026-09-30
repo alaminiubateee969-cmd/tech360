@@ -108,8 +108,27 @@ async function main() {
   console.log('Seeding Tech360 platform...')
 
   // 1) Super Admin + staff roles
+  //
+  // The bootstrap password must never come from a literal in this file: this
+  // repository is on GitHub, so a committed default is a publicly known
+  // Super Admin credential the moment the seed runs anywhere reachable.
+  // In production ADMIN_PASSWORD is mandatory; the dev fallback is used only
+  // outside production and the account is always flagged mustChangePassword.
   const adminEmail = (process.env.ADMIN_EMAIL ?? 'admin@bdtech360.com').toLowerCase()
-  const adminPassword = process.env.ADMIN_PASSWORD ?? 'Tech360@2026'
+  const isProduction = process.env.NODE_ENV === 'production'
+  const suppliedPassword = process.env.ADMIN_PASSWORD
+
+  if (isProduction && !suppliedPassword) {
+    console.error('REFUSING TO SEED: ADMIN_PASSWORD is not set.')
+    console.error('Set a strong ADMIN_PASSWORD in the Hostinger environment before seeding production.')
+    console.error('It is never read from a file and never committed.')
+    process.exit(1)
+  }
+  if (isProduction && suppliedPassword && suppliedPassword.length < 12) {
+    console.error('REFUSING TO SEED: ADMIN_PASSWORD is shorter than 12 characters.')
+    process.exit(1)
+  }
+  const adminPassword = suppliedPassword ?? 'dev-only-change-me'
   await db.user.upsert({
     where: { email: adminEmail },
     update: {},
@@ -122,7 +141,7 @@ async function main() {
       mustChangePassword: true,
     },
   })
-  console.log(`  ✓ Super Admin: ${adminEmail} (password from ADMIN_PASSWORD env or default; must change on first login)`)
+  console.log(`  ✓ Super Admin: ${adminEmail} (password from ADMIN_PASSWORD${isProduction ? '' : ' or dev fallback'}; must change on first login)`)
 
   // 2) Departments (110)
   for (const d of DEPARTMENTS) {

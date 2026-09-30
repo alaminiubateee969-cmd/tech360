@@ -153,6 +153,36 @@ process that cannot reach its database.
 
 ---
 
+## 5b. First Super Admin account
+
+The bootstrap already exists — `prisma/seed.ts` upserts a `SUPER_ADMIN` user
+and flags it `mustChangePassword`, so the owner is forced to change it at
+first login.
+
+It previously fell back to a password literal committed in this repository,
+which on a public GitHub repo is a publicly known Super Admin credential the
+moment the seed runs. The seed now **refuses to run in production** unless
+`ADMIN_PASSWORD` is set and at least 12 characters.
+
+In the Hostinger app environment set:
+
+| Variable | Value |
+|---|---|
+| `ADMIN_EMAIL` | the owner's address, e.g. `info@bdtech360.com` |
+| `ADMIN_PASSWORD` | a strong temporary password, **entered only in the Hostinger UI** |
+
+Then run the seed once, from the Hostinger app shell:
+
+```bash
+npm run db:seed
+```
+
+Sign in, change the password immediately, and delete `ADMIN_PASSWORD` from the
+environment. No password is ever written to the repository, a workflow file,
+a log, or this document.
+
+---
+
 ## 6. Verification (run after the Node app is live)
 
 ```bash
