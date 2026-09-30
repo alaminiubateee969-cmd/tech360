@@ -12,9 +12,9 @@
 
 **CI gate** (`.github/workflows/deploy-production.yml`): every push is scanned for secret patterns (`sk_live_…`, `sk_test_…`, `whsec_…`, `BEGIN PRIVATE KEY`, `ghp_…`, AWS key ids) **before** anything is deployed; a hit fails the pipeline. An accidental `.env` in the tree also fails the pipeline.
 
-**Production lives on the VPS** — `scripts/deploy-vps.sh` explicitly preserves the VPS `.env` across deployments (repo updates source only). GitHub Actions holds only the SSH deployment key, in the encrypted `production` environment.
+**Production lives on the Hostinger server** — `scripts/deploy-hostinger.sh` explicitly preserves the server `.env` across deployments (repo updates source only). GitHub Actions holds only the SSH deployment key, in the encrypted `production` environment.
 
-**Rotation**: change a value in the VPS `.env` and restart; for the dev sandbox regenerate `SESSION_SECRET` / `OPS_SECRET` / `PORTAL_SECRET` / `NOTIFY_RELAY_TOKEN` (dev defaults exist for local runs only and are documented as must-change in `.env.example`).
+**Rotation**: change a value in the Hostinger `.env` and restart; for the dev sandbox regenerate `SESSION_SECRET` / `OPS_SECRET` / `PORTAL_SECRET` / `NOTIFY_RELAY_TOKEN` (dev defaults exist for local runs only and are documented as must-change in `.env.example`).
 
 ## 2. Authentication & authorization
 

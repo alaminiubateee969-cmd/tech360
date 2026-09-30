@@ -26,7 +26,7 @@ cat > /tmp/tech360-archive-README.md <<EOF
 Generated: ${STAMP}
 See README.md (included) for full setup, environment, deployment, rollback docs.
 This archive = every project file: src, prisma, db, public, mini-services,
-deployment, n8n, scripts (VPS deploy + health-check + archive builder),
+deployment, n8n, scripts (Hostinger deploy + health-check + archive builder),
 .github/workflows (CI/CD), examples, tests, .zscripts, agent-ctx, upload,
 DEPLOYMENT.md, SECURITY.md, PAYMENT.md, OFFICIAL-DOCUMENTS.md, worklog.md,
 .env.example (placeholders only — the real .env is NEVER in the archive).

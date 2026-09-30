@@ -47,7 +47,7 @@ cd mini-services/notify-relay && bun install && bun run dev   # :3032 socket.io 
 
 - Prisma + SQLite (`db/custom.db`), 38 models — see `prisma/schema.prisma`.
 - Non-destructive alignment in dev: `bun run db:push`.
-- Production migration: `npx prisma migrate deploy` (run by `scripts/deploy-vps.sh`).
+- Production migration: `npx prisma migrate deploy` (run by `scripts/deploy-hostinger.sh`).
 - Seed (`bun run db:seed`) is idempotent-safe for first boot; it never overwrites production records.
 
 ## 4. Build · test · verify
@@ -62,23 +62,38 @@ bash scripts/health-check.sh   # end-to-end post-deploy verification
 
 There is no separate unit-test suite (QA is real-browser driven; see `worklog.md` for the full E2E evidence trail). CI = secret scan → install → prisma generate → lint → typecheck → build.
 
-## 5. Production deployment (GitHub → VPS)
+## 5. Production deployment (GitHub → Hostinger)
 
 **Repository layout for CI/CD:**
 
 ```
-.github/workflows/deploy-production.yml   # push to main → CI → SSH deploy → health check
-scripts/deploy-vps.sh                     # safe deploy: inspect → backup → pull → build → restart → verify → rollback
-scripts/health-check.sh                   # 7-point live verification
+.github/workflows/deploy-production.yml          # push to main → CI (MySQL) → preflight → deploy → HTTPS verify
+.github/workflows/mysql-baseline.yml             # generates + proves the Prisma MySQL baseline
+.github/scripts/hostinger-identity-check.sh      # asserts the deploy target is the Tech360 server
+.github/scripts/hostinger-ssh-setup.sh           # creates ~/.ssh, writes the key, pins the host key
+.github/scripts/hostinger-ssh.sh                 # BatchMode + StrictHostKeyChecking SSH wrapper
+.github/scripts/hostinger-preflight-remote.sh    # read-only server/runtime/database inspection
+.github/scripts/verify-production.sh             # real HTTPS + health verification
+scripts/deploy-hostinger.sh                      # safe deploy: inspect → backup → migrate → build → restart → verify → rollback
+scripts/health-check.sh                          # live verification
 ```
 
-**One-time VPS + GitHub setup** (full walkthrough in `DEPLOYMENT.md`):
+**One-time Hostinger + GitHub setup** (full walkthrough in `DEPLOYMENT.md`):
 
-1. VPS: clone this repo to e.g. `~/tech360`, copy `.env.example → .env`, fill production secrets.
-2. GitHub: create the `production` **environment** and secrets `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT`, `VPS_APP_PATH`, `TECH360_DOMAIN`, `TECH360_PORT`.
-3. Push to `main`. GitHub Actions: CI → SSH → `deploy-vps.sh` (preserves the **existing port** and process manager, backs up + rolls back automatically) → `health-check.sh`.
+1. Hostinger: clone this repo into the application directory, copy `.env.example → .env`, fill production secrets (including the MySQL `DATABASE_URL`).
+2. GitHub → Settings → Environments → **production**, add:
+   `HOSTINGER_HOST`, `HOSTINGER_PORT`, `HOSTINGER_USER`, `HOSTINGER_SSH_KEY`, `HOSTINGER_APP_DIR`.
+   The SSH private key and the database password are entered **only** in
+   GitHub/Hostinger secret storage — never in the repository, chat or YAML.
+3. Push to `main`. GitHub Actions: CI on MySQL → read-only Hostinger preflight →
+   `deploy-hostinger.sh` (preserves the **existing port** and process manager, verified
+   backup + automatic rollback) → `health-check.sh` → HTTPS verification of
+   `https://bdtech360.com/` and `/api/health`.
 
-**Rollback** is automatic on failure (ERR trap restores code + DB from `releases/`); manual: `git checkout $(cat releases/last-good-commit.txt) && bash scripts/deploy-vps.sh`.
+Hostinger SSH uses port **65002**. There is no port-22 fallback and no
+`VPS_*` secret is read anywhere in the pipeline.
+
+**Rollback** is automatic on failure (ERR trap restores code + DB from `releases/`); manual: `git checkout $(cat releases/last-good-commit.txt) && bash scripts/deploy-hostinger.sh`.
 
 ## 6. Payments & governance
 

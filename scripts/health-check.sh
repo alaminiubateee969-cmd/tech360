@@ -75,7 +75,7 @@ check "AI operations heartbeat fresh (ACTIVE/operating)" "echo '$HEALTH' | rg -q
 echo "────────────────────────────────"
 echo "  $PASS passed · $FAIL failed"
 if [[ $FAIL -gt 0 ]]; then
-  printf "  RESULT: \033[1;31mUNHEALTHY\033[0m — trigger rollback (scripts/deploy-vps.sh auto-rolls-back, or restore releases/last-good-commit.txt)"
+  printf "  RESULT: \033[1;31mUNHEALTHY\033[0m — trigger rollback (scripts/deploy-hostinger.sh auto-rolls-back, or restore releases/last-good-commit.txt)"
   exit 1
 fi
 printf "  RESULT: \033[1;32mHEALTHY\033[0m\n"

@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
 # ============================================================
-# TECH360 — VPS DEPLOYMENT SCRIPT (safe, port-preserving, rollback-ready)
+# TECH360 — HOSTINGER PRODUCTION DEPLOYMENT
+# (safe, port-preserving, rollback-ready)
 #
-# Run ON THE VPS (usually via the GitHub Actions SSH step, or manually):
-#   bash scripts/deploy-vps.sh
+# Runs ON the Hostinger server, normally via the GitHub Actions SSH step:
+#   bash scripts/deploy-hostinger.sh
 #
 # Contract (see DEPLOYMENT.md):
 #   1. STRICT mode — any failure triggers automatic rollback to the
 #      previous known-good release; production is never left broken.
-#   2. INSPECT BEFORE MODIFY — discovers the current process manager
-#      (PM2 / systemd / bare node) and the CURRENT TECH360 PORT, and
-#      keeps both. Never installs a second process manager, never
-#      starts a second app instance on another port.
-#   3. The production .env is NEVER overwritten by the repo — the VPS
+#   2. INSPECT BEFORE MODIFY — discovers how the app is ACTUALLY run on
+#      this Hostinger account (Hostinger Node.js app / Passenger / pm2 /
+#      bare node) and the CURRENT port, and keeps both. Nothing is
+#      assumed: no systemd, no nginx, no Docker, no supervisor.
+#   3. The production .env is NEVER overwritten by the repo — the server
 #      keeps its own secrets. Only source code is updated.
-#   4. The database is never destroyed. Prisma migrations run with
-#      deploy-safe settings; data is backed up first.
+#   4. The database is never destroyed. A verified backup is taken first
+#      and only reviewed Prisma migrations are replayed.
 #
-# Environment (set on the VPS or by the workflow):
+# Environment (set on the server or by the workflow):
 #   TECH360_APP_PATH   (default: this script's repo checkout)
 #   TECH360_DOMAIN     (default: bdtech360.com — informational)
 #   TECH360_PORT       (default: auto-discovered from the RUNNING app)
@@ -320,4 +321,4 @@ log "  commit:  $(git rev-parse --short HEAD)"
 log "  port:    :$TECH360_PORT (unchanged)"
 log "  health:  $HEALTH_URL → OK"
 log "  domain:  https://$DOMAIN (reverse proxy untouched)"
-log "  rollback: bash scripts/health-check.sh && scripts/deploy-vps.sh (auto-rollback armed)"
+log "  rollback: bash scripts/health-check.sh && scripts/deploy-hostinger.sh (auto-rollback armed)"

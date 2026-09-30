@@ -1,13 +1,13 @@
-# DEPLOYMENT — TECH360 → VPS (GitHub Actions)
+# DEPLOYMENT — TECH360 → Hostinger (GitHub Actions)
 
-This is the **VPS deployment path** (the original Google Cloud Run path stays in `deployment/` — both are supported; pick one).
+This is the **Hostinger deployment path** (the original Google Cloud Run path stays in `deployment/` — both are supported; pick one).
 
 ```
 Developer / AI Builder
   → git push origin main
   → GitHub Actions (.github/workflows/deploy-production.yml)
       → CI: secret scan → bun install → prisma generate → lint → tsc → build
-      → Deploy: SSH to VPS → scripts/deploy-vps.sh
+      → Deploy: SSH to Hostinger → scripts/deploy-hostinger.sh
           → inspect current state → backup → fetch → install → build → migrate
           → restart THE EXISTING process → verify port + health
       → health-check.sh (7-point live verification)
@@ -16,7 +16,7 @@ Developer / AI Builder
 
 ---
 
-## 1. Inspect the VPS BEFORE the first deploy (the script does this too)
+## 1. Inspect the Hostinger server BEFORE the first deploy (the script does this too)
 
 ```bash
 ssh your-vps
@@ -31,17 +31,17 @@ node -v && npm -v
 
 - The **existing port is preserved** (`TECH360_PORT` auto-discovered; only pin it in secrets if you must).
 - The **existing process manager is preserved** (PM2 app `tech360`, or the systemd unit, or bare node on first deploy).
-- The **production `.env` is never touched** — GitHub updates source only; the VPS owns its secrets.
+- The **production `.env` is never touched** — GitHub updates source only; the Hostinger server owns its secrets.
 - The **database is never destroyed** — backed up before every deploy, restored on rollback.
 - **One instance only** — never starts a second Tech360 process.
 
-## 2. One-time setup on the VPS
+## 2. One-time setup on the Hostinger server
 
 ```bash
 # 1. code
 git clone https://github.com/<owner>/tech360-platform.git ~/tech360 && cd ~/tech360
 
-# 2. production env (stays on the VPS forever — never commit it)
+# 2. production env (stays on the Hostinger server forever — never commit it)
 cp .env.example .env && nano .env
 #    DATABASE_URL, SESSION_SECRET, OPS_SECRET, PORTAL_SECRET, NOTIFY_RELAY_TOKEN,
 #    APP_PUBLIC_URL=https://bdtech360.com, ADMIN_PASSWORD, + any channel/gateway creds
@@ -69,11 +69,11 @@ pm2 start npm --name tech360 -- start && pm2 save && pm2 startup
 
 | Secret | Value |
 |---|---|
-| `VPS_HOST` | server IP/hostname |
-| `VPS_USER` | SSH user that owns the app directory |
-| `VPS_SSH_KEY` | **private** deploy key (`ssh-keygen -t ed25519 -f tech360-deploy`; public part → VPS `~/.ssh/authorized_keys`) |
-| `VPS_PORT` | SSH port (usually 22) |
-| `VPS_APP_PATH` | e.g. `/home/deploy/tech360` |
+| `HOSTINGER_HOST` | server IP/hostname |
+| `HOSTINGER_USER` | SSH user that owns the app directory |
+| `HOSTINGER_SSH_KEY` | **private** deploy key (`ssh-keygen -t ed25519 -f tech360-deploy`; public part → Hostinger `~/.ssh/authorized_keys`) |
+| `HOSTINGER_PORT` | SSH port (usually 22) |
+| `HOSTINGER_APP_DIR` | e.g. `/home/deploy/tech360` |
 | `TECH360_DOMAIN` | e.g. `bdtech360.com` (informational) |
 | `TECH360_PORT` | **optional** — pin only if auto-discovery is unsuitable |
 
@@ -81,7 +81,7 @@ pm2 start npm --name tech360 -- start && pm2 save && pm2 startup
 
 ## 4. What the deploy script does (and when it rolls back)
 
-`scripts/deploy-vps.sh` steps: inspect → backup (git bundle + `db/custom.db` + env fingerprint) → fetch + checkout → **preserve `.env`** → `bun install --frozen-lockfile` → lint + typecheck → `npm run build` → `prisma migrate deploy` → restart existing process → verify (health 200, port listening, homepage 200).
+`scripts/deploy-hostinger.sh` steps: inspect → backup (git bundle + `db/custom.db` + env fingerprint) → fetch + checkout → **preserve `.env`** → `bun install --frozen-lockfile` → lint + typecheck → `npm run build` → `prisma migrate deploy` → restart existing process → verify (health 200, port listening, homepage 200).
 
 **Any step fails ⇒ automatic rollback:** code restored to `releases/last-good-commit.txt`, database restored from the pre-deploy backup, dependencies + build rebuilt, process restarted, health re-verified. Production is never left broken.
 
@@ -134,10 +134,10 @@ server {
 ```bash
 cd ~/tech360
 git checkout $(cat releases/last-good-commit.txt)   # or any prior commit
-bash scripts/deploy-vps.sh                          # rebuild + restart + verify
+bash scripts/deploy-hostinger.sh                          # rebuild + restart + verify
 # DB restore: cp releases/db-<timestamp>.bak db/custom.db  (restart after)
 ```
 
 ## 8. Cloud Run alternative
 
-See `deployment/` (cloudbuild.yaml, deploy.sh, scheduler.md — Cloud Scheduler replaces the ai-ops mini-service with `OPS_SECRET`-authenticated POSTs to `/api/ops/cycle`). Choose this path if you prefer managed infrastructure; the VPS path above is the GitHub-Actions-native route.
+See `deployment/` (cloudbuild.yaml, deploy.sh, scheduler.md — Cloud Scheduler replaces the ai-ops mini-service with `OPS_SECRET`-authenticated POSTs to `/api/ops/cycle`). Choose this path if you prefer managed infrastructure; the Hostinger server path above is the GitHub-Actions-native route.

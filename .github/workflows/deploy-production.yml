@@ -172,9 +172,10 @@ jobs:
 
   # ------------------------------------------------------------------
   # PREFLIGHT — read-only Hostinger inspection. Mutates nothing.
+  # Establishes HOSTINGER_SSH_OK. Deployment cannot run without it.
   # ------------------------------------------------------------------
   preflight:
-    name: Preflight — Hostinger (read-only)
+    name: Preflight → Hostinger (read-only)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: ci
     runs-on: ubuntu-24.04
@@ -184,51 +185,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Required deployment secrets are present
+      - name: Validate the Hostinger deployment identity
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
           HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
           HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
           HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
-        run: |
-          fail=0
-          for v in HOSTINGER_HOST HOSTINGER_PORT HOSTINGER_USER HOSTINGER_SSH_KEY HOSTINGER_APP_DIR; do
-            if [ -z "${!v}" ]; then echo "::error::secret $v is not set"; fail=1; else echo "✓ $v is set"; fi
-          done
-          # the app directory must be absolute — never guessed, never relative
-          case "$HOSTINGER_APP_DIR" in
-            /*) echo "✓ HOSTINGER_APP_DIR is absolute" ;;
-            "") ;;
-            *) echo "::error::HOSTINGER_APP_DIR must be an absolute path"; fail=1 ;;
-          esac
-          # Hostinger SSH is 65002; port 22 is not used for this deployment
-          if [ -n "$HOSTINGER_PORT" ] && [ "$HOSTINGER_PORT" = "22" ]; then
-            echo "::error::port 22 is not the Hostinger SSH port — refusing"; fail=1
-          fi
-          exit $fail
+        run: bash .github/scripts/hostinger-identity-check.sh
 
-      - name: Prepare the deployment SSH key (strict host verification)
+      - name: Prepare the Hostinger SSH key
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
           HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
-        run: |
-          set -euo pipefail
-          [ -n "$HOSTINGER_SSH_KEY" ] || { echo "::error::HOSTINGER_SSH_KEY is empty"; exit 1; }
-          [ -n "$HOSTINGER_HOST" ]    || { echo "::error::HOSTINGER_HOST is empty"; exit 1; }
-          mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
-          printf '%s\n' "$HOSTINGER_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/id_tech360"
-          chmod 600 "$HOME/.ssh/id_tech360"
-          : > "$HOME/.ssh/known_hosts_tech360"; chmod 600 "$HOME/.ssh/known_hosts_tech360"
-          ssh-keyscan -T 20 -p "$HOSTINGER_PORT" "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts_tech360" 2>/dev/null
-          if [ ! -s "$HOME/.ssh/known_hosts_tech360" ]; then
-            echo "::error::could not fetch the host key from $HOSTINGER_HOST:$HOSTINGER_PORT"
-            exit 1
-          fi
-          echo "✓ host key pinned ($(wc -l < "$HOME/.ssh/known_hosts_tech360") entries)"
+        run: bash .github/scripts/hostinger-ssh-setup.sh
 
-      - name: Inspect the server (read-only — changes nothing)
+      - name: Inspect the Hostinger server (read-only)
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
@@ -236,68 +209,20 @@ jobs:
           HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
         run: |
           set -euo pipefail
-          ssh -i "$HOME/.ssh/id_tech360" \
-              -p "$HOSTINGER_PORT" \
-              -o BatchMode=yes \
-              -o StrictHostKeyChecking=yes \
-              -o UserKnownHostsFile="$HOME/.ssh/known_hosts_tech360" \
-              -o ConnectTimeout=20 \
-              "$HOSTINGER_USER@$HOSTINGER_HOST" \
-              "APP_DIR='$HOSTINGER_APP_DIR' bash -s" <<'REMOTE'
-          set -uo pipefail
-          echo "── identity ─────────────────────────────"
-          echo "hostname : $(hostname 2>/dev/null || echo '?')"
-          echo "user     : $(id -un) (uid $(id -u))"
-          echo "home     : $HOME"
-          echo "kernel   : $(uname -srm 2>/dev/null || echo '?')"
-          echo "── runtime ──────────────────────────────"
-          for b in node npm bun git curl rsync mysql mysqldump pm2 systemctl passenger; do
-            p="$(command -v "$b" 2>/dev/null || true)"
-            printf '%-10s %s\n' "$b" "${p:-— not installed}"
-          done
-          echo "node     : $(node -v 2>/dev/null || echo '—')"
-          echo "npm      : $(npm -v 2>/dev/null || echo '—')"
-          echo "── application directory ────────────────"
-          if [ -d "$APP_DIR" ]; then
-            echo "path     : $APP_DIR"
-            echo "owner    : $(stat -c '%U:%G %a' "$APP_DIR" 2>/dev/null || echo '?')"
-            echo "git      : $(git -C "$APP_DIR" rev-parse --short HEAD 2>/dev/null || echo 'not a git checkout')"
-            echo "branch   : $(git -C "$APP_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '—')"
-            for f in package.json prisma/schema.prisma scripts/deploy-vps.sh scripts/health-check.sh; do
-              [ -e "$APP_DIR/$f" ] && echo "have     : $f" || echo "MISSING  : $f"
-            done
-            [ -d "$APP_DIR/prisma/migrations" ] && echo "have     : prisma/migrations ($(ls -1 "$APP_DIR/prisma/migrations" 2>/dev/null | wc -l) entries)" || echo "MISSING  : prisma/migrations"
-            # presence + scheme only — the value is never printed
-            if [ -f "$APP_DIR/.env" ]; then
-              echo "env      : present ($(stat -c '%a' "$APP_DIR/.env" 2>/dev/null))"
-              if grep -q '^DATABASE_URL=' "$APP_DIR/.env" 2>/dev/null; then
-                echo "db scheme: $(sed -n 's|^DATABASE_URL="\{0,1\}\([a-z0-9+]*\):.*|\1|p' "$APP_DIR/.env" | head -1)"
-              else
-                echo "db scheme: DATABASE_URL not set in .env"
-              fi
-            else
-              echo "env      : MISSING"
-            fi
-          else
-            echo "::error::application directory '$APP_DIR' does not exist on the server"
-            exit 1
-          fi
-          echo "── capacity ─────────────────────────────"
-          df -h "$APP_DIR" 2>/dev/null | tail -1
-          echo "── listeners ────────────────────────────"
-          (ss -lntp 2>/dev/null || netstat -lntp 2>/dev/null || echo 'no socket tool') | head -15
-          echo "── preflight completed (nothing modified) ──"
-          REMOTE
+          trap 'rm -f "$HOME/.ssh/id_hostinger_tech360"' EXIT
+          REMOTE_ENV="APP_DIR='$HOSTINGER_APP_DIR'" \
+            bash .github/scripts/hostinger-ssh.sh \
+            < .github/scripts/hostinger-preflight-remote.sh
 
-      - name: Clean up the key
+      - name: Remove the deployment key
         if: always()
-        run: rm -f "$HOME/.ssh/id_tech360" "$HOME/.ssh/known_hosts_tech360"
+        run: rm -f "$HOME/.ssh/id_hostinger_tech360" "$HOME/.ssh/known_hosts_hostinger_tech360"
 
   # ------------------------------------------------------------------
-  # DEPLOY — only after CI (MySQL) and preflight both pass
+  # DEPLOY — only after CI (MySQL) and the read-only preflight both pass
   # ------------------------------------------------------------------
   deploy:
-    name: Deploy → Hostinger (existing port, auto-rollback)
+    name: Deploy → Hostinger Production
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [ci, preflight]
     runs-on: ubuntu-24.04
@@ -307,23 +232,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Prepare the deployment SSH key (strict host verification)
+      - name: Validate the Hostinger deployment identity
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
+        run: bash .github/scripts/hostinger-identity-check.sh
+
+      - name: Prepare the Hostinger SSH key
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
           HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
-        run: |
-          set -euo pipefail
-          [ -n "$HOSTINGER_SSH_KEY" ] || { echo "::error::HOSTINGER_SSH_KEY is empty"; exit 1; }
-          [ -n "$HOSTINGER_HOST" ]    || { echo "::error::HOSTINGER_HOST is empty"; exit 1; }
-          mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
-          printf '%s\n' "$HOSTINGER_SSH_KEY" | tr -d '\r' > "$HOME/.ssh/id_tech360"
-          chmod 600 "$HOME/.ssh/id_tech360"
-          : > "$HOME/.ssh/known_hosts_tech360"; chmod 600 "$HOME/.ssh/known_hosts_tech360"
-          ssh-keyscan -T 20 -p "$HOSTINGER_PORT" "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts_tech360" 2>/dev/null
-          [ -s "$HOME/.ssh/known_hosts_tech360" ] || { echo "::error::host key fetch failed"; exit 1; }
+        run: bash .github/scripts/hostinger-ssh-setup.sh
 
-      - name: Deploy — backup, migrate, build, restart, verify, rollback on failure
+      - name: Deploy — backup, migrate, build, restart, verify, auto-rollback
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
@@ -332,14 +257,9 @@ jobs:
           DEPLOY_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          ssh -i "$HOME/.ssh/id_tech360" \
-              -p "$HOSTINGER_PORT" \
-              -o BatchMode=yes \
-              -o StrictHostKeyChecking=yes \
-              -o UserKnownHostsFile="$HOME/.ssh/known_hosts_tech360" \
-              -o ConnectTimeout=20 \
-              "$HOSTINGER_USER@$HOSTINGER_HOST" \
-              "APP_DIR='$HOSTINGER_APP_DIR' DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
+          trap 'rm -f "$HOME/.ssh/id_hostinger_tech360"' EXIT
+          REMOTE_ENV="APP_DIR='$HOSTINGER_APP_DIR' DEPLOY_SHA='$DEPLOY_SHA'" \
+            bash .github/scripts/hostinger-ssh.sh <<'REMOTE'
           set -Eeuo pipefail
           cd "$APP_DIR"
           export TECH360_APP_PATH="$PWD"
@@ -347,22 +267,13 @@ jobs:
           # deploy the exact commit CI validated — never a moving branch ref
           git fetch --no-tags origin "$DEPLOY_SHA"
           git checkout -f "$DEPLOY_SHA"
-          bash scripts/deploy-vps.sh
+          bash scripts/deploy-hostinger.sh
           bash scripts/health-check.sh
           REMOTE
-          echo "deployed ✅"
 
-      - name: Public verification (HTTPS + health identity)
-        run: |
-          set -euo pipefail
-          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 https://bdtech360.com/)
-          echo "https://bdtech360.com/ → $code"
-          [ "$code" = "200" ] || { echo "::error::site did not return 200"; exit 1; }
-          body=$(curl -sS --max-time 30 https://bdtech360.com/api/health)
-          echo "$body"
-          echo "$body" | grep -q 'tech360-platform' \
-            || { echo "::error::health endpoint did not identify as tech360-platform"; exit 1; }
+      - name: Verify production over HTTPS
+        run: bash .github/scripts/verify-production.sh
 
-      - name: Clean up the key
+      - name: Remove the deployment key
         if: always()
-        run: rm -f "$HOME/.ssh/id_tech360" "$HOME/.ssh/known_hosts_tech360"
+        run: rm -f "$HOME/.ssh/id_hostinger_tech360" "$HOME/.ssh/known_hosts_hostinger_tech360"
