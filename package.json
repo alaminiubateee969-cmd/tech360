@@ -107,6 +107,6 @@
     "seed": "bun prisma/seed.ts"
   },
   "engines": {
-    "node": ">=20.0.0 <25"
+    "node": ">=22.0.0 <23"
   }
 }

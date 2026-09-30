@@ -87,6 +87,20 @@ jobs:
           if [ -f .env ]; then echo "::error::.env must never be committed"; exit 1; fi
           echo "clean: .env not committed"
 
+      - name: Setup Node.js 22 (the Hostinger production runtime)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Hostinger installs with npm on Node 22. Prove that exact path works
+      # here, against the committed package-lock.json, or the first real
+      # deployment is the first time it is ever exercised.
+      - name: npm ci on Node 22 (mirrors Hostinger's install step)
+        run: |
+          node --version
+          npm --version
+          npm ci --no-audit --no-fund
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:

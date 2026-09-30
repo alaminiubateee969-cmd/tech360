@@ -64,7 +64,7 @@ would delete the CRM, the client portal, the admin panel and the AI workforce.
    | Setting | Value |
    |---|---|
    | Branch | `main` |
-   | Node.js version | **20** |
+   | Node.js version | **22** |
    | Root directory | repository root |
    | Install command | `npm ci` |
    | Build command | `npm run hostinger:build` |
@@ -124,7 +124,7 @@ Never place any of these in the repository, in `public_html`, or in chat.
 | `start` now uses **node**, not bun | The old script was `bun .next/standalone/server.js`. Hostinger's runtime is Node; bun is not installed. `start:bun` is kept for local use. |
 | dropped the `\| tee server.log` pipe from `start` | The pipe made the exit status come from `tee`, so a crashed server still looked healthy to the supervisor — and it grew an unbounded log file inside the app directory. |
 | added `hostinger:build` | Hostinger never runs Prisma. The build command now does `prisma generate && prisma migrate deploy && next build`. `migrate deploy` is forward-only: it replays reviewed migrations and never resets or drops. |
-| added `engines.node: >=20 <25` | Pins one coherent runtime instead of leaving Node 16/18/20/22/bun ambiguous. |
+| added `engines.node: >=22 <23` | Pins Node 22, the Hostinger Cloud Startup runtime, instead of leaving Node 16/18/20/22/bun ambiguous. |
 
 ---
 
