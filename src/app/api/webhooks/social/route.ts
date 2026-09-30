@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { intakeLead } from '@/lib/journey'
-import { sanitizeText, sanitizePhone, sanitizeEmail, rateLimit, clientIp, logError, audit } from '@/lib/security'
+import { sanitizeText, sanitizePhone, sanitizeEmail, rateLimit, clientIp, logError, audit, constantTimeEquals } from '@/lib/security'
 import { runAgent } from '@/lib/agents/engine'
 
 export const dynamic = 'force-dynamic'
@@ -14,8 +14,13 @@ export async function POST(req: NextRequest) {
   let raw: Record<string, unknown>
   try { raw = await req.json() } catch { return Response.json({ ok: true }) }
 
+  // FAIL CLOSED — an unset secret previously allowed anonymous inbound social
+  // events to create CRM records.
   const secret = process.env.SOCIAL_WEBHOOK_SECRET
-  if (secret && req.headers.get('x-webhook-secret') !== secret) {
+  if (!secret) {
+    return Response.json({ error: 'Webhook not configured' }, { status: 503 })
+  }
+  if (!constantTimeEquals(req.headers.get('x-webhook-secret'), secret)) {
     return Response.json({ error: 'Unauthorized webhook' }, { status: 401 })
   }
 

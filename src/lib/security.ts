@@ -1,3 +1,4 @@
+export { constantTimeEquals } from '@/lib/constant-time'
 import { db } from '@/lib/db'
 import { randomBytes } from 'crypto'
 

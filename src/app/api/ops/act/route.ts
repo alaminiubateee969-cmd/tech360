@@ -1,12 +1,14 @@
 import { NextRequest } from 'next/server'
 import { executeOpsAction } from '@/lib/ops-actions'
-import { readJson, sanitizeText, rateLimit, clientIp } from '@/lib/security'
+import { readJson, sanitizeText, rateLimit, clientIp, constantTimeEquals } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
 function authorized(req: NextRequest): boolean {
   const secret = process.env.OPS_SECRET
-  return Boolean(secret) && req.headers.get('x-ops-secret') === secret
+  // already fails closed on an unset secret; compare in constant time so the
+  // value cannot be recovered byte-by-byte through response timing
+  return constantTimeEquals(req.headers.get('x-ops-secret'), secret)
 }
 
 // ============================================================

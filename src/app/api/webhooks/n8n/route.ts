@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { intakeLead, detectBusiness, recommendPlan, askScopeQuestions, submitScope, generatePreview, requestPayment, activateProject, clientScopeDecision, verifyPayment, prepareHandover } from '@/lib/journey'
-import { sanitizeText, rateLimit, clientIp, logError, audit, readJson } from '@/lib/security'
+import { sanitizeText, rateLimit, clientIp, logError, audit, readJson, constantTimeEquals } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +13,17 @@ export async function POST(req: NextRequest) {
   const rl = rateLimit(`n8n:${ip}`, 120, 60_000)
   if (!rl.ok) return Response.json({ ok: false, error: 'Rate limited' }, { status: 429 })
 
+  // FAIL CLOSED. This endpoint can reach VERIFY_PAYMENT, RECORD_PAYMENT,
+  // START_PROJECT, CLIENT_SCOPE_DECISION and PREPARE_HANDOVER. Previously the
+  // check was `if (secret && ...)`, so an unset N8N_WEBHOOK_SECRET — which is
+  // exactly what .env.example shipped — let anonymous callers verify payments
+  // and prepare source-code handover.
   const secret = process.env.N8N_WEBHOOK_SECRET
-  if (secret && req.headers.get('x-n8n-secret') !== secret) {
+  if (!secret) {
+    await logError({ source: 'WEBHOOK', code: 'N8N_SECRET_MISSING', message: 'n8n webhook rejected: N8N_WEBHOOK_SECRET is not configured' })
+    return Response.json({ ok: false, error: 'Webhook not configured' }, { status: 503 })
+  }
+  if (!constantTimeEquals(req.headers.get('x-n8n-secret'), secret)) {
     return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
   }
 
