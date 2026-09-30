@@ -194,28 +194,57 @@ restore command, and stops.
 
 ## 7. Validation checklist
 
-| # | Check | Where | Status |
+| # | Check | Where | Evidence |
 |---|---|---|---|
-| 1 | Schema parses and validates as MySQL | `prisma-schema-wasm` 6.18.0 (engine hash `34b5a69…`), offline | ✅ verified locally |
-| 2 | Converter is deterministic and idempotent | `scripts/convert-schema-to-mysql.mjs --check` | ✅ verified locally |
-| 3 | No text column keeps a literal `DEFAULT` | grep gate | ✅ 0 remaining |
+| 1 | Schema parses and validates as MySQL | `prisma-schema-wasm` 6.18.0 (engine `34b5a69`), offline | ✅ local |
+| 2 | Converter is deterministic and idempotent | `convert-schema-to-mysql.mjs --check` | ✅ local |
+| 3 | No text column keeps a `DEFAULT` | grep gate | ✅ 0 remaining |
 | 4 | Provider and `DATABASE_URL` scheme agree | CI gate + deploy-script gate | ✅ implemented |
-| 5 | Baseline generated from the schema | `mysql-baseline.yml` | ⏳ needs a CI run |
-| 6 | Baseline is non-destructive | `mysql-baseline.yml` | ⏳ needs a CI run |
-| 7 | Baseline applies to a clean MySQL 8 | `mysql-baseline.yml` | ⏳ needs a CI run |
-| 8 | Zero drift after apply | `mysql-baseline.yml` + `ci` | ⏳ needs a CI run |
-| 9 | Prisma client generates for MySQL | `ci` | ⏳ needs a CI run |
-| 10 | Lint / typecheck / tests / build on MySQL | `ci` | ⏳ needs a CI run |
-| 11 | Production backup verified | deploy script | ⛔ blocked — no DB credentials |
-| 12 | Isolated restore of the production dump | — | ⛔ blocked — no DB credentials |
-| 13 | Migration tested against the restored copy | — | ⛔ blocked — no DB credentials |
+| 5 | Baseline generated from the schema | run [36726223683](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36726223683) | ✅ 43 tables, 995 lines |
+| 6 | Baseline is non-destructive | same run | ✅ 0 `DROP`/`TRUNCATE` |
+| 7 | Baseline applies to a clean MySQL 8 | same run, `prisma migrate deploy` | ✅ |
+| 8 | Zero drift after apply | same run, `migrate diff --exit-code` | ✅ |
+| 9 | Prisma client generates for MySQL | same run | ✅ |
+| 10 | Read-only integrity check on MySQL | same run, `db:verify` | ✅ |
+| 11 | Lint / typecheck / tests / build on MySQL | `deploy-production.yml` → `ci` | ⏳ this push |
+| 12 | Production backup verified | deploy script | ⛔ blocked — no DB credentials |
+| 13 | Isolated restore of the production dump | — | ⛔ blocked — no DB credentials |
+| 14 | Migration tested against the restored copy | — | ⛔ blocked — no DB credentials |
 
-Items 1–4 were verified in this environment. Items 5–10 run in CI. Items 11–13
-require credentials and network access that are not available here.
+### Applied type distribution (from the generated baseline)
+
+| MySQL type | Columns |
+|---|---|
+| `VARCHAR(191)` | 287 (ids, codes, statuses, indexed columns) |
+| `DATETIME(3)` | 109 |
+| `TEXT` | 65 |
+| `INTEGER` | 30 |
+| `LONGTEXT` | 21 |
+| `BOOLEAN` (`TINYINT(1)`) | 11 |
+| `DOUBLE` | 4 |
+| `LONGBLOB` | 1 |
+
+Spot-check of the columns that a naive `provider = "mysql"` flip would have
+silently capped at 191 characters:
+
+```
+`html`           LONGTEXT NOT NULL   -- full HTML client previews
+`systemPrompt`   LONGTEXT NOT NULL   -- AI agent system prompts
+`extractedText`  LONGTEXT NULL       -- full extracted document text
+`payload`        LONGTEXT NOT NULL   -- approval payloads
+`steps`          LONGTEXT NOT NULL   -- automation step logs
+`definition`     LONGTEXT NOT NULL   -- n8n workflow JSON
+`stack`          LONGTEXT NULL       -- error stack traces
+`content`        LONGBLOB NULL       -- stored document bytes
+```
+
+Items 1–4 were verified locally, 5–10 are proven by CI run 36726223683, and
+11 runs on every push. Items 12–14 require credentials and network access that
+are not available in this environment.
 
 ---
 
-## 8. Why 11–13 could not be executed
+## 8. Why 12–14 could not be executed
 
 The build environment reaches only `registry.npmjs.org` and the GitHub API.
 Everything else is intercepted by a transparent proxy that accepts the TCP
