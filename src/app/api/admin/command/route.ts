@@ -1,3 +1,4 @@
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -41,7 +42,7 @@ const CAPABILITIES = `Available actions (choose exactly ONE):
 - none — ask a short clarifying question (use when the client or time is ambiguous)`
 
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN', limit: { max: 30, windowMs: 60_000 } })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE, limit: { max: 30, windowMs: 60_000 } })
   if (isResponse(g)) return g
   const correlationId = newCorrelationId()
 

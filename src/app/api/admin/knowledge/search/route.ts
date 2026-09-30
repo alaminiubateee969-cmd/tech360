@@ -1,3 +1,4 @@
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText } from '@/lib/security'
@@ -6,7 +7,7 @@ import { searchKnowledgeRanked } from '@/lib/knowledge-search'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const raw = await readJson(req)
   const query = sanitizeText(raw.query, 300)

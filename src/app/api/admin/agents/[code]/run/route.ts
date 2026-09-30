@@ -1,3 +1,4 @@
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { featureEnabled } from "@/lib/features"
 import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
   if (!(await featureEnabled('ai_agents'))) {
     return Response.json({ error: 'AI agent execution is currently disabled by Super Admin (System → Feature Management).' }, { status: 503 })
   }
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const { code } = await params
   const clean = sanitizeText(code, 20).toUpperCase()

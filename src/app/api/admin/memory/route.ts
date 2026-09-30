@@ -1,3 +1,4 @@
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -9,7 +10,7 @@ export const dynamic = 'force-dynamic'
 const SCOPES = ['COMPANY', 'BRAND', 'SERVICES', 'PRICING', 'POLICIES', 'CLIENT', 'PROJECT', 'COMMUNICATION', 'WORKFLOW', 'KNOWLEDGE', 'AGENT', 'TASK', 'LESSON']
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const scope = sanitizeText(url.searchParams.get('scope') ?? '', 30).toUpperCase()
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const raw = await readJson(req)
   const scope = sanitizeText(raw.scope, 30).toUpperCase()
