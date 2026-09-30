@@ -158,24 +158,27 @@ jobs:
         run: |
           set -euo pipefail
           if git diff --quiet -- prisma/migrations; then
-            echo "baseline unchanged — nothing to commit"
+            echo "baseline unchanged - nothing to commit"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add prisma/migrations
-          git commit -m "chore(db): add MySQL baseline migration (generated + proven in CI)
-
-Generated with:
-  prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script
-
-Proven in this run:
-  - contains no DROP TABLE / DROP DATABASE / TRUNCATE
-  - applies to a clean MySQL 8 via 'prisma migrate deploy'
-  - leaves zero drift against prisma/schema.prisma
-  - Prisma client generates and db:verify passes
-
-Run: ${GITHUB_RUN_ID}"
+          {
+            echo "chore(db): add MySQL baseline migration (generated + proven in CI)"
+            echo
+            echo "Generated with:"
+            echo "  prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script"
+            echo
+            echo "Proven in this run:"
+            echo "  - contains no DROP TABLE / DROP DATABASE / TRUNCATE"
+            echo "  - applies to a clean MySQL 8 via prisma migrate deploy"
+            echo "  - leaves zero drift against prisma/schema.prisma"
+            echo "  - Prisma client generates and db:verify passes"
+            echo
+            echo "Run: ${GITHUB_RUN_ID}"
+          } > /tmp/baseline-commit-msg.txt
+          git commit -F /tmp/baseline-commit-msg.txt
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "baseline committed to ${GITHUB_REF_NAME}"
 
