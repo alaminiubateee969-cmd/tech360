@@ -1,23 +1,22 @@
 # ============================================================
-# TECH360 — PRODUCTION CI/CD (Hostinger)
+# TECH360 — CONTINUOUS INTEGRATION
 #
-#   push to main
-#     → ci (MySQL service, the real production engine)
-#     → preflight (read-only Hostinger inspection, no mutation)
-#     → deploy (only if BOTH pass)
+# Production deployment is NOT performed here.
 #
-# Required secrets — GitHub → Settings → Environments → production:
-#   HOSTINGER_HOST      server IP / hostname   (e.g. 189.49.97.102)
-#   HOSTINGER_PORT      SSH port               (Hostinger uses 65002, never 22)
-#   HOSTINGER_USER      SSH user               (e.g. u394009794)
-#   HOSTINGER_SSH_KEY   PRIVATE deploy key, PEM, never printed
-#   HOSTINGER_APP_DIR   ABSOLUTE path to the checkout on the server
-#                       — discovered by preflight, never guessed
+# Production is deployed by Hostinger's own Node.js web-app Git
+# integration, which pulls main and runs install -> build -> start on the
+# Hostinger server. See docs/HOSTINGER_DEPLOYMENT.md.
 #
-# The production .env (including DATABASE_URL) lives ONLY on the server.
-# This repository never ships secrets and never prints a connection string.
+# This workflow only PROVES a commit is safe to deploy:
+#   - the Prisma schema targets MySQL, the real production engine
+#   - the committed migration baseline applies with zero drift
+#   - lint, typecheck, tests and the production build all pass
+#
+# There is deliberately no SSH, no rsync, no scp and no remote restart:
+# a second deployment mechanism alongside Hostinger's would be able to
+# overwrite production behind Hostinger's back.
 # ============================================================
-name: deploy-production
+name: ci
 
 on:
   push:
@@ -29,8 +28,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: production-deploy
-  cancel-in-progress: false   # queue, never run two deploys at once
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -47,7 +46,7 @@ jobs:
   # CI — validated against MySQL, the engine production actually runs
   # ------------------------------------------------------------------
   ci:
-    name: CI — validate against MySQL
+    name: Validate against MySQL
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -171,21 +170,20 @@ jobs:
         run: bun run build
 
   # ------------------------------------------------------------------
-  # PREFLIGHT — read-only Hostinger inspection. Mutates nothing.
-  # Establishes HOSTINGER_SSH_OK. Deployment cannot run without it.
+  # DIAGNOSTICS — manual only, strictly read-only.
+  # This is NOT a deployment path. It exists so the Hostinger server can
+  # be inspected from CI when something is wrong in production.
   # ------------------------------------------------------------------
-  preflight:
-    name: Preflight → Hostinger (read-only)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: ci
+  hostinger-diagnostics:
+    name: Hostinger diagnostics (read-only, manual)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: production
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Validate the Hostinger deployment identity
+      - name: Check the Hostinger access configuration
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
@@ -194,14 +192,14 @@ jobs:
           HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
         run: bash .github/scripts/hostinger-identity-check.sh
 
-      - name: Prepare the Hostinger SSH key
+      - name: Open an SSH session
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
           HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
         run: bash .github/scripts/hostinger-ssh-setup.sh
 
-      - name: Inspect the Hostinger server (read-only)
+      - name: Inspect the server (changes nothing)
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
@@ -214,66 +212,9 @@ jobs:
             bash .github/scripts/hostinger-ssh.sh \
             < .github/scripts/hostinger-preflight-remote.sh
 
-      - name: Remove the deployment key
-        if: always()
-        run: rm -f "$HOME/.ssh/id_hostinger_tech360" "$HOME/.ssh/known_hosts_hostinger_tech360"
+      - name: Probe the public domain
+        run: bash .github/scripts/verify-production.sh || true
 
-  # ------------------------------------------------------------------
-  # DEPLOY — only after CI (MySQL) and the read-only preflight both pass
-  # ------------------------------------------------------------------
-  deploy:
-    name: Deploy → Hostinger Production
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [ci, preflight]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    environment: production
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Validate the Hostinger deployment identity
-        env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
-          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
-          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
-        run: bash .github/scripts/hostinger-identity-check.sh
-
-      - name: Prepare the Hostinger SSH key
-        env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
-          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
-        run: bash .github/scripts/hostinger-ssh-setup.sh
-
-      - name: Deploy — backup, migrate, build, restart, verify, auto-rollback
-        env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
-          HOSTINGER_APP_DIR: ${{ secrets.HOSTINGER_APP_DIR }}
-          DEPLOY_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          trap 'rm -f "$HOME/.ssh/id_hostinger_tech360"' EXIT
-          REMOTE_ENV="APP_DIR='$HOSTINGER_APP_DIR' DEPLOY_SHA='$DEPLOY_SHA'" \
-            bash .github/scripts/hostinger-ssh.sh <<'REMOTE'
-          set -Eeuo pipefail
-          cd "$APP_DIR"
-          export TECH360_APP_PATH="$PWD"
-          export TECH360_DOMAIN="bdtech360.com"
-          # deploy the exact commit CI validated — never a moving branch ref
-          git fetch --no-tags origin "$DEPLOY_SHA"
-          git checkout -f "$DEPLOY_SHA"
-          bash scripts/deploy-hostinger.sh
-          bash scripts/health-check.sh
-          REMOTE
-
-      - name: Verify production over HTTPS
-        run: bash .github/scripts/verify-production.sh
-
-      - name: Remove the deployment key
+      - name: Remove the key
         if: always()
         run: rm -f "$HOME/.ssh/id_hostinger_tech360" "$HOME/.ssh/known_hosts_hostinger_tech360"

@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 # ============================================================
-# TECH360 — HOSTINGER PRODUCTION DEPLOYMENT
+# NOT THE PRODUCTION DEPLOYMENT PATH.
+#
+# Production is deployed by Hostinger's Node.js web-app Git integration,
+# which pulls main and runs install -> build -> start on the server.
+# See docs/HOSTINGER_DEPLOYMENT.md.
+#
+# This script is retained as a MANUAL operations tool, run over SSH by an
+# operator, for the capabilities Hostinger's pipeline does not provide:
+#   - a verified mysqldump backup before any schema change
+#   - a strict `prisma migrate deploy` with a provider/URL agreement gate
+#   - code rollback to the last known-good commit
+#
+# Nothing invokes it automatically. Running it is an explicit human action.
+# ============================================================
+# TECH360 — HOSTINGER MANUAL OPERATIONS
 # (safe, port-preserving, rollback-ready)
 #
 # Runs ON the Hostinger server, normally via the GitHub Actions SSH step:
