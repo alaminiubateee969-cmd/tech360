@@ -100,13 +100,24 @@ jobs:
       - name: Apply the baseline exactly as production would
         run: bunx prisma migrate deploy
 
+      - name: Show how MySQL stored the expression defaults
+        if: always()
+        run: |
+          mysql -h 127.0.0.1 -uroot -pci_only_not_a_secret -N -B tech360_baseline -e "
+            SELECT CONCAT(TABLE_NAME,'.',COLUMN_NAME,' :: ',COLUMN_TYPE,' :: default=[',IFNULL(COLUMN_DEFAULT,'NULL'),']')
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA='tech360_baseline' AND COLUMN_DEFAULT IS NOT NULL
+              AND DATA_TYPE IN ('text','longtext','mediumtext','blob','longblob');" > /tmp/defaults.txt 2>&1 || true
+          while IFS= read -r l; do [ -n "$l" ] && echo "::error::DEFAULT ${l}"; done < /tmp/defaults.txt
+
       - name: Prove zero drift against schema.prisma
         run: |
           set -uo pipefail
+          rc=0
           bunx prisma migrate diff \
             --from-url "$DATABASE_URL" \
             --to-schema-datamodel prisma/schema.prisma \
-            --exit-code --script > /tmp/drift.sql 2>&1; rc=$?
+            --exit-code --script > /tmp/drift.sql 2>&1 || rc=$?
           {
             echo "### drift check (exit $rc)"
             echo '```sql'
