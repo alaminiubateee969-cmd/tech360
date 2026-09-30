@@ -102,14 +102,23 @@ jobs:
 
       - name: Prove zero drift against schema.prisma
         run: |
-          set -euo pipefail
+          set -uo pipefail
           bunx prisma migrate diff \
             --from-url "$DATABASE_URL" \
             --to-schema-datamodel prisma/schema.prisma \
-            --exit-code --script > /tmp/drift.sql && rc=0 || rc=$?
-          if [ "${rc:-0}" = "2" ]; then
-            echo "::error::baseline does not reproduce schema.prisma"
+            --exit-code --script > /tmp/drift.sql 2>&1; rc=$?
+          {
+            echo "### drift check (exit $rc)"
+            echo '```sql'
             cat /tmp/drift.sql
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" = "2" ]; then
+            # annotations are the only log channel reliably readable from the API
+            while IFS= read -r l; do
+              [ -n "$l" ] && echo "::error::DRIFT ${l}"
+            done < <(grep -vE '^\s*$|^--' /tmp/drift.sql | head -25)
+            echo "::error::baseline does not reproduce schema.prisma (see above)"
             exit 1
           fi
           echo "✓ baseline reproduces schema.prisma exactly (zero drift)"
@@ -134,10 +143,12 @@ jobs:
           grep -iE 'text|blob' /tmp/columns.txt | head -30
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: mysql-baseline
           path: |
             prisma/migrations/0_init/migration.sql
             /tmp/tables.txt
             /tmp/columns.txt
-          if-no-files-found: error
+            /tmp/drift.sql
+          if-no-files-found: warn
