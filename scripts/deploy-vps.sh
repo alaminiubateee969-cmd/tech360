@@ -127,7 +127,7 @@ trap ROLLBACK ERR
 # ------------------------------------------------------------
 RESTART_APP() {
   if [[ $PM2_OK -eq 1 ]]; then
-    pm2 restart tech360 --update-env >/dev/null 2>&1 || pm2 start npm --name tech360 --start "npm run start" >/dev/null 2>&1
+    pm2 restart tech360 --update-env >/dev/null 2>&1 || pm2 start bun --name tech360 -- run start >/dev/null 2>&1
   elif [[ -n "$SYSTEMD_UNIT" ]]; then
     systemctl restart "$SYSTEMD_UNIT"
   else
@@ -184,7 +184,7 @@ bunx tsc --noEmit
 # STEP 6 — build
 # ------------------------------------------------------------
 log "STEP 6/9 — production build"
-npm run build
+bun run build
 
 # ------------------------------------------------------------
 # STEP 7 — database migration (non-destructive)
