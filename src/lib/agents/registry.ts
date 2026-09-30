@@ -1,6 +1,8 @@
 // ============================================================
 // TECH360 AI WORKFORCE — Department & Agent registry (seed source)
-// 100 departments · 44 core executable agents (extensible)
+// 110 departments · 44 core executable agents (extensible)
+// NOTE: 26 department codes use hex letters (D01A…D0FF). A `D[0-9]+` grep
+// misses them and reports 84 — the canonical count is 110.
 // ============================================================
 
 export type DepartmentSeed = {

@@ -124,7 +124,7 @@ async function main() {
   })
   console.log(`  ✓ Super Admin: ${adminEmail} (password from ADMIN_PASSWORD env or default; must change on first login)`)
 
-  // 2) Departments (100)
+  // 2) Departments (110)
   for (const d of DEPARTMENTS) {
     await db.department.upsert({ where: { code: d.code }, update: { name: d.name, category: d.category, description: d.description ?? null }, create: d })
   }

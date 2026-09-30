@@ -78,7 +78,7 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
   // granted it explicitly. Every refusal is recorded, so an agent probing for
   // capability it does not have is visible to the Super Admin.
   if (run.tool) {
-    const decision = authorizeAgentTool(agent, run.tool)
+    const decision = authorizeAgentTool({ status: agent.status, tools: agent.tools, permissions: agent.permissions }, run.tool)
     if (!decision.allowed) {
       await logError({
         source: 'AGENT',
@@ -103,7 +103,7 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
   // --- tenant isolation --------------------------------------------------
   // An agent acting for one client must not operate on another client's
   // records unless it holds an explicit cross-client grant.
-  if (run.clientId && !agentMayAccessClient(agent, run.actingForClientId ?? null, run.clientId)) {
+  if (run.clientId && !agentMayAccessClient({ permissions: agent.permissions }, run.actingForClientId ?? null, run.clientId)) {
     await logError({
       source: 'AGENT', code: 'CROSS_CLIENT_DENIED',
       message: `Agent ${agentCode} attempted to act on a client it is not scoped to`,

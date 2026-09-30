@@ -21,6 +21,8 @@ import {
   AI_WORKFORCE_VIEWS,
   agentMayAccessClient,
   authorizeAgentTool,
+  AGENT_TOOLS,
+  CAPABILITY_ALL,
   isAiWorkforcePath,
   isAiWorkforceView,
   PRIVILEGED_AGENT_TOOLS,
@@ -138,21 +140,103 @@ describe('AI workforce: surface classification', () => {
   })
 })
 
+describe('AI workforce: capability vocabulary matches the real registry', () => {
+  const registry = readFileSync(join(ROOT, 'src/lib/agents/registry.ts'), 'utf8')
+
+  function declared(field: string): Set<string> {
+    const out = new Set<string>()
+    for (const m of registry.matchAll(new RegExp(`${field}:\\s*\\[([^\\]]*)\\]`, 'g'))) {
+      for (const t of m[1].matchAll(/'([^']+)'/g)) out.add(t[1])
+    }
+    return out
+  }
+
+  it('every tool a seeded agent carries is a known capability', () => {
+    const known = new Set<string>(AGENT_TOOLS)
+    const unknown = [...declared('tools')].filter((t) => !known.has(t))
+    assert.deepEqual(unknown, [], `registry tools missing from AGENT_TOOLS: ${unknown.join(', ')}`)
+  })
+
+  it('the policy declares no capability the product does not use', () => {
+    const used = declared('tools')
+    const stale = AGENT_TOOLS.filter((t) => !used.has(t))
+    assert.deepEqual(stale, [], `AGENT_TOOLS lists tools no agent has: ${stale.join(', ')}`)
+  })
+
+  it('every privileged tool is a real capability', () => {
+    const known = new Set<string>(AGENT_TOOLS)
+    for (const t of PRIVILEGED_AGENT_TOOLS) assert.ok(known.has(t), `${t} is not a real tool`)
+  })
+})
+
+describe('AI workforce: canonical department and agent counts', () => {
+  const registry = readFileSync(join(ROOT, 'src/lib/agents/registry.ts'), 'utf8')
+
+  function entries(name: string): string[] {
+    const m = new RegExp(`export const ${name}[^=]*=\\s*\\[`).exec(registry)
+    assert.ok(m, `${name} not found`)
+    let i = m!.index + m![0].length
+    let depth = 1
+    const start = i
+    while (depth > 0 && i < registry.length) {
+      const c = registry[i]
+      if (c === '[') depth++
+      else if (c === ']') depth--
+      i++
+    }
+    const body = registry.slice(start, i - 1)
+    const out: string[] = []
+    let d = 0
+    let st = -1
+    for (let k = 0; k < body.length; k++) {
+      const c = body[k]
+      if (c === '{') { if (d === 0) st = k; d++ }
+      else if (c === '}') { d--; if (d === 0) out.push(body.slice(st, k + 1)) }
+    }
+    return out
+  }
+  const code = (o: string) => /code:\s*'([^']+)'/.exec(o)?.[1] ?? ''
+
+  const depts = entries('DEPARTMENTS').map(code)
+  const agents = entries('CORE_AGENTS')
+
+  it('there are exactly 110 departments (NOT 84 — that grep missed 26 hex codes)', () => {
+    assert.equal(depts.length, 110)
+    assert.equal(new Set(depts).size, 110, 'department codes must be unique')
+    const hex = depts.filter((c) => /[A-F]/.test(c.slice(1)))
+    assert.equal(hex.length, 26, 'the 26 hex-lettered codes a D[0-9]+ grep misses')
+    assert.equal(depts.length - hex.length, 84, 'which is why the old count said 84')
+  })
+
+  it('there are exactly 44 core agents', () => {
+    assert.equal(agents.length, 44)
+    assert.equal(new Set(agents.map(code)).size, 44)
+  })
+
+  it('no agent points at a department that does not exist', () => {
+    const known = new Set(depts)
+    const orphans = agents
+      .map((o) => ({ agent: code(o), dept: /dept:\s*'([^']+)'/.exec(o)?.[1] ?? '' }))
+      .filter((a) => !known.has(a.dept))
+    assert.deepEqual(orphans, [], `orphan department references: ${JSON.stringify(orphans)}`)
+  })
+})
+
 describe('AI workforce: least-privilege tool permissions', () => {
-  const active = (perms: string[]) => ({ status: 'ACTIVE', permissions: JSON.stringify(perms) })
+  const active = (tools: string[]) => ({ status: 'ACTIVE', tools: JSON.stringify(tools) })
 
   it('grants nothing by default', () => {
-    assert.deepEqual(authorizeAgentTool(active([]), 'READ_CRM'), {
+    assert.deepEqual(authorizeAgentTool(active([]), 'crm.query'), {
       allowed: false,
       code: 'TOOL_NOT_GRANTED',
     })
   })
 
   it('grants only what is explicitly listed', () => {
-    const a = active(['READ_CRM', 'CREATE_TASK'])
-    assert.deepEqual(authorizeAgentTool(a, 'READ_CRM'), { allowed: true })
-    assert.deepEqual(authorizeAgentTool(a, 'CREATE_TASK'), { allowed: true })
-    assert.deepEqual(authorizeAgentTool(a, 'SEND_EMAIL'), {
+    const a = active(['crm.query', 'task.create'])
+    assert.deepEqual(authorizeAgentTool(a, 'crm.query'), { allowed: true })
+    assert.deepEqual(authorizeAgentTool(a, 'task.create'), { allowed: true })
+    assert.deepEqual(authorizeAgentTool(a, 'email.send'), {
       allowed: false,
       code: 'TOOL_NOT_GRANTED',
     })
@@ -161,35 +245,41 @@ describe('AI workforce: least-privilege tool permissions', () => {
   it('a disabled agent can never invoke a tool it holds', () => {
     for (const status of ['PAUSED', 'RETIRED', 'DISABLED']) {
       assert.deepEqual(
-        authorizeAgentTool({ status, permissions: JSON.stringify(['READ_CRM']) }, 'READ_CRM'),
+        authorizeAgentTool({ status, tools: JSON.stringify(['crm.query']) }, 'crm.query'),
         { allowed: false, code: 'AGENT_DISABLED' },
       )
     }
   })
 
   it('rejects unknown tools', () => {
-    assert.deepEqual(authorizeAgentTool(active(['DROP_DATABASE']), 'DROP_DATABASE'), {
+    assert.deepEqual(authorizeAgentTool(active(['db.drop']), 'db.drop'), {
       allowed: false,
       code: 'UNKNOWN_TOOL',
     })
   })
 
-  it('a wildcard never covers money or asset transfer', () => {
-    const wild = active(['*'])
+  it('capability:all never covers money, assets or outbound messaging', () => {
+    const wild = active([CAPABILITY_ALL])
     for (const tool of PRIVILEGED_AGENT_TOOLS) {
       assert.deepEqual(
         authorizeAgentTool(wild, tool),
         { allowed: false, code: 'TOOL_NOT_GRANTED' },
-        `wildcard must not grant ${tool}`,
+        `capability:all must not grant ${tool}`,
       )
     }
-    assert.deepEqual(authorizeAgentTool(wild, 'READ_CRM'), { allowed: true })
+    assert.deepEqual(authorizeAgentTool(wild, 'crm.query'), { allowed: true })
   })
 
-  it('malformed permission data grants nothing', () => {
-    for (const perms of ['not json', '{}', '', null, undefined]) {
+  it('an explicit grant still works for privileged tools', () => {
+    assert.deepEqual(authorizeAgentTool(active(['payment.verify']), 'payment.verify'), {
+      allowed: true,
+    })
+  })
+
+  it('malformed tool data grants nothing', () => {
+    for (const tools of ['not json', '{}', '', null, undefined]) {
       assert.deepEqual(
-        authorizeAgentTool({ status: 'ACTIVE', permissions: perms as string | null }, 'READ_CRM'),
+        authorizeAgentTool({ status: 'ACTIVE', tools: tools as string | null }, 'crm.query'),
         { allowed: false, code: 'TOOL_NOT_GRANTED' },
       )
     }
@@ -212,7 +302,7 @@ describe('AI workforce: client/tenant isolation', () => {
   })
 
   it('cross-client access requires an explicit system grant', () => {
-    assert.equal(agentMayAccessClient(agent(['CROSS_CLIENT_READ']), 'client-a', 'client-b'), true)
+    assert.equal(agentMayAccessClient(agent(['read:all']), 'client-a', 'client-b'), true)
   })
 
   it('an unscoped agent still cannot reach an arbitrary client', () => {

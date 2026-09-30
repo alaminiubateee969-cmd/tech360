@@ -21,10 +21,11 @@ EXPECTED_PORT="65002"
 EXPECTED_USER="u394009794"
 
 fail=0
+MISSING=""
 req() {
   local name="$1" value="$2"
   if [ -z "$value" ]; then
-    echo "::error::secret $name is not set in the 'production' environment"
+    MISSING="${MISSING}${name}"$'\n'
     fail=1
     return 1
   fi
@@ -91,6 +92,16 @@ if [ -n "${HOSTINGER_SSH_KEY:-}" ]; then
 fi
 
 echo
+if [ -n "$MISSING" ]; then
+  echo "Missing required production configuration:"
+  printf '%s' "$MISSING"
+  echo
+  echo "Set these in GitHub → Settings → Environments → production."
+  echo "Never paste a private key or password into a chat, an issue, or a file."
+  while IFS= read -r m; do
+    [ -n "$m" ] && echo "::error::missing required production configuration: $m"
+  done <<< "$MISSING"
+fi
 if [ "$fail" -ne 0 ]; then
   echo "::error::DEPLOYMENT_BLOCKED — the Hostinger deployment identity is not verified"
   exit 1

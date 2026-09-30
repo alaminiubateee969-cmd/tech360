@@ -54,55 +54,82 @@ export function isAiWorkforceView(view: string): view is AiWorkforceView {
 }
 
 /**
- * Least-privilege tool permissions an AI Employee may hold.
- * An agent may only invoke a tool it has been explicitly granted; the grant is
- * stored per-agent in `AiAgent.permissions` and checked at invocation time.
+ * The AI Employee capability vocabulary, taken verbatim from
+ * `src/lib/agents/registry.ts`. These are the names the 44 seeded agents
+ * actually carry in `AiAgent.tools`.
+ *
+ * This list is asserted against the registry by
+ * `tests/ai-workforce-rbac.test.ts`, so the two cannot drift apart.
  */
 export const AGENT_TOOLS = [
-  'READ_CRM',
-  'WRITE_CRM',
-  'SEND_SMS',
-  'SEND_EMAIL',
-  'SEND_WHATSAPP',
-  'CREATE_PROPOSAL',
-  'CREATE_SOW',
-  'CREATE_TASK',
-  'UPDATE_TASK',
-  'ACCESS_PROJECT_FILES',
-  'RUN_QA',
-  'RUN_SECURITY_CHECK',
-  'GENERATE_CONTENT',
-  'CREATE_REPORT',
-  'REQUEST_PAYMENT',
-  'VERIFY_PAYMENT',
-  'PREPARE_HANDOVER',
+  'agent.create', 'agent.dispatch', 'approval.queue', 'approval.record',
+  'automation.retry', 'automation.run', 'campaign.update', 'capability:all',
+  'comm.link', 'content.create', 'crm.createLead', 'crm.query', 'crm.update',
+  'delivery.confirm', 'delivery.prepare', 'email.send', 'error.escalate',
+  'error.log', 'evidence.record', 'file.classify', 'file.scan',
+  'handover.prepare', 'handover.release', 'image.prompt', 'invoice.generate',
+  'knowledge.index', 'knowledge.search', 'meeting.schedule', 'memory.search',
+  'memory.write', 'payment.prepare', 'payment.verify', 'project.create',
+  'qa.plan', 'referral.request', 'report.generate', 'review.request',
+  'scope.revise', 'security.scan', 'sms.send', 'social.publish',
+  'social.receive', 'task.create', 'task.update', 'tts.plan', 'video.plan',
+  'whatsapp.send', 'whatsapp.status',
 ] as const
 
 export type AgentTool = (typeof AGENT_TOOLS)[number]
 
-/** Tools that must never be granted implicitly — they move money or assets. */
+/** Wildcard capability some executive agents carry. */
+export const CAPABILITY_ALL = 'capability:all'
+
+/**
+ * Tools that move money, release owned assets, or speak to a customer in the
+ * company's name. These always require an explicit per-agent grant — the
+ * `capability:all` wildcard deliberately does NOT cover them.
+ */
 export const PRIVILEGED_AGENT_TOOLS: readonly AgentTool[] = [
-  'REQUEST_PAYMENT',
-  'VERIFY_PAYMENT',
-  'PREPARE_HANDOVER',
-  'ACCESS_PROJECT_FILES',
-  'SEND_SMS',
-  'SEND_EMAIL',
-  'SEND_WHATSAPP',
+  'payment.prepare',
+  'payment.verify',
+  'invoice.generate',
+  'handover.prepare',
+  'handover.release',
+  'delivery.confirm',
+  'sms.send',
+  'email.send',
+  'whatsapp.send',
+  'social.publish',
+  'agent.create',
 ]
 
 export type AgentToolDecision =
   | { allowed: true }
   | { allowed: false; code: 'AGENT_DISABLED' | 'TOOL_NOT_GRANTED' | 'UNKNOWN_TOOL' }
 
+/** Parse a JSON-string-or-array column into a string list, failing closed. */
+function toList(value: string | string[] | null | undefined): string[] {
+  if (Array.isArray(value)) return value.filter((x): x is string => typeof x === 'string')
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed: unknown = JSON.parse(value)
+      if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === 'string')
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
 /**
  * Authorize a single tool invocation by an AI Employee.
  *
- * Least privilege: an empty permission list grants nothing. A paused or
- * retired agent can never invoke a tool, regardless of its grants.
+ * Capabilities live in `AiAgent.tools` (what the agent can do); `AiAgent.
+ * permissions` holds data scopes (`read:clients`, `write:payments`) and is
+ * checked separately by the data layer.
+ *
+ * Least privilege: an empty tool list grants nothing, a non-ACTIVE agent can
+ * never invoke anything, and privileged tools are never granted by wildcard.
  */
 export function authorizeAgentTool(
-  agent: { status: string; permissions: string | string[] | null | undefined },
+  agent: { status: string; tools?: string | string[] | null; permissions?: string | string[] | null },
   tool: string,
 ): AgentToolDecision {
   if (!(AGENT_TOOLS as readonly string[]).includes(tool)) {
@@ -112,51 +139,31 @@ export function authorizeAgentTool(
     return { allowed: false, code: 'AGENT_DISABLED' }
   }
 
-  let granted: string[] = []
-  if (Array.isArray(agent.permissions)) {
-    granted = agent.permissions
-  } else if (typeof agent.permissions === 'string' && agent.permissions.trim()) {
-    try {
-      const parsed: unknown = JSON.parse(agent.permissions)
-      if (Array.isArray(parsed)) granted = parsed.filter((x): x is string => typeof x === 'string')
-    } catch {
-      granted = []
-    }
-  }
+  const granted = toList(agent.tools)
+  if (granted.includes(tool)) return { allowed: true }
 
-  if (granted.includes('*')) {
-    // a wildcard never covers the privileged set
+  if (granted.includes(CAPABILITY_ALL)) {
     return PRIVILEGED_AGENT_TOOLS.includes(tool as AgentTool)
       ? { allowed: false, code: 'TOOL_NOT_GRANTED' }
       : { allowed: true }
   }
 
-  return granted.includes(tool) ? { allowed: true } : { allowed: false, code: 'TOOL_NOT_GRANTED' }
+  return { allowed: false, code: 'TOOL_NOT_GRANTED' }
 }
 
 /**
  * Tenant isolation for AI Employees.
  *
  * An agent acting on behalf of one client must never read another client's
- * records. Cross-client access requires an explicit system-level grant.
+ * records. Cross-client reach requires an explicit company-wide scope, which
+ * only executive/governance agents carry (`read:all`).
  */
 export function agentMayAccessClient(
-  agent: { permissions: string | string[] | null | undefined },
+  agent: { permissions?: string | string[] | null },
   actingForClientId: string | null,
   targetClientId: string | null,
 ): boolean {
-  if (!targetClientId) return true // company-level, not client-scoped
+  if (!targetClientId) return true // company-level record, not client-scoped
   if (actingForClientId && actingForClientId === targetClientId) return true
-
-  let granted: string[] = []
-  if (Array.isArray(agent.permissions)) granted = agent.permissions
-  else if (typeof agent.permissions === 'string' && agent.permissions.trim()) {
-    try {
-      const parsed: unknown = JSON.parse(agent.permissions)
-      if (Array.isArray(parsed)) granted = parsed.filter((x): x is string => typeof x === 'string')
-    } catch {
-      granted = []
-    }
-  }
-  return granted.includes('CROSS_CLIENT_READ')
+  return toList(agent.permissions).includes('read:all')
 }
