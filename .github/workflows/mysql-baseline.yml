@@ -157,13 +157,16 @@ jobs:
         if: startsWith(github.ref, 'refs/heads/arena/')
         run: |
           set -euo pipefail
-          if git diff --quiet -- prisma/migrations; then
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # NB: `git diff` ignores untracked files, so stage first and then
+          # compare the index — a brand-new baseline is otherwise invisible.
+          git add -A prisma/migrations
+          if git diff --cached --quiet -- prisma/migrations; then
             echo "baseline unchanged - nothing to commit"
             exit 0
           fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prisma/migrations
+          git status --short -- prisma/migrations
           {
             echo "chore(db): add MySQL baseline migration (generated + proven in CI)"
             echo
