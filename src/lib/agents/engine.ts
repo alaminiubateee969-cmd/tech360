@@ -1,6 +1,7 @@
 import ZAI from 'z-ai-web-dev-sdk'
 import { db } from '@/lib/db'
 import { newCorrelationId, logError } from '@/lib/security'
+import { authorizeAgentTool, agentMayAccessClient, type AgentTool } from '@/lib/ai-workforce-policy'
 
 // ------------------------------------------------------------
 // Real AI agent execution engine (server-side only)
@@ -14,6 +15,14 @@ export type AgentRunInput = {
   workflow?: string
   expectJson?: boolean
   contextNote?: string // additional runtime context appended to prompt
+  /**
+   * The capability this run needs. When set, the agent must hold an explicit
+   * grant for it in `AiAgent.permissions` or the run is refused and audited.
+   * Least privilege: no tool is implied by simply being ACTIVE.
+   */
+  tool?: AgentTool
+  /** The client this run is acting on behalf of, for tenant isolation. */
+  actingForClientId?: string | null
 }
 
 export type AgentRunResult = {
@@ -64,6 +73,53 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
   if (agent.status !== 'ACTIVE') {
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: `Agent ${agentCode} is ${agent.status}`, status: 'FAILED' }
   }
+  // --- least-privilege tool authorization -------------------------------
+  // Holding a tool is not implied by being ACTIVE: the agent must have been
+  // granted it explicitly. Every refusal is recorded, so an agent probing for
+  // capability it does not have is visible to the Super Admin.
+  if (run.tool) {
+    const decision = authorizeAgentTool(agent, run.tool)
+    if (!decision.allowed) {
+      await logError({
+        source: 'AGENT',
+        code: `TOOL_DENIED_${decision.code}`,
+        message: `Agent ${agentCode} attempted '${run.tool}' without a grant`,
+        correlationId,
+        clientId: run.clientId,
+        workflow: run.workflow,
+      })
+      await db.auditLog.create({
+        data: {
+          actor: agentCode, action: 'AGENT_TOOL_DENIED',
+          entityType: 'AiAgent', entityId: agentCode,
+          clientId: run.clientId ?? null, projectId: run.projectId ?? null,
+          details: JSON.stringify({ tool: run.tool, reason: decision.code, correlationId }),
+        },
+      }).catch(() => null)
+      return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: `Tool '${run.tool}' not permitted (${decision.code})`, status: 'FAILED' }
+    }
+  }
+
+  // --- tenant isolation --------------------------------------------------
+  // An agent acting for one client must not operate on another client's
+  // records unless it holds an explicit cross-client grant.
+  if (run.clientId && !agentMayAccessClient(agent, run.actingForClientId ?? null, run.clientId)) {
+    await logError({
+      source: 'AGENT', code: 'CROSS_CLIENT_DENIED',
+      message: `Agent ${agentCode} attempted to act on a client it is not scoped to`,
+      correlationId, workflow: run.workflow,
+    })
+    await db.auditLog.create({
+      data: {
+        actor: agentCode, action: 'AGENT_CROSS_CLIENT_DENIED',
+        entityType: 'AiAgent', entityId: agentCode,
+        clientId: run.clientId, projectId: run.projectId ?? null,
+        details: JSON.stringify({ correlationId }),
+      },
+    }).catch(() => null)
+    return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Cross-client access denied', status: 'FAILED' }
+  }
+
   if (agent.tokensToday >= agent.dailyQuota * 4000) {
     await logError({ source: 'AGENT', code: 'QUOTA_EXCEEDED', message: `Agent ${agentCode} exceeded daily quota`, correlationId })
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Daily quota exceeded', status: 'FAILED' }
@@ -122,6 +178,16 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
       where: { code: agentCode },
       data: { executionCount: { increment: 1 }, successCount: { increment: 1 }, tokensToday: { increment: 2 } },
     })
+    if (run.tool) {
+      await db.auditLog.create({
+        data: {
+          actor: agentCode, action: 'AGENT_TOOL_INVOKED',
+          entityType: 'AiAgent', entityId: agentCode,
+          clientId: run.clientId ?? null, projectId: run.projectId ?? null,
+          details: JSON.stringify({ tool: run.tool, executionId: execution.id, correlationId }),
+        },
+      }).catch(() => null)
+    }
     return { ok: true, agentCode, executionId: execution.id, correlationId, output, json, status: 'SUCCESS' }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
