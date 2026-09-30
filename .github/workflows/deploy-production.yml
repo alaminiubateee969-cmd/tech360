@@ -7,11 +7,11 @@
 #     auto-rollback) → scripts/health-check.sh → done
 #
 # Requirements (GitHub → Settings → Environments → production):
-#   VPS_HOST          — server hostname or IP
-#   VPS_USER          — SSH user (sudo-capable or app-owner)
-#   VPS_SSH_KEY       — the PRIVATE deploy key (never printed)
-#   VPS_PORT          — SSH port (default 22, keep in sync with VPS sshd)
-#   VPS_APP_PATH      — (optional) app directory on the VPS
+#   HOSTINGER_HOST     — Hostinger SSH hostname or IP
+#   HOSTINGER_USER     — Hostinger SSH user
+#   HOSTINGER_SSH_KEY — the PRIVATE Hostinger deploy key (never printed)
+#   HOSTINGER_PORT     — Hostinger SSH port
+#   HOSTINGER_APP_PATH — optional; defaults to the verified bdtech360.com path
 #   TECH360_DOMAIN    — (optional) informational, used by the deploy script
 #   TECH360_PORT      — (optional) pin the port; otherwise the script
 #                       DISCOVERS and PRESERVES the port the current app
@@ -111,27 +111,28 @@ jobs:
 
       - name: Prepare the deployment SSH key
         env:
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
         run: |
           install -m 600 /dev/null ~/.ssh/id_tech360
           echo "$VPS_SSH_KEY" > ~/.ssh/id_tech360
-          ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -p "${{ secrets.HOSTINGER_PORT || 65002 }}" "${{ secrets.HOSTINGER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: "Deploy on the VPS — inspect, backup, pull, build, restart, verify, rollback"
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT || 22 }}
-          VPS_APP_PATH: ${{ secrets.VPS_APP_PATH }}
+          VPS_HOST: ${{ secrets.HOSTINGER_HOST }}
+          VPS_USER: ${{ secrets.HOSTINGER_USER }}
+          VPS_PORT: ${{ secrets.HOSTINGER_PORT || 65002 }}
+          VPS_APP_PATH: /home/u394009794/domains/bdtech360.com/public_html
           TECH360_DOMAIN: ${{ secrets.TECH360_DOMAIN }}
           TECH360_PORT: ${{ secrets.TECH360_PORT }}
         run: |
-          ssh -i ~/.ssh/id_tech360 -p "${{ secrets.VPS_PORT || 22 }}" -o StrictHostKeyChecking=accept-new \
+          ssh -i ~/.ssh/id_tech360 -p "${{ secrets.HOSTINGER_PORT || 65002 }}" -o StrictHostKeyChecking=accept-new \
             "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" -- bash -s <<'REMOTE'
           set -euo pipefail
-          cd "${VPS_APP_PATH:-$HOME/tech360}"
+          export VPS_APP_PATH="/home/u394009794/domains/bdtech360.com/public_html"
+          cd "$VPS_APP_PATH"
           export TECH360_APP_PATH="$PWD"
-          export TECH360_DOMAIN="${TECH360_DOMAIN:-bdtech360.com}"
+          export TECH360_DOMAIN="bdtech360.com"
           # fetch the exact commit this workflow validated
           git fetch origin main
           git checkout -f origin/main

@@ -110,7 +110,7 @@ ROLLBACK() {
   fi
   # restore dependencies + build of the good release
   (cd "$APP_PATH" && (command -v bun >/dev/null 2>&1 && bun install --frozen-lockfile || npm ci --no-audit --no-fund)) >/dev/null 2>&1
-  (cd "$APP_PATH" && npm run build) >/dev/null 2>&1
+  (cd "$APP_PATH" && bun run build) >/dev/null 2>&1
   RESTART_APP
   sleep 3
   if curl -sf -m 15 "$HEALTH_URL" >/dev/null 2>&1; then
@@ -127,16 +127,16 @@ trap ROLLBACK ERR
 # ------------------------------------------------------------
 RESTART_APP() {
   if [[ $PM2_OK -eq 1 ]]; then
-    pm2 restart tech360 --update-env >/dev/null 2>&1 || pm2 start npm --name tech360 --start "npm run start" >/dev/null 2>&1
+    pm2 restart tech360 --update-env >/dev/null 2>&1 || pm2 start bun --name tech360 -- run start >/dev/null 2>&1
   elif [[ -n "$SYSTEMD_UNIT" ]]; then
     systemctl restart "$SYSTEMD_UNIT"
   else
     # first deployment: register with PM2 if available (survives reboots), else nohup
     if command -v pm2 >/dev/null 2>&1; then
-      pm2 start npm --name tech360 -- start >/dev/null 2>&1 && pm2 save >/dev/null 2>&1
+      pm2 start bun --name tech360 -- run start >/dev/null 2>&1 && pm2 save >/dev/null 2>&1
     else
       warn "no PM2 available — starting bare (nohup). Install PM2 or create a systemd unit for production."
-      (nohup npm run start > server.log 2>&1 &)
+      (nohup bun run start > server.log 2>&1 &)
     fi
   fi
 }
@@ -177,20 +177,20 @@ fi
 # STEP 5 — validate (lint + typecheck) before building
 # ------------------------------------------------------------
 log "STEP 5/9 — lint + typecheck"
-npm run lint
-bunx tsc --noEmit || npx tsc --noEmit
+bun run lint
+bunx tsc --noEmit
 
 # ------------------------------------------------------------
 # STEP 6 — build
 # ------------------------------------------------------------
 log "STEP 6/9 — production build"
-npm run build
+bun run build
 
 # ------------------------------------------------------------
 # STEP 7 — database migration (non-destructive)
 # ------------------------------------------------------------
 log "STEP 7/9 — applying database schema (non-destructive)"
-npx prisma migrate deploy 2>/dev/null || npx prisma db push || warn "prisma step skipped — verify schema manually"
+bunx prisma migrate deploy 2>/dev/null || bunx prisma db push || warn "prisma step skipped — verify schema manually"
 
 # ------------------------------------------------------------
 # STEP 8 — restore env + restart on the SAME port
