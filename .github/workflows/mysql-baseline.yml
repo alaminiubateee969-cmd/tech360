@@ -26,7 +26,7 @@ on:
       - '.github/workflows/mysql-baseline.yml'
 
 permissions:
-  contents: read
+  contents: write   # commits the proven baseline back to the working branch
 
 jobs:
   baseline:
@@ -152,6 +152,32 @@ jobs:
           echo "columns: $(( $(wc -l < /tmp/columns.txt) - 1 ))"
           echo "--- long-text columns (must NOT be varchar(191)) ---"
           grep -iE 'text|blob' /tmp/columns.txt | head -30
+
+      - name: Commit the proven baseline back to this branch
+        if: startsWith(github.ref, 'refs/heads/arena/')
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- prisma/migrations; then
+            echo "baseline unchanged — nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prisma/migrations
+          git commit -m "chore(db): add MySQL baseline migration (generated + proven in CI)
+
+Generated with:
+  prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script
+
+Proven in this run:
+  - contains no DROP TABLE / DROP DATABASE / TRUNCATE
+  - applies to a clean MySQL 8 via 'prisma migrate deploy'
+  - leaves zero drift against prisma/schema.prisma
+  - Prisma client generates and db:verify passes
+
+Run: ${GITHUB_RUN_ID}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "baseline committed to ${GITHUB_REF_NAME}"
 
       - uses: actions/upload-artifact@v4
         if: always()
