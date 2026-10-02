@@ -25,14 +25,14 @@ Hostinger has **two different Git features**, and the wrong one is connected.
 > start). **The generic one just copies files into a directory.** Use this one
 > whenever your project needs `npm install` or a build step."
 
-The panel currently shows the **generic** Websites → Git feature, deploying
+The **previously observed** panel showed the **generic** Websites → Git feature, deploying
 `main` into `public_html`. That feature only copies files. It never runs
 `npm install`, never runs `next build`, and never starts a Node process.
 
 So "Deployment: Completed" is truthful and simultaneously useless here: the
 repository source was copied into `public_html`, and nothing was built or run.
 
-Observed behaviour, which matches that exactly:
+Previously observed behaviour, which matched that deployment mode:
 
 | Request | Response | Meaning |
 |---|---|---|
@@ -41,8 +41,7 @@ Observed behaviour, which matches that exactly:
 | `https://bdtech360.com/api/health` | Hostinger static 404 | **no Node process is bound to the domain** |
 | random path | Hostinger static 404 | the static web server is answering, not the app |
 
-TLS terminates and DNS resolves, so SSL, DNS, WAF and `.htaccess` are **not**
-the cause. The 403 comes from the web server's directory-index handler.
+Those observations were from the earlier deployment state; the live state must be rechecked after the Node.js Web App is configured. The 403 comes from the web server's directory-index handler.
 
 **This cannot be fixed inside the repository.** TECH360 is a Next.js SSR
 application with 109 API routes, session authentication and a MySQL database.
