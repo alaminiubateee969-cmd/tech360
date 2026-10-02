@@ -7,8 +7,12 @@ import { createHmac, timingSafeEqual } from 'crypto'
 export const PORTAL_COOKIE = 't360_portal'
 export const PORTAL_TTL_HOURS = 24
 
-function portalSecret(): string {
-  return process.env.PORTAL_SECRET ?? process.env.OPS_SECRET ?? process.env.SESSION_SECRET ?? 'tech360-portal-dev-secret'
+export function portalSecret(): string {
+  const s = process.env.PORTAL_SECRET || process.env.OPS_SECRET || process.env.SESSION_SECRET
+  if (s) return s
+  // Never fall back to a known, source-visible secret in production — tokens would be forgeable.
+  if (process.env.NODE_ENV === 'production') throw new Error('PORTAL_SECRET (or OPS_SECRET/SESSION_SECRET) must be set in production')
+  return 'tech360-portal-dev-secret'
 }
 
 export function signPortalToken(clientId: string): string {

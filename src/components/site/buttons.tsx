@@ -171,3 +171,123 @@ export function LinkArrow({
     </a>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Additional variants (diagram-design / archify style: flat, hairline, */
+/* 44px targets, one accent). No shadows on the quiet variants.        */
+/* ------------------------------------------------------------------ */
+
+/** Tonal button — lower emphasis than PrimaryLink, higher than OutlineLink. */
+export function SecondaryLink({
+  href,
+  children,
+  className,
+  external = false,
+  onClick,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+  external?: boolean;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+}) {
+  return (
+    <a
+      href={href}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noopener noreferrer" : undefined}
+      onClick={onClick}
+      className={cn(
+        BASE,
+        "bg-[#009FE3]/10 text-[#063B8F] hover:bg-[#009FE3]/20",
+        className
+      )}
+    >
+      {children}
+    </a>
+  );
+}
+
+/** Text-only button for tertiary actions (no fill, no border). */
+export function GhostLink({
+  href,
+  children,
+  className,
+  dark = false,
+  external = false,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+  dark?: boolean;
+  external?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      target={external ? "_blank" : undefined}
+      rel={external ? "noopener noreferrer" : undefined}
+      className={cn(
+        BASE,
+        "px-3",
+        dark ? "text-white/80 hover:bg-white/10 hover:text-white" : "text-[#063B8F] hover:bg-[#063B8F]/5",
+        className
+      )}
+    >
+      {children}
+    </a>
+  );
+}
+
+/**
+ * Click-to-chat button using the public wa.me deep link (free, no API).
+ * Renders nothing unless a number is supplied, so the site never shows a dead button.
+ */
+export function WhatsAppLink({
+  number,
+  message = "Hi Tech360, I'd like to discuss a project.",
+  children = "Chat on WhatsApp",
+  className,
+}: {
+  number?: string;
+  message?: string;
+  children?: React.ReactNode;
+  className?: string;
+}) {
+  const digits = (number ?? "").replace(/[^\d]/g, "");
+  if (digits.length < 8) return null;
+  return (
+    <a
+      href={`https://wa.me/${digits}?text=${encodeURIComponent(message)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(BASE, "bg-[#25D366] text-[#073B1D] hover:bg-[#20BD5A]", className)}
+    >
+      {children}
+      <ExternalLink className="size-3.5" aria-hidden="true" />
+    </a>
+  );
+}
+
+/** Lays out a row of buttons: stacked on mobile, inline from `sm`. */
+export function ButtonGroup({
+  children,
+  className,
+  align = "start",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  align?: "start" | "center";
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center",
+        align === "center" && "items-center justify-center",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}

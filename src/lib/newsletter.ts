@@ -18,7 +18,11 @@ const UNSUB_PURPOSE = 'newsletter-unsub'
 const UNSUB_TTL_DAYS = 30
 
 function newsletterSecret(): string {
-  return process.env.PORTAL_SECRET ?? process.env.OPS_SECRET ?? process.env.SESSION_SECRET ?? 'tech360-newsletter-dev-secret'
+  const s = process.env.PORTAL_SECRET || process.env.OPS_SECRET || process.env.SESSION_SECRET
+  if (s) return s
+  // Never fall back to a known, source-visible secret in production — tokens would be forgeable.
+  if (process.env.NODE_ENV === 'production') throw new Error('PORTAL_SECRET (or OPS_SECRET/SESSION_SECRET) must be set in production')
+  return 'tech360-newsletter-dev-secret'
 }
 
 /** base64url — an email-safe encoding with no '.' (our token separator). */

@@ -48,10 +48,30 @@ export const viewport: Viewport = {
   themeColor: '#063B8F',
 }
 
+// Structured data (schema.org) — free, self-hosted SEO; no external API.
+const JSON_LD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: 'TECH360 LLC',
+      alternateName: 'Tech360',
+      url: SITE_URL,
+      logo: `${SITE_URL}/tech360-logo.png`,
+      email: 'info@bdtech360.com',
+      telephone: '+1-816-380-8660',
+      address: { '@type': 'PostalAddress', streetAddress: '117 S Lexington St Ste 100', addressLocality: 'Harrisonville', addressRegion: 'MO', postalCode: '64701', addressCountry: 'US' },
+    },
+    { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'Tech360', publisher: { '@id': `${SITE_URL}/#organization` }, inLanguage: 'en' },
+  ],
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-white text-[#0B1F33] antialiased">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, '\\u003c') }} />
         {children}
       </body>
     </html>

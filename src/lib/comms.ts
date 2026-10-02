@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { COMPANY } from '@/lib/constants'
+import { toE164 } from '@/lib/phone'
 
 // ============================================================
 // TECH360 COMMUNICATIONS — real adapters, honest statuses
@@ -15,6 +16,11 @@ export type SendResult = {
   error?: string
 }
 
+/** httpSMS (open source, free to self-host) — sends through YOUR Android phone's SIM. */
+export function httpSmsConfigured(): boolean {
+  return Boolean(process.env.HTTPSMS_API_KEY && process.env.HTTPSMS_FROM)
+}
+
 export function channelConfigured(channel: string): boolean {
   switch (channel) {
     case 'WHATSAPP':
@@ -22,7 +28,7 @@ export function channelConfigured(channel: string): boolean {
     case 'EMAIL':
       return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM)
     case 'SMS':
-      return Boolean(process.env.SMS_API_URL && process.env.SMS_API_KEY)
+      return httpSmsConfigured() || Boolean(process.env.SMS_API_URL && process.env.SMS_API_KEY)
     default:
       return false
   }
@@ -97,12 +103,42 @@ async function sendEmail(to: string, subject: string, html: string): Promise<Sen
 }
 
 // ------------------------------------------------------------
+// SMS via httpSMS — https://github.com/NdoleStudio/httpsms (AGPL-3.0, used purely
+// as an external HTTP service, so no licence obligation reaches this codebase).
+// The Tech360 Android phone with the httpSMS app sends the text over its own SIM:
+// no per-message gateway fee. Point HTTPSMS_BASE_URL at a self-hosted instance
+// to avoid the hosted service entirely.
+// ------------------------------------------------------------
+async function sendHttpSms(to: string, body: string): Promise<SendResult> {
+  const phone = toE164(to)
+  if (!phone) return { ok: false, status: 'FAILED', error: 'Recipient is not a valid phone number' }
+  const from = toE164(process.env.HTTPSMS_FROM ?? '')
+  if (!from) return { ok: false, status: 'NOT_CONFIGURED', error: 'HTTPSMS_FROM must be the E.164 number of the sending Android phone' }
+  const base = (process.env.HTTPSMS_BASE_URL || 'https://api.httpsms.com').replace(/\/+$/, '')
+  try {
+    const res = await fetch(`${base}/v1/messages/send`, {
+      method: 'POST',
+      headers: { 'x-api-key': process.env.HTTPSMS_API_KEY!, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ content: body, from, to: phone }),
+      signal: AbortSignal.timeout(15000),
+    })
+    const data = (await res.json().catch(() => ({}))) as { data?: { id?: string }; message?: string }
+    if (!res.ok) return { ok: false, status: 'FAILED', error: data?.message ?? `httpSMS API HTTP ${res.status}` }
+    // httpSMS queues the message to the phone; delivery is reported by the phone app.
+    return { ok: true, status: 'SENT', providerMessageId: data?.data?.id }
+  } catch (e) {
+    return { ok: false, status: 'FAILED', error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// ------------------------------------------------------------
 // SMS (generic provider via SMS_API_URL + SMS_API_KEY)
 // ------------------------------------------------------------
 async function sendSms(to: string, body: string): Promise<SendResult> {
   if (!channelConfigured('SMS')) {
     return { ok: false, status: 'NOT_CONFIGURED', error: 'SMS provider not configured' }
   }
+  if (httpSmsConfigured()) return sendHttpSms(to, body)
   try {
     const res = await fetch(process.env.SMS_API_URL!, {
       method: 'POST',
@@ -135,6 +171,8 @@ export async function sendCommunication(entry: {
   approvalId?: string
   templateName?: string
   messageType?: string
+  /** What to persist in the Communication log instead of `body` (e.g. OTP codes must never be stored). */
+  storedBody?: string
 }): Promise<{ communicationId: string; result: SendResult }> {
   const comm = await db.communication.create({
     data: {
@@ -143,7 +181,7 @@ export async function sendCommunication(entry: {
       direction: 'OUT',
       recipient: entry.to ?? null,
       subject: entry.subject ?? null,
-      body: entry.body.slice(0, 20000),
+      body: (entry.storedBody ?? entry.body).slice(0, 20000),
       agentCode: entry.agentCode ?? null,
       workflowId: entry.workflowId ?? null,
       approvalId: entry.approvalId ?? null,

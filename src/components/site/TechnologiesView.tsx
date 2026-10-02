@@ -7,6 +7,7 @@ import { CtaBand } from "./CtaBand";
 import { Icon } from "./icons";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
+import { PortalSignInSequence } from "./diagram-kit";
 import {
   AutomationWorkflowDiagram,
   CloudArchitectureDiagram,
@@ -150,6 +151,20 @@ export default function TechnologiesView() {
               </Card>
             </RevealItem>
           </RevealList>
+        </div>
+      </section>
+
+      <section aria-labelledby="signin-heading" className="bg-white">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+          <SectionHeading
+            id="signin-heading"
+            eyebrow="Security in practice"
+            title="Sign-in that proves it is really you"
+            description="Knowing a Client ID is not enough. Portal access needs a one-time code delivered to the contact we hold on file — email, WhatsApp or SMS — so a guessed ID alone gets nobody in."
+          />
+          <div className="mt-10">
+            <PortalSignInSequence />
+          </div>
         </div>
       </section>
 
