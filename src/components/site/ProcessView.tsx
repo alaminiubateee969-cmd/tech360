@@ -12,6 +12,8 @@ import {
 } from "./diagrams";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
+import { LeadFunnel, ProjectSwimlane } from "./diagram-kit";
+import { ButtonGroup, GhostLink, SecondaryLink } from "./buttons";
 
 export default function ProcessView() {
   const gates = PROCESS.filter((p) => p.gate);
@@ -152,6 +154,26 @@ export default function ProcessView() {
               </Card>
             </RevealItem>
           </RevealList>
+        </div>
+      </section>
+
+      {/* Editorial diagrams: the whole pipeline at a glance */}
+      <section aria-labelledby="pipeline-heading" className="bg-white">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+          <SectionHeading
+            id="pipeline-heading"
+            eyebrow="At a glance"
+            title="One pipeline, two gates, clear ownership"
+            description="The highlighted stage is the promise most agencies skip: you review a working preview before any payment is due."
+          />
+          <div className="mt-10 space-y-6">
+            <LeadFunnel />
+            <ProjectSwimlane />
+          </div>
+          <ButtonGroup className="mt-8">
+            <SecondaryLink href="#/portal">Open the client portal</SecondaryLink>
+            <GhostLink href="#/legal/terms">Read the delivery &amp; payment policy</GhostLink>
+          </ButtonGroup>
         </div>
       </section>
 

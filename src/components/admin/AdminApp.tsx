@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Loader2,
   LogOut,
+  Megaphone,
   Menu,
   MessageSquare,
   Newspaper,
@@ -53,6 +54,8 @@ import { LeadsView } from './LeadsView'
 import { LogsView } from './LogsView'
 import { MemoryView } from './MemoryView'
 import { NewsletterView } from './NewsletterView'
+import { SeoAuditView } from './SeoAuditView'
+import { MarketingKitView } from './MarketingKitView'
 import { N8nView } from './N8nView'
 import { OpsView } from './OpsView'
 import { PaymentsView } from './PaymentsView'
@@ -77,7 +80,7 @@ import { cn } from '@/lib/utils'
 
 type ViewId =
   | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
-  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter'
+  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
 
 // Minimum console role required to see (and use) each view. Mirrors the
@@ -98,6 +101,8 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   command: 'SUPER_ADMIN',
   memory: 'SUPER_ADMIN',
   newsletter: 'MANAGER',
+  seo: 'MANAGER',
+  marketing: 'STAFF',
   knowledge: 'SUPER_ADMIN',
   content: 'ADMIN',
   blog: 'MANAGER',
@@ -146,6 +151,8 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'reviews', label: 'Reviews & Referrals', icon: Star },
       { id: 'blog', label: 'Blog Studio', icon: Newspaper },
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
+      { id: 'seo', label: 'SEO Audit', icon: Search },
+      { id: 'marketing', label: 'Marketing Kit', icon: Megaphone },
     ],
   },
   {
@@ -186,6 +193,8 @@ const VIEW_TITLES: Record<ViewId, string> = {
   command: 'Command Center',
   memory: 'AI Memory',
   newsletter: 'Newsletter',
+  seo: 'SEO Audit',
+  marketing: 'Marketing Kit',
   knowledge: 'Knowledge Base',
   content: 'Content Studio',
   blog: 'Blog Studio',
@@ -547,6 +556,10 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <MemoryView />
               ) : view === 'newsletter' ? (
                 <NewsletterView />
+              ) : view === 'seo' ? (
+                <SeoAuditView />
+              ) : view === 'marketing' ? (
+                <MarketingKitView />
               ) : view === 'knowledge' ? (
                 <KnowledgeView />
               ) : view === 'content' ? (

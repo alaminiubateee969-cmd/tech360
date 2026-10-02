@@ -61,3 +61,16 @@ tool-results/
 # NOTE: package-lock.json IS committed. Hostinger's Node.js pipeline installs
 # with npm, so production needs a deterministic npm lockfile. bun.lock remains
 # authoritative for local development and CI.
+
+# --- Secrets / private data (never commit or serve) ---
+# Live SQLite DB holds password hashes, 2FA secrets, session tokens, client data
+/db/*.db
+/db/*.db-journal
+/db/*.sqlite*
+# Raw owner uploads (screenshots, pasted briefs, zips)
+/upload/
+# Source archives must never live under public/
+/archives/
+/public/downloads/
+*.pem
+*.key

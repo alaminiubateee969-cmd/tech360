@@ -3,14 +3,14 @@
 # TECH360 LLC — Full project source archive builder
 # Packages EVERY project file (code, schema, db, assets,
 # deployment, automation, docs) into a single zip served at
-# /downloads/tech360-platform-full-source.zip
+# archives/tech360-platform-full-source.zip (git-ignored, NEVER under public/)
 # Excludes only: build artifacts, caches, logs, node_modules,
 # and the real .env (secrets) — a safe .env.example is included.
 # ------------------------------------------------------------
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-OUT_DIR="public/downloads"
+OUT_DIR="archives"
 OUT="$OUT_DIR/tech360-platform-full-source.zip"
 STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
@@ -57,14 +57,14 @@ is applied by `src/lib/letterhead.ts` — the single letterhead engine:
 EOF
 
 zip -r -q "$OUT" \
-  src prisma db public deployment n8n examples tests .zscripts agent-ctx upload mini-services \
+  src prisma public deployment n8n examples tests .zscripts agent-ctx mini-services \
   scripts .github \
   package.json tsconfig.json next.config.ts eslint.config.mjs tailwind.config.ts \
   postcss.config.mjs components.json Caddyfile bun.lock .gitignore \
   .env.example README.md OFFICIAL-DOCUMENTS.md COVERAGE-AUDIT.md DEPLOYMENT.md SECURITY.md PAYMENT.md worklog.md \
-  -x "upload/extract/*" "mini-services/*/node_modules/*" "*.log" "db/*.journal" ".DS_Store" ".zscripts/*.png" "tool-results/*"
+  -x "db/*" "upload/*" ".env" ".env.*" "mini-services/*/node_modules/*" "*.log" "db/*.journal" ".DS_Store" ".zscripts/*.png" "tool-results/*"
 
 FILES=$(unzip -l "$OUT" | tail -1 | awk '{print $2}')
 SIZE=$(du -h "$OUT" | cut -f1)
-echo "{\"file\":\"downloads/tech360-platform-full-source.zip\",\"files\":$FILES,\"size\":\"$SIZE\",\"generated\":\"$STAMP\"}" > "$OUT_DIR/archive-meta.json"
+echo "{\"file\":\"archives/tech360-platform-full-source.zip\",\"files\":$FILES,\"size\":\"$SIZE\",\"generated\":\"$STAMP\"}" > "$OUT_DIR/archive-meta.json"
 echo "Archive built: $OUT ($FILES files, $SIZE)"

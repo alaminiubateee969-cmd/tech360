@@ -57,6 +57,7 @@ const N8N_WORKFLOWS: Array<{ code: string; name: string; category: string; trigg
   { code: 'W23_REFERRAL_REQUEST', name: '23 Referral Request', category: 'GROWTH', trigger: 'SIGNAL', description: 'Optional referral request' },
   { code: 'W24_DAILY_CEO_REPORT', name: '24 Daily CEO Report', category: 'EXECUTIVE', trigger: 'SCHEDULE', description: 'Daily executive report from live CRM data' },
   { code: 'W25_ERROR_MONITORING', name: '25 Error Monitoring', category: 'GOVERNANCE', trigger: 'SCHEDULE', description: 'Scan failed automations/messages → retry/escalate' },
+  { code: 'W26_LEAD_ENRICHMENT', name: '26 Lead Enrichment', category: 'GROWTH', trigger: 'WEBHOOK', description: 'Free enrichment: validate → public website signals → score → create lead only if contactable' },
 ]
 
 const BLOG_POSTS = [

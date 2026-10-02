@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 Generated: ${new Date().toISOString()}
 
 Contents:
-- n8n-workflows/   — 25 importable workflow JSONs (automation.bdtech360.com). No secrets inside; configure n8n credentials separately.
+- n8n-workflows/   — 26 importable workflow JSONs (automation.bdtech360.com). No secrets inside; configure n8n credentials separately.
 - deployment/      — Dockerfile, cloudbuild.yaml, gcloud scripts, service config for Google Cloud Run + Cloud SQL + Secret Manager.
 - .env.example     — every environment variable the platform reads. Fill from Secret Manager in production.
 

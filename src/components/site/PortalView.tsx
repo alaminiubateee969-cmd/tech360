@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -1004,7 +1005,18 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [contact, setContact] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [otp, setOtp] = useState<{ challenge: string; channel: string; sentTo: string } | null>(null)
+  const [code, setCode] = useState('')
   const formRef = useRef<HTMLFormElement>(null)
+
+  const post = async (body: Record<string, string>) => {
+    const res = await fetch('/api/portal/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const j = await res.json().catch(() => ({})) as { error?: string; otpRequired?: boolean; challenge?: string; channel?: string; sentTo?: string; restart?: boolean }
+    return { res, j }
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1012,13 +1024,26 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
     if (!clientId.trim() || !contact.trim()) { setError('Both fields are required.'); return }
     setBusy(true)
     try {
-      const res = await fetch('/api/portal/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId: clientId.trim(), contact: contact.trim() }),
-      })
-      const j = await res.json().catch(() => ({})) as { error?: string }
+      const { res, j } = await post({ clientId: clientId.trim(), contact: contact.trim() })
       if (!res.ok) setError(j.error ?? 'Sign-in failed. Please check your details.')
+      else if (j.otpRequired && j.challenge) { setOtp({ challenge: j.challenge, channel: j.channel ?? 'EMAIL', sentTo: j.sentTo ?? '' }); setCode('') }
       else onLoggedIn()
+    } catch { setError('Connection problem. Please retry.') }
+    finally { setBusy(false) }
+  }
+
+  const verify = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    setError(null)
+    if (!otp || code.length !== 6) { setError('Enter the 6-digit code.'); return }
+    setBusy(true)
+    try {
+      const { res, j } = await post({ challenge: otp.challenge, code })
+      if (!res.ok) {
+        setError(j.error ?? 'Verification failed.')
+        setCode('')
+        if (j.restart) setOtp(null)
+      } else onLoggedIn()
     } catch { setError('Connection problem. Please retry.') }
     finally { setBusy(false) }
   }
@@ -1045,6 +1070,28 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
               <CardTitle className="flex items-center gap-2 text-lg text-[#0B1F33]"><Lock className="h-5 w-5 text-[#063B8F]" /> Sign in to your portal</CardTitle>
             </CardHeader>
             <CardContent>
+              {otp ? (
+                <form onSubmit={verify} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="portal-otp">Enter your 6-digit code</Label>
+                    <p className="text-xs text-slate-500">We sent a one-time code by {otp.channel === 'EMAIL' ? 'email' : otp.channel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'} to <span className="font-mono">{otp.sentTo}</span>. It expires in 10 minutes.</p>
+                    <InputOTP id="portal-otp" maxLength={6} value={code} onChange={setCode} onComplete={() => void verify()} autoFocus inputMode="numeric" pattern="[0-9]*">
+                      <InputOTPGroup>
+                        {[0, 1, 2, 3, 4, 5].map((i) => <InputOTPSlot key={i} index={i} className="h-11 w-11 text-lg" />)}
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                <AnimatePresence>
+                  {error && (
+                    <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</motion.p>
+                  )}
+                </AnimatePresence>
+                  <Button type="submit" disabled={busy || code.length !== 6} className="h-11 w-full gap-2 bg-[#009FE3] text-base font-semibold hover:bg-[#063B8F]">
+                    {busy ? 'Verifying…' : <>Verify &amp; enter <ArrowRight className="h-4 w-4" /></>}
+                  </Button>
+                  <button type="button" onClick={() => { setOtp(null); setCode(''); setError(null) }} className="w-full text-center text-xs font-medium text-[#009FE3] hover:underline">Use different details / resend code</button>
+                </form>
+              ) : (
               <form ref={formRef} onSubmit={submit} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="portal-client-id">Client ID</Label>
@@ -1064,6 +1111,7 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
                   {busy ? 'Verifying…' : <>Enter my portal <ArrowRight className="h-4 w-4" /></>}
                 </Button>
               </form>
+              )}
             </CardContent>
           </Card>
         </motion.div>

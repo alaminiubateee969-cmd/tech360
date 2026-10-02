@@ -88,7 +88,7 @@ Hostinger settings and environment requirements are documented in `docs/HOSTINGE
 - `public/` — brand assets (owner's original logo + company pad designs in `public/brand/`).
 - `mini-services/` — ai-ops (:3031) + notify-relay (:3032).
 - `deployment/` — Google Cloud Run alternative (cloudbuild, scheduler).
-- `n8n/` — 25 workflow definitions.
+- `n8n/` — 26 workflow definitions (W26 = free lead enrichment, regenerate with `node deployment/generate-n8n-lead-enrichment.cjs`).
 - `scripts/`, `.github/` — CI/CD + deployment.
 - `worklog.md` — the complete build/iteration log (honest QA state, every round).
 - `OFFICIAL-DOCUMENTS.md`, `DEPLOYMENT.md`, `SECURITY.md`, `PAYMENT.md`.
