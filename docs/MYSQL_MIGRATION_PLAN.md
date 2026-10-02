@@ -149,9 +149,10 @@ baseline. The checked-in `0_init` migration describes an empty schema.
 6. Only after a recorded review and explicit approval may the production procedure be run. Stop if the schema or migration history differs from the reviewed expectation.
 
 The disposable checks are configured in `.github/workflows/mysql-baseline.yml`
-and `.github/workflows/ci.yml`. Neither workflow touches production. The current
-repair's exact-commit CI result is pending; the most recent verified `main`
-run used the earlier Prisma 6.18.0 dependency tree.
+and `.github/workflows/ci.yml`. Neither workflow touches production. Repair
+commit `78801e811df56d8ca84f5776717b73e9fa94f8cf` passed exact-commit CI run
+37061731570, and MySQL baseline run 37061731386 also passed. The prior `main`
+run used the earlier Prisma 6.18.0 dependency tree and failed at Typecheck.
 
 ### If the production database already contains tables
 
@@ -194,17 +195,17 @@ VERIFIED** in this audit; record and test them before production changes.
 
 | # | Check | Where | Evidence |
 |---|---|---|---|
-| 1 | Schema parses and validates as MySQL | Historical offline `prisma-schema-wasm` 6.18.0 check (engine `34b5a69`) | Historical only; Prisma 6.19.3 validation is pending exact-commit CI because local engine download failed |
+| 1 | Schema parses and validates as MySQL | Repair CI run 37061731570; Prisma 6.19.3 | ✅ exact repair-commit CI passed; local engine download remains blocked |
 | 2 | Converter is deterministic and idempotent | `convert-schema-to-mysql.mjs --check` | ✅ local |
 | 3 | No text column keeps a `DEFAULT` | grep gate | ✅ 0 remaining |
-| 4 | Provider and `DATABASE_URL` scheme agree | Repository CI provider gate; exact repair-commit run pending | Implemented in workflow; fresh run required |
+| 4 | Provider and `DATABASE_URL` scheme agree | Repair CI run 37061731570 | ✅ exact repair-commit CI passed |
 | 5 | Baseline generated from the schema | run [36726223683](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36726223683) | ✅ 43 tables, 995 lines |
 | 6 | Baseline is non-destructive | same run | ✅ 0 `DROP`/`TRUNCATE` |
-| 7 | Baseline applies to a clean MySQL 8 | Historical runs `36726223683` and `37050663450`, `prisma migrate deploy` | Passed on prior Prisma 6.18.0 tree; re-validation on the repair's 6.19.3 tree pending |
-| 8 | Zero drift after apply | Historical run `37050663450`, `migrate diff --exit-code` | Passed on prior Prisma 6.18.0 tree; re-validation pending |
-| 9 | Prisma client generates for MySQL | Historical run `37050663450` | Passed on prior Prisma 6.18.0 tree; re-validation pending |
-| 10 | Read-only integrity check on MySQL | Historical run `36726223683`, `db:verify` | Historical disposable-MySQL evidence only; re-validation pending |
-| 11 | Lint / typecheck / tests / build on MySQL | `.github/workflows/ci.yml` | Post-repair verification pending until the new CI run is inspected |
+| 7 | Baseline applies to a clean MySQL 8 | Repair CI run 37061731570, `prisma migrate deploy` | ✅ exact repair-commit CI passed against disposable MySQL 8.0 |
+| 8 | Zero drift after apply | Repair CI run 37061731570, `migrate diff --exit-code` | ✅ exact repair-commit CI passed |
+| 9 | Prisma client generates for MySQL | Repair CI run 37061731570 | ✅ exact repair-commit CI passed |
+| 10 | Read-only integrity check on MySQL | Repair CI run 37061731570, `db:verify` | ✅ exact repair-commit CI passed; production DB remains unverified |
+| 11 | Lint / typecheck / tests / build on MySQL | Repair CI run 37061731570 | ✅ all configured steps passed, including build, standalone assets, and production-start smoke |
 | 12 | Production backup/restore procedure verified | Authorized Hostinger operator / hPanel | ⛔ **NOT VERIFIED** — no production DB or hPanel evidence |
 | 13 | Isolated restore of the production dump | — | ⛔ blocked — no DB credentials |
 | 14 | Migration tested against the restored copy | — | ⛔ blocked — no DB credentials |
@@ -236,13 +237,13 @@ silently capped at 191 characters:
 `content`        LONGBLOB NULL       -- stored document bytes
 ```
 
-Rows 1–10 contain prior local or CI evidence and do not certify the current repair commit or Prisma 6.19.3 dependency tree. Row 11 is configured to run in CI; its exact-commit result is pending. Items 12–14 require authorized production access, backup evidence, and isolated restore testing, none of which was available in this audit.
+Rows 1–11 are verified for repair commit `78801e811df56d8ca84f5776717b73e9fa94f8cf` by exact CI run 37061731570, using disposable MySQL only; they do not certify production. Items 12–14 require authorized production access, backup evidence, and isolated restore testing, none of which was available in this audit.
 
 ---
 
 ## 8. Validation/access limits
 
-- Local Prisma CLI validation, generation, migration, and build checks are blocked when the engine download from `binaries.prisma.sh` terminates during TLS setup. The repair's exact-commit GitHub CI must validate these stages; the most recent `main` run predates the Prisma 6.19.3 change.
+- Local Prisma CLI validation, generation, migration, and build checks remain blocked when the engine download from `binaries.prisma.sh` terminates during TLS setup. The exact repair-commit CI run 37061731570 passed these stages on disposable MySQL; the latest `main` run predates the Prisma 6.19.3 change and failed at Typecheck.
 - Local `DATABASE_URL` is not configured, so no database connection was tested from this checkout. No production connection string was requested, copied, or used.
 - Hostinger hPanel settings, production MySQL credentials/schema/history, backups, and runtime logs were not available. The production backup procedure and any restore capability therefore remain **NOT VERIFIED**.
 - No production migration, database write, deployment, or rollback was performed as part of this audit.

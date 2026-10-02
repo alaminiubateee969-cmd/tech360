@@ -12,8 +12,8 @@ The checked-in application targets Hostinger's **Node.js Web App** with framewor
 - Hostinger hPanel app type, connected repository/branch/commit, Node selector, root, npm selection, Next.js preset/output/build settings, managed start behavior, actual port binding, protected environment variables, and runtime logs: **NOT VERIFIED**.
 - Production MySQL host/version, connection, existing schema/migration history, and backup/restore: **NOT VERIFIED**. No production database command was run.
 - Fresh 2026-10-03 probes resolved apex and `www` DNS, but HTTPS apex homepage, `/api/health`, and `www` each failed TLS (curl exit 35 / HTTP `000`); HTTP apex returned an empty reply (curl exit 52 / HTTP `000`). No HTTP status/body was obtained. TLS/domain attachment and all live routes: **NOT VERIFIED**.
-- GitHub branch CI containing the updated Actions and standalone/start smoke test: **PENDING** until a post-push run is inspected.
-- Local production build/start: **NOT VERIFIED**; Prisma engine download failed before the Next.js production build, so no local standalone server was produced.
+- Repair-branch CI run [37061731570](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37061731570) for `78801e811df56d8ca84f5776717b73e9fa94f8cf`: **PASS** for npm install/audits, Prisma validation/generation, disposable MySQL migration/drift, lint, typecheck, tests, DB verification, production build, standalone validation, and startup smoke. This is not a production deployment. The raw log download returned EOF; the specific Node 20 warning status is **NOT VERIFIED**.
+- Local production build/start: **BLOCKED LOCALLY**; Prisma engine download failed before Next.js build. GitHub CI generated and started the standalone server successfully against disposable MySQL.
 
 The supplied Hostinger log identifies `main` at `70f249c8711bb5fb6213df7e53d2444db87eeff1` and then reports “Installing Composer dependencies” / “Publishing completed.” That is evidence of the wrong Composer-oriented job for that SHA, not of a Node.js, npm, Next.js, MySQL, or running application deployment.
 

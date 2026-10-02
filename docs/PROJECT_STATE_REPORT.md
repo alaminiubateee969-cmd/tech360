@@ -4,7 +4,7 @@
 **Repository:** `alaminiubateee969-cmd/tech360`
 **Latest fetched GitHub source:** `main` at `70f249c8711bb5fb6213df7e53d2444db87eeff1` (refreshed 2026-10-03 local)
 
-**Working branch:** `arena/01a0fde7-tech360` (fast-forwarded normally to refreshed `origin/main` at `70f249c8711bb5fb6213df7e53d2444db87eeff1`; repair changes are staged locally and not yet committed or pushed)
+**Working branch:** `arena/01a0fde7-tech360` (repair commit `78801e811df56d8ca84f5776717b73e9fa94f8cf` is pushed; not merged to `main` and not deployed)
 
 ## Application and database
 
@@ -26,12 +26,12 @@
 - `npm run typecheck`: **BLOCKED** by the ungenerated Prisma client (three missing model exports: `Session`, `ChatConversation`, and `ChatMessage`).
 - `npm run db:verify`: **NOT VERIFIED**; local `DATABASE_URL` is unset, so it exits before connecting.
 - `npm run build`: **BLOCKED** at `prisma generate` because TLS to `binaries.prisma.sh` disconnected before the schema engine download; Next.js production build did not start.
-- Production standalone/start smoke: configured in CI, but **PENDING** until a GitHub Actions run validates it.
-- `npm audit` and `npm audit --omit=dev`: **PASS**, both report zero vulnerabilities at every severity after pinning Prisma/client 6.19.3 and scoping `deepmerge-ts` 8.0.2 to `@prisma/config`. Prisma CLI validation/generation and MySQL checks still need exact-commit CI. See [`SECURITY.md`](../SECURITY.md).
+- Repair-branch CI run **37061731570** on commit `78801e811df56d8ca84f5776717b73e9fa94f8cf`: **PASS** — Prisma validation/generation, disposable MySQL migration/drift, lint, typecheck, tests, read-only DB verification, production build, standalone assets, and production-start HTTP smoke all passed. This is CI-only evidence, not Hostinger verification.
+- `npm audit` and `npm audit --omit=dev`: **PASS** locally and in run 37061731570, with zero vulnerabilities after pinning Prisma/client 6.19.3 and scoping `deepmerge-ts` 8.0.2 to `@prisma/config`. The Actions log archive returned EOF; while the check has no annotations, the specific Node 20 warning status is **NOT VERIFIED**. See [`SECURITY.md`](../SECURITY.md).
 
 ## Fresh GitHub `main` result
 
-The latest fetched `main` run, **37050663450** on `70f249c8711bb5fb6213df7e53d2444db87eeff1**, used the then-pinned Prisma 6.18.0: it passed npm install, Prisma validation/client generation, disposable MySQL readiness, migration deployment, zero-drift check, and lint, then failed at Typecheck. Those green steps do not validate this repair's Prisma 6.19.3 update or scoped override. The GitHub check annotation identifies an incorrect five-level relative import of `package.json` in `src/app/api/health/route.ts`. This repair uses the correct four-level relative path; tests, `db:verify`, and the production build were skipped in that run. The run-log download returned EOF, so these conclusions use GitHub API step statuses and annotations.
+The latest fetched `main` run, **37050663450** on `70f249c8711bb5fb6213df7e53d2444db87eeff1**, used Prisma 6.18.0: it passed npm install, Prisma validation/client generation, disposable MySQL readiness, migration deployment, zero-drift, and lint, then failed at Typecheck. The GitHub annotation identifies an incorrect five-level `package.json` import in `src/app/api/health/route.ts`; tests, `db:verify`, and build were skipped. Repair-branch run **37061731570** on `78801e811df56d8ca84f5776717b73e9fa94f8cf** passed every configured CI step, including the smoke test. That does not change the result for current `main` or verify production. The repair-run log download returned EOF and its check has no annotations; the specific Node 20 warning status remains **NOT VERIFIED**.
 
 ## Deployment evidence boundary
 

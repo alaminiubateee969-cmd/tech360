@@ -10,10 +10,9 @@
 | Session branch base at start | `c735e1798c91a780e4ebaf0498c77e834d56631d` | Confirmed before updates |
 | Fresh `origin/main` | `70f249c8711bb5fb6213df7e53d2444db87eeff1` | Re-fetched from GitHub and confirmed by branch API on 2026-10-03 (local date); current GitHub truth |
 | Changes on `main` since branch base | PR #8 merge, MySQL baseline + migration lock, dynamic health version, pinned Action SHAs, read-only baseline workflow permissions, updated deployment docs | Inspected commit/tree diff; session branch fast-forwarded to this exact commit with `git merge --ff-only origin/main` (no reset/rebase/force-push) |
-| Current repair branch | `arena/01a0fde7-tech360` at base `70f249c8711bb5fb6213df7e53d2444db87eeff1` | Repair changes staged locally; no repair commit or push yet |
+| Application repair commit | `78801e811df56d8ca84f5776717b73e9fa94f8cf` on `arena/01a0fde7-tech360` | Pushed and CI-validated; not merged to `main` and not deployed. Subsequent report-only changes are tracked on the same session branch. |
 | Branch protection / rulesets | **NOT VERIFIED** | GitHub API branch-protection request returned 403 (“Resource not accessible by integration”); rulesets API returned 403 (plan/access limitation) |
 | PR #7 | Merged to `main` at `c735e1798c91a780e4ebaf0498c77e834d56631d` | GitHub PR API; merged 2026-10-02 |
-| Hostinger-connected source/branch | Unknown | hPanel unavailable; must confirm repository and `main` in the Node.js Web App settings |
 | Hostinger-connected source/branch | Unknown | hPanel unavailable; must confirm repository and `main` in the Node.js Web App settings |
 
 ## Application version and runtime matrix
@@ -24,7 +23,7 @@
 | Health API version | `package.json` version, imported programmatically | Code fix; verify after build and live response |
 | Application Node.js | `>=22.0.0 <23` (Node.js 22.x) | Verified in `package.json`; Hostinger selector not inspected |
 | Next.js | `16.3.8` resolved in `package-lock.json` | Verified; no framework upgrade made |
-| Prisma / `@prisma/client` | `6.19.3` | Verified in package.json and npm/Bun lockfiles; current CLI validation pending exact-commit CI |
+| Prisma / `@prisma/client` | `6.19.3` | Verified in package.json and npm/Bun lockfiles; validation and client generation passed in exact repair CI run 37061731570 |
 | Database provider | MySQL (`provider = "mysql"`) | Verified in `prisma/schema.prisma`; production connection not verified |
 | Package manager | npm; `package-lock.json` (lockfile v3) | Hostinger docs say manager is auto-detected from lockfiles; selected hPanel value not inspected; `bun.lock` is not the deployment lockfile |
 | Build | Hostinger hPanel script `build` (`npm run build`; Prisma generate, forward-only `prisma migrate deploy`, Next build, standalone asset copy); `hostinger:build` delegates to the same script | Repository script and official `next` preset behavior verified; actual hPanel setting/logs not verified; production DB/migration state and backup are not verified |
@@ -50,7 +49,7 @@ Official upstream releases and immutable tag commits checked on 2026-10-02: `act
 - [actions/upload-artifact releases](https://github.com/actions/upload-artifact/releases)
 - [GitHub notice: Node 20 no longer available in Actions](https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/)
 
-The identified Node 20 Action references at audit start were `actions/setup-node@v4` and `actions/upload-artifact@v4` (`upload-artifact@v4.6.2` metadata declared `using: node20`). The current workflow references use immutable SHAs for the verified v7 releases, whose metadata declares Node 24. The warning status after the fix must still be based on a new run's actual log/annotations; a code edit alone is not verification.
+The identified Node 20 Action references at audit start were `actions/setup-node@v4` and `actions/upload-artifact@v4` (`upload-artifact@v4.6.2` metadata declared `using: node20`). The current workflow references use immutable SHAs for the verified v7 releases, whose metadata declares Node 24. Repair run 37061731570 passed; the GitHub check reports no annotations. However, downloading the raw Actions log returned EOF, so the specific Node 20 warning status remains **NOT VERIFIED** from that run's log.
 
 ## CI and MySQL
 
@@ -58,8 +57,9 @@ The identified Node 20 Action references at audit start were `actions/setup-node
 |---|---|
 | Existing CI on pre-repair main `c735e17` | Run `37041699125` reported success and all listed job steps completed; its raw log download was unavailable in this sandbox, so it is not evidence of the new action versions or warning status |
 | Fresh `origin/main` run `37050663450` on `70f249c` | npm install, Prisma validate/generate, disposable MySQL, baseline deploy, zero-drift check, and lint passed; Typecheck failed with a GitHub annotation: `Cannot find module '../../../../../package.json'` in the health route (one `../` too many). Tests, `db:verify`, and build were skipped. This repair uses the correct four-level import; the raw log download returned EOF, but API step statuses/annotation were readable. |
-| Post-repair branch CI | **Pending** until the repair branch is pushed/updated and the new run is inspected |
-| CI database image | Workflow specifies `mysql:8.0`; exact server minor must be read from the new run log before reporting it |
+| Post-repair branch CI | **PASS** — run [37061731570](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37061731570) on `78801e811df56d8ca84f5776717b73e9fa94f8cf`; npm audits/install, Prisma validate/generate, MySQL migration + zero drift, lint, typecheck, tests, read-only DB verification, production build, standalone output, and production-start smoke all passed. Raw log download returned EOF, so the specific Node 20 warning status remains **NOT VERIFIED**. |
+| MySQL baseline workflow | **PASS** — run [37061731386](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37061731386) on the repair commit |
+| CI database image | Workflow specifies `mysql:8.0`; exact server minor is **NOT VERIFIED** because the repair-run raw log download returned EOF |
 | Production `DATABASE_URL` / connection | Not present in repository and not available from Hostinger; **NOT VERIFIED** |
 | Production migration state / backup | Not available; **NOT VERIFIED**. Do not run `npm run db:deploy` blindly |
 
