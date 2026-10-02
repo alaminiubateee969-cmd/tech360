@@ -128,6 +128,47 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      # --- Hostinger engine-permission failure mode (regression guard) ----
+      # Hostinger's build environment strips the executable bit from the
+      # lazily-downloaded Prisma engine binaries. Prisma's cache-integrity
+      # check (valid cache + matching sha256) then reuses the non-executable
+      # in-place file instead of re-downloading it, and `prisma migrate
+      # deploy` fails with:
+      #   Error: Schema engine exited / Command failed with EACCES
+      #   spawn .../schema-engine-<target> EACCES
+      # Reproduce that exact state here and prove the production build
+      # (scripts/prisma.mjs wrapper) repairs it. This step is deterministic:
+      # it seeds a VALID Prisma engine cache so the no-redownload branch is
+      # taken, then strips the executable bit, exactly like Hostinger.
+      - name: Simulate Hostinger build-environment permission loss
+        run: |
+          set -euo pipefail
+          engines_dir=node_modules/@prisma/engines
+          target_file=$(ls "$engines_dir"/schema-engine-* | head -1)
+          target="${target_file##*/schema-engine-}"
+          commit=$(node -p "require('@prisma/engines-version').prisma.enginesVersion")
+          cache_dir="$HOME/.cache/prisma/master/$commit/$target"
+          mkdir -p "$cache_dir"
+          cp "$target_file" "$cache_dir/schema-engine"
+          printf '%s' "$(sha256sum "$cache_dir/schema-engine" | awk '{print $1}')" > "$cache_dir/schema-engine.sha256"
+          chmod 644 "$target_file"
+          for f in "$engines_dir"/libquery_engine-*; do [ -e "$f" ] && chmod 644 "$f" || true; done
+          echo "engine state now matches the Hostinger failure condition:"
+          ls -la "$engines_dir"
+
+      - name: Prove the original build path fails without the fix
+        run: |
+          set -uo pipefail
+          out=$(npx prisma migrate deploy 2>&1) && rc=0 || rc=$?
+          if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'EACCES'; then
+            echo "confirmed: raw 'prisma migrate deploy' fails with EACCES (the Hostinger failure mode), rc=$rc"
+            printf '%s\n' "$out" | tail -6
+          else
+            echo "::error::expected raw 'prisma migrate deploy' to fail with EACCES; rc=$rc"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+
       - name: Wait for MySQL
         run: |
           for i in $(seq 1 40); do
@@ -150,8 +191,12 @@ jobs:
           fi
           echo "baseline migrations:"; ls -1 prisma/migrations
 
+      # The production build runs Prisma through scripts/prisma.mjs, which
+      # restores the executable bit on every engine artifact before any
+      # command can spawn one (the Hostinger fix). Run the migration the
+      # same way production will.
       - name: Apply migrations to the disposable MySQL (as production would)
-        run: npx prisma migrate deploy
+        run: node scripts/prisma.mjs migrate deploy
 
       - name: Baseline must leave zero schema drift
         run: |
