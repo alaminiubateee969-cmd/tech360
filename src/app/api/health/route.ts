@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { channelStatuses } from '@/lib/comms'
+import packageJson from '../../../../../package.json'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +41,7 @@ export async function GET() {
     status: healthy ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
     app: 'tech360-platform',
-    version: '1.0.0',
+    version: packageJson.version,
     checks,
     channels,
     uptimeSeconds: Math.floor(process.uptime()),
