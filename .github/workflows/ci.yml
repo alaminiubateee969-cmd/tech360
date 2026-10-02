@@ -146,7 +146,7 @@ jobs:
           engines_dir=node_modules/@prisma/engines
           target_file=$(ls "$engines_dir"/schema-engine-* | head -1)
           target="${target_file##*/schema-engine-}"
-          commit=$(node -p "require('@prisma/engines-version').prisma.enginesVersion")
+          commit=$(node -p "require('@prisma/engines-version').enginesVersion")
           cache_dir="$HOME/.cache/prisma/master/$commit/$target"
           mkdir -p "$cache_dir"
           cp "$target_file" "$cache_dir/schema-engine"
