@@ -1,82 +1,104 @@
 #!/usr/bin/env bash
-# ============================================================
-# TECH360 — POST-DEPLOY HEALTH CHECK
-# Verifies the live application end-to-end after deployment.
-# Exit code 0 = healthy, 1 = unhealthy (CI marks the deploy failed).
+# TECH360 — external or explicit-port production health check
 #
-# Usage:  bash scripts/health-check.sh [port] [base-url]
-#   port     — the EXISTING Tech360 port (default: auto-discover)
-#   base-url — public URL (default: http://127.0.0.1:$PORT)
-# ============================================================
-set -uo pipefail
+# Usage:
+#   bash scripts/health-check.sh https://bdtech360.com
+#   PORT="$PORT" bash scripts/health-check.sh   # local/host-side only
+#
+# No port is guessed. For Hostinger, use the platform-supplied PORT if running
+# on the app host, or pass the public HTTPS base URL from an external client.
+set -Eeuo pipefail
 
-PORT="${1:-}"
-BASE="${2:-}"
-
-# --- discover the port the TECH360 app actually listens on ---
-# The app answers /api/health with "tech360-platform"; mini-services do not.
-# Candidates: explicitly running next/node app ports first (never sidecars).
-if [[ -z "$PORT" ]]; then
-  for CAND in $(ss -lntp 2>/dev/null | grep -E 'next-server|node .*standalone|node .*server' | grep -oE ':[0-9]+' | tr -d ':' | sort -u); do
-    if curl -sf -m 5 "http://127.0.0.1:$CAND/api/health" 2>/dev/null | grep -qE 'tech360-platform'; then
-      PORT="$CAND"; break
-    fi
-  done
+BASE="${1:-${TECH360_BASE_URL:-}}"
+if [[ -z "$BASE" && -n "${PORT:-}" ]]; then
+  BASE="http://127.0.0.1:${PORT}"
 fi
-if [[ -z "$PORT" ]]; then
-  # wider sweep: any listening port that answers as the Tech360 platform
-  for CAND in $(ss -lntp 2>/dev/null | grep -oE ':[0-9]+' | tr -d ':' | sort -un); do
-    if curl -sf -m 3 "http://127.0.0.1:$CAND/api/health" 2>/dev/null | grep -qE 'tech360-platform'; then
-      PORT="$CAND"; break
-    fi
-  done
+if [[ -z "$BASE" ]]; then
+  echo "Usage: $0 <https://application.example> (or set the platform-supplied PORT for a local check)" >&2
+  exit 2
 fi
-[[ -z "$PORT" ]] && PORT=3000
-BASE="${BASE:-http://127.0.0.1:$PORT}"
+BASE="${BASE%/}"
 
-PASS=0; FAIL=0
-check() {
-  local NAME="$1" CMD="$2"
-  if eval "$CMD" >/dev/null 2>&1; then
-    printf '  \033[1;32mPASS\033[0m  %s\n' "$NAME"; PASS=$((PASS+1))
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+PASS=0
+FAIL=0
+
+
+# Homepage
+home_status="$(curl -sS --connect-timeout 10 --max-time 30 -o "$TMP_DIR/home.html" -w '%{http_code}' "$BASE/" 2>/dev/null || true)"
+if [[ "$home_status" == 200 ]]; then
+  printf '  PASS  homepage (HTTP 200)\n'
+  PASS=$((PASS + 1))
+else
+  printf '  FAIL  homepage (expected HTTP 200, received %s)\n' "${home_status:-no response}"
+  FAIL=$((FAIL + 1))
+fi
+
+# Health: status, dynamic package version, and a real MySQL connection.
+health_status="$(curl -sS --connect-timeout 10 --max-time 30 -o "$TMP_DIR/health.json" -w '%{http_code}' "$BASE/api/health" 2>/dev/null || true)"
+if [[ "$health_status" == 200 ]]; then
+  if node - "$TMP_DIR/health.json" "${EXPECTED_VERSION:-}" <<'NODE'
+const fs = require('node:fs');
+const health = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const expectedVersion = process.argv[3];
+if (health.status !== 'healthy') throw new Error(`health status is ${health.status}`);
+if (health.app !== 'tech360-platform') throw new Error(`unexpected app ${health.app}`);
+if (expectedVersion && health.version !== expectedVersion) throw new Error(`version ${health.version} != expected ${expectedVersion}`);
+if (health.checks?.database?.status !== 'UP') throw new Error(`database status is ${health.checks?.database?.status}`);
+if (!/MySQL/i.test(health.checks.database.detail ?? '')) throw new Error('health does not identify MySQL');
+NODE
+  then
+    printf '  PASS  health/version/MySQL (HTTP 200)\n'
+    PASS=$((PASS + 1))
   else
-    printf '  \033[1;31mFAIL\033[0m  %s\n' "$NAME"; FAIL=$((FAIL+1))
+    printf '  FAIL  health JSON did not prove healthy app/version/MySQL\n'
+    FAIL=$((FAIL + 1))
   fi
-}
+else
+  printf '  FAIL  health endpoint (expected HTTP 200, received %s)\n' "${health_status:-no response}"
+  FAIL=$((FAIL + 1))
+fi
 
-echo "── TECH360 health check · $BASE (port :$PORT) ──"
+# Route contract checks: validation response for an empty login and an
+# authentication refusal for an unauthenticated privileged admin route.
+portal_status="$(curl -sS --connect-timeout 10 --max-time 30 -o "$TMP_DIR/portal.json" -w '%{http_code}' \
+  -X POST -H 'content-type: application/json' --data '{}' "$BASE/api/portal/login" 2>/dev/null || true)"
+if [[ "$portal_status" == 400 ]]; then
+  printf '  PASS  portal login rejects missing fields (HTTP 400)\n'
+  PASS=$((PASS + 1))
+else
+  printf '  FAIL  portal login (expected HTTP 400, received %s)\n' "${portal_status:-no response}"
+  FAIL=$((FAIL + 1))
+fi
 
-# 1) process is running and listening on the expected port
-check "application process listening on :$PORT" "ss -lntp | grep -qE \":$PORT\\b\""
-check "node/next/bun process present" "ps aux | grep -qE '[n]ext-server|[n]ode .*server|[b]un'"
+admin_status="$(curl -sS --connect-timeout 10 --max-time 30 -o "$TMP_DIR/admin.json" -w '%{http_code}' \
+  -X POST -H 'content-type: application/json' --data '{}' "$BASE/api/admin/seo/audit" 2>/dev/null || true)"
+if [[ "$admin_status" == 401 ]]; then
+  printf '  PASS  protected SEO route refuses anonymous request (HTTP 401)\n'
+  PASS=$((PASS + 1))
+else
+  printf '  FAIL  protected SEO route (expected HTTP 401, received %s)\n' "${admin_status:-no response}"
+  FAIL=$((FAIL + 1))
+fi
 
-# 2) public homepage responds
-check "GET / → HTTP 200" "curl -sf -m 15 -o /dev/null '$BASE/'"
+# Verify at least one built Next static asset, not only a proxy/placeholder page.
+asset_path="$(grep -oE '/_next/static/[^" ]+' "$TMP_DIR/home.html" | head -1 || true)"
+if [[ -n "$asset_path" ]]; then
+  asset_status="$(curl -sS --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' "$BASE$asset_path" 2>/dev/null || true)"
+  if [[ "$asset_status" == 200 ]]; then
+    printf '  PASS  built Next.js static asset (HTTP 200)\n'
+    PASS=$((PASS + 1))
+  else
+    printf '  FAIL  static asset (expected HTTP 200, received %s)\n' "${asset_status:-no response}"
+    FAIL=$((FAIL + 1))
+  fi
+else
+  printf '  FAIL  no Next.js static asset URL found in homepage HTML\n'
+  FAIL=$((FAIL + 1))
+fi
 
-# 3) health endpoint: overall + database + agents + ops loop
-HEALTH="$(curl -sf -m 15 "$BASE/api/health" 2>/dev/null || echo '{}')"
-check "/api/health responds" "[[ '$HEALTH' != '{}' ]]"
-check "database UP" "echo '$HEALTH' | grep -qE '\"status\":\"UP\"'"
-check "health JSON parses" "echo '$HEALTH' | grep -qE '\"status\":\"healthy\"'"
-
-# 4) public data APIs answer (blog + features)
-check "GET /api/blog responds" "curl -sf -m 15 '$BASE/api/blog' | grep -qE 'posts' || curl -sf -m 15 '$BASE/api/blog' | grep -qE 'disabled'"
-check "GET /api/features responds" "curl -sf -m 15 '$BASE/api/features' | grep -qE 'maintenance'"
-
-# 5) admin login page loads (SPA shell + auth gate reachable)
-check "admin SPA reachable (GET / 200 on #/admin route)" "curl -sf -m 15 -o /dev/null '$BASE/'"
-
-# 6) auth API refuses anonymous (proves the guard is live — a 401 is PASS)
-check "admin API protected (401 for anonymous /api/admin/dashboard)" "! curl -sf -m 10 '$BASE/api/admin/dashboard'"
-
-# 7) ops loop heartbeat is fresh (autonomous engine alive)
-check "AI operations heartbeat fresh (ACTIVE/operating)" "echo '$HEALTH' | grep -qE 'ACTIVE|operating' || curl -sf -m 10 'http://127.0.0.1:3031/health' | grep -qE 'operating'"
-
-echo "────────────────────────────────"
-echo "  $PASS passed · $FAIL failed"
-if [[ $FAIL -gt 0 ]]; then
-  printf "  RESULT: \033[1;31mUNHEALTHY\033[0m — inspect the Hostinger deployment logs and use a normal Git revert; this repository does not perform remote rollback"
+printf '\n%s passed · %s failed · target %s\n' "$PASS" "$FAIL" "$BASE"
+if (( FAIL > 0 )); then
   exit 1
 fi
-printf "  RESULT: \033[1;32mHEALTHY\033[0m\n"
-exit 0

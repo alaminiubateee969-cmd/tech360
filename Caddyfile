@@ -1,3 +1,5 @@
+# LEGACY local/VPS proxy only. Not used by the Hostinger Node.js Web App.
+# Do not expose this query-selected backend-port proxy publicly.
 :81 {
 	@transform_port_query {
 		query XTransformPort=*

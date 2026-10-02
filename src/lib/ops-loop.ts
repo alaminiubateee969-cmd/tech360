@@ -10,11 +10,11 @@ import { logError } from '@/lib/security'
 // rules + platform agents) → EXECUTE (real actions) → VERIFY →
 // LOG (automation trail + audit) → LEARN (persistent lessons).
 //
-// Runs in-process so production (Cloud Run) needs no sidecar:
-// Cloud Scheduler POSTs /api/ops/cycle with the OPS_SECRET header
-// every minute; the endpoint throttles to one cycle per interval.
-// The dev mini-service (mini-services/ai-ops) calls the same
-// endpoint, so dev and prod run the exact same loop.
+// Runs in-process so the application does not need an operations sidecar.
+// If an external scheduler is explicitly configured, it POSTs /api/ops/cycle
+// with the OPS_SECRET header; the endpoint throttles duplicate cycles.
+// The optional dev mini-service (mini-services/ai-ops) calls the same endpoint.
+// No scheduler or sidecar is implied by the Hostinger Web App configuration.
 // ============================================================
 
 const TZ = 'Asia/Dhaka'

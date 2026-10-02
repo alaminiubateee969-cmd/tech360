@@ -9,10 +9,12 @@ set -euo pipefail
 
 cat >&2 <<'EOF'
 ERROR: scripts/deploy-hostinger.sh is retired.
-Use the Hostinger Node.js Web App Git integration with:
-  install: npm ci
-  build:   npm run hostinger:build
-  start:   npm run start
+Configure the Hostinger Node.js Web App Git integration in hPanel:
+  framework: Next.js (app type `next`)
+  runtime:   Node.js 22.x; package manager: npm / package-lock.json
+  build:     script `build` (npm run build)
+  output:    .next; Hostinger's Next.js preset starts its bundled server
+  entry:     leave empty (ignored for Next.js); verify runtime logs/port
 Do not deploy this application through SSH, PM2, rsync, scp, or a VPS.
 EOF
 exit 1

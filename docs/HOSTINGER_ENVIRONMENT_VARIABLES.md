@@ -16,7 +16,7 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `ADMIN_EMAIL` | First-boot Super Admin seed account | Non-secret | Owner-selected account | Yes for first seed |
 | `ADMIN_PASSWORD` | First-boot Super Admin seed account | Secret | Owner-generated password, at least 12 characters; change at first login | Yes for first seed |
 
-`NOTIFY_RELAY_TOKEN`, `NOTIFY_RELAY_URL`, `OPS_INTERVAL_SEC`, and `PLATFORM_URL` are referenced by the operations/notification code. Configure the relay only if that separately deployed service is actually used; the Hostinger web app must not depend on localhost.
+`NOTIFY_RELAY_TOKEN`, `NOTIFY_RELAY_URL`, `OPS_INTERVAL_SEC`, and `PLATFORM_URL` are used only when the optional relay/operations service is deployed. For a production sidecar, provide unique `OPS_SECRET` and `PLATFORM_URL`; the ai-ops service now refuses to start in production without them. The notify relay refuses `/emit` when its production token is missing. Do not point a production app or sidecar at `localhost`; configure the actual service URL, or leave the optional relay disabled.
 
 ## Optional integrations (empty values fail closed or remain not configured)
 
@@ -28,7 +28,9 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD` | SSLCommerz integration flags | Mixed; password is secret | SSLCommerz dashboard | Optional |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp Cloud API and webhook verification | Secret | Meta developer console | Optional |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | SMTP email delivery | `SMTP_PASS` secret; others configuration | Mail provider | Optional; required before email sending |
-| `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` | SMS delivery | `SMS_API_KEY` secret; others configuration | SMS provider | Optional |
+| `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` | Generic SMS delivery | `SMS_API_KEY` secret; others configuration | SMS provider | Optional |
+| `HTTPSMS_API_KEY`, `HTTPSMS_BASE_URL`, `HTTPSMS_FROM` | HTTP SMS provider adapter | `HTTPSMS_API_KEY` secret; base URL/sender are configuration | httpsSMS account | Optional |
+| `PORTAL_OTP`, `PORTAL_OTP_CHANNEL` | Portal one-time-code behavior and preferred channel | Non-secret | Owner policy (`auto`/`off`/`required`; `email`/`whatsapp`/`sms`) | Optional |
 | `FACEBOOK_PAGE_TOKEN`, `INSTAGRAM_TOKEN`, `LINKEDIN_TOKEN`, `X_TOKEN` | Social publishing | Secret | Respective provider | Optional |
 | `SOCIAL_WEBHOOK_SECRET` | Social inbound webhook auth | Secret | Owner-generated | Optional; required to enable endpoint |
 | `N8N_WEBHOOK_SECRET`, `N8N_WEBHOOK_BASE` | n8n bridge auth and URL | Secret/URL | n8n deployment | Optional; required to enable endpoint |
@@ -39,6 +41,6 @@ The repository also contains dynamic feature metadata for the payment credential
 ## Production safety
 
 - Do not use the template's local-development values in production.
-- Do not use `127.0.0.1` or the web-server/SSH host as the MySQL host.
+- Use the MySQL hostname shown in Hostinger's database connection details. Do not infer `localhost`, `127.0.0.1`, an SSH address, or another hostname.
 - Do not commit a production `.env` file.
 - Empty integration credentials are expected to produce `NOT_CONFIGURED`/a refusal, not a fake success.

@@ -58,12 +58,12 @@ server.log
 # QA tooling artifacts
 tool-results/
 
-# NOTE: package-lock.json IS committed. Hostinger's Node.js pipeline installs
-# with npm, so production needs a deterministic npm lockfile. bun.lock remains
-# authoritative for local development and CI.
+# NOTE: package-lock.json IS committed. The application and top-level CI use npm
+# for reproducible installs. bun.lock is retained for existing Bun-only tools.
 
 # --- Secrets / private data (never commit or serve) ---
-# Live SQLite DB holds password hashes, 2FA secrets, session tokens, client data
+# Local/legacy SQLite artifacts may contain sensitive test data; never use them
+# as production storage (production Prisma provider is MySQL).
 /db/*.db
 /db/*.db-journal
 /db/*.sqlite*

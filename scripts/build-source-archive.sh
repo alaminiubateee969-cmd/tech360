@@ -1,70 +1,96 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------
-# TECH360 LLC — Full project source archive builder
-# Packages EVERY project file (code, schema, db, assets,
-# deployment, automation, docs) into a single zip served at
-# archives/tech360-platform-full-source.zip (git-ignored, NEVER under public/)
-# Excludes only: build artifacts, caches, logs, node_modules,
-# and the real .env (secrets) — a safe .env.example is included.
+# TECH360 LLC — project source archive builder
+# Defaults to the git-ignored archives/ folder and refuses the repository's
+# public/ web root. Local databases, owner uploads, env files/secrets, dependencies
+# installs, build output, caches and logs are deliberately excluded.
 # ------------------------------------------------------------
-set -euo pipefail
-cd "$(dirname "$0")/.."
+set -Eeuo pipefail
 
-OUT_DIR="archives"
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+OUT_DIR="${ARCHIVE_OUT_DIR:-archives}"
+mkdir -p "$OUT_DIR"
+OUT_DIR="$(cd "$OUT_DIR" && pwd -P)"
+PUBLIC_DIR="$(cd "$ROOT/public" && pwd -P)"
+if [[ "$OUT_DIR" == "$PUBLIC_DIR" || "$OUT_DIR" == "$PUBLIC_DIR/"* ]]; then
+  echo "ERROR: refusing to write a source archive under the web-served public/ directory" >&2
+  exit 2
+fi
+
 OUT="$OUT_DIR/tech360-platform-full-source.zip"
 STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+ZIP_TMP="$TMP_DIR/tech360-platform-full-source.zip"
 
-mkdir -p "$OUT_DIR"
-rm -f "$OUT"
+cat > "$TMP_DIR/ARCHIVE-README.md" <<'EOF'
+# TECH360 source archive
 
-# Archive README lives at archive root
-# Archive README (informational header written into the zip listing) —
-# the repo README.md itself is included AS-IS (full local-setup + CI/CD docs)
-cat > /tmp/tech360-archive-README.md <<EOF
-# TECH360 LLC — Enterprise Platform · Full Source Archive
+This is a source snapshot, not a deployment mechanism. The documented
+Hostinger target is a Node.js Web App using the Next.js `next` preset, Node.js
+22.x, npm, build script `build` (`npm run build`), and output `.next`.
+Hostinger's preset starts its bundled standalone server; repository `npm run
+start` is for CI/manual smoke tests only. Verify the actual hPanel/runtime
+configuration and review production database migration/backup prerequisites.
 
-Generated: ${STAMP}
-See README.md (included) for full setup, environment, deployment, rollback docs.
-This archive = every project file: src, prisma, db, public, mini-services,
-deployment, n8n, scripts (Hostinger deploy + health-check + archive builder),
-.github/workflows (CI/CD), examples, tests, .zscripts, agent-ctx, upload,
-DEPLOYMENT.md, SECURITY.md, PAYMENT.md, OFFICIAL-DOCUMENTS.md, worklog.md,
-.env.example (placeholders only — the real .env is NEVER in the archive).
+The archive contains source, the MySQL Prisma schema/migrations, npm lockfile,
+public assets, workflows, tests, and project docs. It excludes local databases,
+owner uploads, environment files (including .env.example), node_modules, build
+output, caches, and logs. Inspect before distribution; never place it under
+public/ or another web-served directory.
 EOF
 
-# Do NOT clobber the repo README — it is the source of truth for setup/CI/CD.
-# (Previously this script overwrote README.md; the repo README is now included as-is.)
-
-# Document where the official company pad is used
-cat > OFFICIAL-DOCUMENTS.md <<'EOF'
-# Official documents that print on the TECH360 company pad
-
-The company pad (owner-shared letterhead design, preserved in `public/brand/`)
-is applied by `src/lib/letterhead.ts` — the single letterhead engine:
-
-1. **SOW / Project Preview** (client-facing, pre-payment gate) — `/api/preview/[token]`
-   Logo + TECH360 wordmark + CONNECT·INNOVATE·GROW tagline + Web|Cloud|AI|Data|Tech
-   services line, document meta bar (client ref / version / issued / status),
-   faint TECH360 watermark, signature blocks, labeled footer
-   (Address · Phone · Website · Email).
-2. **Official Invoice** (admin) — `/api/admin/invoices/[number]`
-   Full tax invoice on the pad: bill-to block, totals with paid-to-date balance,
-   line item, payment instructions. Linked from Payments → Invoices rows.
-3. **Handover & Acceptance Certificate** (client-facing) — `/api/handover/[token]/download?format=html`
-   Release record + payment verification + client responsibilities + signatures.
-4. **Legal policies** (public, print) — every `#/legal/*` page prints with the
-   pad letterhead (logo, legal identity, brand rule) via print-only blocks.
-EOF
-
-zip -r -q "$OUT" \
-  src prisma public deployment n8n examples tests .zscripts agent-ctx mini-services \
+zip -r -q "$ZIP_TMP" \
+  src prisma public deployment docs n8n examples tests .zscripts agent-ctx mini-services \
   scripts .github \
-  package.json tsconfig.json next.config.ts eslint.config.mjs tailwind.config.ts \
-  postcss.config.mjs components.json Caddyfile bun.lock .gitignore \
-  .env.example README.md OFFICIAL-DOCUMENTS.md COVERAGE-AUDIT.md DEPLOYMENT.md SECURITY.md PAYMENT.md worklog.md \
-  -x "db/*" "upload/*" ".env" ".env.*" "mini-services/*/node_modules/*" "*.log" "db/*.journal" ".DS_Store" ".zscripts/*.png" "tool-results/*"
+  package.json package-lock.json prisma.config.ts tsconfig.json next.config.ts \
+  eslint.config.mjs tailwind.config.ts postcss.config.mjs components.json Caddyfile \
+  bun.lock .gitignore README.md OFFICIAL-DOCUMENTS.md COVERAGE-AUDIT.md \
+  DEPLOYMENT.md SECURITY.md PAYMENT.md MASTER_PROJECT_AUDIT.md REQUIREMENTS_REGISTER.md \
+  TEST_AND_QA_REPORT.md KNOWN_ISSUES_AND_BLOCKERS.md worklog.md \
+  -x ".env" ".env.*" "*/.env" "*/.env.*" \
+  "db/*" "*/db/*" "upload/*" "*/upload/*" \
+  "public/downloads/*" "public/uploads/*" \
+  "node_modules/*" "*/node_modules/*" ".next/*" "*/.next/*" \
+  "archives/*" "*/archives/*" "coverage/*" "dist/*" "build/*" \
+  "*.db" "*.sqlite" "*.sqlite3" "*.journal" "*.log" "*.pem" "*.key" \
+  ".DS_Store" ".zscripts/*.png" "tool-results/*"
 
-FILES=$(unzip -l "$OUT" | tail -1 | awk '{print $2}')
-SIZE=$(du -h "$OUT" | cut -f1)
-echo "{\"file\":\"archives/tech360-platform-full-source.zip\",\"files\":$FILES,\"size\":\"$SIZE\",\"generated\":\"$STAMP\"}" > "$OUT_DIR/archive-meta.json"
-echo "Archive built: $OUT ($FILES files, $SIZE)"
+# Add an archive-specific readme without writing to or overwriting a tracked file.
+zip -j -q "$ZIP_TMP" "$TMP_DIR/ARCHIVE-README.md"
+
+# Fail closed if an excluded class accidentally entered the archive. Store the
+# listing first so grep -q cannot trigger SIGPIPE through a pipefail-enabled pipe.
+LISTING="$TMP_DIR/archive-list.txt"
+unzip -Z1 "$ZIP_TMP" > "$LISTING"
+if grep -Eq '(^|/)\.env($|\.)|(^|/)(db|upload|node_modules|\.next|archives)/|(^|/)public/(downloads|uploads)/|\.(db|sqlite|sqlite3|journal|pem|key)$' "$LISTING"; then
+  echo "ERROR: archive contains a path that must be excluded" >&2
+  exit 1
+fi
+
+for required in \
+  ARCHIVE-README.md README.md OFFICIAL-DOCUMENTS.md package.json package-lock.json \
+  prisma.config.ts prisma/schema.prisma prisma/migrations/0_init/migration.sql \
+  src/app/api/health/route.ts; do
+  if ! grep -Fxq "$required" "$LISTING"; then
+    echo "ERROR: required source entry missing from archive: $required" >&2
+    exit 1
+  fi
+done
+
+if ! unzip -p "$ZIP_TMP" README.md | cmp -s - "$ROOT/README.md"; then
+  echo "ERROR: archived README differs from the repository README" >&2
+  exit 1
+fi
+
+ENTRIES="$(wc -l < "$LISTING" | tr -d '[:space:]')"
+FILES="$(awk 'substr($0, length($0), 1) != "/" { count++ } END { print count + 0 }' "$LISTING")"
+SIZE="$(du -h "$ZIP_TMP" | awk '{print $1}')"
+# Publish only after the archive has passed its path/content checks.
+mv -f "$ZIP_TMP" "$OUT"
+printf '{"file":"%s","files":%s,"entries":%s,"size":"%s","generated":"%s"}\n' \
+  "$OUT" "$FILES" "$ENTRIES" "$SIZE" "$STAMP" > "$TMP_DIR/archive-meta.json"
+mv -f "$TMP_DIR/archive-meta.json" "$OUT_DIR/archive-meta.json"
+echo "Archive built: $OUT ($FILES regular files, $ENTRIES total entries, $SIZE)"

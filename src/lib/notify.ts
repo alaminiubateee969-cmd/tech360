@@ -13,12 +13,14 @@ import { db } from '@/lib/db'
  * and polling remains the honest fallback.
  */
 
-const RELAY_URL = process.env.NOTIFY_RELAY_URL ?? 'http://127.0.0.1:3032'
-// No known default token in production: without NOTIFY_RELAY_TOKEN the relay ping is skipped.
-const RELAY_TOKEN = process.env.NOTIFY_RELAY_TOKEN ?? (process.env.NODE_ENV === 'production' ? '' : 'tech360-notify-dev-token')
+const isProduction = process.env.NODE_ENV === 'production'
+const RELAY_URL = process.env.NOTIFY_RELAY_URL ?? (isProduction ? '' : 'http://127.0.0.1:3032')
+// No known default token or localhost destination in production. Without an
+// explicit URL and token, relay pings are skipped and polling remains active.
+const RELAY_TOKEN = process.env.NOTIFY_RELAY_TOKEN ?? (isProduction ? '' : 'tech360-notify-dev-token')
 
 async function pingRelay(kind: string, severity: 'INFO' | 'WARNING' | 'CRITICAL'): Promise<void> {
-  if (!RELAY_TOKEN) return
+  if (!RELAY_URL || !RELAY_TOKEN) return
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 1200)
   try {

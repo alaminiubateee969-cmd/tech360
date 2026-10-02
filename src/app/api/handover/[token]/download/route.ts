@@ -112,6 +112,9 @@ ${padFooter('This certificate is confidential and intended for the addressed rec
     headers: {
       'Content-Type': 'application/json',
       'Content-Disposition': `attachment; filename="tech360-${handover.project.code}-handover.json"`,
+      'Cache-Control': 'no-store, max-age=0',
+      'Referrer-Policy': 'no-referrer',
+      'X-Robots-Tag': 'noindex, nofollow',
     },
   })
 }

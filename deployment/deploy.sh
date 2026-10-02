@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# TECH360 — Google Cloud deployment helper
+# LEGACY Google Cloud Run deployment helper for separately authorized work.
+# Not the supported deployment path for the Tech360 production app (Hostinger
+# Node.js Web App). Do not run this script for bdtech360.com.
 # Prereq: gcloud authenticated, project selected, Artifact Registry repo "platform" created.
 set -euo pipefail
 

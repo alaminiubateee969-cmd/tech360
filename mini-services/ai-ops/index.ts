@@ -8,15 +8,25 @@
 // endpoint every OPS_INTERVAL_SEC, keeps a health surface for the
 // admin console, and exposes POST /trigger for manual runs.
 //
-// In production (Cloud Run) there is no sidecar: Cloud Scheduler
-// POSTs /api/ops/cycle with the OPS_SECRET header every minute
-// (see deployment/scheduler.md).
+// In production the main Hostinger Node.js Web App does not launch this
+// sidecar. If an external scheduler is explicitly configured, it POSTs
+// /api/ops/cycle with OPS_SECRET; see docs/HOSTINGER_DEPLOYMENT.md.
 // ============================================================
 
 const PORT = 3031
-const PLATFORM = process.env.PLATFORM_URL ?? 'http://localhost:3000'
-const OPS_SECRET = process.env.OPS_SECRET ?? 'tech360-ops-dev-secret'
+const isProduction = process.env.NODE_ENV === 'production'
+const PLATFORM = process.env.PLATFORM_URL ?? (isProduction ? '' : 'http://localhost:3000')
+const OPS_SECRET = process.env.OPS_SECRET ?? (isProduction ? '' : 'tech360-ops-dev-secret')
 const INTERVAL_SEC = Number(process.env.OPS_INTERVAL_SEC ?? 90)
+
+if (isProduction && !PLATFORM) {
+  console.error('[tech360-ai-ops] refusing to start in production without PLATFORM_URL')
+  process.exit(1)
+}
+if (isProduction && !OPS_SECRET) {
+  console.error('[tech360-ai-ops] refusing to start in production without OPS_SECRET')
+  process.exit(1)
+}
 
 type CycleResponse = {
   ok?: boolean
