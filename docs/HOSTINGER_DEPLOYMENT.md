@@ -1,14 +1,14 @@
 # Tech360 — Hostinger Node.js Web App deployment
 
-> **Status: PRODUCTION VERIFICATION REQUIRED.** This is the repository-side configuration target, not proof that Hostinger is configured or the live application is healthy.
+> **Status: PRODUCTION VERIFICATION REQUIRED.** Repository-side fix for the Hostinger build failure is implemented and CI-proven; the live deployment and domain routing are verified only from fresh external probes and Hostinger deployment logs.
 
 ## Evidence boundary
 
-The GitHub source was refreshed from `origin/main` on 2026-10-03 (local date). Current `main` is `70f249c8711bb5fb6213df7e53d2444db87eeff1`; the session branch started at `c735e1798c91a780e4ebaf0498c77e834d56631d`. The main CI run 37050663450 passed installation, Prisma validation/generation, disposable MySQL migration/drift, and lint, then failed at Typecheck because the health route's package import had one extra `../`. Repair commit `78801e811df56d8ca84f5776717b73e9fa94f8cf` corrects that path and passed exact-commit CI run 37061731570 across validation, tests, DB verification, build, standalone assets, and production-start smoke. The current-main failure remains distinct; branch protection and Hostinger production state are separately unverified.
+History: `main` was `70f249c8711bb5fb6213df7e53d2444db87eeff1` with a failing Typecheck (health-route import). PR #10 (repair branch `arena/01a0fde7-tech360`, head `a938f20`) merged at `807c3a737c06e3034a0261ecb3e69abb41f4c1b0`; main CI run 37067071697 on that SHA passed every gate (secret scan, npm ci on Node 22, audits, Prisma validate/generate, disposable-MySQL migrate deploy, zero drift, lint, typecheck, tests, read-only DB verify, production build, standalone output, production-start smoke). An earlier Hostinger deployment log (Composer flow for `70f249c`) is historical only.
 
-The supplied current Hostinger deployment log says it cloned branch `main` at commit `70f249c8711bb5fb6213df7e53d2444db87eeff1`, then reported **“Installing Composer dependencies”** and **“Publishing completed.”** This log proves that deployment job used a Composer-oriented flow for the current main SHA; it does **not** prove Node.js 22, npm installation, a Next.js build, a running Node server, MySQL connectivity, or domain routing. The Node.js Web App hPanel configuration and fresh Node/Next build/runtime logs were not accessible from this repository session.
+Current (2026-10-03, local): a Hostinger **Node.js Web App** is connected to this repository/`main` — its build cloned `main` at `807c3a73`, detected Node 22 + npm, completed `npm install` (536 packages) and Prisma client generation (6.19.3), then failed at `prisma migrate deploy` with a schema-engine **EACCES** spawn error. The verified root cause (lost executable bit + Prisma's no-redownload cache path) and the fix are documented below ("Prisma engine EACCES"). The fix lands on `main` with a CI regression guard that reproduces the exact failure mode and proves the repair against disposable MySQL on every run.
 
-Fresh read-only probes on 2026-10-03 resolved DNS for the apex and `www` names, but `https://bdtech360.com/`, `https://bdtech360.com/api/health`, and `https://www.bdtech360.com/` each failed TLS with curl exit 35 / HTTP `000`; `http://bdtech360.com/` returned curl exit 52 (empty reply) / HTTP `000`. No application body or route status was obtained. DNS resolution alone does not prove DNS attachment, TLS, or application routing, so no live route is marked verified here.
+Fresh read-only probes on 2026-10-03 (from a network with restricted egress, via an external fetcher): `https://bdtech360.com/` returned **403** (generic Hostinger page), `https://bdtech360.com/api/health` and `https://www.bdtech360.com/api/health` returned Hostinger **404** pages (`htdocs_error/page_not_found.svg`) — i.e. the old generic website entry still served the domains at probe time; the Next.js app was **not** live. Post-fix live verification must be re-run after the next successful Hostinger deployment of the repaired `main` SHA.
 
 ## Required Hostinger app configuration
 
@@ -66,6 +66,58 @@ The actual Hostinger MySQL host, production URL, and configured variables are **
 The checked-in Prisma datasource says `provider = "mysql"`; SQLite is not the production database. The initial migration is `prisma/migrations/0_init/migration.sql`, and `prisma/migrations/migration_lock.toml` also declares the MySQL provider. CI uses a disposable MySQL service and applies the checked-in baseline there. CI database success does not prove that Hostinger's production MySQL database is reachable or migrated.
 
 `npm run build` generates the Prisma client, applies committed pending migrations with forward-only `prisma migrate deploy`, runs the Next.js production build, and copies standalone static/public assets. Any failed step stops the build. Before triggering Hostinger, an authorized operator must confirm the actual MySQL endpoint, migration history/schema baseline, and recoverable backup; this audit has not verified those production facts. `npm run db:verify` is read-only and requires `DATABASE_URL`. Never run reset, force-reset, `db push`, or data-loss commands against production.
+
+## Prisma engine EACCES — verified root cause and fix (2026-10-03)
+
+The first Hostinger Node.js Web App build of `main` (`807c3a7`) failed at
+`prisma migrate deploy` with:
+
+```
+Error: Schema engine exited
+Command failed with EACCES
+.../node_modules/@prisma/engines/schema-engine-debian-openssl-1.1.x
+spawn .../schema-engine-debian-openssl-1.1.x EACCES
+```
+
+Verified root cause (reproduced locally on Linux with the real Prisma
+6.19.3 engines, commit `c2990dca591cba766e3b7ef5d9e8a84796e47ab7`):
+
+1. Prisma 6.19.3 downloads native engine binaries lazily and applies
+   `chmod +x` **only while downloading** (`@prisma/fetch-engine`:
+   `downloadBinary` → `chmodPlusX`).
+2. When a **valid engine cache** exists (`~/.cache/prisma/master/<commit>/<target>/`
+   with a matching `.sha256`), the cache-integrity check makes Prisma
+   **reuse the existing in-place file and skip re-downloading** — it never
+   re-chmods an existing file.
+3. Hostinger's build filesystem provisions the engine file **without the
+   executable bit**, so the reuse path hands a non-executable file to the
+   CLI and the spawn fails with EACCES.
+
+Fix (committed, minimal, no masking):
+
+- `scripts/prisma.mjs` — a Prisma execution wrapper used by the production
+  build. Before every Prisma command it restores the executable bit on all
+  engine artifacts in every location Prisma 6.19.3 uses
+  (`node_modules/@prisma/engines`, `node_modules/prisma`,
+  `node_modules/.prisma/client`, the Prisma cache), execve-tests each
+  spawnable engine, and — if a filesystem cannot honor the executable bit —
+  falls back to executable copies plus the official
+  `PRISMA_SCHEMA_ENGINE_BINARY` / `PRISMA_MIGRATION_ENGINE_BINARY` /
+  `PRISMA_QUERY_ENGINE_BINARY` overrides. It fails loudly if the engines
+  cannot be made executable; it never uses `|| true` and never skips a
+  failing migration.
+- `package.json`: the `build` (and `db:deploy`) scripts invoke Prisma via
+  `node scripts/prisma.mjs …` instead of bare `prisma …`.
+- `.github/workflows/ci.yml`: a deterministic regression guard seeds a valid
+  engine cache, strips the executable bit (the exact Hostinger state),
+  asserts the **original** `npx prisma migrate deploy` fails with EACCES,
+  then applies the migrations through the wrapper against the disposable
+  MySQL — proving the failure mode and the fix on every main CI run.
+
+No `binaryTargets`/OpenSSL target was forced: the engines Prisma selects
+for each environment (`debian-openssl-1.1.x` on Hostinger,
+`debian-openssl-3.0.x` in CI/sandbox) are correct as-is; only the
+permissions were wrong.
 
 ## Deployment-log acceptance criteria
 

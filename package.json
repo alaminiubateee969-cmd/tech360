@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "prisma generate && prisma migrate deploy && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "build": "node scripts/prisma.mjs generate && node scripts/prisma.mjs migrate deploy && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production node .next/standalone/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -14,7 +14,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "db:deploy": "prisma migrate deploy",
+    "db:deploy": "node scripts/prisma.mjs migrate deploy",
     "schema:mysql": "node scripts/convert-schema-to-mysql.mjs",
     "schema:check": "node scripts/convert-schema-to-mysql.mjs --check",
     "start:bun": "NODE_ENV=production bun .next/standalone/server.js",
