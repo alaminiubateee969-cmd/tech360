@@ -1,7 +1,7 @@
 # TECH360 — Hostinger production deployment
 
 ```
-PRODUCTION_STATUS=BLOCKED
+PRODUCTION_STATUS=NOT_VERIFIED
 ```
 
 Target architecture:
@@ -128,32 +128,26 @@ Never place any of these in the repository, in `public_html`, or in chat.
 
 ---
 
-## 5. `main` is not yet deployable
+## 5. Current GitHub source state
 
-`main` is currently commit `d82f030` and still contains:
+The current `main` branch uses MySQL in `prisma/schema.prisma` and now contains the reviewed baseline migration:
 
-```prisma
-datasource db {
-  provider = "sqlite"
-}
+```text
+prisma/migrations/0_init/migration.sql
+prisma/migrations/migration_lock.toml
 ```
 
-The production database is **MySQL**. A Prisma client generated for SQLite
-emits a different SQL dialect and cannot talk to MySQL, so the application
-would start and then fail on its first query.
+The baseline SQL was already generated and stored on the project's arena branch for this same schema; the schema, package.json, CI workflow, and health route were verified byte-identical before the baseline was brought to `main`.
 
-`main` also still exposes `db:push --accept-data-loss` and `db:reset`, and it
-has no `prisma/migrations` baseline, so there is nothing for
-`prisma migrate deploy` to apply.
+The CI workflow applies migrations with `prisma migrate deploy` and then performs a zero-drift check. Production is not considered verified until that CI run passes and the live Hostinger application is checked.
 
-**The MySQL migration, the baseline and the security fixes are on
-`arena/01a0f285-tech360` and must be merged into `main` before the Hostinger
-Node app is deployed.** Deploying `main` as it stands produces a running
-process that cannot reach its database.
+Do not use `prisma db push`, `prisma migrate reset`, or `--accept-data-loss` as a production deployment mechanism.
 
----
+The old commit reference and old SQLite statements previously in this document are intentionally removed because they no longer describe the current `main` branch.
 
 ## 5b. First Super Admin account
+
+
 
 The bootstrap already exists — `prisma/seed.ts` upserts a `SUPER_ADMIN` user
 and flags it `mustChangePassword`, so the owner is forced to change it at
