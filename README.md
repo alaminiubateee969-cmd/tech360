@@ -2,7 +2,7 @@
 
 **bdtech360.com · Websites · Web applications · Custom CRM · Client portals · Business dashboards · eCommerce · WhatsApp automation · n8n automation · AI agent systems · Business automation · Industry software · Maintenance & support**
 
-Stack: **Next.js 16 (App Router) · TypeScript 5 · Tailwind CSS 4 · shadcn/ui · Prisma + SQLite · z-ai-web-dev-sdk (server-side AI)**
+Stack: **Next.js 16 (App Router) · Node.js 22.x · npm · TypeScript 5 · Tailwind CSS 4 · shadcn/ui · Prisma + MySQL · z-ai-web-dev-sdk (server-side AI)**
 
 One codebase, three surfaces:
 
@@ -18,17 +18,20 @@ The official **company letterhead** (owner-provided pad + logo) drives every doc
 
 ## 1. Local setup
 
+The application uses **Node.js 22.x, npm, and MySQL**. Use a disposable/development MySQL database here—never point local commands at production.
+
 ```bash
-bun install                     # or: npm ci
-cp .env.example .env            # fill secrets (placeholder values only — see the comments inside)
-bun run db:push                 # (re)create/align the SQLite schema
-bun run db:seed                 # first boot: super admin + 110 departments + 44 agents + templates
-bun run dev                     # http://localhost:3000
+npm ci --no-audit --no-fund
+cp .env.example .env            # set DATABASE_URL to your development MySQL database
+npx prisma generate
+npx prisma migrate deploy       # applies reviewed migrations to the development database
+npm run db:seed                 # first boot: super admin + departments + agents + templates
+npm run dev
 ```
 
-First login: `admin@bdtech360.com` / value of `ADMIN_PASSWORD` (must-change enforced).
+Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the local environment before seeding. Production seeding refuses to run without a sufficiently strong `ADMIN_PASSWORD`; see `docs/HOSTINGER_DEPLOYMENT.md`.
 
-Mini services (dev-only drivers; in production Cloud Scheduler replaces ai-ops and the relay runs beside the app):
+Optional sidecars are separate Bun services, not part of the Hostinger Next.js Web App. In production, an explicitly configured scheduler may call `/api/ops/cycle`; the notification relay is optional and must be separately deployed/configured. Neither is required for the main web application:
 
 ```bash
 cd mini-services/ai-ops       && bun install && bun run dev   # :3031 triggers the ops loop every 90s
@@ -64,16 +67,20 @@ GitHub Actions validates the same npm/Node.js 22 path against disposable MySQL.
 
 ## 5. Production deployment ownership
 
-Hostinger owns the production Node.js Web App, environment variables, filesystem, process lifecycle, HTTPS, domain, logs, and deployment from its configured GitHub integration. GitHub Actions owns CI validation only.
+GitHub Actions validates the repository; it does not deploy production. When a Hostinger **Node.js Web App** is connected to the repository's `main` branch, Hostinger's Git integration can rebuild on pushes. The current Hostinger connection, app configuration, and live runtime still require independent verification; see `docs/HOSTINGER_DEPLOYMENT.md`.
 
 ```text
-Pull Request → GitHub Actions CI → merge to main
-  → Hostinger pulls main → npm ci → npm run hostinger:build → npm run start
+Pull Request → GitHub Actions CI (Node.js 22 + npm + disposable MySQL)
+  → merge to main → Hostinger Node.js Web App Git integration (when configured)
+  → Hostinger-managed npm install → hPanel build script `build` (npm run build)
+  → Hostinger Next.js preset starts the bundled standalone server
 ```
+
+The repository's `npm run start` script is used for CI/manual standalone smoke tests; Hostinger's documented Next.js preset ignores a custom entry-file field and manages the server start.
 
 There is no production SSH, VPS, PM2, rsync, scp, or manual server-copy path. `scripts/deploy-hostinger.sh` is retained only as a fail-fast retirement notice.
 
-Hostinger settings and environment requirements are documented in `docs/HOSTINGER_DEPLOYMENT_MATRIX.md` and `docs/HOSTINGER_ENVIRONMENT_VARIABLES.md`.
+Hostinger settings and environment requirements are documented in `docs/HOSTINGER_DEPLOYMENT.md`, `docs/HOSTINGER_DEPLOYMENT_MATRIX.md`, and `docs/HOSTINGER_ENVIRONMENT_VARIABLES.md`.
 
 ## 6. Payments & governance
 
@@ -84,10 +91,10 @@ Hostinger settings and environment requirements are documented in `docs/HOSTINGE
 ## 7. Repository contents
 
 - `src/` — the complete application (public site, admin console, client portal, ~45 API route groups, AI agent engine, journey/CRM engine, ops loop, letterhead engine, security libs).
-- `prisma/`, `db/` — schema + SQLite data.
+- `prisma/` — the MySQL Prisma schema, reviewed migration baseline, and seed. Any local `db/` data is ignored and is not production storage.
 - `public/` — brand assets (owner's original logo + company pad designs in `public/brand/`).
 - `mini-services/` — ai-ops (:3031) + notify-relay (:3032).
-- `deployment/` — Google Cloud Run alternative (cloudbuild, scheduler).
+- `deployment/` — legacy Google Cloud Run/Docker templates and scheduler samples. They are not part of Tech360's supported production path; the current production target is the Hostinger Node.js Web App documented above.
 - `n8n/` — 26 workflow definitions (W26 = free lead enrichment, regenerate with `node deployment/generate-n8n-lead-enrichment.cjs`).
 - `scripts/`, `.github/` — CI/CD + deployment.
 - `worklog.md` — the complete build/iteration log (honest QA state, every round).

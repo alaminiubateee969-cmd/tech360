@@ -12,20 +12,20 @@
 //     /api/admin/notifications endpoint. A listening stranger
 //     learns nothing but the fact that something happened.
 //   - The POST /emit endpoint is for the PLATFORM ONLY and is
-//     guarded by a shared token (NOTIFY_RELAY_TOKEN, default
-//     dev token; Secret Manager supplies it in production).
+//     guarded by NOTIFY_RELAY_TOKEN. A development-only fallback
+//     is used outside production; production requires an explicit token.
 //
-// In production the relay and the platform run in the same
-// Cloud Run service (side-by-side process) or the emit call is
-// simply skipped — notification polling (60s) stays as the
-// honest fallback in every deployment.
+// The Hostinger Node.js Web App does not launch this relay process.
+// Production may use a separately hosted relay only when its URL and
+// token are explicitly configured; otherwise emit is skipped and
+// notification polling (60s) remains the fallback.
 // ============================================================
 
 import { createServer } from 'node:http'
 import { Server, type Socket } from 'socket.io'
 
 const PORT = 3032
-const TOKEN = process.env.NOTIFY_RELAY_TOKEN ?? 'tech360-notify-dev-token'
+const TOKEN = process.env.NOTIFY_RELAY_TOKEN ?? (process.env.NODE_ENV === 'production' ? '' : 'tech360-notify-dev-token')
 
 const httpServer = createServer((req, res) => {
   // Tiny HTTP surface: health + emit.
@@ -46,7 +46,7 @@ const httpServer = createServer((req, res) => {
 
   if (req.method === 'POST' && url.pathname === '/emit') {
     const provided = req.headers['x-relay-token']
-    if (provided !== TOKEN) {
+    if (!TOKEN || typeof provided !== 'string' || provided !== TOKEN) {
       res.writeHead(401, { 'content-type': 'application/json' })
       res.end(JSON.stringify({ error: 'unauthorized' }))
       return

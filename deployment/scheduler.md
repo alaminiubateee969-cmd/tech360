@@ -1,4 +1,6 @@
-# TECH360 — Production Autonomy (Cloud Scheduler)
+# Legacy Google Cloud Scheduler sample — not the Hostinger deployment runbook
+
+> The gcloud commands below are retained for separately authorized Cloud Run/client work and are **not configured or verified for Tech360 production**. Tech360's supported production app target is the Hostinger Node.js Web App. Do not use the Cloud Run deploy commands to deploy `bdtech360.com`.
 
 The autonomous AI operations loop runs **inside the platform** at
 `POST /api/ops/cycle` (source: `src/lib/ops-loop.ts`). No sidecar service is

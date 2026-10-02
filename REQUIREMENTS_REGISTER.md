@@ -1,11 +1,13 @@
-# Tech360 Master Requirements Register
+# Tech360 Master Requirements Register — Historical Snapshot
 
-**Checkpoint:** 2026-09-30 · **Branch:** `arena/01a0eebb-tech360`  
-**Source set reviewed:** current owner master prompt; repository documentation; `worklog.md`; `COVERAGE-AUDIT.md`; schema, routes, components, deployment scripts, environment template, and Git history available in this checkout.
+> **Superseded checkpoint dated 2026-09-30.** The status rows below preserve an earlier project review and must not be treated as current evidence for the database engine, CI results, deployment workflow, production host, or Git branch. Current operational/deployment evidence is in [`docs/PROJECT_STATE_REPORT.md`](docs/PROJECT_STATE_REPORT.md), [`docs/TEST_AND_QA_REPORT.md`](TEST_AND_QA_REPORT.md), [`docs/DEPLOYMENT_READINESS_REPORT.md`](docs/DEPLOYMENT_READINESS_REPORT.md), and [`docs/HOSTINGER_DEPLOYMENT_MATRIX.md`](docs/HOSTINGER_DEPLOYMENT_MATRIX.md). The checked-in production schema target is MySQL; Hostinger production state remains subject to direct verification.
 
-Status vocabulary: `VERIFIED_COMPLETE`, `PARTIALLY_IMPLEMENTED`, `MISSING`, `BROKEN`, `NOT_VERIFIED`, `BLOCKED`, `NOT_APPLICABLE`.
+**Historical checkpoint:** 2026-09-30 · **Branch at that checkpoint:** `arena/01a0eebb-tech360`
+**Source set reviewed at that checkpoint:** owner prompt; repository documentation; `worklog.md`; `COVERAGE-AUDIT.md`; schema, routes, components, deployment scripts, environment template, and Git history available in that checkout.
 
-> This is a living execution register, not a completion claim. A status is only VERIFIED_COMPLETE where code/data or an executed check provides evidence. Production/provider claims remain blocked until tested against the real service.
+Status vocabulary used in the historical table: `VERIFIED_COMPLETE`, `PARTIALLY_IMPLEMENTED`, `MISSING`, `BROKEN`, `NOT_VERIFIED`, `BLOCKED`, `NOT_APPLICABLE`.
+
+> Historical statuses are not completion claims. A current `VERIFIED` status requires current code/data or a fresh executed check; production/provider claims remain blocked until tested against the real service.
 
 | ID | Requirement | Source | Module | Initial status | Evidence / missing components | Dependencies | Priority | Planned action | Verification | Final result |
 |---|---|---|---|---|---|---|---|---|---|---|

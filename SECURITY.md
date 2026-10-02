@@ -2,19 +2,21 @@
 
 ## 1. Secrets handling
 
-**Never committed** (enforced by `.gitignore` + CI secret scan):
+**Do not commit** (enforced by `.gitignore` + CI pattern scan):
 
-- `.env` / `.env.local` / `.env.production` — the repo ships `.env.example` with **placeholder values only**
+- `.env` / `.env.local` / `.env.production` — the repo ships `.env.example` with placeholder values only
 - SSH keys, private certificates
 - payment credentials (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, …)
 - API tokens (WhatsApp, SMTP, SMS, social, n8n)
 - database credentials
 
+The tracked-file review for this deployment audit found no `.env`, private-key file, database/upload/source archive, or matching high-risk secret pattern. Pattern scans are not proof that every possible credential format is absent; rotate any value that may have been exposed.
+
 **CI gate** (`.github/workflows/ci.yml`): every push and pull request is scanned for secret patterns (`sk_live_…`, `sk_test_…`, `whsec_…`, `BEGIN PRIVATE KEY`, `ghp_…`, AWS key ids) before CI validation; a hit fails the pipeline. An accidental `.env` in the tree also fails the pipeline.
 
-**Production lives on Hostinger** — Hostinger owns the Node.js Web App runtime, production `.env` values, process lifecycle, HTTPS and Git integration. GitHub Actions validates source and does not hold or use an SSH deployment key.
+**Intended production target: Hostinger Node.js Web App.** The actual hPanel app type, runtime, environment values, process state, HTTPS, and Git connection are **NOT VERIFIED** in this audit. If configured, secrets belong in Hostinger's protected Node.js Web App Environment Variables panel; GitHub Actions validates source and does not hold or use an SSH deployment key.
 
-**Rotation**: change a value in the Hostinger `.env` and restart; for the dev sandbox regenerate `SESSION_SECRET` / `OPS_SECRET` / `PORTAL_SECRET` / `NOTIFY_RELAY_TOKEN` (dev defaults exist for local runs only and are documented as must-change in `.env.example`).
+**Rotation**: replace values in the protected Hostinger environment settings and redeploy/restart as Hostinger requires. Optional local relay/operations helpers contain development-only fallbacks; they now fail closed or skip in production when required configuration is absent. Never use development fallback values as production secrets.
 
 ## 2. Authentication & authorization
 
@@ -49,6 +51,14 @@
 
 Super Admin switches (feature flags + payment gateways) change **real backend behavior**: portal sessions refused, payment recording rejected, invoices refusing to render, agent runs denied, comms channels refusing to send, maintenance 503s on public data APIs. They are never frontend-only hides. Every flip is audited (`PLATFORM_GOVERNANCE_UPDATED`).
 
-## 7. Reporting a vulnerability
+## 7. Dependency audit (2026-10-03)
+
+- Targeted security update pins `prisma` and `@prisma/client` to 6.19.3, and scopes an npm override of `deepmerge-ts` to `@prisma/config` at `^8.0.2`. The npm and Bun lockfiles resolve `deepmerge-ts` 8.0.2 and `effect` 3.21.0; Prisma 6.19.3 retains the project's Prisma 6 API and MySQL provider.
+- Prisma CLI settings and seed configuration now live in root `prisma.config.ts`; `dotenv/config` is a direct dependency so local `.env` loading is explicit. This removes the deprecated `package.json#prisma` setting. `npx prisma --help` loads the config without a warning, but engine-dependent commands remain pending CI.
+- After the dependency change, both `npm audit` and `npm audit --omit=dev` exit 0 and report **zero vulnerabilities at every severity**. `npm ci` and `npm ls --depth=0` also pass on Node 22.22.3 / npm 10.9.8. Do not use `npm audit fix --force`; this remediation was an explicit compatible-version update plus a scoped transitive override.
+- Runtime/tool validation is still pending: local Prisma CLI engine downloads from `binaries.prisma.sh` failed during TLS setup, so Prisma validate/generate, migrations, and the production build have not passed on this checkout. The disposable MySQL/Prisma checks must pass in exact-commit CI before the dependency update is considered fully validated.
+- Targeted updates also moved `sharp` to 0.35.5 and locked the vulnerable transitive `js-yaml` and `prismjs` paths to patched 4.3.2 and 1.30.0 versions, respectively.
+
+## 8. Reporting a vulnerability
 
 Email security@bdtech360.com with details; we triage within 72 hours. Please do not test against production data.

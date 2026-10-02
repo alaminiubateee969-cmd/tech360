@@ -1,43 +1,50 @@
-# Database Schema and Migration Guide
+# MySQL Database Schema and Migration Guide
 
-## Current verified state
+**Updated:** 2026-10-03
+**Production status:** the repository schema and CI validation target MySQL; the Hostinger production database connection, schema, backup, and migration state are **NOT VERIFIED**.
 
-- Engine: SQLite through Prisma 6.
-- Schema: `prisma/schema.prisma` — 43 models.
-- Checked-in data file: `db/custom.db`.
-- Migration directory: **not present**. Therefore this repository does not yet have an evidence-backed migration history that may safely be applied to an existing production database.
-- Read-only verification: `npm run db:verify` (or `python3 scripts/verify-database.py`). It checks SQLite integrity, foreign keys, and exact Prisma-model/SQLite-table coverage without changing data.
+## Verified repository state
 
-On 2026-09-30 the checked-in database reported integrity `ok`, zero foreign-key violations, 43 Prisma models, 43 SQLite tables, no missing model tables, and no unexpected tables.
+- Prisma CLI and `@prisma/client`: `6.19.3` in `package.json`, `package-lock.json`, and `bun.lock`; `@prisma/config`'s `deepmerge-ts` is overridden to 8.0.2. Prisma CLI validate/generate has not passed locally because the engine CDN TLS connection failed; validate the current config and override in exact-commit CI.
+- Datasource: MySQL, configured through `DATABASE_URL` in `prisma/schema.prisma`.
+- Schema: 43 Prisma models.
+- Baseline: `prisma/migrations/0_init/migration.sql`.
+- CI workflows provision disposable MySQL 8.0, apply the checked-in migration using `prisma migrate deploy`, check schema drift, and run `npm run db:verify`. The latest verified `main` run (37050663450) exercised baseline migration/drift with Prisma 6.18.0 but failed later at Typecheck; it does not verify this repair's 6.19.3 update. A fresh exact-commit run is required. These checks are CI evidence only, not verification of Hostinger's production database.
+- `db/*.db` and `db/*.sqlite*` are ignored local/legacy artifacts. No checked-in SQLite database is the production source of truth.
 
-## Safe baseline strategy
+The MySQL provider, baseline, and workflow definitions are repository evidence. A GitHub run must pass before a particular commit's CI gates can be reported as verified. Production host/version, credentials, existing tables, row counts, backup/restore, and migration history remain **NOT VERIFIED** until an authorized operator inspects Hostinger.
 
-A baseline must be created in an authorized environment where the exact pinned Prisma engines are available. It must not be improvised against production.
+## Read-only verifier
 
-1. Stop writes or take a transaction-consistent copy of the production database.
-2. Record the application commit and SHA-256 checksum of the backup.
-3. Restore the backup to an isolated path; never point validation commands at production.
-4. Run `python3 scripts/verify-database.py` against the restored copy using `TECH360_VERIFY_DB=/path/to/copy.db`.
-5. Generate a baseline SQL migration from the current schema in a temporary migration workspace.
-6. Review the SQL. A baseline for the already-existing schema must not be executed against the populated database.
-7. Mark the reviewed baseline as already applied using Prisma's supported migration-resolution command in the isolated copy first.
-8. Run `prisma migrate status`, then test a no-op `prisma migrate deploy` against the copy.
-9. Start the application against the copy and run business/security tests.
-10. Only after review and explicit production authorization: back up production again, resolve the same baseline as applied, run status/deploy, application health checks, and retain rollback evidence.
+`npm run db:verify` checks that `DATABASE_URL` uses the schema's provider, connects, reports the MySQL version and foreign-key count, verifies model tables/InnoDB, and counts rows without changing data or issuing DDL. It never prints `DATABASE_URL`, credentials, or row contents. It still performs database reads; run it against production only with explicit authorization and an approved load window.
 
-## Disposable validation database
+If `DATABASE_URL` is absent, the command exits with an error. CI sets it to its disposable MySQL service. Do not substitute a production connection merely to make a local check pass.
 
-CI creates `db/validate.db`, runs `prisma db push --skip-generate`, builds, and discards the runner. This is acceptable for build validation because it contains no production data. It is **not** the production migration procedure.
+## Baseline safety — important for an existing database
 
-## Prohibited production actions
+`0_init` describes the schema from an empty database. A populated database may already contain those tables while lacking Prisma's migration history. **Do not run `npm run db:deploy` against an unidentified or populated production database.** Prisma could attempt to create the baseline tables and fail partway through.
 
-- `prisma migrate reset`
-- `prisma db push --accept-data-loss`
-- deleting migration history
-- replacing `db/custom.db` with a seeded/demo database
-- generating or applying a baseline without a recoverable backup
-- applying schema changes while required CI gates are failing
+Before any production migration action:
+
+1. Confirm the Hostinger app, database identity, database server version, current application commit, and current schema with an authorized operator; keep credentials in Hostinger's protected settings.
+2. Take a Hostinger-supported backup and verify that it can be restored to an isolated database. Record the backup identifier, timestamp, and application commit without copying credentials into Git or chat.
+3. Restore to an isolated MySQL instance. Run `npm run db:verify` against that copy and compare the actual schema to `prisma/schema.prisma` using Prisma's migration diff tooling.
+4. Review `prisma/migrations/0_init/migration.sql` and the diff. If the existing schema exactly matches the baseline, have the database owner approve marking `0_init` as applied using Prisma's supported `migrate resolve --applied` procedure on the isolated copy first. Do not use baseline resolution to conceal schema differences.
+5. Verify `prisma migrate status`, run `npm run db:deploy` against the isolated copy, test application behavior, and verify the backup/restore and rollback plan.
+6. Only after written approval, a fresh production backup, and a reviewed no-surprise plan may the same baseline-resolution and deployment procedure be performed against production. Capture post-migration health and integrity evidence.
+
+No production connection, backup, baseline resolution, migration, or rollback was performed in this audit.
+
+## Development and CI commands
+
+- `npm run db:generate` — generate the Prisma client.
+- `npm run db:migrate` — development-only `prisma migrate dev`; never use it on production.
+- `npm run db:deploy` — applies pending migrations; use only after following the baseline-safety procedure above.
+- `npm run db:verify` — read-only provider/table/integrity verification; requires an explicitly configured `DATABASE_URL`.
+- `npm run db:seed` — inserts development seed data; do not run against production without a separately reviewed, idempotent production seeding plan.
+
+Never use `prisma migrate reset`, `prisma db push --accept-data-loss`, or destructive schema commands against production. Do not switch the production provider to SQLite.
 
 ## Recovery
 
-Hostinger owns the production database/runtime deployment. Recovery must be handled through Hostinger's supported database backup and normal Git revert procedures; this repository does not perform remote rollback. See `DEPLOYMENT.md`.
+Use Hostinger's supported backup/restore process and the normal Git revert procedure. Do not replace a database with seed/demo data or delete database, upload, archive, or application assets as a deployment shortcut. See [`DEPLOYMENT.md`](./DEPLOYMENT.md) and [`docs/HOSTINGER_DEPLOYMENT.md`](./docs/HOSTINGER_DEPLOYMENT.md).

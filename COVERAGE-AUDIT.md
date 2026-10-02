@@ -25,8 +25,8 @@
 | wix.com | Visual website builder SaaS | ⛔ | TECH360's site is hand-crafted production code; a drag-and-drop builder is a different product. No fake builder UI is shipped |
 | builder.io | Headless visual page builder | ⛔ | Same as above — honesty over simulation |
 | emergent.sh | AI app-builder platform | ⛔ | TECH360 *is* the AI-assisted platform being built; self-referential |
-| docs.codemagic.io | Mobile-app CI/CD service | ◐ | The applicable capability — CI/CD with automatic deployment — is covered by the GitHub Actions pipeline (`.github/workflows/deploy-production.yml`: secret-scan → install → prisma → lint → tsc → build → SSH deploy with rollback, R10/R14). Mobile-app build pipelines are N/A: TECH360 is a web platform with no iOS/Android app |
-| prisma.io | Database ORM | ✅ | The entire data layer is Prisma: 43 models, `prisma generate` in CI, `db:push` migrations, SQLite dev + production path documented in DEPLOYMENT.md |
+| docs.codemagic.io | Mobile-app CI/CD service | ◐ | Mobile-app build pipelines are N/A: TECH360 is a web platform with no iOS/Android app. GitHub Actions validates the application against disposable MySQL and does not deploy production; Hostinger's Node.js Web App Git integration is the intended path when configured. Current Hostinger connection/deployment is not verified. |
+| prisma.io | Database ORM | ✅ | The application data layer is Prisma with 43 models, client generation in CI/build, and a checked-in MySQL migration baseline. Earlier SQLite/db:push notes in this historical audit are superseded; production uses MySQL and has not been live-verified. |
 
 ## B. CRM family (16)
 
@@ -193,13 +193,13 @@ All of these map to TECH360's unified CRM lifecycle: leads → pipeline → clie
 
 ---
 
-## Honest boundaries (unchanged)
+## Honest boundaries
 
 1. **No fake features.** Every ⛔ above is a different product category — TECH360 does not simulate a page builder, a VoIP stack, a password manager, or a video render farm.
-2. **Provider outage (September 16–17, 2026):** the LLM quota is platform-wide exhausted; all AI features (enrichment, writing review, drafting, ops actions) are in honest-failure mode showing real errors — no fabricated output is ever displayed. The success paths are verified to the provider boundary and were E2E-verified in earlier rounds (e.g., the round-11 AI campaign draft).
-3. **Sandbox limits:** this sandbox has no GitHub credentials and no VPS — the push and the live deploy are the owner's actions. The full pipeline (CI workflow, deploy script, health check, docs) is in the archive: see `DEPLOYMENT.md`.
+2. **Provider availability is not established here.** A historical note reported an LLM quota outage on September 16–17, 2026, but this audit did not re-check current provider quotas or production credentials. Treat live-provider behavior as **NOT VERIFIED** until a current authorized sandbox/acceptance test passes; failures must remain honest and must not fabricate success.
+3. **Deployment boundary.** GitHub repository access is available in this session; GitHub Actions validates source against disposable MySQL and does not deploy production. There is no supported VPS/SSH deployment path. Hostinger's Node.js Web App Git integration is the intended production path, but its current connection, deployment, and live status remain **NOT VERIFIED**.
 
-*This document is part of the project archive and travels with the source ZIP: `public/downloads/tech360-platform-full-source.zip`.*
+*This audit is repository documentation. The source-archive builder writes under ignored `archives/`; source archives must not be published under `public/downloads/`.*
 
 ---
 

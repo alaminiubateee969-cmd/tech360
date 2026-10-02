@@ -1,122 +1,100 @@
-# TECH360 Hostinger deployment matrix
+# Tech360 deployment verification matrix
 
-Audit performed from the checked-out repository on 2026-09-30 UTC. Values marked external are not available in this repository and were not guessed.
+**Status: PRODUCTION VERIFICATION REQUIRED.** This matrix separates repository evidence from Hostinger/account state. It is not a production success certificate.
 
-## A. Repository
+## GitHub/source snapshot
 
-| Item | Actual value | Status |
+| Item | Verified value | Evidence/status |
 |---|---|---|
-| Repository | `alaminiubateee969-cmd/tech360` via `origin` (`https://github.com/alaminiubateee969-cmd/tech360.git`) | PASS |
-| Branch | `arena/01a0f3e8-tech360` (session branch); `main` points to the same baseline locally | PASS |
-| Latest commit | `50b4f61 Merge PR #4: Node.js 22 runtime, npm ci lockfile repair, Super Admin bootstrap hardening` | PASS |
-| Production baseline | `50b4f61c50c196418b9d8767b02cd2cab696343a`, present in history and currently checked out | PASS |
-| Package manager | npm for Hostinger (`package-lock.json`); `bun.lock` also exists for existing Bun CI/local tooling | PASS |
+| Repository | `alaminiubateee969-cmd/tech360` | `origin` URL and GitHub API |
+| Session branch base at start | `c735e1798c91a780e4ebaf0498c77e834d56631d` | Confirmed before updates |
+| Fresh `origin/main` | `70f249c8711bb5fb6213df7e53d2444db87eeff1` | Re-fetched from GitHub and confirmed by branch API on 2026-10-03 (local date); current GitHub truth |
+| Changes on `main` since branch base | PR #8 merge, MySQL baseline + migration lock, dynamic health version, pinned Action SHAs, read-only baseline workflow permissions, updated deployment docs | Inspected commit/tree diff; session branch fast-forwarded to this exact commit with `git merge --ff-only origin/main` (no reset/rebase/force-push) |
+| Current repair branch | `arena/01a0fde7-tech360` at base `70f249c8711bb5fb6213df7e53d2444db87eeff1` | Repair changes staged locally; no repair commit or push yet |
+| Branch protection / rulesets | **NOT VERIFIED** | GitHub API branch-protection request returned 403 (“Resource not accessible by integration”); rulesets API returned 403 (plan/access limitation) |
+| PR #7 | Merged to `main` at `c735e1798c91a780e4ebaf0498c77e834d56631d` | GitHub PR API; merged 2026-10-02 |
+| Hostinger-connected source/branch | Unknown | hPanel unavailable; must confirm repository and `main` in the Node.js Web App settings |
+| Hostinger-connected source/branch | Unknown | hPanel unavailable; must confirm repository and `main` in the Node.js Web App settings |
 
-The repository is a shallow checkout at the verified baseline. No reset or force-push was performed.
+## Application version and runtime matrix
 
-## B. Runtime
+| Component | Repository requirement/value | Verification |
+|---|---|---|
+| Application version | `package.json`: `0.2.1` | Verified in package metadata and lockfile |
+| Health API version | `package.json` version, imported programmatically | Code fix; verify after build and live response |
+| Application Node.js | `>=22.0.0 <23` (Node.js 22.x) | Verified in `package.json`; Hostinger selector not inspected |
+| Next.js | `16.3.8` resolved in `package-lock.json` | Verified; no framework upgrade made |
+| Prisma / `@prisma/client` | `6.19.3` | Verified in package.json and npm/Bun lockfiles; current CLI validation pending exact-commit CI |
+| Database provider | MySQL (`provider = "mysql"`) | Verified in `prisma/schema.prisma`; production connection not verified |
+| Package manager | npm; `package-lock.json` (lockfile v3) | Hostinger docs say manager is auto-detected from lockfiles; selected hPanel value not inspected; `bun.lock` is not the deployment lockfile |
+| Build | Hostinger hPanel script `build` (`npm run build`; Prisma generate, forward-only `prisma migrate deploy`, Next build, standalone asset copy); `hostinger:build` delegates to the same script | Repository script and official `next` preset behavior verified; actual hPanel setting/logs not verified; production DB/migration state and backup are not verified |
+| Output directory | `.next` for Hostinger framework preset `next` | Official Hostinger Next.js setting; actual hPanel value not inspected |
+| Start behavior | Hostinger's Next.js preset starts the bundled standalone server; entry file is ignored. `npm run start` is the repository's CI/manual smoke script. | Official behavior documented; actual Hostinger process/logs **NOT VERIFIED** |
+| Port | Next standalone honors `PORT` if present; no port is hard-coded | Hostinger's public docs warn about wrong-port binding but do not identify an injected port value; runtime binding is **NOT VERIFIED** and must be read from hPanel/runtime logs |
 
-| Item | Actual value | Required value | Status |
+## GitHub Actions audit
+
+The application runtime and the JavaScript runtime used to execute a GitHub Action are different settings. CI intentionally installs application Node.js 22; current first-party Actions execute on Node.js 24.
+
+| Action | Before | Updated target | Action runtime / reason |
 |---|---|---|---|
-| Framework | Next.js `^16.1.1`, React 19, TypeScript | Next.js/Node compatible | PASS |
-| Node requirement | `>=22.0.0 <23` in `package.json` | Node 22 | PASS |
-| Package manager | npm install path and committed `package-lock.json` | npm | PASS |
-| Install command | `npm ci --no-audit --no-fund` was run successfully; Hostinger command is `npm ci` | `npm ci` | PASS |
-| Build command | `npm run hostinger:build` = Prisma generate, migrate deploy, Next build, standalone asset copy | production build | BLOCKED — Prisma engine download was unavailable in this audit environment |
-| Start command | `npm run start` = `NODE_ENV=production node .next/standalone/server.js` | `npm run start` | BLOCKED — no verified production build artifact |
+| `actions/checkout` | `v5` at the audit-start commit | Immutable SHA `3d3c42e5aac5ba805825da76410c181273ba90b1` (`v7.0.1`) | The currently fetched `main` pins the supported Node 24 release. `v5` already used Node 24, so it was not the Node 20 warning source. |
+| `actions/setup-node` | `v4` in CI; absent from the baseline workflow at audit start | Immutable SHA `820762786026740c76f36085b0efc47a31fe5020` (`v7.0.0`); set `node-version: '22'` | Upstream v4 used Node 20; the pinned v7 release uses Node 24. The explicit input `22` remains the application/test runtime. |
+| `actions/upload-artifact` | `v4` in the baseline workflow at audit start | Immutable SHA `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` (`v7.0.1`) | Upstream v4.6.2 metadata declared `using: node20`; the pinned v7 release uses Node 24. |
+| Other/third-party actions, cache actions | None present in the two workflow files | None | All `uses:` references across both workflows were audited; no other action runtimes were found. |
 
-## C. Environment variables
+Official upstream releases and immutable tag commits checked on 2026-10-02: `actions/checkout` v7.0.1 (`3d3c42e5aac5ba805825da76410c181273ba90b1`), `actions/setup-node` v7.0.0 (`820762786026740c76f36085b0efc47a31fe5020`), and `actions/upload-artifact` v7.0.1 (`043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`). GitHub API tag-to-commit lookups matched all three SHAs. All three checked action metadata files declare the Node 24 Action runtime.
 
-The complete variable manifest is in [HOSTINGER_ENVIRONMENT_VARIABLES.md](./HOSTINGER_ENVIRONMENT_VARIABLES.md). No secret values are printed here.
+- [actions/checkout releases](https://github.com/actions/checkout/releases)
+- [actions/setup-node releases](https://github.com/actions/setup-node/releases)
+- [actions/upload-artifact releases](https://github.com/actions/upload-artifact/releases)
+- [GitHub notice: Node 20 no longer available in Actions](https://github.blog/changelog/2026-09-23-node-20-is-no-longer-available-in-github-actions/)
 
-| Variable | Found in file(s) | Used for | Secret? | Required production value/source | Hostinger required? | GitHub safe? | Status |
-|---|---|---|---|---|---|---|---|
-| `DATABASE_URL` | `src/app/api/health/route.ts`, `scripts/verify-database.mjs` | Prisma MySQL | Yes | Hostinger MySQL URL with actual hPanel host | Yes | Name only | EXTERNAL CONFIG REQUIRED |
-| `APP_PUBLIC_URL` | layout, sitemap, RSS, journey, newsletter send | Public URLs | No | `https://bdtech360.com` | Yes | Yes | PASS |
-| `APP_ORIGIN` | Stripe checkout route | Checkout origin | No | `https://bdtech360.com` | Yes when Stripe enabled | Yes | PASS |
-| `NODE_ENV` | auth, db, portal login, seed | Runtime mode | No | `production` | Yes | Yes | PASS |
-| `SESSION_SECRET`, `PORTAL_SECRET`, `OPS_SECRET` | portal/newsletter and ops routes | Token/ops signing | Yes | Owner-generated unique random values | Yes | Names only | EXTERNAL CONFIG REQUIRED |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | `prisma/seed.ts` | First-boot Super Admin | Password secret | Owner-selected email and generated password (12+ chars) | First seed only | Names only | EXTERNAL CONFIG REQUIRED |
-| `NOTIFY_RELAY_TOKEN`, `NOTIFY_RELAY_URL` | `src/lib/notify.ts` | Optional relay | Token secret / URL | External relay config, not localhost | Only if relay enabled | Names only | EXTERNAL CONFIG REQUIRED if used |
-| `OPS_INTERVAL_SEC`, `PLATFORM_URL`, `PREVIEW_TTL_DAYS` | ops status, journey | Operations/policy | No | Owner policy; safe template defaults documented | Optional | Yes | PASS |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | checkout/webhook | Stripe | Yes | Stripe dashboard | If Stripe enabled | Names only | EXTERNAL CONFIG REQUIRED if used |
-| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | comms/webhook | WhatsApp | Yes | Meta developer console | If WhatsApp enabled | Names only | EXTERNAL CONFIG REQUIRED if used |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | `src/lib/comms.ts` | Email | SMTP password secret | Mail provider | If email enabled | Names only | EXTERNAL CONFIG REQUIRED if used |
-| `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` | `src/lib/comms.ts` | SMS | API key secret | SMS provider | If SMS enabled | Names only | EXTERNAL CONFIG REQUIRED if used |
-| `FACEBOOK_PAGE_TOKEN`, `INSTAGRAM_TOKEN`, `LINKEDIN_TOKEN`, `X_TOKEN` | `src/lib/comms.ts` | Social publishing | Yes | Provider consoles | If enabled | Names only | EXTERNAL CONFIG REQUIRED if used |
-| `SOCIAL_WEBHOOK_SECRET` | social webhook | Webhook auth | Yes | Owner-generated | If enabled | Names only | EXTERNAL CONFIG REQUIRED if used |
-| `N8N_WEBHOOK_SECRET`, `N8N_WEBHOOK_BASE` | n8n webhook/comms | n8n bridge | Secret/URL | n8n deployment | If enabled | Names only | EXTERNAL CONFIG REQUIRED if used |
-| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD` | dynamic feature metadata and template | Optional gateways | Mixed | Provider dashboards | If enabled | Names only | EXTERNAL CONFIG REQUIRED if used |
+The identified Node 20 Action references at audit start were `actions/setup-node@v4` and `actions/upload-artifact@v4` (`upload-artifact@v4.6.2` metadata declared `using: node20`). The current workflow references use immutable SHAs for the verified v7 releases, whose metadata declares Node 24. The warning status after the fix must still be based on a new run's actual log/annotations; a code edit alone is not verification.
 
-## D. Database
+## CI and MySQL
 
-| Item | Actual | Required | Status |
-|---|---|---|---|
-| ORM | Prisma `6.18.0` / `@prisma/client` | Prisma | PASS |
-| Provider | `mysql` in `prisma/schema.prisma` | mysql | PASS |
-| `DATABASE_URL` | No production value in repository; template is a placeholder | Hostinger MySQL | EXTERNAL CONFIG REQUIRED |
-| Migration directory | `prisma/migrations/0_init/migration.sql` | required | PASS |
-| Migration status | `prisma migrate status` could not be verified without a configured database; no destructive reset/push was run | deployable via `prisma migrate deploy` | BLOCKED — external DB required |
-| Seed strategy | `prisma/seed.ts`; production refuses absent/short `ADMIN_PASSWORD`, sets `SUPER_ADMIN` and `mustChangePassword` | production-safe bootstrap | PASS (code); external credentials required |
-
-## E. Authentication
-
-| Area | Actual finding | Status |
-|---|---|---|
-| Login/logout/session | DB-backed `Session` rows; login creates HttpOnly SameSite cookie; logout deletes session | PASS (code) |
-| Cookies/CSRF | Secure cookie in production; CSRF double-submit token in `src/lib/auth.ts` | PASS (code) |
-| Password hashing | Node `scryptSync` with random salt and timing-safe comparison | PASS |
-| Lockout/2FA | Five failed attempts create a 15-minute lock; optional TOTP is verified | PASS (code) |
-| RBAC/admin authorization | `SUPER_ADMIN` policy is enforced on workforce and sensitive admin routes; tests cover protected surfaces | PASS (code/tests) |
-| Password reset/OAuth | No password-reset or OAuth implementation was found | NOT APPLICABLE / no feature found |
-| Production login test | Requires built app, MySQL, seeded account, and Hostinger runtime | BLOCKED — external configuration required |
-
-## F. Deployment
-
-| Item | Repository finding | Disposition |
-|---|---|---|
-| GitHub Actions | `ci.yml` validates MySQL migrations and quality; no production deployment job | KEEP / CI-ONLY |
-| Hostinger | `docs/HOSTINGER_DEPLOYMENT.md` and this matrix describe Git integration | KEEP / MANUAL-ONLY configuration |
-| SSH diagnostics | `.github/scripts/hostinger-*` are read-only/manual diagnostics and require external secrets | CI-ONLY / MANUAL-ONLY; not deployment |
-| Old SSH/PM2 helper | `scripts/deploy-hostinger.sh` previously attempted PM2/SSH deployment; it is now a fail-fast retired helper | REPLACE |
-| VPS/Cloud Run deployment | `deployment/` and `deployment/deploy.sh` are Google Cloud material, not Hostinger runtime | MANUAL-ONLY legacy/alternate path; do not use for Hostinger |
-| PM2/rsync/scp | Present only in legacy diagnostics/docs/history and the retired helper; production path does not require them | REMOVE from production path |
-
-## G. Production blockers
-
-| BLOCKER | SEVERITY | FILE | LINE | PROBLEM | REQUIRED FIX | CAN_AI_BUILDER_FIX? | EXTERNAL_VALUE_REQUIRED? |
-|---|---|---|---:|---|---|---|---|
-| Prisma client/engine generation | Critical | `package.json`, Prisma CLI | n/a | `npx prisma generate` failed because the sandbox could not connect to `binaries.prisma.sh`; typecheck/tests that instantiate Prisma consequently failed | Re-run `npm run hostinger:build`/Prisma generation in a network-enabled Hostinger or CI environment, then run migration deploy | No, not without engine download/network | Yes: network/runtime |
-| Production database | Critical | `DATABASE_URL` | n/a | No Hostinger MySQL host/credentials are present in the repository | Set actual hPanel MySQL URL; run `prisma migrate deploy` and health check | No | Yes |
-| Public runtime | Critical | Hostinger configuration | n/a | Hostinger application is not accessible from this repository session | Create/configure the Node.js Web App and map domains | No | Yes |
-| AI provider | High/non-core | `src/lib/agents/engine.ts` | 1, 41–44 | Application uses `z-ai-web-dev-sdk` via `ZAI.create()`; no production provider credential/configuration is present or verified | Configure the provider supported by the SDK, then perform one controlled run; do not claim AI live beforehand | No | Yes |
-| Optional integrations | Medium/non-core | `.env.example`, `src/lib/comms.ts`, webhooks | various | Provider credentials are intentionally empty | Configure only the integrations actually purchased/required | No | Yes |
-
-## Verified feature inventory
-
-Repository routes/components include the existing admin surfaces for dashboard, operations, leads/clients, approvals, communications/chat, payments, projects, reviews, agents, command, memory, newsletter, knowledge, content/blog, analytics, logs, reports, settings and team, plus client portal routes. No replacement dashboard was added.
-
-## Hostinger configuration matrix
-
-| Hostinger setting | Required value |
+| Gate | Current evidence |
 |---|---|
-| Application type | Node.js Web App |
-| Repository | `alaminiubateee969-cmd/tech360` |
-| Branch | `main` (Hostinger production setting; this Arena session can only push `arena/01a0f3e8-tech360`) |
-| Node.js | `22` |
-| Install | `npm ci` |
-| Build | `npm run hostinger:build` |
-| Start | `npm run start` |
-| Database | Hostinger MySQL |
-| Domain | `bdtech360.com` |
-| WWW | `www.bdtech360.com` |
-| Environment | Production |
-| Application directory | Not guessed; use the directory/runtime value shown by Hostinger hPanel |
+| Existing CI on pre-repair main `c735e17` | Run `37041699125` reported success and all listed job steps completed; its raw log download was unavailable in this sandbox, so it is not evidence of the new action versions or warning status |
+| Fresh `origin/main` run `37050663450` on `70f249c` | npm install, Prisma validate/generate, disposable MySQL, baseline deploy, zero-drift check, and lint passed; Typecheck failed with a GitHub annotation: `Cannot find module '../../../../../package.json'` in the health route (one `../` too many). Tests, `db:verify`, and build were skipped. This repair uses the correct four-level import; the raw log download returned EOF, but API step statuses/annotation were readable. |
+| Post-repair branch CI | **Pending** until the repair branch is pushed/updated and the new run is inspected |
+| CI database image | Workflow specifies `mysql:8.0`; exact server minor must be read from the new run log before reporting it |
+| Production `DATABASE_URL` / connection | Not present in repository and not available from Hostinger; **NOT VERIFIED** |
+| Production migration state / backup | Not available; **NOT VERIFIED**. Do not run `npm run db:deploy` blindly |
 
-## DNS safety
+## Hostinger and domain
 
-No DNS records were changed. MX, SPF, DKIM, DMARC, autodiscover and autoconfig are outside this repository audit and must remain untouched while the website domain is mapped.
+| Layer | Required target | Evidence/status |
+|---|---|---|
+| Deployment type | Hostinger Node.js Web App | **NOT VERIFIED** in hPanel |
+| Runtime | Node.js 22.x | Required by code; Hostinger setting **NOT VERIFIED** |
+| Package manager/build/start | npm, hPanel build script `build` (`npm run build`), Hostinger-managed Next.js standalone start | Recommended from official Hostinger docs; actual hPanel settings/logs **NOT VERIFIED**. `npm run start` is repository CI/manual smoke only. |
+| Root directory | Repository root containing `package.json` (Hostinger documents blank or `/` for root apps) | Target only; hPanel value **NOT VERIFIED** |
+| Domain and canonical redirect | `bdtech360.com` canonical; `www.bdtech360.com` valid HTTPS, redirecting to apex | Hostinger attachment, TLS, and redirect **NOT VERIFIED** |
+| Environment variables | Set in the Node.js Web App environment panel | Values intentionally not available here; **NOT VERIFIED** |
+| Last supplied Hostinger log | Cloned `main` at `70f249c8711bb5fb6213df7e53d2444db87eeff1`; then “Installing Composer dependencies” / “Publishing completed” | Proves that logged job used Composer for the current main SHA; not evidence of npm, Next.js build, Node startup, or MySQL |
+| DNS lookup | Host records resolved during this audit | DNS resolution only; does not prove domain attachment/routing |
+| HTTPS and routes | Fresh 2026-10-03 probes: apex and `www` DNS resolve; HTTPS homepage, `/api/health`, and `www` fail TLS (curl exit 35 / HTTP `000`); HTTP apex returns empty reply (exit 52 / HTTP `000`) | No application body/status; TLS, domain routing, and all routes **NOT VERIFIED** |
 
-## Final audit state
+Required production routes after configuration: `/`, `/api/health`, `POST /api/portal/login`, protected `POST /api/admin/seo/audit`, and a built `/_next/static/` asset. See [`HOSTINGER_DEPLOYMENT.md`](./HOSTINGER_DEPLOYMENT.md) for the runbook.
 
-Repository-side safe changes are complete, but the application was not claimed live: no Hostinger runtime, MySQL connection, migration deployment, HTTPS check, or AI provider execution was available to verify. See the exact current command results in the final response.
+## Security/file audit
+
+| Item | Finding |
+|---|---|
+| Tracked `.env` | None; only `.env.example` is tracked |
+| Tracked private keys / common high-risk secret patterns | No matching file/pattern found in the tracked-file scan performed during this audit; CI secret scan remains a separate check |
+| `db/custom.db` | Not tracked and not present in this checkout; ignored by `.gitignore` |
+| `upload/` | Not tracked and not present in this checkout; ignored by `.gitignore` |
+| `public/downloads/tech360-platform-full-source.zip` | Not tracked and not present in this checkout; `public/downloads/` is ignored |
+| Public source archive | No archive was found in the tracked tree or this checkout. Hostinger filesystem/public object storage was not inspected, so external copies remain **NOT VERIFIED** |
+
+## Hostinger configuration references
+
+Hostinger's current Node.js Web App settings and deployment logs are documented at:
+
+- [Creating a Node.js App](https://docs.hostinger.com/node.js/creating-an-app)
+- [Build Settings](https://docs.hostinger.com/node.js/build-settings)
+- [Environment Variables](https://docs.hostinger.com/node.js/environment-variables)
+- [Deployments](https://docs.hostinger.com/node.js/deployments)

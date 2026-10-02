@@ -1,9 +1,11 @@
-# Tech360 Master Project Audit
+# Tech360 Master Project Audit — Historical Snapshot
 
-**Initial evidence checkpoint:** 2026-09-30  
+> **Superseded checkpoint dated 2026-09-30.** The SQLite database, branch, CI, deployment-workflow, and blocker statements below describe that historical snapshot only; they are not current production evidence. The current repository source targets MySQL. For current status, use [`docs/PROJECT_STATE_REPORT.md`](docs/PROJECT_STATE_REPORT.md), [`docs/TEST_AND_QA_REPORT.md`](TEST_AND_QA_REPORT.md), [`docs/DEPLOYMENT_READINESS_REPORT.md`](docs/DEPLOYMENT_READINESS_REPORT.md), and [`docs/HOSTINGER_DEPLOYMENT_MATRIX.md`](docs/HOSTINGER_DEPLOYMENT_MATRIX.md).
+
+**Historical evidence checkpoint:** 2026-09-30
 **Repository:** `alaminiubateee969-cmd/tech360` (`https://github.com/alaminiubateee969-cmd/tech360`)  
-**Default branch:** `main` · **working branch:** `arena/01a0eebb-tech360`  
-**Baseline:** `855295b` · **first session implementation:** `37681a3`
+**Default branch at that checkpoint:** `main` · **working branch at that checkpoint:** `arena/01a0eebb-tech360`
+**Baseline at that checkpoint:** `855295b` · **first session implementation:** `37681a3`
 
 ## Scope and evidence limits
 

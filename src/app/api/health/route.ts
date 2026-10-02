@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { channelStatuses } from '@/lib/comms'
-import packageJson from '../../../../../package.json'
+import packageJson from '../../../../package.json'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,9 +11,11 @@ export async function GET() {
   try {
     await db.$queryRaw`SELECT 1`
     checks.database = { status: 'UP', detail: `${dbProvider} via Prisma — connected` }
-  } catch (e) {
+  } catch {
     healthy = false
-    checks.database = { status: 'DOWN', detail: e instanceof Error ? e.message : 'unknown' }
+    // Keep connection details and environment/configuration internals out of
+    // the public health response. Operators should use protected platform logs.
+    checks.database = { status: 'DOWN', detail: 'database connection failed' }
   }
   try {
     const agents = await db.aiAgent.count()

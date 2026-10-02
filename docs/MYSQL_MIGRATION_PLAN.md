@@ -1,7 +1,9 @@
 # TECH360 — SQLite → MySQL migration plan
 
-Status: **migration prepared, NOT applied to production.**
-Last updated: 2026-09-30
+Status: **MySQL schema and baseline are checked in; production migration NOT VERIFIED / NOT applied by this audit.**
+Last updated: 2026-10-03
+
+Validation evidence below is historical unless explicitly identified as current. The working tree now pins Prisma 6.19.3 and a scoped `deepmerge-ts` 8.0.2 override; local Prisma CLI engine downloads failed during TLS setup, and exact-commit CI has not run. The latest verified `main` run used Prisma 6.18.0 and failed at Typecheck.
 
 ---
 
@@ -14,9 +16,9 @@ Last updated: 2026-09-30
 | Models | 43 |
 | Enums | 0 (all enumerations are `String` + comment) |
 | Raw SQL in application code | 1 statement — `SELECT 1` in `src/app/api/health/route.ts` (portable) |
-| Production database | `u394009794_bdtech360` (MySQL, Hostinger) |
-| Production database size | ~1 MB, created 2026-09-30 |
-| Production app status | **not serving** — `https://bdtech360.com/` returns `403`, `/api/health` returns the Hostinger static 404 page |
+| Production database | MySQL is the repository target; Hostinger database identity, host, server version, and connection are **NOT VERIFIED** |
+| Production database size | **NOT VERIFIED** in this audit; the production database was not accessed |
+| Production app status | **NOT VERIFIED**. Fresh 2026-10-03 apex/`www` DNS resolution succeeded; HTTPS homepage, health, and `www` probes failed TLS (curl exit 35 / HTTP `000`), while HTTP apex returned an empty reply (exit 52 / HTTP `000`). No application response was obtained. |
 
 A Prisma client generated for SQLite cannot talk to MySQL: the query engine
 emits a different SQL dialect and different type coercions. This was the root
@@ -133,62 +135,58 @@ field-by-field, and the MySQL CI typecheck enforces it from here on.
 
 ## 4. Migration strategy
 
-The production database is **new and effectively empty** (~1 MB, created the
-same day). It has no trustworthy Prisma migration history. Therefore:
+The current production database size, existing tables, and Prisma migration
+history are **NOT VERIFIED**. Do not assume that it is new, empty, or safe to
+baseline. The checked-in `0_init` migration describes an empty schema.
 
-1. **Generate** a baseline from the MySQL schema, never from a hand-written guess:
+1. **Generate/review** the baseline from the MySQL schema, never from a hand-written guess:
    `prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script`
    → `prisma/migrations/0_init/migration.sql`
 2. **Assert** the baseline contains no `DROP TABLE` / `DROP DATABASE` / `TRUNCATE`.
-3. **Apply** it to a disposable MySQL 8 service with `prisma migrate deploy`
-   — the same command production runs.
-4. **Prove zero drift**: `prisma migrate diff --from-url <ci db> --to-schema-datamodel` must be empty.
-5. **Run** the full suite (generate, lint, typecheck, tests, integrity, build) on MySQL.
-6. Only then consider production.
+3. **Prove** it against disposable MySQL 8 with `prisma migrate deploy` and a zero-drift `prisma migrate diff`. GitHub Actions uses only this disposable database.
+4. **Before any production build that runs migrations**, an authorized operator must verify the Hostinger database identity, current schema/history, `DATABASE_URL` configuration, and a restorable backup. No production migration was run in this audit.
+5. Restore the backup to an isolated MySQL instance. Compare the restored schema to the baseline and test the reviewed migration/resolution procedure there first.
+6. Only after a recorded review and explicit approval may the production procedure be run. Stop if the schema or migration history differs from the reviewed expectation.
 
-This is automated in `.github/workflows/mysql-baseline.yml` and enforced on
-every push by the `ci` job in `.github/workflows/deploy-production.yml`.
+The disposable checks are configured in `.github/workflows/mysql-baseline.yml`
+and `.github/workflows/ci.yml`. Neither workflow touches production. The current
+repair's exact-commit CI result is pending; the most recent verified `main`
+run used the earlier Prisma 6.18.0 dependency tree.
 
 ### If the production database already contains tables
 
-The 0_init baseline assumes an empty schema. If preflight shows existing
-tables, do **not** apply it. Instead baseline against reality:
-
-```
-prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script
-```
-
-review the resulting DDL by hand, and register the already-present state with
-`prisma migrate resolve --applied 0_init`. Never `db push`, never `migrate reset`.
+The `0_init` baseline assumes an empty schema. If an isolated restore shows
+existing tables, do **not** run `migrate deploy` against production. On the
+isolated restore, compare the actual schema to `prisma/schema.prisma` using
+`prisma migrate diff --from-url "$RESTORED_DATABASE_URL" --to-schema-datamodel
+prisma/schema.prisma --script`. Review every DDL difference. If and only if the
+restored schema exactly matches the baseline, have the database owner approve
+and test `prisma migrate resolve --applied 0_init` on that isolated copy first.
+Never use `db push` or `migrate reset` against production.
 
 ---
 
 ## 5. Data preservation strategy
 
-- The production database is **never** the CI or test database. CI uses a
-  throwaway `tech360_ci`.
-- Hostinger owns production backups and runtime migration execution. The repository CI applies migrations only to a disposable MySQL database; it does not take a production backup. Any schema
-  change: `mysqldump --single-transaction --quick --routines --triggers --events`.
-- The dump is verified three ways: file exists, file is non-empty, and the
-  `Dump completed` trailer is present. A zero exit code alone is not accepted.
-- If no verified backup is produced, the deploy **aborts before migrating**.
-- `prisma db push` and `prisma migrate reset` are removed from `package.json`
-  and explicitly refused by the deploy script.
+- Production is **never** the CI or test database. CI uses a throwaway MySQL service.
+- Before a production migration, the database owner must verify Hostinger's available backup procedure, create a backup, and test restoration to an isolated instance. The Hostinger backup interface/procedure and any backup are **NOT VERIFIED** in this audit.
+- GitHub Actions applies migrations only to disposable MySQL; it does not back up production. There is no supported SSH/VM deployment script or automatic backup/abort mechanism in the Hostinger path.
+- Production migrations use forward-only `prisma migrate deploy` after the baseline has been reconciled and the backup/recovery plan has been approved. Never use `prisma db push`, `prisma migrate reset`, or destructive schema commands against production.
 
 ---
 
-## 6. Rollback strategy
+## 6. Recovery / rollback strategy
 
-| Failure | Action |
+| Failure | Safe response |
 |---|---|
-| Build / health check fails | automatic: code reverts to `last-good-commit.txt`, app restarts on the same port |
-| Migration fails | deploy aborts **before** restart; previous release keeps serving |
-| Data corruption suspected | **manual, operator-approved only** — restore the verified pre-deploy dump |
+| Hostinger build or runtime failure | Inspect the exact deployment commit and Hostinger logs. Use only Hostinger's verified redeploy/rollback capability or a reviewed Git revert to restore a known-good application commit; no automatic code rollback is implemented by this repository. |
+| Migration failure | Stop further deployment. Do not assume the platform restored data or that the previous app can use the current schema. Preserve logs and follow the pre-reviewed recovery plan. |
+| Data corruption suspected | Escalate to the database owner. Restore a verified backup only with explicit approval after confirming the recovery point and impact. |
 
-Database rollback is deliberately **not** automatic. Overwriting a live MySQL
-database discards every row written after the dump was taken, so it is itself a
-destructive act. The deploy script prints the verified dump path and the exact
-restore command, and stops.
+Database rollback is deliberately **not** automatic. Restoring a live MySQL
+backup can discard rows written after it was taken. Hostinger rollback,
+backup/restore capabilities, and a tested recovery procedure are all **NOT
+VERIFIED** in this audit; record and test them before production changes.
 
 ---
 
@@ -196,18 +194,18 @@ restore command, and stops.
 
 | # | Check | Where | Evidence |
 |---|---|---|---|
-| 1 | Schema parses and validates as MySQL | `prisma-schema-wasm` 6.18.0 (engine `34b5a69`), offline | ✅ local |
+| 1 | Schema parses and validates as MySQL | Historical offline `prisma-schema-wasm` 6.18.0 check (engine `34b5a69`) | Historical only; Prisma 6.19.3 validation is pending exact-commit CI because local engine download failed |
 | 2 | Converter is deterministic and idempotent | `convert-schema-to-mysql.mjs --check` | ✅ local |
 | 3 | No text column keeps a `DEFAULT` | grep gate | ✅ 0 remaining |
-| 4 | Provider and `DATABASE_URL` scheme agree | CI gate + deploy-script gate | ✅ implemented |
+| 4 | Provider and `DATABASE_URL` scheme agree | Repository CI provider gate; exact repair-commit run pending | Implemented in workflow; fresh run required |
 | 5 | Baseline generated from the schema | run [36726223683](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36726223683) | ✅ 43 tables, 995 lines |
 | 6 | Baseline is non-destructive | same run | ✅ 0 `DROP`/`TRUNCATE` |
-| 7 | Baseline applies to a clean MySQL 8 | same run, `prisma migrate deploy` | ✅ |
-| 8 | Zero drift after apply | same run, `migrate diff --exit-code` | ✅ |
-| 9 | Prisma client generates for MySQL | same run | ✅ |
-| 10 | Read-only integrity check on MySQL | same run, `db:verify` | ✅ |
-| 11 | Lint / typecheck / tests / build on MySQL | `deploy-production.yml` → `ci` | ⏳ this push |
-| 12 | Production backup verified | deploy script | ⛔ blocked — no DB credentials |
+| 7 | Baseline applies to a clean MySQL 8 | Historical runs `36726223683` and `37050663450`, `prisma migrate deploy` | Passed on prior Prisma 6.18.0 tree; re-validation on the repair's 6.19.3 tree pending |
+| 8 | Zero drift after apply | Historical run `37050663450`, `migrate diff --exit-code` | Passed on prior Prisma 6.18.0 tree; re-validation pending |
+| 9 | Prisma client generates for MySQL | Historical run `37050663450` | Passed on prior Prisma 6.18.0 tree; re-validation pending |
+| 10 | Read-only integrity check on MySQL | Historical run `36726223683`, `db:verify` | Historical disposable-MySQL evidence only; re-validation pending |
+| 11 | Lint / typecheck / tests / build on MySQL | `.github/workflows/ci.yml` | Post-repair verification pending until the new CI run is inspected |
+| 12 | Production backup/restore procedure verified | Authorized Hostinger operator / hPanel | ⛔ **NOT VERIFIED** — no production DB or hPanel evidence |
 | 13 | Isolated restore of the production dump | — | ⛔ blocked — no DB credentials |
 | 14 | Migration tested against the restored copy | — | ⛔ blocked — no DB credentials |
 
@@ -238,26 +236,13 @@ silently capped at 191 characters:
 `content`        LONGBLOB NULL       -- stored document bytes
 ```
 
-Items 1–4 were verified locally, 5–10 are proven by CI run 36726223683, and
-11 runs on every push. Items 12–14 require credentials and network access that
-are not available in this environment.
+Rows 1–10 contain prior local or CI evidence and do not certify the current repair commit or Prisma 6.19.3 dependency tree. Row 11 is configured to run in CI; its exact-commit result is pending. Items 12–14 require authorized production access, backup evidence, and isolated restore testing, none of which was available in this audit.
 
 ---
 
-## 8. Why 12–14 could not be executed
+## 8. Validation/access limits
 
-The build environment reaches only `registry.npmjs.org` and the GitHub API.
-Everything else is intercepted by a transparent proxy that accepts the TCP
-connection and immediately closes it — verified by control tests against
-`203.0.113.77` (TEST-NET-3, unroutable) and port 1, both of which also
-"connected".
-
-Consequences:
-
-- `ssh -p 65002 …@189.49.97.102` → `kex_exchange_identification: Connection closed by remote host` (no banner)
-- `https://bdtech360.com` → TLS killed mid-handshake
-- `binaries.prisma.sh` unreachable → the native Prisma engine cannot be downloaded locally
-- Debian package mirrors unreachable → no local MySQL server can be installed
-
-GitHub Actions has none of these limits, which is why the MySQL work is
-executed there and the evidence is collected from the run logs.
+- Local Prisma CLI validation, generation, migration, and build checks are blocked when the engine download from `binaries.prisma.sh` terminates during TLS setup. The repair's exact-commit GitHub CI must validate these stages; the most recent `main` run predates the Prisma 6.19.3 change.
+- Local `DATABASE_URL` is not configured, so no database connection was tested from this checkout. No production connection string was requested, copied, or used.
+- Hostinger hPanel settings, production MySQL credentials/schema/history, backups, and runtime logs were not available. The production backup procedure and any restore capability therefore remain **NOT VERIFIED**.
+- No production migration, database write, deployment, or rollback was performed as part of this audit.

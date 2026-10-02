@@ -1,12 +1,14 @@
-# TECH360 Platform — production container (Cloud Run / any container host)
+# LEGACY Google Cloud Run container template; not used by Tech360's supported
+# Hostinger Node.js Web App deployment. Hostinger's Next.js preset manages the
+# standalone server start; this Dockerfile is retained for separate legacy use.
 FROM node:22-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
 
 # --- deps ---
 FROM base AS deps
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN npm install -g bun && bun install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
 # --- build ---
 FROM base AS builder
@@ -14,8 +16,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npx prisma generate
-RUN npm install -g bun && bun run build
+RUN npm run build
 
 # --- runtime ---
 FROM base AS runner

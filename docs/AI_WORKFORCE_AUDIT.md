@@ -2,13 +2,15 @@
 
 `AI_WORKFORCE_STATUS = PARTIAL`
 
-Last updated: 2026-09-30 · Branch `arena/01a0f285-tech360`
+Historical audit checkpoint: 2026-09-30 · Branch at that checkpoint `arena/01a0f285-tech360`
+
+> This is a code/security review snapshot, not current deployment evidence. The live domain and production runtime were not verified by this audit; see [`HOSTINGER_DEPLOYMENT_MATRIX.md`](HOSTINGER_DEPLOYMENT_MATRIX.md) for the current external-verification status.
 
 The workforce is **not** a placeholder: 44 agents across 84 departments, a real
 execution engine, database-backed memory, and a lifecycle that persists every
-stage. The gap is not "does it exist" — it is that several guarantees were
-declared but not enforced, and nothing end-to-end has been observed running in
-production (the application is not currently deployed).
+stage. The gap is not "does it exist" — several guarantees were declared but
+not enforced, and no complete end-to-end lifecycle has been witnessed in a
+production environment.
 
 ---
 
@@ -155,7 +157,7 @@ surface in the client portal. The public site exposes only marketing content.
 
 | Reason | Detail |
 |---|---|
-| Not observed running | the application is not deployed — `https://bdtech360.com/` returns 403, `/api/health` returns Hostinger's static 404. No end-to-end lifecycle run has been witnessed in production. |
+| Production run not witnessed | No end-to-end lifecycle run has been witnessed in production. Current domain/route reachability is **NOT VERIFIED**: this audit's sandbox probe received no HTTP response, so it cannot identify the serving platform or route status. |
 | Communication channels BLOCKED | SMS, email and WhatsApp have no credentials, so the SMS→handover chain cannot be exercised. The code reports `NOT_CONFIGURED` rather than faking success, which is correct — but it is not "working". |
 | Object-level IDOR unproven | needs a live server with two seeded tenants. |
 | Skills / escalation PARTIAL | expressed through prompts and retry counters rather than first-class entities. |

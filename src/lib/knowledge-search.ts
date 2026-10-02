@@ -4,7 +4,7 @@ import { logError } from '@/lib/security'
 
 // ============================================================
 // AI-RANKED KNOWLEDGE SEARCH — two honest stages:
-//   1. RECALL  — fast keyword scoring over indexed docs (SQLite)
+//   1. RECALL  — fast keyword scoring over indexed docs (MySQL via Prisma)
 //   2. RANK   — Sage (KNW-023) reads candidates + query and
 //               returns a 0-100 relevance score with a one-line
 //               reason, via a real recorded AiAgentExecution.

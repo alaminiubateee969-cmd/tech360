@@ -17,7 +17,7 @@ const ENV_DOCS: Array<{ group: string; vars: Array<{ name: string; purpose: stri
   {
     group: 'Database & App',
     vars: [
-      { name: 'DATABASE_URL', purpose: 'SQLite database file location (server-only)' },
+      { name: 'DATABASE_URL', purpose: 'MySQL connection string (server-only; never displayed)' },
       { name: 'APP_PUBLIC_URL', purpose: 'Public base URL used in preview / handover links' },
       { name: 'ADMIN_PASSWORD', purpose: 'Initial Super Admin password (first boot only)' },
     ],
@@ -464,7 +464,7 @@ export function SettingsView() {
             value={dbOk ? 'Operational' : (data?.db ?? 'Unknown')}
             icon={Database}
             tone={dbOk ? 'green' : 'red'}
-            sub={data?.db ? 'SQLite via Prisma' : 'Status not reported'}
+            sub={data?.db ? 'MySQL via Prisma' : 'Status not reported'}
           />
           <KpiCard label="AI Agents" value={num(data?.agents)} icon={Server} tone="accent" sub="Registered in the workforce" />
           <KpiCard
@@ -541,23 +541,23 @@ export function SettingsView() {
         </SectionCard>
 
         <div className="space-y-4">
-          <SectionCard title="Deployment Package" description="Self-contained production bundle">
+          <SectionCard title="Deployment & Operations Materials" description="Workflow definitions and deployment references">
             <a
               href="/api/admin/deploy-package"
               download
               className="flex items-center gap-3 rounded-md border border-slate-700 bg-slate-900/60 px-4 py-3 text-sm font-medium text-slate-200 transition-colors hover:border-[#009FE3]/50 hover:bg-[#009FE3]/10 hover:text-[#009FE3] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#009FE3]/50"
-              aria-label="Download deployment package (zip)"
+              aria-label="Download operations materials (zip)"
             >
               <Package className="size-5 shrink-0" aria-hidden="true" />
               <span className="min-w-0 flex-1">
-                Download Deployment Package
-                <span className="block text-[11px] font-normal text-slate-500">ZIP — server bundle + n8n workflows + env template</span>
+                Download Operations Materials
+                <span className="block text-[11px] font-normal text-slate-500">ZIP — n8n workflows, deployment references + placeholder env names</span>
               </span>
               <Download className="size-4 shrink-0" aria-hidden="true" />
             </a>
             <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-              The package contains the deployment bundle, workflow definitions, and an .env template listing every
-              variable above (no values included).
+              This is not a deployable source archive. It contains workflow and operations references with placeholders only;
+              legacy Google Cloud files are not the supported production path. Tech360 production targets a Hostinger Node.js Web App.
             </p>
           </SectionCard>
 

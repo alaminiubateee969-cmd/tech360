@@ -3,9 +3,11 @@
 #
 # Production deployment is NOT performed here.
 #
-# Production is deployed by Hostinger's own Node.js web-app Git
-# integration, which pulls main and runs install -> build -> start on the
-# Hostinger server. See docs/HOSTINGER_DEPLOYMENT.md.
+# The intended production path is Hostinger's Node.js Web App Git integration.
+# This repository cannot inspect or configure the Hostinger account, so a green
+# CI run is not proof that a Hostinger app is connected or that a deploy ran.
+# There is deliberately no second deployment mechanism in this workflow.
+# See docs/HOSTINGER_DEPLOYMENT.md.
 #
 # This workflow only PROVES a commit is safe to deploy:
 #   - the Prisma schema targets MySQL, the real production engine
@@ -87,19 +89,24 @@ jobs:
           if [ -f .env ]; then echo "::error::.env must never be committed"; exit 1; fi
           echo "clean: .env not committed"
 
-      - name: Setup Node.js 22 (the Hostinger production runtime)
+      - name: Setup application Node.js 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
 
-      # Hostinger installs with npm on Node 22. Prove that exact path works
-      # here, against the committed package-lock.json, or the first real
-      # deployment is the first time it is ever exercised.
-      - name: npm ci on Node 22 (mirrors Hostinger's install step)
+      # The application runtime is Node.js 22; this input does not change the
+      # JavaScript runtime used internally by actions/setup-node (Node.js 24).
+      # Validate the intended Hostinger npm path against the committed lockfile.
+      - name: npm ci on application Node.js 22
         run: |
           node --version
           npm --version
           npm ci --no-audit --no-fund
+
+      - name: Audit npm dependencies (full and production)
+        run: |
+          npm audit --audit-level=high
+          npm audit --omit=dev --audit-level=high
 
       # --- provider gates -------------------------------------------------
       - name: Prisma schema is in sync with the MySQL type map
@@ -148,14 +155,22 @@ jobs:
 
       - name: Baseline must leave zero schema drift
         run: |
+          set -euo pipefail
+          set +e
           npx prisma migrate diff \
             --from-url "$DATABASE_URL" \
             --to-schema-datamodel prisma/schema.prisma \
-            --exit-code --script > /tmp/drift.sql && DRIFT=0 || DRIFT=$?
-          if [ "${DRIFT:-0}" = "2" ]; then
+            --exit-code --script > /tmp/drift.sql 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" = "2" ]; then
             echo "::error::schema drift — the committed baseline does not reproduce schema.prisma"
             cat /tmp/drift.sql
             exit 1
+          elif [ "$rc" != "0" ]; then
+            echo "::error::Prisma schema drift check failed with exit code $rc"
+            cat /tmp/drift.sql
+            exit "$rc"
           fi
           echo "no drift: migrations reproduce schema.prisma exactly"
 
@@ -174,3 +189,67 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      - name: Validate standalone server and static/public output
+        run: |
+          set -euo pipefail
+          test -s .next/standalone/server.js
+          test -n "$(find .next/standalone/.next/static -type f -print -quit)"
+          test -f .next/standalone/public/robots.txt
+          echo "standalone server, Next static assets, and public assets are present"
+
+      - name: Smoke-test the generated production server
+        shell: bash
+        run: |
+          set -euo pipefail
+          PORT="$(node -e 'const net = require("node:net"); const server = net.createServer(); server.listen(0, "127.0.0.1", () => { console.log(server.address().port); server.close(); });')"
+          HOSTNAME=127.0.0.1 PORT="$PORT" npm run start > /tmp/tech360-production-start.log 2>&1 &
+          APP_PID=$!
+          cleanup() {
+            kill "$APP_PID" 2>/dev/null || true
+            wait "$APP_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for _ in $(seq 1 60); do
+            if curl -fsS "http://127.0.0.1:$PORT/api/health" -o /tmp/tech360-health.json; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$APP_PID" 2>/dev/null; then
+              cat /tmp/tech360-production-start.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat /tmp/tech360-production-start.log
+            echo "::error::standalone production server did not become healthy on its supplied PORT"
+            exit 1
+          fi
+
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const pkg = require('./package.json');
+          const health = JSON.parse(fs.readFileSync('/tmp/tech360-health.json', 'utf8'));
+          if (health.status !== 'healthy') throw new Error(`health status: ${health.status}`);
+          if (health.app !== 'tech360-platform') throw new Error(`unexpected app: ${health.app}`);
+          if (health.version !== pkg.version) throw new Error(`health version ${health.version} != package ${pkg.version}`);
+          if (health.checks?.database?.status !== 'UP') throw new Error(`database status: ${health.checks?.database?.status}`);
+          if (!/MySQL/i.test(health.checks.database.detail ?? '')) throw new Error('health does not identify the connected MySQL database');
+          console.log(`health OK: version ${health.version}; MySQL UP`);
+          NODE
+
+          home_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/")"
+          test "$home_status" = 200
+          portal_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "http://127.0.0.1:$PORT/api/portal/login")"
+          test "$portal_status" = 400
+          seo_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "http://127.0.0.1:$PORT/api/admin/seo/audit")"
+          test "$seo_status" = 401
+
+          static_file="$(find .next/standalone/.next/static -type f -print -quit)"
+          static_rel="${static_file#.next/standalone/.next/static/}"
+          static_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/_next/static/$static_rel")"
+          test "$static_status" = 200
+          echo "production smoke test passed: home=$home_status portal=$portal_status protected-seo=$seo_status static=$static_status"

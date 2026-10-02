@@ -52,7 +52,15 @@ jobs:
       DATABASE_URL: mysql://root:ci_only_not_a_secret@127.0.0.1:3306/tech360_baseline
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The Action runs internally on Node.js 24; the project/toolchain runtime
+      # for this workflow remains Node.js 22, like the production application.
+      - name: Setup application Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
 
       - name: Install dependencies with npm
         run: npm ci --no-audit --no-fund
@@ -97,24 +105,29 @@ jobs:
       - name: Apply the baseline exactly as production would
         run: npx prisma migrate deploy
 
-      - name: Show how MySQL stored the expression defaults
+      - name: Report MySQL text/blob default expressions
         if: always()
         run: |
+          set -euo pipefail
           mysql -h 127.0.0.1 -uroot -pci_only_not_a_secret -N -B tech360_baseline -e "
             SELECT CONCAT(TABLE_NAME,'.',COLUMN_NAME,' :: ',COLUMN_TYPE,' :: default=[',IFNULL(COLUMN_DEFAULT,'NULL'),']')
             FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA='tech360_baseline' AND COLUMN_DEFAULT IS NOT NULL
-              AND DATA_TYPE IN ('text','longtext','mediumtext','blob','longblob');" > /tmp/defaults.txt 2>&1 || true
-          while IFS= read -r l; do [ -n "$l" ] && echo "::error::DEFAULT ${l}"; done < /tmp/defaults.txt
+              AND DATA_TYPE IN ('text','longtext','mediumtext','blob','longblob');" > /tmp/defaults.txt
+          while IFS= read -r line; do
+            [ -n "$line" ] && echo "::notice::MySQL expression default: $line"
+          done < /tmp/defaults.txt
 
       - name: Prove zero drift against schema.prisma
         run: |
-          set -uo pipefail
-          rc=0
+          set -euo pipefail
+          set +e
           npx prisma migrate diff \
             --from-url "$DATABASE_URL" \
             --to-schema-datamodel prisma/schema.prisma \
-            --exit-code --script > /tmp/drift.sql 2>&1 || rc=$?
+            --exit-code --script > /tmp/drift.sql 2>&1
+          rc=$?
+          set -e
           {
             echo "### drift check (exit $rc)"
             echo '```sql'
@@ -122,12 +135,15 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "$rc" = "2" ]; then
-            # annotations are the only log channel reliably readable from the API
-            while IFS= read -r l; do
-              [ -n "$l" ] && echo "::error::DRIFT ${l}"
+            while IFS= read -r line; do
+              [ -n "$line" ] && echo "::error::DRIFT ${line}"
             done < <(grep -vE '^\s*$|^--' /tmp/drift.sql | head -25)
             echo "::error::baseline does not reproduce schema.prisma (see above)"
             exit 1
+          elif [ "$rc" != "0" ]; then
+            echo "::error::Prisma schema drift check failed with exit code $rc"
+            cat /tmp/drift.sql
+            exit "$rc"
           fi
           echo "✓ baseline reproduces schema.prisma exactly (zero drift)"
 
@@ -149,38 +165,6 @@ jobs:
           echo "columns: $(( $(wc -l < /tmp/columns.txt) - 1 ))"
           echo "--- long-text columns (must NOT be varchar(191)) ---"
           grep -iE 'text|blob' /tmp/columns.txt | head -30
-
-      - name: Commit the proven baseline back to this branch
-        if: startsWith(github.ref, 'refs/heads/arena/')
-        run: |
-          set -euo pipefail
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # NB: `git diff` ignores untracked files, so stage first and then
-          # compare the index — a brand-new baseline is otherwise invisible.
-          git add -A prisma/migrations
-          if git diff --cached --quiet -- prisma/migrations; then
-            echo "baseline unchanged - nothing to commit"
-            exit 0
-          fi
-          git status --short -- prisma/migrations
-          {
-            echo "chore(db): add MySQL baseline migration (generated + proven in CI)"
-            echo
-            echo "Generated with:"
-            echo "  prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script"
-            echo
-            echo "Proven in this run:"
-            echo "  - contains no DROP TABLE / DROP DATABASE / TRUNCATE"
-            echo "  - applies to a clean MySQL 8 via prisma migrate deploy"
-            echo "  - leaves zero drift against prisma/schema.prisma"
-            echo "  - Prisma client generates and db:verify passes"
-            echo
-            echo "Run: ${GITHUB_RUN_ID}"
-          } > /tmp/baseline-commit-msg.txt
-          git commit -F /tmp/baseline-commit-msg.txt
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-          echo "baseline committed to ${GITHUB_REF_NAME}"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

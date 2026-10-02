@@ -1,37 +1,46 @@
 # Known Issues and Blockers
 
-**Updated:** 2026-09-30
+**Updated:** 2026-10-03
+**Branch:** `arena/01a0fde7-tech360`
 
-## Production blockers
+## Production/deployment blockers
 
-| ID | Status | Impact | Exact blocker | Required next action |
+| ID | Status | Impact | Evidence / blocker | Required next action |
 |---|---|---|---|---|
-| B-001 | BLOCKED | Cannot claim production deployment | No verified Ubuntu host/session, target path, process manager, DNS/SSL evidence, production environment or backup confirmation is available | Authorized operator verifies target and GitHub `production` environment secrets; run CI/deploy from an approved `main` merge and retain health/HTTPS evidence |
-| B-002 | BLOCKED | External channels cannot be called live | SMTP, SMS, Meta/WhatsApp/social and payment credentials are intentionally absent/unverified | Configure secrets server-side from provider accounts, enable one integration at a time, execute approved sandbox/real tests, record provider IDs/status |
-| B-003 | BLOCKED | AI success-path cannot be re-proven in this environment | Hosted model/provider availability and quota are external | Restore provider quota/access and run one approved execution for each agent family; retain execution IDs and outputs |
-| B-004 | PARTIALLY_RESOLVED | Local Prisma generation remains unavailable, but authoritative CI validation is green | This sandbox reaches the Prisma CDN IP but the TLS peer closes during ClientHello (`SSL_ERROR_SYSCALL`); CA validation is never reached. Prisma 6.19.3 also maps to an upstream-reported problematic engine revision. Dependencies are pinned to 6.18.0; trusted GitHub runner run 36629219425 successfully installed, generated, typechecked and built | Preserve the exact lock. For local regeneration, use an authorized network that permits `binaries.prisma.sh`; never disable TLS. CI is the reproducible verification environment |
-| B-005 | MISSING | Changes cannot be safely applied through normal production migration history | No Prisma migration directory/baseline is present | Before the next schema change: clone DB, back it up, establish and review a non-destructive baseline, test deploy/rollback; do not use `--accept-data-loss` in production |
-| B-006 | PARTIALLY_RESOLVED | Full lifecycle certification is incomplete | A maintained 15-test policy/database suite now covers RBAC, tenant isolation, proposal versions, payment mismatch non-activation and handover gates; HTTP session/CSRF and complete CRM-to-closure orchestration remain | Add isolated route-level auth/CSRF tests and one complete lifecycle fixture without touching real records |
+| B-001 | NOT VERIFIED | Cannot claim a Hostinger Node.js deployment | The supplied log cloned `main` at `70f249c8711bb5fb6213df7e53d2444db87eeff1` and then ran Composer; it establishes the wrong flow for that logged job, not a Node.js deployment. Hostinger hPanel settings are unavailable. Official Next.js settings specify Node.js Web App preset `next`, Node 22, npm, build script `build`, output `.next`, and managed bundled-server startup (entry file ignored). | Authorized operator creates/configures the Hostinger Node.js Web App for the repository/`main`, confirms exact commit, Node 22.x, npm, root, Next.js preset/output/build, managed start/runtime, environment variables and port binding, then supplies successful hPanel/runtime logs. |
+| B-002 | NOT VERIFIED | Cannot claim production MySQL integrity or migration safety | The repository schema is MySQL and contains a checked-in `0_init` baseline. CI uses disposable MySQL 8.0; no production `DATABASE_URL`, schema, migration history, or backup/restore evidence is available. | Have the database owner verify Hostinger MySQL identity/version/schema and a restorable backup. Do not run `npm run db:deploy` until the existing schema is compared with the baseline and migration resolution is explicitly approved. |
+| B-003 | NOT VERIFIED | Cannot claim domain routing, HTTPS, health, or live route status | Fresh 2026-10-03 DNS lookups resolved apex and `www`. HTTPS apex home, `/api/health`, and `www` returned curl exit 35 / HTTP `000`; HTTP apex returned exit 52 / HTTP `000` (empty reply). No HTTP body/status was obtained, so the serving system and application routes remain unidentified. | Re-test from an authorized browser/network after Hostinger attaches the Node app and confirms DNS/TLS. Capture HTTPS status and `/api/health`, homepage, portal-login, protected SEO, and a built static asset. |
+| B-004 | PENDING | Cannot claim the Node 20 Actions warning is resolved or production smoke test passed | Both workflows now use `actions/checkout@v7` and `actions/setup-node@v7` while installing application Node 22. The branch CI run containing those changes and the production-start smoke test has not yet been inspected. | Push this branch normally, inspect the new GitHub Actions run and raw logs/annotations, and report the warning and smoke-test results from that run. |
+| B-005 | BLOCKED LOCALLY | No local production build/start evidence | `npm run build` stopped at `prisma generate` because TLS to `binaries.prisma.sh` disconnected before the schema engine was downloaded. `npm run db:verify` stopped because local `DATABASE_URL` is unset. Neither command reached the target build/database checks. | Use successful CI on the pushed commit for repository build evidence; use a separately authorized disposable MySQL for DB verification. Never disable TLS or point tests at production just to bypass this limitation. |
+| B-006 | BLOCKED | External provider success paths are not certified | SMTP, SMS, Meta/WhatsApp/social, payment, AI-provider, and malware-scanning credentials/services are not available or were not exercised. | Configure secrets only in provider/Hostinger settings, enable integrations individually, and retain approved sandbox/real acceptance evidence before claiming they are live. |
+| B-007 | PENDING EXACT-COMMIT CI | Prisma audit findings remediated in npm lock; Prisma CLI override compatibility still needs CI evidence | Prisma/client are pinned to 6.19.3 and `@prisma/config` resolves `deepmerge-ts` 8.0.2 via a scoped npm override. Both `npm audit` and `npm audit --omit=dev` report zero findings; `npm ci` and `npm ls --depth=0` pass. No separate deepmerge API smoke test is claimed. Local Prisma validate/generate cannot download the required engine because TLS to `binaries.prisma.sh` disconnects. | Keep the explicit 6.19.3 versions and scoped override; do not use `npm audit fix --force`. Verify Prisma validate/generate and MySQL migration in exact-commit GitHub CI before closing this item. |
+| B-008 | NOT VERIFIED | Cannot confirm that `main` requires reviews or passing CI | GitHub's branch-protection API returned 403 (“Resource not accessible by integration”); rulesets API returned 403 (plan/access restriction). No protection change was made. | A repository owner/admin must inspect the `main` branch protection/ruleset UI and confirm whether reviews and required CI checks are enforced. |
+
+## Quality and security follow-up
+
+- Review the current test/QA report for suite results; a passing policy suite does not certify every route, database workflow, browser, or provider.
+- Historical development credentials in `worklog.md` were redacted. The optional ai-ops and notify-relay services now use development fallbacks only outside production; ai-ops refuses production startup without `PLATFORM_URL` and `OPS_SECRET`, and notify-relay rejects `/emit` if its production token is unset. Production secrets still must be supplied out-of-band.
+- No tracked source archive, database file, private-key file, upload directory, or `public/downloads/` content was found in the repository scan. This does not inspect Hostinger filesystem/object storage or external backups.
 
 ## Honest feature boundaries
 
-- PayPal and SSLCommerz checkout are `INTEGRATION_NOT_BUILT`; disabled/refusal behavior is intentional.
-- Content Studio creates plans, scripts, prompts, marketing kits and briefs. It does not claim to render image/video/audio files.
-- Public WhatsApp contact was removed by the latest owner directive. The private adapter remains configuration-gated for future explicit authorization.
-- Production performance, SEO rank, accessibility conformance and legal compliance have not been certified.
+- PayPal and SSLCommerz checkout remain `INTEGRATION_NOT_BUILT` unless the relevant provider adapter is implemented and tested.
+- Content Studio creates plans, scripts, prompts, marketing kits, and briefs; it does not claim to render image/video/audio files.
+- Public WhatsApp contact was removed by the owner's prior directive. The private adapter remains gated and is not represented as active.
+- Production performance, SEO ranking, accessibility conformance, and legal compliance have not been certified.
 
 ## Non-blocking technical debt
 
-- Add dedicated `not-found.tsx` and `error.tsx` App Router boundaries in addition to SPA fallback behavior.
-- Decide whether CRM stages should become admin-configurable.
-- Add immutable agent version and cost-ledger models if the business needs formal chargeback.
-- Consolidate role names only after an approved permission matrix; do not add labels without server-side enforcement.
-- Extend reference inventory with per-URL access date, upstream license and exact adopted pattern.
+- Add database-backed HTTP route/session/CSRF tests and a complete isolated CRM-to-closure lifecycle test.
+- Add approved external malware scanning and knowledge-version-chain support if required.
+- Decide whether CRM stages should become admin-configurable; formalize agent-version and usage-cost records only if the business requires them.
+- Extend reference inventory with per-URL access date, upstream license, and exact adopted pattern.
 
-## Safety rules for continuation
+## Safety rules
 
-1. Never deploy while lint, typecheck, build, migration safety or backup verification is red.
+1. Never deploy while required lint, typecheck, build, migration-safety, or backup gates are red.
 2. Never turn an integration ACTIVE based only on environment-variable presence; perform the provider acceptance test.
 3. Never print or commit production secret values.
-4. Never mutate the checked-in or production database merely to make a test pass.
-5. Push only `arena/01a0eebb-tech360` from this Arena session.
+4. Never mutate production or delete ignored/tracked database, upload, archive, or application assets as a deployment shortcut.
+5. Keep production on MySQL; do not run destructive Prisma commands against the production database.
+6. Continue only on `arena/01a0fde7-tech360`; push only to that fixed Arena session branch, not to `main`.
