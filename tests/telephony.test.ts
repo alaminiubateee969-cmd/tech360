@@ -33,7 +33,7 @@ describe('telephony: number normalisation', () => {
 
 describe('telephony: honest provider state', () => {
   it('reports NONE / NOT_CONFIGURED with an empty environment', () => {
-    const state = telephonyState({} as NodeJS.ProcessEnv)
+    const state = telephonyState({})
     assert.equal(state.provider, 'NONE')
     assert.equal(state.serverCalling, 'NOT_CONFIGURED')
     assert.equal(state.smsGateway, 'NOT_CONFIGURED')
@@ -41,15 +41,15 @@ describe('telephony: honest provider state', () => {
   })
 
   it('recognises a device SMS gateway without inventing a voice line', () => {
-    const state = telephonyState({ HTTPSMS_BASE_URL: 'https://sms.example', HTTPSMS_API_KEY: 'k', HTTPSMS_FROM: '+440000000000' } as NodeJS.ProcessEnv)
+    const state = telephonyState({ HTTPSMS_BASE_URL: 'https://sms.example', HTTPSMS_API_KEY: 'k', HTTPSMS_FROM: '+440000000000' })
     assert.equal(state.provider, 'DEVICE_GATEWAY')
     assert.equal(state.smsGateway, 'AVAILABLE')
     assert.equal(state.serverCalling, 'NOT_CONFIGURED')
   })
 
   it('recognises SIP and Twilio credentials', () => {
-    assert.equal(telephonyState({ SIP_DOMAIN: 'sip.example' } as NodeJS.ProcessEnv).provider, 'SIP')
-    assert.equal(telephonyState({ TWILIO_ACCOUNT_SID: 'AC', TWILIO_AUTH_TOKEN: 't' } as NodeJS.ProcessEnv).provider, 'TWILIO')
+    assert.equal(telephonyState({ SIP_DOMAIN: 'sip.example' }).provider, 'SIP')
+    assert.equal(telephonyState({ TWILIO_ACCOUNT_SID: 'AC', TWILIO_AUTH_TOKEN: 't' }).provider, 'TWILIO')
   })
 })
 
@@ -59,17 +59,17 @@ describe('telephony: dial URIs', () => {
   })
 
   it('uses sip: when a SIP domain is configured', () => {
-    assert.equal(dialUri('+442079460000', 'SIP', { SIP_DOMAIN: 'sip.example' } as NodeJS.ProcessEnv), 'sip:442079460000@sip.example')
+    assert.equal(dialUri('+442079460000', 'SIP', { SIP_DOMAIN: 'sip.example' }), 'sip:442079460000@sip.example')
   })
 
   it('falls back to tel: when SIP is requested but unconfigured', () => {
-    assert.equal(dialUri('+442079460000', 'SIP', {} as NodeJS.ProcessEnv), 'tel:+442079460000')
+    assert.equal(dialUri('+442079460000', 'SIP', {}), 'tel:+442079460000')
   })
 })
 
 describe('telephony: device SMS refuses honestly', () => {
   it('returns NOT_CONFIGURED without credentials and performs no request', async () => {
-    const result = await sendDeviceSms('+442079460000', 'hello', {} as NodeJS.ProcessEnv)
+    const result = await sendDeviceSms('+442079460000', 'hello', {})
     assert.equal(result.ok, false)
     if (result.ok) return
     assert.equal(result.state, 'NOT_CONFIGURED')
@@ -77,7 +77,7 @@ describe('telephony: device SMS refuses honestly', () => {
   })
 
   it('rejects an unnormalisable destination before calling the gateway', async () => {
-    const result = await sendDeviceSms('nonsense', 'hello', { HTTPSMS_BASE_URL: 'https://sms.example', HTTPSMS_API_KEY: 'k', HTTPSMS_FROM: '+440000000000' } as NodeJS.ProcessEnv)
+    const result = await sendDeviceSms('nonsense', 'hello', { HTTPSMS_BASE_URL: 'https://sms.example', HTTPSMS_API_KEY: 'k', HTTPSMS_FROM: '+440000000000' })
     assert.equal(result.ok, false)
     if (result.ok) return
     assert.equal(result.state, 'FAILED')

@@ -49,6 +49,9 @@ export type MediaBrief = {
   brandTone: string
 }
 
+/** Environment bag: a plain record so callers can pass any config source. */
+export type EnvLike = Record<string, string | undefined>
+
 export type MediaProviderStates = {
   render: { state: 'AVAILABLE' | 'RENDER_NOT_CONFIGURED'; detail: string }
   voice: { state: 'AVAILABLE' | 'NOT_CONFIGURED'; detail: string }
@@ -284,7 +287,7 @@ export function aspectDimensions(aspect: MediaAspect): [number, number] {
 }
 
 /** Compute honest provider states from the environment (never from the DB). */
-export function mediaProviderStates(env: NodeJS.ProcessEnv = process.env): MediaProviderStates {
+export function mediaProviderStates(env: EnvLike = process.env): MediaProviderStates {
   const renderProvider = String(env.MEDIA_RENDER_PROVIDER ?? '').trim()
   const renderKey = String(env.MEDIA_RENDER_API_KEY ?? '').trim()
   const voiceUrl = String(env.TTS_PROVIDER_URL ?? '').trim()

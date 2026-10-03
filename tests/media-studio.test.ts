@@ -147,9 +147,9 @@ describe('media: provider honesty', () => {
   })
 
   it('reports AVAILABLE only when both name and key exist', () => {
-    const states = mediaProviderStates({ MEDIA_RENDER_PROVIDER: 'acme' } as NodeJS.ProcessEnv)
+    const states = mediaProviderStates({ MEDIA_RENDER_PROVIDER: 'acme' })
     assert.equal(states.render.state, 'RENDER_NOT_CONFIGURED')
-    const configured = mediaProviderStates({ MEDIA_RENDER_PROVIDER: 'acme', MEDIA_RENDER_API_KEY: 'k' } as NodeJS.ProcessEnv)
+    const configured = mediaProviderStates({ MEDIA_RENDER_PROVIDER: 'acme', MEDIA_RENDER_API_KEY: 'k' })
     assert.equal(configured.render.state, 'AVAILABLE')
   })
 
@@ -163,7 +163,7 @@ describe('media: provider honesty', () => {
   })
 
   it('queues a render when a provider is configured', () => {
-    const states = mediaProviderStates({ MEDIA_RENDER_PROVIDER: 'acme', MEDIA_RENDER_API_KEY: 'k' } as NodeJS.ProcessEnv)
+    const states = mediaProviderStates({ MEDIA_RENDER_PROVIDER: 'acme', MEDIA_RENDER_API_KEY: 'k' })
     assert.equal(nextJobStatus('queue-render', states).status, 'RENDER_QUEUED')
   })
 })

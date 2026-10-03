@@ -21,6 +21,9 @@ export type CallStatus = (typeof CALL_STATUSES)[number]
 export const CALL_CHANNELS = ['CLICK_TO_CALL', 'SIP', 'DEVICE_GATEWAY', 'MANUAL'] as const
 export type CallChannel = (typeof CALL_CHANNELS)[number]
 
+/** Environment bag: a plain record so callers can pass any config source. */
+export type EnvLike = Record<string, string | undefined>
+
 export type TelephonyState = {
   provider: TelephonyProvider | 'NONE'
   serverCalling: 'AVAILABLE' | 'NOT_CONFIGURED'
@@ -29,7 +32,7 @@ export type TelephonyState = {
 }
 
 /** Read the environment and report what can really be done right now. */
-export function telephonyState(env: NodeJS.ProcessEnv = process.env): TelephonyState {
+export function telephonyState(env: EnvLike = process.env): TelephonyState {
   const gatewayUrl = String(env.HTTPSMS_BASE_URL ?? '').trim()
   const gatewayKey = String(env.HTTPSMS_API_KEY ?? '').trim()
   const twilioSid = String(env.TWILIO_ACCOUNT_SID ?? '').trim()
@@ -77,7 +80,7 @@ export function normalizeDialNumber(input: string, defaultCountryCode = '44'): s
  * Build the URI an operator device opens. `tel:` works everywhere; `sip:`
  * is used when a SIP domain is configured (softphone / linphone-style client).
  */
-export function dialUri(number: string, channel: CallChannel, env: NodeJS.ProcessEnv = process.env): string {
+export function dialUri(number: string, channel: CallChannel, env: EnvLike = process.env): string {
   const e164 = normalizeDialNumber(number) ?? String(number)
   if (channel === 'SIP') {
     const domain = String(env.SIP_DOMAIN ?? '').trim()
@@ -90,7 +93,7 @@ export function dialUri(number: string, channel: CallChannel, env: NodeJS.Proces
 export async function sendDeviceSms(
   to: string,
   message: string,
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvLike = process.env,
 ): Promise<{ ok: true; id?: string } | { ok: false; state: 'NOT_CONFIGURED'; detail: string } | { ok: false; state: 'FAILED'; detail: string }> {
   const baseUrl = String(env.HTTPSMS_BASE_URL ?? '').trim().replace(/\/$/, '')
   const apiKey = String(env.HTTPSMS_API_KEY ?? '').trim()
