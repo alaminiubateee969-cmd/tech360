@@ -106,6 +106,9 @@ const BLOG_POSTS = [
 ]
 
 async function main() {
+  // Explicit bootstrap only; production startup/build never invokes this seed.
+  // Keep every upsert's update empty so a rerun can create missing defaults
+  // without overwriting operator-managed rows. tests/seed-safety.mjs guards it.
   console.log('Seeding Tech360 platform...')
 
   // 1) Super Admin + staff roles
@@ -115,10 +118,15 @@ async function main() {
   // Super Admin credential the moment the seed runs anywhere reachable.
   // In production ADMIN_PASSWORD is mandatory; the dev fallback is used only
   // outside production and the account is always flagged mustChangePassword.
-  const adminEmail = (process.env.ADMIN_EMAIL ?? 'admin@bdtech360.com').toLowerCase()
   const isProduction = process.env.NODE_ENV === 'production'
+  const suppliedAdminEmail = process.env.ADMIN_EMAIL?.trim()
+  const adminEmail = (suppliedAdminEmail || (isProduction ? '' : 'admin@bdtech360.com')).toLowerCase()
   const suppliedPassword = process.env.ADMIN_PASSWORD
 
+  if (!adminEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) {
+    console.error('REFUSING TO SEED: ADMIN_EMAIL must be a valid email address.')
+    process.exit(1)
+  }
   if (isProduction && !suppliedPassword) {
     console.error('REFUSING TO SEED: ADMIN_PASSWORD is not set.')
     console.error('Set a strong ADMIN_PASSWORD in the Hostinger environment before seeding production.')
@@ -146,7 +154,7 @@ async function main() {
 
   // 2) Departments (110)
   for (const d of DEPARTMENTS) {
-    await db.department.upsert({ where: { code: d.code }, update: { name: d.name, category: d.category, description: d.description ?? null }, create: d })
+    await db.department.upsert({ where: { code: d.code }, update: {}, create: d })
   }
   console.log(`  ✓ ${DEPARTMENTS.length} departments`)
 
@@ -155,11 +163,7 @@ async function main() {
     const dept = await db.department.findUnique({ where: { code: a.dept } })
     await db.aiAgent.upsert({
       where: { code: a.code },
-      update: {
-        name: a.name, title: a.title, purpose: a.purpose, systemPrompt: a.systemPrompt,
-        departmentId: dept?.id ?? null, tools: JSON.stringify(a.tools), permissions: JSON.stringify(a.permissions),
-        requiresApproval: a.requiresApproval ?? false, level: a.level ?? 3, parentCode: a.parentCode ?? null,
-      },
+      update: {},
       create: {
         code: a.code, name: a.name, title: a.title, purpose: a.purpose, systemPrompt: a.systemPrompt,
         departmentId: dept?.id ?? null, tools: JSON.stringify(a.tools), permissions: JSON.stringify(a.permissions),
@@ -173,7 +177,7 @@ async function main() {
   for (const t of PROMPT_TEMPLATES) {
     await db.promptTemplate.upsert({
       where: { code: t.code },
-      update: { name: t.name, category: t.category, template: t.template, variables: JSON.stringify(t.variables) },
+      update: {},
       create: { code: t.code, name: t.name, category: t.category, template: t.template, variables: JSON.stringify(t.variables) },
     })
   }
@@ -183,7 +187,7 @@ async function main() {
   for (const w of N8N_WORKFLOWS) {
     await db.n8nWorkflow.upsert({
       where: { code: w.code },
-      update: { name: w.name, category: w.category, trigger: w.trigger, description: w.description },
+      update: {},
       create: { code: w.code, name: w.name, category: w.category, trigger: w.trigger, description: w.description, definition: '{}' },
     })
   }
@@ -208,7 +212,7 @@ async function main() {
   for (const p of BLOG_POSTS) {
     await db.blogPost.upsert({
       where: { slug: p.slug },
-      update: { title: p.title, excerpt: p.excerpt, content: p.content, category: p.category },
+      update: {},
       create: { slug: p.slug, title: p.title, excerpt: p.excerpt, content: p.content, category: p.category, author: 'Tech360 Team', status: 'PUBLISHED' },
     })
   }
@@ -224,7 +228,7 @@ async function main() {
     { key: 'governance.autoApproveRiskBelow', value: JSON.stringify('LOW') },
   ]
   for (const s of settings) {
-    await db.setting.upsert({ where: { key: s.key }, update: { value: s.value }, create: s })
+    await db.setting.upsert({ where: { key: s.key }, update: {}, create: s })
   }
   console.log('  ✓ settings')
 

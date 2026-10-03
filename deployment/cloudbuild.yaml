@@ -1,41 +1,11 @@
-# LEGACY Google Cloud deployment template. Not connected to or used by Tech360's
-# supported Hostinger Node.js Web App production path. Retained for historical
-# or separately authorized client-project work only.
+# RETIRED: do not use Cloud Build to deploy Tech360. Production deployment is
+# intended to use Hostinger's Node.js Web App Git integration. This failing step
+# prevents an accidental second Cloud Run app from being built/deployed.
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
     args:
-      - build
-      - '-t'
-      - '$_REGION-docker.pkg.dev/$PROJECT_ID/tech360/platform:$SHORT_SHA'
-      - '-t'
-      - '$_REGION-docker.pkg.dev/$PROJECT_ID/tech360/platform:latest'
-      - '-f'
-      - 'deployment/Dockerfile'
-      - '.'
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', '$_REGION-docker.pkg.dev/$PROJECT_ID/tech360/platform:$SHORT_SHA']
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', '$_REGION-docker.pkg.dev/$PROJECT_ID/tech360/platform:latest']
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      - run
-      - deploy
-      - tech360-platform
-      - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/tech360/platform:$SHORT_SHA'
-      - '--region=$_REGION'
-      - '--platform=managed'
-      - '--allow-unauthenticated'
-      - '--port=8080'
-      - '--cpu=1'
-      - '--memory=1Gi'
-      - '--min-instances=0'
-      - '--max-instances=10'
-      - '--set-env-vars=NODE_ENV=production'
-      - '--set-secrets=DATABASE_URL=tech360-database-url:latest,ADMIN_EMAIL=tech360-admin-email:latest,ADMIN_PASSWORD=tech360-admin-password:latest,N8N_WEBHOOK_SECRET=tech360-n8n-secret:latest,OPS_SECRET=tech360-ops-secret:latest,WHATSAPP_TOKEN=tech360-whatsapp-token:latest,WHATSAPP_PHONE_NUMBER_ID=tech360-whatsapp-phone-id:latest,WHATSAPP_VERIFY_TOKEN=tech360-whatsapp-verify:latest,SMTP_HOST=tech360-smtp-host:latest,SMTP_PORT=tech360-smtp-port:latest,SMTP_USER=tech360-smtp-user:latest,SMTP_PASS=tech360-smtp-pass:latest,SMTP_FROM=tech360-smtp-from:latest,APP_PUBLIC_URL=tech360-public-url:latest'
-substitutions:
-  _REGION: us-central1
-images:
-  - '$_REGION-docker.pkg.dev/$PROJECT_ID/tech360/platform:$SHORT_SHA'
-options:
-  logging: CLOUD_LOGGING_ONLY
+      - '-euc'
+      - |
+        echo 'ERROR: this Tech360 Cloud Build deployment is retired; use the Hostinger deployment runbook.' >&2
+        exit 1

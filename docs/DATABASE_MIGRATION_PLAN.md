@@ -4,7 +4,7 @@ See the root [`DATABASE_SCHEMA_AND_MIGRATION_GUIDE.md`](../DATABASE_SCHEMA_AND_M
 
 ## Current source snapshot
 
-The earlier SQLite-era state recorded in previous project notes is historical and is not the current production architecture. At the freshly fetched GitHub `main` snapshot `70f249c8711bb5fb6213df7e53d2444db87eeff1` (refreshed 2026-10-03 local):
+The earlier SQLite-era state recorded in previous project notes is historical and is not the current production architecture. At the currently fetched GitHub `main` snapshot `9f11195809c30ff21b7f61779373b63bd15513f9` (2026-10-03), PR #11 has merged the Prisma EACCES repair and CI run 37078930321 passed the MySQL migration/drift checks. Current uncommitted branch changes still require their own CI run:
 
 - Prisma datasource provider: **MySQL** (`prisma/schema.prisma`);
 - checked-in Prisma migration baseline: `prisma/migrations/0_init/migration.sql`;

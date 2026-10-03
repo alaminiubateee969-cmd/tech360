@@ -24,6 +24,8 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 PASS=0
 FAIL=0
 
+# Curl/grep failures are captured so every route is reported; the accumulated
+# FAIL count at the end still forces a nonzero exit for any failed check.
 
 # Homepage
 home_status="$(curl -sS --connect-timeout 10 --max-time 30 -o "$TMP_DIR/home.html" -w '%{http_code}' "$BASE/" 2>/dev/null || true)"

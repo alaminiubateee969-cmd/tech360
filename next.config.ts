@@ -1,14 +1,44 @@
 import type { NextConfig } from "next";
 
+const CANONICAL_ORIGIN = "https://bdtech360.com";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: false,
-  // Production builds must not bypass TypeScript errors. CI also runs
-  // `npm run typecheck` as an explicit gate before the build.
-  // Keep this configuration on documented, typed Next.js options. Runtime
-  // memory limits belong in the process manager/container configuration; the
-  // previous experimental `turbopackMemoryLimit` key is not supported by the
-  // installed Next.js version and broke the CI typecheck.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.bdtech360.com" }],
+        destination: `${CANONICAL_ORIGIN}/:path*`,
+        permanent: true,
+      },
+      {
+        // Hostinger terminates TLS before the Node.js process. Redirect only
+        // when its trusted proxy explicitly marks the original request as HTTP.
+        source: "/:path*",
+        has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
+        destination: `${CANONICAL_ORIGIN}/:path*`,
+        permanent: true,
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          // Do not include subdomains: automation.bdtech360.com and other
+          // service hosts have separate HTTPS ownership/configuration.
+          { key: "Strict-Transport-Security", value: "max-age=31536000" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

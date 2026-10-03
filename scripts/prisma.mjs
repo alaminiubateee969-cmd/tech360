@@ -22,12 +22,12 @@
  *
  * WHAT THIS DOES (deterministic, fail-loud, never masks errors)
  * --------------------------------------------------------------
- * 1. Before running the Prisma CLI: restore the executable bit on every
- *    file and directory under node_modules/@prisma/engines and under the
- *    Prisma engines cache directory (if present). This covers every engine
- *    variant Prisma 6.19.3 can materialize (schema-engine-*,
- *    migration-engine-*, query-engine-*, libquery_engine-*.so.node, …),
- *    not a single hardcoded file name.
+ * 1. Before running the Prisma CLI: restore executable bits only on native
+ *    Prisma engine artifacts in the package/client/cache locations, while
+ *    making their containing directories traversable. This covers every
+ *    Prisma 6.19.3 engine variant (schema-engine-*, migration-engine-*,
+ *    query-engine-*, libquery_engine-*.so.node and the bare cache filenames)
+ *    without chmodding unrelated package metadata or the filesystem.
  * 2. Verify that every spawnable native engine actually starts (execve
  *    test). If the executable bit cannot be made effective on the current
  *    filesystem (e.g. a noexec volume), copy the engine to a writable temp
@@ -92,7 +92,7 @@ function chmodSafe(file, mode) {
 }
 
 /** File names of Prisma engine artifacts (any platform/target variant). */
-const ENGINE_FILE_RE = /^(schema-engine|migration-engine|query-engine|libquery_engine)-|\.so\.node$/
+const ENGINE_FILE_RE = /^(schema-engine|migration-engine|query-engine)(?:-|$)|^libquery_engine-.*\.so\.node$/
 
 /**
  * Restore executable bits in every Prisma engine location that exists.
@@ -125,14 +125,9 @@ function hardenEngineLocations() {
     walkFiles(
       root,
       (file) => {
-        const base = path.basename(file)
-        // In the engines/cache directories every file is an engine artifact
-        // (metadata files included — 0o755 on .json/.js is harmless). In the
-        // larger package/client directories only touch engine artifacts.
-        const scoped = root === prismaPkgDir || root === generatedClientDir
-        if (scoped && !ENGINE_FILE_RE.test(base)) return
-        // Restore +x. Setting 0o755 on non-binary metadata files is
-        // harmless and keeps the logic target-agnostic.
+        if (!ENGINE_FILE_RE.test(path.basename(file))) return
+        // Only native Prisma engine artifacts are executable; leave metadata,
+        // JavaScript, checksums, and other package files untouched.
         chmodSafe(file, 0o755)
       },
       (dir) => chmodSafe(dir, 0o755),
