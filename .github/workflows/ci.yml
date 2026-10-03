@@ -300,8 +300,6 @@ jobs:
           OPS_SECRET: ci_ops_secret_only_never_use_in_production_345678
         run: |
           set -euo pipefail
-          # TEMP-DIAG (removed before merge)
-          trap 'rc=$?; echo "::error::SMOKE-DIAG failure at line $LINENO (exit $rc): $BASH_COMMAND"; echo "::error::SMOKE-DIAG home=${home_status:-none} portal=${portal_status:-none} login=${login_status:-none} seo=${seo_status:-none} www=${www_status:-none} wwwloc=${www_location:-none} http=${http_status:-none} httploc=${http_location:-none} asset=${asset_status:-none} brand=${brand_status:-none} robots=${robots_status:-none} down=${down_status:-none}"' ERR
           PORT="$(node -e 'const net = require("node:net"); const server = net.createServer(); server.listen(0, "127.0.0.1", () => { console.log(server.address().port); server.close(); });')"
           HOSTNAME=127.0.0.1 PORT="$PORT" npm start > /tmp/tech360-production-start.log 2>&1 &
           APP_PID=$!
@@ -371,14 +369,21 @@ jobs:
           seo_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "http://127.0.0.1:$PORT/api/admin/seo/audit")"
           test "$seo_status" = 401
 
-          response_headers="$(curl -sS -D - -o /dev/null "http://127.0.0.1:$PORT/")"
+          # curl writes CRLF line endings; strip the CR before matching whole
+          # header lines, otherwise a correct header can never match "^...$".
+          response_headers="$(curl -sS -D - -o /dev/null "http://127.0.0.1:$PORT/" | tr -d '\r')"
           for required_header in \
             'X-Content-Type-Options: nosniff' \
             'X-Frame-Options: SAMEORIGIN' \
             'Referrer-Policy: strict-origin-when-cross-origin' \
             'Strict-Transport-Security: max-age=31536000'; do
-            printf '%s\n' "$response_headers" | grep -qi "^$required_header$"
+            if ! printf '%s\n' "$response_headers" | grep -qi "^$required_header$"; then
+              echo "::error::missing required response header: $required_header"
+              printf '%s\n' "$response_headers"
+              exit 1
+            fi
           done
+          echo "security headers present: X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Strict-Transport-Security"
 
           www_status="$(curl -sS -D /tmp/tech360-www.headers -o /dev/null -w '%{http_code}' -H 'Host: www.bdtech360.com' "http://127.0.0.1:$PORT/")"
           www_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-www.headers | tr -d '\r')"
@@ -434,11 +439,3 @@ jobs:
           }
           console.log('database failure health check correctly returned 503 without exposing secrets');
           NODE
-
-      # TEMP-DIAG (removed before merge): surface the reason as annotations so
-      # it is visible without the async log archive.
-      - name: TEMP-DIAG server logs
-        if: failure()
-        run: |
-          echo "::error::SMOKE-DIAG start log tail: $(tail -c 1200 /tmp/tech360-production-start.log 2>/dev/null | tr '\n' '|' | tail -c 900)"
-          echo "::error::SMOKE-DIAG down log tail: $(tail -c 600 /tmp/tech360-production-down.log 2>/dev/null | tr '\n' '|' | tail -c 400)"
