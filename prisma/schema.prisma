@@ -909,3 +909,166 @@ model EmailCampaign {
 
   @@index([status])
 }
+
+// ============================================================
+// AI SOFTWARE FACTORY — one brief form → a generated, deliverable
+// client web application (CRM / marketing / portal / vertical).
+// Every table below is intentionally self-contained (no foreign
+// keys) so client ids survive the handover archive.
+// ============================================================
+
+model GeneratedApp {
+  id          String   @id @default(cuid())
+  code        String   @unique // AF-0001
+  name        String
+  clientId    String?
+  projectId   String?
+  vertical    String   @default("crm") // crm | marketing | education | ecommerce | booking | realestate | support
+  brief       String   @db.LongText // JSON: the owner/client form
+  plan        String   @db.LongText // JSON: blueprint (pages, models, agents, automations)
+  status      String   @default("DRAFT") // DRAFT | PLANNED | BUILT | PREVIEW | APPROVED | DELIVERED | FAILED
+  stage       String   @default("BRIEF") // BRIEF | PLAN | SCAFFOLD | PREVIEW | DELIVERY | HANDOVER
+  fileCount   Int      @default(0)
+  totalBytes  Int      @default(0)
+  createdBy   String?
+  deliveredAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([vertical])
+  @@index([clientId])
+}
+
+model GeneratedAppFile {
+  id        String   @id @default(cuid())
+  appId     String
+  path      String
+  language  String   @default("text")
+  bytes     Int      @default(0)
+  content   String   @db.LongText
+  createdAt DateTime @default(now())
+
+  @@unique([appId, path])
+  @@index([appId])
+}
+
+model GeneratedAppEvent {
+  id        String   @id @default(cuid())
+  appId     String
+  stage     String
+  status    String
+  note      String?  @db.Text
+  actor     String?
+  createdAt DateTime @default(now())
+
+  @@index([appId])
+}
+
+// ============================================================
+// MEDIA STUDIO — script → shots → voiceover → captions → render
+// ============================================================
+
+model MediaJob {
+  id          String   @id @default(cuid())
+  code        String   @unique // MS-0001
+  title       String
+  kind        String   @default("VIDEO") // VIDEO | SHORT | AUDIO | VOICEOVER
+  language    String   @default("EN")
+  aspect      String   @default("16:9")
+  durationSec Int      @default(60)
+  script      String   @db.LongText
+  plan        String   @db.LongText // JSON: shots + composition spec
+  captions    String   @db.LongText // SRT
+  status      String   @default("DRAFT") // DRAFT | PLANNED | VOICE_READY | CAPTIONS_READY | RENDER_QUEUED | RENDERED | FAILED
+  renderState String   @default("RENDER_NOT_CONFIGURED")
+  voiceState  String   @default("NOT_CONFIGURED")
+  provider    String?
+  clientId    String?
+  projectId   String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([kind])
+  @@index([clientId])
+}
+
+model MediaShot {
+  id        String   @id @default(cuid())
+  jobId     String
+  seq       Int
+  startSec  Int
+  endSec    Int
+  kind      String   @default("B_ROLL") // HOOK | TALKING_HEAD | B_ROLL | TEXT_CARD | CTA
+  visual    String   @db.Text
+  narration String   @db.Text
+  overlay   String?
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+}
+
+// ============================================================
+// FEED HUB — server-side RSS/Atom/JSON ingestion into content ideas
+// ============================================================
+
+model FeedSource {
+  id            String   @id @default(cuid())
+  name          String
+  url           String
+  kind          String   @default("RSS") // RSS | ATOM | JSON
+  category      String   @default("INDUSTRY")
+  status        String   @default("IDLE") // IDLE | OK | ERROR
+  lastFetchedAt DateTime?
+  lastError     String?  @db.Text
+  itemCount     Int      @default(0)
+  autoIdea      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+}
+
+model FeedItem {
+  id          String   @id @default(cuid())
+  sourceId    String
+  guid        String
+  title       String
+  link        String
+  summary     String?  @db.LongText
+  publishedAt DateTime?
+  tags        String   @db.Text
+  ideaAssetId String?
+  createdAt   DateTime @default(now())
+
+  @@unique([sourceId, guid])
+  @@index([sourceId])
+}
+
+// ============================================================
+// CALL & SMS CENTRE — click-to-call, device SMS gateway, call log
+// ============================================================
+
+model CallLog {
+  id           String   @id @default(cuid())
+  clientId     String?
+  leadId       String?
+  direction    String   @default("OUTBOUND") // OUTBOUND | INBOUND
+  number       String
+  channel      String   @default("CLICK_TO_CALL") // CLICK_TO_CALL | SIP | DEVICE_GATEWAY | MANUAL
+  provider     String?
+  status       String   @default("LOGGED") // LOGGED | CONNECTED | COMPLETED | MISSED | FAILED | NOT_CONFIGURED
+  outcome      String?
+  notes        String?  @db.Text
+  durationSec  Int      @default(0)
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  createdBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([status])
+}

@@ -369,14 +369,21 @@ jobs:
           seo_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "http://127.0.0.1:$PORT/api/admin/seo/audit")"
           test "$seo_status" = 401
 
-          response_headers="$(curl -sS -D - -o /dev/null "http://127.0.0.1:$PORT/")"
+          # curl writes CRLF line endings; strip the CR before matching whole
+          # header lines, otherwise a correct header can never match "^...$".
+          response_headers="$(curl -sS -D - -o /dev/null "http://127.0.0.1:$PORT/" | tr -d '\r')"
           for required_header in \
             'X-Content-Type-Options: nosniff' \
             'X-Frame-Options: SAMEORIGIN' \
             'Referrer-Policy: strict-origin-when-cross-origin' \
             'Strict-Transport-Security: max-age=31536000'; do
-            printf '%s\n' "$response_headers" | grep -qi "^$required_header$"
+            if ! printf '%s\n' "$response_headers" | grep -qi "^$required_header$"; then
+              echo "::error::missing required response header: $required_header"
+              printf '%s\n' "$response_headers"
+              exit 1
+            fi
           done
+          echo "security headers present: X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Strict-Transport-Security"
 
           www_status="$(curl -sS -D /tmp/tech360-www.headers -o /dev/null -w '%{http_code}' -H 'Host: www.bdtech360.com' "http://127.0.0.1:$PORT/")"
           www_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-www.headers | tr -d '\r')"
