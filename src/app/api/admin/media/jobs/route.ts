@@ -66,18 +66,20 @@ export async function POST(req: NextRequest) {
       clientId: sanitizeText(body.clientId ?? '', 40).trim() || null,
       projectId: sanitizeText(body.projectId ?? '', 40).trim() || null,
       createdBy: g.user.email,
-      shots: {
-        create: shots.map((s) => ({
-          seq: s.seq,
-          startSec: s.startSec,
-          endSec: s.endSec,
-          kind: s.kind,
-          visual: s.visual,
-          narration: s.narration,
-          overlay: s.overlay,
-        })),
-      },
     },
+  })
+  // Relation-free by design: shots are written explicitly after the job exists.
+  await db.mediaShot.createMany({
+    data: shots.map((s) => ({
+      jobId: job.id,
+      seq: s.seq,
+      startSec: s.startSec,
+      endSec: s.endSec,
+      kind: s.kind,
+      visual: s.visual,
+      narration: s.narration,
+      overlay: s.overlay,
+    })),
   })
 
   await audit({ actor: g.user.email, action: 'MEDIA_JOB_CREATED', userId: g.user.id, entityId: job.id, details: { code, kind: brief.kind, shots: shots.length } })

@@ -66,6 +66,8 @@ export async function POST(req: NextRequest) {
   const count = await db.generatedApp.count()
   const code = `AF-${String(count + 1).padStart(4, '0')}`
 
+  // Tables are intentionally relation-free, so the app, its files and its first
+  // stage event are written as three explicit steps rather than a nested create.
   const app = await db.generatedApp.create({
     data: {
       code,
@@ -80,17 +82,18 @@ export async function POST(req: NextRequest) {
       fileCount,
       totalBytes,
       createdBy: g.user.email,
-      files: {
-        create: files.map((f) => ({ path: f.path, language: f.language, bytes: Buffer.byteLength(f.content, 'utf8'), content: f.content })),
-      },
-      events: {
-        create: {
-          stage: 'PLAN',
-          status: 'PLANNED',
-          note: `Blueprint generated for ${brief.clientName}: ${plan.pages.length} pages, ${plan.models.length} models, ${plan.endpoints.length} endpoints, ${fileCount} files.`,
-          actor: g.user.email,
-        },
-      },
+    },
+  })
+  await db.generatedAppFile.createMany({
+    data: files.map((f) => ({ appId: app.id, path: f.path, language: f.language, bytes: Buffer.byteLength(f.content, 'utf8'), content: f.content })),
+  })
+  await db.generatedAppEvent.create({
+    data: {
+      appId: app.id,
+      stage: 'PLAN',
+      status: 'PLANNED',
+      note: `Blueprint generated for ${brief.clientName}: ${plan.pages.length} pages, ${plan.models.length} models, ${plan.endpoints.length} endpoints, ${fileCount} files.`,
+      actor: g.user.email,
     },
   })
 
