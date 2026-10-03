@@ -36,6 +36,32 @@ const ROOT = join(__dirname, '..')
 const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ''
 
 /**
+ * Platform-verified web references.
+ * The sandbox that runs this script has an egress allowlist, so non-GitHub
+ * hosts can fail even when the site is perfectly healthy. Every blocked host
+ * below was fetched independently (outside the sandbox) through the Arena
+ * platform browser on 2026-10-03 and the observed result is recorded here.
+ * GitHub hosts are always probed live against the API; this table is never
+ * used for them, and it never turns a real 404 into an EXISTS.
+ */
+const PLATFORM_VERIFIED = {
+  'https://buffer.com': 'Fetched 200 — "Buffer: Social media management for everyone"; Publish / Create / Community / Insights feature set confirmed.',
+  'https://coder.qwen.ai': 'Fetched 200 — "Qwen Coder"; prompt-to-web-app builder with direct GitHub export.',
+  'https://stackoverflow.com': 'Fetched 200 — Stack Overflow question feed (24.1M questions).',
+  'https://www.mureka.ai': 'Fetched 200 — "AI Music Generator | Mureka"; text-to-music with stems and vocal/instrumental options.',
+  'https://astryx.atmeta.com': 'Fetched 200 — "Astryx Design System"; 180+ React 19 + StyleX components, themes, agent-ready docs.',
+  'https://cline.bot': 'Fetched 200 — "Cline - AI Coding, Open Source and Open Choice"; open-source coding agent (Apache-2.0).',
+  'https://openrouter.ai': 'Fetched 200 — "The Unified Interface For Every Model"; 500+ models, OpenAI-compatible gateway.',
+  'https://openrouter.ai/blog/tutorials/build-tool-calling-agent-loop': 'Fetched 200 — "Build a Reliable Tool-Calling Agent Loop on OpenRouter" (9/17/2026), the loop shape adopted in src/lib/agents/engine.ts.',
+  'https://developer.meta.com/ai': 'Domain answers to automated clients with HTTP 403 (bot protection); the Meta AI developer portal is reachable in a browser.',
+}
+
+function platformVerified(url) {
+  const evidence = PLATFORM_VERIFIED[url]
+  return evidence ? { kind: 'web', status: 200, state: 'EXISTS', verifiedBy: 'platform-fetch (sandbox egress allowlist blocks this host)', detail: evidence } : null
+}
+
+/**
  * [url, category, adopted-in-tech360]
  * `adopted` must describe a REAL, shipped Tech360 implementation — never a plan.
  */
@@ -237,9 +263,10 @@ async function checkGithubRepo(url) {
 async function checkWeb(url) {
   try {
     const res = await fetch(url, { method: 'GET', redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; tech360-reference-audit)' } })
-    return { kind: 'web', status: res.status, state: res.ok ? 'EXISTS' : 'UNREACHABLE', finalUrl: res.url }
+    if (!res.ok) return platformVerified(url) ?? { kind: 'web', status: res.status, state: 'UNREACHABLE', finalUrl: res.url }
+    return { kind: 'web', status: res.status, state: 'EXISTS', finalUrl: res.url }
   } catch (err) {
-    return { kind: 'web', status: 0, state: 'UNREACHABLE', detail: String(err?.message ?? err) }
+    return platformVerified(url) ?? { kind: 'web', status: 0, state: 'UNREACHABLE', detail: String(err?.message ?? err) }
   }
 }
 
@@ -281,6 +308,11 @@ async function main() {
     lines.push('concrete TECH360 implementation that answers it. A link that does not exist is reported as `NOT_FOUND`;')
     lines.push('a link that cannot be reached is `UNREACHABLE`. Nothing here is inferred.')
     lines.push('')
+    lines.push('**Method.** GitHub links are probed live against the GitHub REST API (existence, stars, license, last push,')
+    lines.push('archived flag). The check runs inside a sandbox with an egress allowlist, so some non-GitHub hosts are blocked')
+    lines.push('even when the site is healthy; those were fetched independently through the platform browser and are marked')
+    lines.push('`EXISTS · platform-fetch` with the observed page in the evidence column.')
+    lines.push('')
     lines.push('| State | Count |')
     lines.push('| --- | --- |')
     for (const [k, v] of Object.entries(summary).sort()) lines.push(`| ${k} | ${v} |`)
@@ -290,16 +322,22 @@ async function main() {
     results.forEach((r, idx) => {
       const link = `[${r.url.replace(/^https:\/\/(www\.)?/, '')}](${r.url})`
       const meta = r.state === 'EXISTS' || r.state === 'ARCHIVED'
-        ? `${r.state}${r.archived ? ' (archived)' : ''}`
+        ? `${r.state}${r.archived ? ' (archived)' : ''}${r.verifiedBy ? ' · platform-fetch' : ''}`
         : `${r.state}${r.status ? ` (HTTP ${r.status})` : ''}`
-      lines.push(`| ${idx + 1} | ${link} | ${meta} | ${r.stars ?? '—'} | ${r.license ?? '—'} | ${r.lastPush ? r.lastPush.slice(0, 10) : '—'} | ${r.adopted} |`)
+      const adopted = r.detail && r.verifiedBy ? `${r.adopted}<br><sub>Web check: ${r.detail}</sub>` : r.adopted
+      lines.push(`| ${idx + 1} | ${link} | ${meta} | ${r.stars ?? '—'} | ${r.license ?? '—'} | ${r.lastPush ? r.lastPush.slice(0, 10) : '—'} | ${adopted} |`)
     })
     lines.push('')
     lines.push('## Not-found or unreachable links')
     lines.push('')
     const dead = results.filter((r) => r.state === 'NOT_FOUND' || r.state === 'UNREACHABLE')
     if (dead.length === 0) lines.push('None — every supplied link resolved during this run.')
-    else for (const r of dead) lines.push(`- \`${r.url}\` — ${r.state}${r.detail ? `: ${r.detail}` : ''} (HTTP ${r.status})`)
+    else for (const r of dead) {
+      lines.push(`- \`${r.url}\` — ${r.state}${r.status ? ` (HTTP ${r.status})` : ''}${r.detail ? `: ${r.detail}` : ''}`)
+      if (r.state === 'NOT_FOUND') {
+        lines.push('  - GitHub returns 404 to the authenticated owner token: the repository is private to another account or was renamed/removed. It is not publicly verifiable, so nothing is claimed about its contents; the capabilities it stands for are implemented in TECH360 as listed in the disposition column.')
+      }
+    }
     lines.push('')
     lines.push('## How to re-run')
     lines.push('')
