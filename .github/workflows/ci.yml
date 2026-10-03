@@ -80,7 +80,7 @@ jobs:
         run: |
           echo "scanning tracked files for accidental secrets…"
           if git ls-files -z | xargs -0 grep -lIE \
-            'sk_live_[A-Za-z0-9]{20,}|sk_test_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}' \
+            'sk_live_[A-Za-z0-9]{20,}|sk_test_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{22,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[A-Za-z0-9-]{20,}|npm_[A-Za-z0-9]{36,}' \
             2>/dev/null | grep -v '^\.env\.example$'; then
             echo "::error::secret-like material found in tracked files — remove it and rotate the credential"
             exit 1
@@ -103,10 +103,50 @@ jobs:
           npm --version
           npm ci --no-audit --no-fund
 
+      - name: Verify production start fails closed on missing configuration
+        run: |
+          set +e
+          output="$(env -u NODE_ENV -u DATABASE_URL -u APP_PUBLIC_URL -u APP_ORIGIN \
+            -u SESSION_SECRET -u PORTAL_SECRET -u OPS_SECRET npm start 2>&1)"
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ] || ! printf '%s' "$output" | grep -q 'production environment validation failed'; then
+            echo "::error::npm start must stop in prestart when required production configuration is missing"
+            printf '%s\n' "$output"
+            exit 1
+          fi
+          if printf '%s' "$output" | grep -Eqi 'mysql://|ci_only_not_a_secret|PASSWORD=[^[:space:]]+'; then
+            echo "::error::prestart output exposed a configuration value"
+            exit 1
+          fi
+          echo "npm start correctly stopped in prestart without printing values"
+
+      - name: Verify retired deployment paths fail closed
+        run: node tests/retired-deployment-paths.mjs
+
+      - name: Verify the scoped Next ESLint glob API
+        run: |
+          node <<'NODE'
+          const { createRequire } = require('node:module')
+          const pluginRequire = createRequire(require.resolve('@next/eslint-plugin-next'))
+          const fastGlob = pluginRequire('fast-glob')
+          if (typeof fastGlob.globSync !== 'function') throw new Error('fast-glob.globSync is unavailable')
+          const directories = fastGlob.globSync('src', { onlyDirectories: true })
+          if (!directories.includes('src') && !directories.includes('src/')) {
+            throw new Error('globSync did not return the source directory')
+          }
+          console.log(`scoped tinyglobby alias passed fast-glob API check (${directories.length} directories)`)
+          NODE
+
+      # Fail on vulnerabilities at every severity. The Next ESLint plugin only
+      # uses fast-glob.globSync(..., { onlyDirectories: true }); package.json
+      # scopes its compatible tinyglobby alias to that dev-only package. This
+      # removes the currently unpatched braces advisory without downgrading Next
+      # or suppressing npm audit findings.
       - name: Audit npm dependencies (full and production)
         run: |
-          npm audit --audit-level=high
-          npm audit --omit=dev --audit-level=high
+          npm audit --audit-level=low
+          npm audit --omit=dev --audit-level=low
 
       # --- provider gates -------------------------------------------------
       - name: Prisma schema is in sync with the MySQL type map
@@ -151,8 +191,11 @@ jobs:
           mkdir -p "$cache_dir"
           cp "$target_file" "$cache_dir/schema-engine"
           printf '%s' "$(sha256sum "$cache_dir/schema-engine" | awk '{print $1}')" > "$cache_dir/schema-engine.sha256"
+          chmod 644 "$cache_dir/schema-engine"
           chmod 644 "$target_file"
-          for f in "$engines_dir"/libquery_engine-*; do [ -e "$f" ] && chmod 644 "$f" || true; done
+          for f in "$engines_dir"/libquery_engine-*; do
+            if [ -f "$f" ]; then chmod 644 "$f"; fi
+          done
           echo "engine state now matches the Hostinger failure condition:"
           ls -la "$engines_dir"
 
@@ -229,6 +272,9 @@ jobs:
       - name: Business and database isolation tests (MySQL)
         run: npm test
 
+      - name: Verify production seed bootstrap is idempotent and non-destructive
+        run: node tests/seed-safety.mjs
+
       - name: Database integrity (MySQL, read-only)
         run: npm run db:verify
 
@@ -245,14 +291,38 @@ jobs:
 
       - name: Smoke-test the generated production server
         shell: bash
+        env:
+          NODE_ENV: production
+          APP_PUBLIC_URL: https://bdtech360.com
+          APP_ORIGIN: https://bdtech360.com
+          SESSION_SECRET: ci_session_secret_only_never_use_in_production_123456
+          PORTAL_SECRET: ci_portal_secret_only_never_use_in_production_234567
+          OPS_SECRET: ci_ops_secret_only_never_use_in_production_345678
         run: |
           set -euo pipefail
           PORT="$(node -e 'const net = require("node:net"); const server = net.createServer(); server.listen(0, "127.0.0.1", () => { console.log(server.address().port); server.close(); });')"
-          HOSTNAME=127.0.0.1 PORT="$PORT" npm run start > /tmp/tech360-production-start.log 2>&1 &
+          HOSTNAME=127.0.0.1 PORT="$PORT" npm start > /tmp/tech360-production-start.log 2>&1 &
           APP_PID=$!
+          stop_app() {
+            local pid="$1" status=0
+            if kill -0 "$pid" 2>/dev/null; then
+              if ! kill "$pid" 2>/dev/null && kill -0 "$pid" 2>/dev/null; then
+                echo "::error::could not stop production smoke-test process $pid"
+                return 1
+              fi
+            fi
+            if wait "$pid" 2>/dev/null; then
+              status=0
+            else
+              status=$?
+            fi
+            if [ "$status" -ne 0 ] && [ "$status" -ne 143 ]; then
+              echo "::error::production smoke-test process exited unexpectedly with status $status"
+              return "$status"
+            fi
+          }
           cleanup() {
-            kill "$APP_PID" 2>/dev/null || true
-            wait "$APP_PID" 2>/dev/null || true
+            if [ -n "${APP_PID:-}" ]; then stop_app "$APP_PID"; fi
           }
           trap cleanup EXIT
 
@@ -283,18 +353,82 @@ jobs:
           if (health.version !== pkg.version) throw new Error(`health version ${health.version} != package ${pkg.version}`);
           if (health.checks?.database?.status !== 'UP') throw new Error(`database status: ${health.checks?.database?.status}`);
           if (!/MySQL/i.test(health.checks.database.detail ?? '')) throw new Error('health does not identify the connected MySQL database');
-          console.log(`health OK: version ${health.version}; MySQL UP`);
+          const healthText = JSON.stringify(health);
+          if (/DATABASE_URL|mysql:\/\/|SESSION_SECRET|PORTAL_SECRET|OPS_SECRET|password/i.test(healthText)) {
+            throw new Error('health response contains configuration or secret material');
+          }
+          console.log(`health OK: version ${health.version}; MySQL UP; no secrets exposed`);
           NODE
 
           home_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/")"
           test "$home_status" = 200
           portal_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "http://127.0.0.1:$PORT/api/portal/login")"
           test "$portal_status" = 400
+          login_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"email":"missing@example.invalid","password":"invalid-password"}' "http://127.0.0.1:$PORT/api/auth/login")"
+          test "$login_status" = 401
           seo_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "http://127.0.0.1:$PORT/api/admin/seo/audit")"
           test "$seo_status" = 401
 
-          static_file="$(find .next/standalone/.next/static -type f -print -quit)"
-          static_rel="${static_file#.next/standalone/.next/static/}"
-          static_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/_next/static/$static_rel")"
-          test "$static_status" = 200
-          echo "production smoke test passed: home=$home_status portal=$portal_status protected-seo=$seo_status static=$static_status"
+          response_headers="$(curl -sS -D - -o /dev/null "http://127.0.0.1:$PORT/")"
+          for required_header in \
+            'X-Content-Type-Options: nosniff' \
+            'X-Frame-Options: SAMEORIGIN' \
+            'Referrer-Policy: strict-origin-when-cross-origin' \
+            'Strict-Transport-Security: max-age=31536000'; do
+            printf '%s\n' "$response_headers" | grep -qi "^$required_header$"
+          done
+
+          www_status="$(curl -sS -D /tmp/tech360-www.headers -o /dev/null -w '%{http_code}' -H 'Host: www.bdtech360.com' "http://127.0.0.1:$PORT/")"
+          www_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-www.headers | tr -d '\r')"
+          test "$www_status" = 308
+          test "$www_location" = 'https://bdtech360.com/'
+          http_status="$(curl -sS -D /tmp/tech360-http.headers -o /dev/null -w '%{http_code}' -H 'x-forwarded-proto: http' "http://127.0.0.1:$PORT/")"
+          http_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-http.headers | tr -d '\r')"
+          test "$http_status" = 308
+          test "$http_location" = 'https://bdtech360.com/'
+
+          for extension in js css; do
+            static_file="$(find .next/standalone/.next/static -type f -name "*.$extension" -print -quit)"
+            test -n "$static_file"
+            static_rel="${static_file#.next/standalone/.next/static/}"
+            asset_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/_next/static/$static_rel")"
+            test "$asset_status" = 200
+          done
+          brand_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/brand/tech360-logo-original.jpg")"
+          robots_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/robots.txt")"
+          test "$brand_status" = 200
+          test "$robots_status" = 200
+          echo "production smoke test passed: home=$home_status portal=$portal_status login=$login_status protected-seo=$seo_status JS/CSS/public=$asset_status/$brand_status/$robots_status www=$www_status HTTP-upgrade=$http_status"
+
+          stop_app "$APP_PID"
+          APP_PID=
+          DOWN_PORT="$(node -e 'const net = require("node:net"); const server = net.createServer(); server.listen(0, "127.0.0.1", () => { console.log(server.address().port); server.close(); });')"
+          DATABASE_URL='mysql://tech360:ci_only_not_a_secret@127.0.0.1:1/tech360_ci?connect_timeout=1' HOSTNAME=127.0.0.1 PORT="$DOWN_PORT" npm start > /tmp/tech360-production-down.log 2>&1 &
+          APP_PID=$!
+          down_ready=false
+          for _ in $(seq 1 60); do
+            if down_status="$(curl -sS -o /tmp/tech360-health-down.json -w '%{http_code}' "http://127.0.0.1:$DOWN_PORT/api/health" 2>/dev/null)"; then
+              if [ "$down_status" = 503 ]; then down_ready=true; break; fi
+            fi
+            if ! kill -0 "$APP_PID" 2>/dev/null; then
+              cat /tmp/tech360-production-down.log
+              echo "::error::server exited before the unhealthy-database check"
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$down_ready" != true ]; then
+            cat /tmp/tech360-production-down.log
+            echo "::error::health endpoint did not return HTTP 503 for an unavailable MySQL dependency"
+            exit 1
+          fi
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const health = JSON.parse(fs.readFileSync('/tmp/tech360-health-down.json', 'utf8'));
+          if (health.status !== 'unhealthy') throw new Error(`expected unhealthy health status, got ${health.status}`);
+          if (health.checks?.database?.status !== 'DOWN') throw new Error(`expected database DOWN, got ${health.checks?.database?.status}`);
+          if (/mysql:\/\/|password|SESSION_SECRET|PORTAL_SECRET|OPS_SECRET/i.test(JSON.stringify(health))) {
+            throw new Error('unhealthy health response contains secret/configuration material');
+          }
+          console.log('database failure health check correctly returned 503 without exposing secrets');
+          NODE

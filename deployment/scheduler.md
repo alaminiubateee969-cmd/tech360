@@ -1,75 +1,32 @@
-# Legacy Google Cloud Scheduler sample — not the Hostinger deployment runbook
+# Operations-loop endpoint reference (deployment setup not verified)
 
-> The gcloud commands below are retained for separately authorized Cloud Run/client work and are **not configured or verified for Tech360 production**. Tech360's supported production app target is the Hostinger Node.js Web App. Do not use the Cloud Run deploy commands to deploy `bdtech360.com`.
+**Production status: NOT VERIFIED.** The application contains an authenticated
+`POST /api/ops/cycle` endpoint and the operations-loop implementation in
+`src/lib/ops-loop.ts`. This repository does not establish that a production
+scheduler, webhook, or sidecar is configured to call it. Do not assume the loop
+is running because the endpoint exists or because the admin UI is present.
 
-The autonomous AI operations loop runs **inside the platform** at
-`POST /api/ops/cycle` (source: `src/lib/ops-loop.ts`). No sidecar service is
-required in production — a scheduler just triggers the endpoint.
+## Runtime contract
 
-## What one cycle does (detect → decide → execute → verify → log → learn)
+- The app requires a non-empty `OPS_SECRET`; the endpoint compares its request
+  header in constant time and fails closed when the secret is absent.
+- `GET /api/health` reports the last persisted operations heartbeat when the
+  database is healthy. Missing/stale heartbeat is reported honestly.
+- The local `mini-services/ai-ops` helper is development tooling, not proof of a
+  production scheduler or Hostinger sidecar.
+- Actual scheduler identity, URL, cadence, retries, Hostinger environment, and
+  successful cycles are **NOT VERIFIED**. Confirm these with the authorized
+  operator before enabling autonomous operations.
 
-| Duty | Executor | Real work |
-| --- | --- | --- |
-| Score unscored leads | Sentry agent (REV-002) | `client.score` updated in DB |
-| Follow up overdue leads (>48h quiet) | Echo agent (COM-010) | message drafted, channel attempted honestly (NOT_CONFIGURED without credentials) + human task created |
-| Retry failed outbound comms | platform | real re-send attempt, status recorded |
-| Triage unresolved errors | Sentinel agent (ERR-034) | severity + remediation → admin notification |
-| Escalate approvals pending >12h | platform | WARNING notification |
-| Alert failed automations | platform | WARNING notification |
-| Expire stale preview links | platform | security TTL enforced, events + alert |
-| Publish due scheduled blog posts | platform | SCHEDULED → PUBLISHED at authored time |
-| Daily CEO report (08:00+ Asia/Dhaka) | Pulse agent (RPT-039) | generated from live CRM data, **persisted to the CeoReport archive**, idempotent per day |
-| Learn | platform | LESSON memory persisted |
-| Log cycle | platform | AutomationLog row + audit entry |
+## Production guardrails
 
-## Setup
+1. The supported application deployment target is Hostinger's Node.js Web App;
+   the legacy Google Cloud deploy and Cloud Build files are retired.
+2. Do not put `OPS_SECRET` in a command-line argument, log, Git file, or chat.
+   Configure it only in the authorized secret/environment panel.
+3. Enable a scheduler only after reviewing the endpoint's risk controls, the
+   configured secret, request cadence, and operational rollback/disable path.
+4. Preserve audit/automation records; do not report a cycle as successful
+   without a persisted heartbeat/result.
 
-`deployment/deploy.sh` creates the scheduler job automatically. Manual equivalent:
-
-```bash
-# 1) store the ops secret
-openssl rand -hex 24 | gcloud secrets create tech360-ops-secret --data-file=-
-
-# 2) wire it into the service (also done by cloudbuild.yaml)
-gcloud run services update tech360-platform \
-  --region us-central1 \
-  --set-secrets=OPS_SECRET=tech360-ops-secret:latest
-
-# 3) the trigger — every minute
-gcloud scheduler jobs create http tech360-ai-ops-cycle \
-  --location us-central1 \
-  --schedule "* * * * *" \
-  --uri "https://bdtech360.com/api/ops/cycle" \
-  --http-method POST \
-  --headers "x-ops-secret=$(gcloud secrets versions access latest --secret=tech360-ops-secret)" \
-  --time-zone "Asia/Dhaka" \
-  --attempt-deadline 300s
-```
-
-## Guardrails
-
-- **Throttle**: the endpoint skips runs when the last cycle is < 45s old
-  (`MIN_CYCLE_INTERVAL_MS` in `src/lib/ops-loop.ts`), so a 1-minute scheduler
-  never stacks cycles. Send `{ "force": true }` to override deliberately.
-- **Auth**: `OPS_SECRET` header required; without the env var set the endpoint
-  answers 401 to everyone.
-- **Idempotent CEO report**: at most one SCHEDULED report per Asia/Dhaka day.
-- **Observability**: `GET /api/ops/cycle` (with the secret) returns last-run
-  state; the admin console Dashboard shows loop status from the heartbeat;
-  every cycle lands in Automation Logs (`AI_OPS_LOOP`) and the audit trail.
-- **Cloud Run note**: `maxDuration = 300` is set on the route; ensure the
-  scheduler `--attempt-deadline` (300s) matches. With `min-instances=0` the
-  first request after scale-to-zero includes cold-start time — harmless, the
-  cycle is stateless.
-
-## Dev
-
-`mini-services/ai-ops` (port 3031) triggers the **same endpoint** every 90s,
-so dev and production run the identical loop code. Its `GET /` health surface
-reports cycle history for the admin console.
-
-## Alternatives (any works)
-
-- n8n Schedule Trigger → HTTP Request node → `/api/ops/cycle` with the secret
-  header (workflow `AI_Ops_Cycle_Trigger.json` pattern).
-- Any external cron (GitHub Actions, cron-job.org) with the header.
+No Cloud Scheduler commands or production secret values are included here.

@@ -60,7 +60,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
-npm run start
+npm start
 ```
 
 GitHub Actions validates the same npm/Node.js 22 path against disposable MySQL.
@@ -73,12 +73,12 @@ GitHub Actions validates the repository; it does not deploy production. When a H
 Pull Request → GitHub Actions CI (Node.js 22 + npm + disposable MySQL)
   → merge to main → Hostinger Node.js Web App Git integration (when configured)
   → Hostinger-managed npm install → hPanel build script `build` (npm run build)
-  → Hostinger Next.js preset starts the bundled standalone server
+  → required runtime command `npm start` runs the preflight then standalone server (Hostinger invocation **NOT VERIFIED**)
 ```
 
-The repository's `npm run start` script is used for CI/manual standalone smoke tests; Hostinger's documented Next.js preset ignores a custom entry-file field and manages the server start.
+The required repository start command is `npm start`; npm runs `prestart` to validate production environment configuration before launching `.next/standalone/server.js`. Hostinger's documented Next.js preset ignores a custom entry-file field and manages its server start, so whether hPanel invokes the npm lifecycle (and therefore this preflight) is **NOT VERIFIED**. Confirm/configure that behavior before deployment.
 
-There is no production SSH, VPS, PM2, rsync, scp, or manual server-copy path. `scripts/deploy-hostinger.sh` is retained only as a fail-fast retirement notice.
+There is no production SSH, VPS, PM2, rsync, scp, Google Cloud Run/Build, or manual server-copy path. The legacy Cloud Run deploy/backup helpers, Cloud Build file, and Dockerfile now fail fast or contain only a retirement notice; `scripts/deploy-hostinger.sh` is also a fail-fast retirement notice.
 
 Hostinger settings and environment requirements are documented in `docs/HOSTINGER_DEPLOYMENT.md`, `docs/HOSTINGER_DEPLOYMENT_MATRIX.md`, and `docs/HOSTINGER_ENVIRONMENT_VARIABLES.md`.
 

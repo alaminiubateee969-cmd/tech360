@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# TECH360 — nightly backup: Cloud SQL export + Cloud Storage copy
+# RETIRED: this legacy Cloud SQL/Cloud Storage helper does not back up the
+# current Hostinger MySQL database and previously suppressed file-copy errors.
+# It must not be treated as a successful production backup procedure.
 set -euo pipefail
-PROJECT_ID="${1:?Usage: ./backup.sh PROJECT_ID}"
-REGION="${2:-us-central1}"
-STAMP=$(date -u +%F)
-BUCKET="gs://tech360-backups-$PROJECT_ID"
 
-gcloud sql export sql tech360-db "$BUCKET/sql/$STAMP.sql" --project "$PROJECT_ID"
-gcloud storage cp -r gs://tech360-files "$BUCKET/files/$STAMP" --project "$PROJECT_ID" 2>/dev/null || true
-echo "Backup complete: $BUCKET ($STAMP)"
+cat >&2 <<'EOF'
+ERROR: deployment/backup.sh is retired; it does not back up Hostinger production.
+
+Do not use this script as evidence of a production backup. Have the authorized
+Hostinger database owner confirm the available backup/restore controls, take a
+backup using the verified provider workflow, and test restoring it in isolation.
+EOF
+exit 1

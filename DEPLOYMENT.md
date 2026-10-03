@@ -10,12 +10,12 @@ GitHub repository (main)
   → Hostinger Node.js Web App Git integration (only when connected/configured)
   → Hostinger-managed npm dependency install
   → npm run build
-  → Hostinger Next.js preset starts the bundled standalone server
+  → required runtime command `npm start` (preflight then standalone server; hPanel invocation must be verified)
   → MySQL via Prisma
   → bdtech360.com over HTTPS
 ```
 
-`npm run start` remains the repository's explicit standalone start script for CI/manual smoke tests. Hostinger's documented Next.js preset ignores a custom entry-file setting and starts its bundled server; the actual hPanel setting must still be checked.
+The required repository start command is `npm start`; npm runs `prestart` to validate production configuration before launching `.next/standalone/server.js`. Hostinger's documented Next.js preset ignores a custom entry-file setting and manages its server start, so whether hPanel invokes npm lifecycle scripts (and therefore the preflight) is **NOT VERIFIED**. Confirm/configure that behavior in hPanel and runtime logs.
 
 GitHub Actions validates changes and does not deploy. Hostinger's connected Node.js Web App Git integration can rebuild on pushes to its selected branch. The current Hostinger connection and production runtime have not been verified from this repository session.
 
@@ -32,17 +32,17 @@ GitHub Actions validates changes and does not deploy. Hostinger's connected Node
 | Dependency install | Hostinger-managed; its GitHub guide describes npm install. Verify the actual command in deployment logs; CI uses `npm ci`. |
 | Build script | `npm run build` (hPanel Next build script is `build`) |
 | Output directory | `.next` (Hostinger's documented Next.js server-mode setting) |
-| Entry/start behavior | Hostinger Next preset ignores the entry-file field and starts its bundled standalone server; `npm run start` is the repository's CI/manual smoke command, not a verified hPanel field. |
+| Entry/start behavior | Required repository command is `npm start` (prestart validation, then standalone server); Hostinger Next preset's actual hPanel invocation is **NOT VERIFIED**. |
 | Database | MySQL; `prisma/schema.prisma` has `provider = "mysql"` |
 | Domain | `bdtech360.com` canonical; attach `www.bdtech360.com` with valid HTTPS and redirect it to the canonical apex |
 
-Hostinger's official Next.js settings specify app type `next`, build script `build`, output directory `.next`, and no entry file (ignored for this framework). Hostinger says it builds Next in standalone mode and starts the bundled server. This repository sets `output: "standalone"`; `npm run build` generates Prisma Client, applies committed pending migrations with `prisma migrate deploy`, builds Next.js, and copies `.next/static` and `public` into `.next/standalone`. The existing `hostinger:build` npm alias delegates to this same `build` script; use the documented Next.js `build` preset field in hPanel, not Composer or a guessed entry file. `npm run start` is reserved for CI/manual smoke tests. Official docs also allow `/` or an empty root-directory value when `package.json` is at the repository root.
+Hostinger's documented Next.js settings specify app type `next`, build script `build`, output directory `.next`, and no entry file (ignored for this framework); its preset may manage the bundled-server start itself. This repository sets `output: "standalone"`; `npm run build` generates Prisma Client, applies committed pending migrations with `prisma migrate deploy`, builds Next.js, and copies `.next/static` and `public` into `.next/standalone`. The existing `hostinger:build` npm alias delegates to this same `build` script; use the documented Next.js `build` preset field in hPanel, not Composer or a guessed entry file. The required repository runtime command is `npm start` so its `prestart` environment validation runs before the standalone server. Whether Hostinger's selected preset invokes that npm lifecycle is **NOT VERIFIED**; confirm or configure it in hPanel before treating startup validation as active. Official docs also allow `/` or an empty root-directory value when `package.json` is at the repository root.
 
 The actual Hostinger settings and selected root are **not confirmed**. Do not use `public_html` as the source root or evidence of a running Node app.
 
 ## Runtime, port, and variables
 
-The application requires Node.js `>=22.0.0 <23`, and Hostinger's Node.js Web App supports selecting Node.js 22. Its documented `next` preset starts the bundled standalone server; `npm run start` also launches `.next/standalone/server.js` for CI/manual checks. Next standalone honors `PORT` when supplied, but Hostinger's public docs do not establish the port value or injection mechanism. Do not hard-code or guess a port; verify the actual binding from hPanel/runtime logs. The Hostinger runtime and port remain **NOT VERIFIED**.
+The application requires Node.js `>=22.0.0 <23`, and Hostinger's Node.js Web App supports selecting Node.js 22. The required repository start command is `npm start`, which runs the preflight and then launches `.next/standalone/server.js`; whether Hostinger's documented `next` preset invokes it is **NOT VERIFIED**. Next standalone honors `PORT` when supplied, but Hostinger's public docs do not establish the port value or injection mechanism. Do not hard-code or guess a port; verify actual start behavior and binding from hPanel/runtime logs. The Hostinger runtime and port remain **NOT VERIFIED**.
 
 Set production environment values in **Hostinger → Node.js Web App → Environment Variables**, never in Git. See [`docs/HOSTINGER_ENVIRONMENT_VARIABLES.md`](docs/HOSTINGER_ENVIRONMENT_VARIABLES.md) for the source-derived manifest. Core configuration includes:
 
@@ -62,7 +62,7 @@ The production schema provider is MySQL. The CI workflow creates a disposable My
 
 ## Deployment evidence to require
 
-The Hostinger deployment details should show the selected repository, `main`, the exact commit SHA, Node 22, npm, the Next.js preset, `.next` output, the build script, and a successful Next.js build—not only a clone or publish message. Hostinger's Next.js preset starts the bundled standalone server and ignores a custom entry-file field; confirm the actual start behavior from the deployment details/runtime logs instead of assuming an hPanel `npm run start` field. Reject Composer/PHP output as evidence for this application. Check the build output for `.next/standalone/server.js`, copied `.next/static` files, and `public` assets; then inspect Hostinger runtime logs for the Node process, port binding, and startup errors.
+The Hostinger deployment details should show the selected repository, `main`, the exact commit SHA, Node 22, npm, the Next.js preset, `.next` output, the build script, and a successful Next.js build—not only a clone or publish message. The required repository start command is `npm start`; confirm from hPanel/runtime logs that the selected preset invokes npm lifecycle scripts so `prestart` validation runs before the standalone server. Reject Composer/PHP output as evidence for this application. Check the build output for `.next/standalone/server.js`, copied `.next/static` files, and `public` assets; then inspect Hostinger runtime logs for the Node process, port binding, startup validation, and errors.
 
 After a deployment, test from an external client:
 

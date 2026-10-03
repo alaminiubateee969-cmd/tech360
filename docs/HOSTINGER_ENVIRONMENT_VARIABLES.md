@@ -6,13 +6,13 @@ This is a configuration manifest, not a secrets file. Values below are intention
 
 | Variable | Purpose | Secret/non-secret | Source | Required |
 |---|---|---|---|---|
-| `DATABASE_URL` | Prisma MySQL connection | Secret | Hostinger MySQL details from hPanel; use the actual database host, not an SSH IP | Yes |
+| `DATABASE_URL` | Prisma MySQL connection | Secret | Copy the exact URL from Hostinger's MySQL panel, including its actual host, port, database name, username, and password; hPanel values are **NOT VERIFIED** here | Yes |
 | `NODE_ENV` | Production runtime behavior | Non-secret | Set to `production` | Yes |
 | `APP_PUBLIC_URL` | Public links, sitemap and email links | Non-secret | `https://bdtech360.com` | Yes |
 | `APP_ORIGIN` | Checkout origin | Non-secret | `https://bdtech360.com` | Yes |
 | `SESSION_SECRET` | Fallback signing secret for portal/newsletter tokens | Secret | Generate a unique random value | Yes |
 | `PORTAL_SECRET` | Client portal token signing | Secret | Generate a unique random value | Yes |
-| `OPS_SECRET` | Authenticates operations endpoints | Secret | Generate a unique random value | Yes if operations endpoints are enabled |
+| `OPS_SECRET` | Authenticates operations endpoints | Secret | Generate a unique random value distinct from the other application secrets | Yes |
 | `ADMIN_EMAIL` | First-boot Super Admin seed account | Non-secret | Owner-selected account | Yes for first seed |
 | `ADMIN_PASSWORD` | First-boot Super Admin seed account | Secret | Owner-generated password, at least 12 characters; change at first login | Yes for first seed |
 
@@ -34,13 +34,15 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `FACEBOOK_PAGE_TOKEN`, `INSTAGRAM_TOKEN`, `LINKEDIN_TOKEN`, `X_TOKEN` | Social publishing | Secret | Respective provider | Optional |
 | `SOCIAL_WEBHOOK_SECRET` | Social inbound webhook auth | Secret | Owner-generated | Optional; required to enable endpoint |
 | `N8N_WEBHOOK_SECRET`, `N8N_WEBHOOK_BASE` | n8n bridge auth and URL | Secret/URL | n8n deployment | Optional; required to enable endpoint |
-| `PREVIEW_TTL_DAYS` | Preview expiry policy | Non-secret | Owner policy; current template uses `7` | Optional |
+| `PREVIEW_TTL_DAYS` | Preview expiry policy | Non-secret | Optional; the application defaults to 30 days | Optional |
 
 The repository also contains dynamic feature metadata for the payment credentials above (`src/lib/features.ts`), so those names are included even though they are not accessed using a literal `process.env.NAME` expression.
 
 ## Production safety
 
-- Do not use the template's local-development values in production.
-- Use the MySQL hostname shown in Hostinger's database connection details. Do not infer `localhost`, `127.0.0.1`, an SSH address, or another hostname.
+- `.env.example` lists variable names with empty values only; it is not a source of production settings.
+- `npm start` runs `scripts/validate-production-env.mjs` before launching the standalone server. It requires a credentialed MySQL URL with a database name, the canonical HTTPS origins, and three distinct random application secrets of at least 32 characters. It reports variable names only and never prints values; it does not guess or hard-code the Hostinger database endpoint.
+- An authorized operator must confirm `DATABASE_URL` exactly matches the actual Hostinger MySQL panel before any deployment build can apply migrations. The hPanel values, connection, migration state, and backup remain **NOT VERIFIED**.
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD` are required for the one-time production seed; `ADMIN_PASSWORD` is not needed by normal runtime startup and must be removed after seeding/password change.
 - Do not commit a production `.env` file.
 - Empty integration credentials are expected to produce `NOT_CONFIGURED`/a refusal, not a fake success.

@@ -1,14 +1,14 @@
 # Tech360 — Hostinger Node.js Web App deployment
 
-> **Status: PRODUCTION VERIFICATION REQUIRED.** Repository-side fix for the Hostinger build failure is implemented and CI-proven; the live deployment and domain routing are verified only from fresh external probes and Hostinger deployment logs.
+> **Status: PRODUCTION VERIFICATION REQUIRED.** The Prisma engine-permission repair is merged to `main` and the exact `main` SHA passes GitHub CI, including a production-start smoke against disposable MySQL. No Hostinger log for that SHA or successful live-domain application response is available; deployment, database, startup, TLS, and routing remain **NOT VERIFIED**.
 
 ## Evidence boundary
 
-History: `main` was `70f249c8711bb5fb6213df7e53d2444db87eeff1` with a failing Typecheck (health-route import). PR #10 (repair branch `arena/01a0fde7-tech360`, head `a938f20`) merged at `807c3a737c06e3034a0261ecb3e69abb41f4c1b0`; main CI run 37067071697 on that SHA passed every gate (secret scan, npm ci on Node 22, audits, Prisma validate/generate, disposable-MySQL migrate deploy, zero drift, lint, typecheck, tests, read-only DB verify, production build, standalone output, production-start smoke). An earlier Hostinger deployment log (Composer flow for `70f249c`) is historical only.
+Current GitHub source: `main` is `9f11195809c30ff21b7f61779373b63bd15513f9`, the PR #11 merge that includes the Prisma EACCES repair. GitHub Actions run [37078930321](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37078930321) passed all configured steps for that exact SHA, including the permission-loss reproduction, repair, disposable-MySQL migrations/drift checks, production build, standalone validation, and startup HTTP smoke. This is source/CI evidence only.
 
-Current (2026-10-03, local): a Hostinger **Node.js Web App** is connected to this repository/`main` — its build cloned `main` at `807c3a73`, detected Node 22 + npm, completed `npm install` (536 packages) and Prisma client generation (6.19.3), then failed at `prisma migrate deploy` with a schema-engine **EACCES** spawn error. The verified root cause (lost executable bit + Prisma's no-redownload cache path) and the fix are documented below ("Prisma engine EACCES"). The fix lands on `main` with a CI regression guard that reproduces the exact failure mode and proves the repair against disposable MySQL on every run.
+The last supplied Hostinger failure log cloned `main` at `807c3a737c06e3034a0261ecb3e69abb41f4c1b0` (before the PR #11 repair), completed npm install and Prisma client generation, then failed at `prisma migrate deploy` with schema-engine **EACCES**. No newer Hostinger build/runtime log for `9f11195809c30ff21b7f61779373b63bd15513f9` is available, so whether Hostinger deployed or recovered on that SHA is **NOT VERIFIED**. The verified root cause and repository-side repair are documented below ("Prisma engine EACCES").
 
-Fresh read-only probes on 2026-10-03 (from a network with restricted egress, via an external fetcher): `https://bdtech360.com/` returned **403** (generic Hostinger page), `https://bdtech360.com/api/health` and `https://www.bdtech360.com/api/health` returned Hostinger **404** pages (`htdocs_error/page_not_found.svg`) — i.e. the old generic website entry still served the domains at probe time; the Next.js app was **not** live. Post-fix live verification must be re-run after the next successful Hostinger deployment of the repaired `main` SHA.
+Direct read-only probes on 2026-10-03 resolved the apex and `www` addresses, but HTTPS requests to the homepage and `/api/health` failed with curl exit 35 / HTTP `000`; HTTP apex returned exit 52 / HTTP `000` (empty reply). An earlier external fetcher returned generic Hostinger 403/404 pages, which also did not establish application health. No successful current application response was obtained; DNS/TLS attachment, runtime, canonical redirects, and live routes remain **NOT VERIFIED**.
 
 ## Required Hostinger app configuration
 
@@ -26,21 +26,20 @@ Create or configure the **Hostinger Node.js Web App** in hPanel. Do not use PHP 
 | Build script | `npm run build` (Hostinger hPanel script value: `build`) | Repository script verified; hPanel setting **NOT VERIFIED** |
 | Output directory | `.next` (Hostinger's documented Next.js server-mode setting) | Repository/Next output verified; hPanel setting **NOT VERIFIED** |
 | Entry file | Leave blank; Hostinger ignores the entry-file field for framework `next` | Documented behavior; actual hPanel value **NOT VERIFIED** |
-| Hostinger start behavior | Next.js `next` preset starts its bundled standalone server | Documented behavior; actual hPanel/runtime behavior **NOT VERIFIED** |
-| Repository start script | `npm run start` (`node .next/standalone/server.js`) for CI/manual smoke; not assumed to be a Hostinger hPanel command | Repository script verified; not yet run locally because Prisma engine download failed |
-| Domains | Canonical apex `bdtech360.com`; `www.bdtech360.com` must have valid HTTPS and redirect to the apex | Attachment, certificate, and redirect **NOT VERIFIED** |
+| Hostinger start command | `npm start`; npm runs the production environment preflight and then `node .next/standalone/server.js` | Repository scripts verified; actual hPanel command **NOT VERIFIED** |
+| Domains | Canonical apex `bdtech360.com`; Next.js redirects `www` and trusted HTTP-proxy requests to the apex HTTPS origin | Application rules are in source; DNS attachment and TLS **NOT VERIFIED** |
 
 The package's `hostinger:build` alias delegates to the standard `build` script. For the documented Next.js `next` preset, the target hPanel build-script field is `build` (`npm run build`), which performs Prisma generation, forward-only migration deploy, Next.js build, and standalone asset copies. Verify the actual command in Hostinger's build logs.
 
 The application root is the repository directory that contains `package.json`; `public_html` is not a substitute for the Node.js app root. Hostinger may manage the runtime/build directories itself. Do not invent or hard-code a Hostinger filesystem path.
 
-The GitHub Actions workflow validates code only. Hostinger's connected Node.js Web App Git integration is the intended production deployment mechanism; it must be connected to `main` in hPanel. A successful GitHub CI run is not a Hostinger deployment result.
+The GitHub Actions workflow validates code only. Hostinger's connected Node.js Web App Git integration is the intended production deployment mechanism; it must be connected to `main` in hPanel. A successful GitHub CI run is not a Hostinger deployment result. The repository contract is `npm start`: npm runs `prestart`, which validates production configuration without printing values, then starts the standalone server. If the selected Hostinger preset bypasses npm lifecycle scripts, its startup behavior must be changed or separately verified; hPanel currently remains **NOT VERIFIED**.
 
 ## Runtime and port
 
-`package.json` requires Node `>=22.0.0 <23`; Hostinger's supported Node.js Web App versions include 22. Its current Next.js guide specifies app type `next`, build script `build`, output directory `.next`, and entry file ignored; Hostinger builds standalone output and starts the bundled server. The repository's `npm run start` launches `.next/standalone/server.js` for CI/manual smoke tests; it is not assumed to be an hPanel start command for the `next` preset.
+`package.json` requires Node `>=22.0.0 <23`. Hostinger's documented Next.js preset uses app type `next`, build script `build`, output directory `.next`, and ignores the entry-file field. The repo's required start command is `npm start`, which runs the production environment preflight and then launches `.next/standalone/server.js`. Whether the selected Hostinger preset actually invokes that npm lifecycle command (rather than starting the bundled server directly) is **NOT VERIFIED**; confirm it in hPanel and runtime logs.
 
-Next standalone honors `PORT` when supplied, but Hostinger's public docs do not specify the port value or injection mechanism. Do not set a guessed port. Confirm the app's actual process binding using hPanel/runtime logs. The Hostinger runtime and port are **NOT VERIFIED**. The standalone production-start smoke passed in repair CI run 37061731570 against disposable MySQL; this does not verify Hostinger. The raw Actions log download returned EOF, so the specific Node 20 warning status is **NOT VERIFIED**. No local production server was produced because Prisma engine download failed before the Next.js build.
+Next standalone honors `PORT` when supplied, but Hostinger's public docs do not specify the port value or injection mechanism. Do not set a guessed port. Confirm the app's actual process binding using hPanel/runtime logs. The Hostinger runtime and port are **NOT VERIFIED**. The standalone production-start smoke passed in main CI run 37078930321 against disposable MySQL; this does not verify Hostinger. The raw Actions log was not inspected for Node runtime warnings. No local production server was produced because Prisma engine download failed before the Next.js build.
 
 ## Environment variables
 
@@ -50,16 +49,16 @@ Core app configuration identified in source:
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | Prisma MySQL connection; use the exact database host and database details shown by Hostinger |
+| `DATABASE_URL` | Prisma MySQL connection; copy the exact Hostinger host, port, database name, username, and password from its MySQL panel |
 | `NODE_ENV` | Set to `production` |
 | `APP_PUBLIC_URL` | Public links and metadata; `https://bdtech360.com` |
 | `APP_ORIGIN` | Origin check for checkout; `https://bdtech360.com` |
 | `SESSION_SECRET` | Session/newsletter signing fallback |
 | `PORTAL_SECRET` | Client portal token signing |
-| `OPS_SECRET` | Operations endpoint authentication, if enabled |
+| `OPS_SECRET` | Required distinct random secret for operations endpoint authentication |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Initial Super Admin seed only; remove the temporary password after the first sign-in/password change |
 
-The actual Hostinger MySQL host, production URL, and configured variables are **NOT VERIFIED**. Do not infer `localhost`, `127.0.0.1`, an SSH address, database name, username, or password. Never paste secret values into GitHub, documentation, logs, or chat.
+The Hostinger database settings and configured environment variable names are **NOT VERIFIED**. The startup preflight accepts only a credentialed MySQL URL with a database name; it does not assume a hostname, port, or database name. An authorized operator must copy and verify the exact endpoint from Hostinger's MySQL panel before a deployment build can run `prisma migrate deploy`. Never paste secret values into GitHub, documentation, logs, or chat.
 
 ## Prisma and database safety
 
@@ -128,7 +127,7 @@ A new Hostinger deployment should establish, in its deployment details, build lo
 3. Hostinger's managed dependency installation uses npm and the deployment path is the Node.js Web App flow, not Composer;
 4. the hPanel build script is `build` (`npm run build`) and the output directory is `.next`;
 5. `.next/standalone/server.js`, `.next/static`, and the copied `public` assets exist in the successful build;
-6. the Hostinger Next.js preset starts its bundled standalone server without startup exceptions; check Runtime Logs rather than assuming a custom `npm run start` field;
+6. the required `npm start` command runs the production preflight before the standalone server; confirm from Runtime Logs that the selected Hostinger preset invokes npm lifecycle scripts or otherwise executes the preflight;
 7. the process remains running and binds the actual platform port if one is supplied (do not invent or hard-code it).
 
 “Publishing completed” after “Installing Composer dependencies” is not sufficient evidence for any of those Node/Next.js checks.
