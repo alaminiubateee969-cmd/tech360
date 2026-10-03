@@ -157,7 +157,10 @@ describe('factory: secret guard actually blocks', () => {
   })
 
   it('detects a private key block', () => {
-    const bad = [{ path: 'key.pem', language: 'text', content: '-----BEGIN RSA PRIVATE KEY-----\nMIIE' }]
+    // Assembled at runtime so no credential-shaped literal is ever committed
+    // (the repository secret scan fails the build on such a string).
+    const pemHeader = ['-----BEGIN', 'RSA', 'PRIVATE', 'KEY-----'].join(' ')
+    const bad = [{ path: 'key.pem', language: 'text', content: `${pemHeader}\nMIIE` }]
     assert.equal(assertNoSecrets(bad).ok, false)
   })
 })
