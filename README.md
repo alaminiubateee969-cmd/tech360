@@ -10,7 +10,8 @@ One codebase, three surfaces:
 |---|---|---|
 | **Public website** | `/` (hash routes `#/services`, `#/industries`, `#/work`, `#/blog`, …) | Marketing site, blog, case studies, contact intake → real lead in the CRM |
 | **Client portal** | `/#/portal` (Client ID + email/WhatsApp) | Projects, milestones, meetings, files, previews, approvals, payments, invoices, handover |
-| **Super Admin console** | `/#/admin` (role-based login) | CRM, projects, payments, invoices (official pad documents), 44-agent AI workforce, NL Command Center, governance switches, ops loop monitor, analytics, logs |
+| **Super Admin console** | `/#/admin` (role-based login) | CRM, projects, payments, invoices (official pad documents), 44-agent AI workforce, NL Command Center, **AI Software Factory**, **Media Studio**, **Feed Hub**, **Calls & SMS**, governance switches, ops loop monitor, analytics, logs |
+| **Design kit** | `/#/design-kit` | The live design system: buttons, accessibly-labelled sequence/funnel/swimlane diagrams, infographics, interface mockups and tokens — the same components the site and generated client apps use |
 
 The official **company letterhead** (owner-provided pad + logo) drives every document the platform issues — SOW previews, tax invoices, the handover & acceptance certificate, printed legal policies (`src/lib/letterhead.ts`, see `OFFICIAL-DOCUMENTS.md`).
 
@@ -95,6 +96,9 @@ Hostinger settings and environment requirements are documented in `docs/HOSTINGE
 - `public/` — brand assets (owner's original logo + company pad designs in `public/brand/`).
 - `mini-services/` — ai-ops (:3031) + notify-relay (:3032).
 - `deployment/` — legacy Google Cloud Run/Docker templates and scheduler samples. They are not part of Tech360's supported production path; the current production target is the Hostinger Node.js Web App documented above.
+- `src/lib/factory/blueprint.ts` — the AI Software Factory engine: brief → blueprint → real Next.js/Prisma source tree → ZIP delivery package (see `docs/AI_SOFTWARE_FACTORY.md`).
+- `src/lib/media/studio.ts`, `src/lib/feeds/parse.ts`, `src/lib/telephony.ts` — Media Studio planning + captions, hardened RSS/Atom/JSON parsing, and the honest call/SMS adapters.
+- `scripts/verify-reference-links.mjs` — checks every owner-supplied reference against the live network and writes `docs/REFERENCE_VERIFICATION_MATRIX.md`.
 - `n8n/` — 26 workflow definitions (W26 = free lead enrichment, regenerate with `node deployment/generate-n8n-lead-enrichment.cjs`).
 - `scripts/`, `.github/` — CI/CD + deployment.
 - `worklog.md` — the complete build/iteration log (honest QA state, every round).

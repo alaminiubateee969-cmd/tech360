@@ -4,6 +4,17 @@
 **Scope:** Every website and repository link shared by the owner across the project conversations (139 unique references), audited against the delivered TECH360 platform.
 **Method:** Each reference was inspected for its core capability, then mapped to the platform's shipped features (43 Prisma models, 44 AI agents, 24 admin views, 3 services). "Round" numbers refer to the work-log entries in `worklog.md` where each feature was built and verified. After a workspace revert destroyed rounds 11–13 from disk, every listed feature was REBUILT and re-verified in round 14 — see the recovery entry in the worklog.
 
+**Re-review (2026-10-03):** the ⛔ dispositions below record *what the upstream
+project is*, which is not the same as *whether the capability applies here*.
+Every link has since been re-checked live and the applicable capabilities were
+**built**, not deferred: the AI Software Factory, Media Studio (script → shots →
+narration → SRT/VTT → render spec), the Feed Hub (real RSS/Atom/JSON ingestion),
+the Call & SMS centre and the public Design Kit. See
+[`docs/REFERENCE_VERIFICATION_MATRIX.md`](docs/REFERENCE_VERIFICATION_MATRIX.md)
+for per-link live evidence and
+[`docs/AI_SOFTWARE_FACTORY.md`](docs/AI_SOFTWARE_FACTORY.md) for what shipped.
+Read the ⛔ column as "not vendored", never as "not answered".
+
 **Legend**
 
 | Mark | Meaning |

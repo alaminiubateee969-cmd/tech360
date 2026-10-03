@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BarChart3,
   Bot,
+  Boxes,
   BookOpen,
   Building2,
   Clapperboard,
@@ -30,6 +31,8 @@ import {
   Workflow,
   Mail,
   MessagesSquare,
+  PhoneCall,
+  Rss,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -48,6 +51,10 @@ import { CommandCenterView } from './CommandCenterView'
 import { CommunicationsView } from './CommunicationsView'
 import { ConversationsView } from './ConversationsView'
 import { ContentStudioView } from './ContentStudioView'
+import { FactoryView } from './FactoryView'
+import { FeedsView } from './FeedsView'
+import { MediaStudioView } from './MediaStudioView'
+import { TelephonyView } from './TelephonyView'
 import { DashboardView } from './DashboardView'
 import { KnowledgeView } from './KnowledgeView'
 import { LeadsView } from './LeadsView'
@@ -82,6 +89,7 @@ type ViewId =
   | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
   | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
+  | 'factory' | 'media' | 'feeds' | 'telephony'
 
 // Minimum console role required to see (and use) each view. Mirrors the
 // server-side minRole on the backing API routes — the nav never advertises
@@ -112,6 +120,10 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   reports: 'MANAGER',
   settings: 'SUPER_ADMIN',
   team: 'SUPER_ADMIN',
+  factory: 'ADMIN',
+  media: 'STAFF',
+  feeds: 'STAFF',
+  telephony: 'STAFF',
 }
 
 interface NavItem {
@@ -136,6 +148,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'approvals', label: 'Approvals', icon: ShieldCheck },
       { id: 'communications', label: 'Communications', icon: MessageSquare },
       { id: 'chat', label: 'Live Chat', icon: MessagesSquare },
+      { id: 'telephony', label: 'Calls & SMS', icon: PhoneCall },
     ],
   },
   {
@@ -146,8 +159,16 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     ],
   },
   {
+    section: 'Product Factory',
+    items: [
+      { id: 'factory', label: 'App Factory', icon: Boxes },
+      { id: 'media', label: 'Media Studio', icon: Clapperboard },
+    ],
+  },
+  {
     section: 'Growth',
     items: [
+      { id: 'feeds', label: 'Feed Hub', icon: Rss },
       { id: 'reviews', label: 'Reviews & Referrals', icon: Star },
       { id: 'blog', label: 'Blog Studio', icon: Newspaper },
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
@@ -204,6 +225,10 @@ const VIEW_TITLES: Record<ViewId, string> = {
   reports: 'Reports',
   settings: 'Settings',
   team: 'Team',
+  factory: 'AI Software Factory',
+  media: 'Media Studio',
+  feeds: 'Feed Hub',
+  telephony: 'Calls & SMS',
 }
 
 export default function AdminApp({ onExit }: { onExit: () => void }) {
@@ -562,6 +587,14 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <MarketingKitView />
               ) : view === 'knowledge' ? (
                 <KnowledgeView />
+              ) : view === 'factory' ? (
+                <FactoryView />
+              ) : view === 'media' ? (
+                <MediaStudioView />
+              ) : view === 'feeds' ? (
+                <FeedsView />
+              ) : view === 'telephony' ? (
+                <TelephonyView />
               ) : view === 'content' ? (
                 <ContentStudioView />
               ) : view === 'blog' ? (

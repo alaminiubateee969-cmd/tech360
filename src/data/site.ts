@@ -32,6 +32,7 @@ export const NAV_LINKS: { label: string; href: string }[] = [
   { label: "Industries", href: "#/industries" },
   { label: "Work", href: "#/work" },
   { label: "Technologies", href: "#/technologies" },
+  { label: "Design Kit", href: "#/design-kit" },
   { label: "Process", href: "#/process" },
   { label: "Blog", href: "#/blog" },
   { label: "Contact", href: "#/contact" },

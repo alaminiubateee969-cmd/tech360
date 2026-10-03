@@ -24,6 +24,7 @@ import ContactView from '@/components/site/ContactView'
 import LegalView from '@/components/site/LegalView'
 import FaqView from '@/components/site/FaqView'
 import PortalView from '@/components/site/PortalView'
+import DesignKitView from '@/components/site/DesignKitView'
 
 // Private admin console (auth-gated internally)
 const AdminApp = lazy(() => import('@/components/admin/AdminApp'))
@@ -241,6 +242,7 @@ function PublicView({ section, param, navigate }: { section: string; param: stri
     case 'contact': return <ContactView />
     case 'legal': return <LegalView slug={param || 'terms'} />
     case 'faq': return <FaqView />
+    case 'design-kit': return <DesignKitView />
     case 'portal': return <PortalView />
     default: return <UnknownPublicRoute navigate={navigate} />
   }
