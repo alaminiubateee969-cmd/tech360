@@ -1,9 +1,15 @@
 {
   "title": "TECH360 production AI verification (machine-readable, code-level evidence)",
-  "generatedAt": "2026-10-07T16:50:14.316Z",
+  "generatedAt": "2026-10-07T17:06:56.700Z",
   "repository": "alaminiubateee969-cmd/tech360",
   "branch": "arena/58d15b5d-tech360",
-  "headSha": "66b5f8b3ef6f2d234d3b29d20829cd1148bfb744",
+  "headSha": "e1d5b470d4c6c55a1014eb705abd8648737617bf",
+  "verifiedTree": {
+    "headSha": "e1d5b470d4c6c55a1014eb705abd8648737617bf",
+    "treeSha": "4406041a4c48d08d7353691ad594674649e5fc46",
+    "verifiedFilesModified": 1,
+    "note": "HEAD plus uncommitted changes in 1 file(s); those are the changes this report validates"
+  },
   "evidenceLevel": "CODE_VERIFIED",
   "evidenceMethod": "real production modules executed against an in-memory database double and an HTTP-boundary provider double",
   "notVerifiableHere": [
@@ -142,7 +148,7 @@
       "evidence": {
         "executionId": "aiagentexecution_155",
         "status": "SUCCESS",
-        "correlationId": "e353dfd4f6def2763aa74eaf"
+        "correlationId": "cfcf5376b4f0a274679f33df"
       }
     },
     {
@@ -165,8 +171,8 @@
         "executionId": "aiagentexecution_155",
         "status": "SUCCESS",
         "agentCode": "CEO-001",
-        "startedAt": "2026-10-07T16:50:03.599Z",
-        "completedAt": "2026-10-07T16:50:03.614Z",
+        "startedAt": "2026-10-07T17:06:45.994Z",
+        "completedAt": "2026-10-07T17:06:46.009Z",
         "durationMs": 15,
         "tokensUsed": 42,
         "metadata": "{\"provider\":\"zai\"}",
@@ -252,7 +258,7 @@
         "status": "TIMEOUT",
         "error": "PROVIDER_TIMEOUT: AI provider request timed out after 5000ms",
         "durationMs": 10159,
-        "elapsedMs": 10160
+        "elapsedMs": 10159
       }
     },
     {
@@ -490,7 +496,7 @@
       "evidence": {
         "cycle": 2,
         "previousLockOwner": "crashed-process",
-        "recoveredAt": "2026-10-07T16:50:14.270Z"
+        "recoveredAt": "2026-10-07T17:06:56.665Z"
       }
     },
     {
@@ -505,13 +511,13 @@
       "check": "ops-lock: heartbeat is persisted to the database with real cycle state",
       "result": "PASS",
       "evidence": {
-        "at": "2026-10-07T16:50:14.270Z",
+        "at": "2026-10-07T17:06:56.665Z",
         "cycles": 2,
         "service": "tech360-ai-ops",
         "status": "SUCCESS",
         "currentCycle": 2,
-        "lastSuccessAt": "2026-10-07T16:50:14.270Z",
-        "lastDurationMs": 1,
+        "lastSuccessAt": "2026-10-07T17:06:56.665Z",
+        "lastDurationMs": 0,
         "lastError": null
       }
     },
@@ -520,7 +526,7 @@
       "result": "PASS",
       "evidence": {
         "throttled": true,
-        "lastRunAt": "2026-10-07T16:50:14.269Z"
+        "lastRunAt": "2026-10-07T17:06:56.665Z"
       }
     },
     {
@@ -1945,10 +1951,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 0,
+      "durationMs": 1,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.239Z",
-      "completedAt": "2026-10-07T16:50:14.239Z",
+      "startedAt": "2026-10-07T17:06:56.634Z",
+      "completedAt": "2026-10-07T17:06:56.635Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -1959,10 +1965,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 1,
+      "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.239Z",
-      "completedAt": "2026-10-07T16:50:14.240Z",
+      "startedAt": "2026-10-07T17:06:56.635Z",
+      "completedAt": "2026-10-07T17:06:56.635Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -1973,10 +1979,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 1,
+      "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.240Z",
-      "completedAt": "2026-10-07T16:50:14.241Z",
+      "startedAt": "2026-10-07T17:06:56.636Z",
+      "completedAt": "2026-10-07T17:06:56.636Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -1987,10 +1993,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 0,
+      "durationMs": 1,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.241Z",
-      "completedAt": "2026-10-07T16:50:14.241Z",
+      "startedAt": "2026-10-07T17:06:56.636Z",
+      "completedAt": "2026-10-07T17:06:56.637Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2001,10 +2007,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 1,
+      "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.241Z",
-      "completedAt": "2026-10-07T16:50:14.242Z",
+      "startedAt": "2026-10-07T17:06:56.637Z",
+      "completedAt": "2026-10-07T17:06:56.637Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2017,8 +2023,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.242Z",
-      "completedAt": "2026-10-07T16:50:14.242Z",
+      "startedAt": "2026-10-07T17:06:56.638Z",
+      "completedAt": "2026-10-07T17:06:56.638Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2031,8 +2037,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.242Z",
-      "completedAt": "2026-10-07T16:50:14.242Z",
+      "startedAt": "2026-10-07T17:06:56.638Z",
+      "completedAt": "2026-10-07T17:06:56.638Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2043,10 +2049,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 0,
+      "durationMs": 1,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.243Z",
-      "completedAt": "2026-10-07T16:50:14.243Z",
+      "startedAt": "2026-10-07T17:06:56.638Z",
+      "completedAt": "2026-10-07T17:06:56.639Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2059,8 +2065,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.243Z",
-      "completedAt": "2026-10-07T16:50:14.243Z",
+      "startedAt": "2026-10-07T17:06:56.639Z",
+      "completedAt": "2026-10-07T17:06:56.639Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2071,10 +2077,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 1,
+      "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.243Z",
-      "completedAt": "2026-10-07T16:50:14.244Z",
+      "startedAt": "2026-10-07T17:06:56.639Z",
+      "completedAt": "2026-10-07T17:06:56.639Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2085,10 +2091,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 1,
+      "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.244Z",
-      "completedAt": "2026-10-07T16:50:14.245Z",
+      "startedAt": "2026-10-07T17:06:56.640Z",
+      "completedAt": "2026-10-07T17:06:56.640Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2101,8 +2107,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.245Z",
-      "completedAt": "2026-10-07T16:50:14.245Z",
+      "startedAt": "2026-10-07T17:06:56.640Z",
+      "completedAt": "2026-10-07T17:06:56.640Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2115,8 +2121,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.245Z",
-      "completedAt": "2026-10-07T16:50:14.245Z",
+      "startedAt": "2026-10-07T17:06:56.641Z",
+      "completedAt": "2026-10-07T17:06:56.641Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2129,8 +2135,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.246Z",
-      "completedAt": "2026-10-07T16:50:14.246Z",
+      "startedAt": "2026-10-07T17:06:56.641Z",
+      "completedAt": "2026-10-07T17:06:56.641Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2143,8 +2149,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.246Z",
-      "completedAt": "2026-10-07T16:50:14.246Z",
+      "startedAt": "2026-10-07T17:06:56.642Z",
+      "completedAt": "2026-10-07T17:06:56.642Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2157,8 +2163,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.246Z",
-      "completedAt": "2026-10-07T16:50:14.246Z",
+      "startedAt": "2026-10-07T17:06:56.642Z",
+      "completedAt": "2026-10-07T17:06:56.642Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2171,8 +2177,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.247Z",
-      "completedAt": "2026-10-07T16:50:14.247Z",
+      "startedAt": "2026-10-07T17:06:56.642Z",
+      "completedAt": "2026-10-07T17:06:56.642Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2185,8 +2191,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.247Z",
-      "completedAt": "2026-10-07T16:50:14.247Z",
+      "startedAt": "2026-10-07T17:06:56.643Z",
+      "completedAt": "2026-10-07T17:06:56.643Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2199,8 +2205,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.248Z",
-      "completedAt": "2026-10-07T16:50:14.248Z",
+      "startedAt": "2026-10-07T17:06:56.643Z",
+      "completedAt": "2026-10-07T17:06:56.643Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2211,10 +2217,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 0,
+      "durationMs": 1,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.248Z",
-      "completedAt": "2026-10-07T16:50:14.248Z",
+      "startedAt": "2026-10-07T17:06:56.643Z",
+      "completedAt": "2026-10-07T17:06:56.644Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2227,8 +2233,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.249Z",
-      "completedAt": "2026-10-07T16:50:14.249Z",
+      "startedAt": "2026-10-07T17:06:56.644Z",
+      "completedAt": "2026-10-07T17:06:56.644Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2241,8 +2247,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.249Z",
-      "completedAt": "2026-10-07T16:50:14.249Z",
+      "startedAt": "2026-10-07T17:06:56.644Z",
+      "completedAt": "2026-10-07T17:06:56.644Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2255,8 +2261,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.249Z",
-      "completedAt": "2026-10-07T16:50:14.249Z",
+      "startedAt": "2026-10-07T17:06:56.645Z",
+      "completedAt": "2026-10-07T17:06:56.645Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2269,8 +2275,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.250Z",
-      "completedAt": "2026-10-07T16:50:14.250Z",
+      "startedAt": "2026-10-07T17:06:56.645Z",
+      "completedAt": "2026-10-07T17:06:56.645Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2283,8 +2289,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.250Z",
-      "completedAt": "2026-10-07T16:50:14.250Z",
+      "startedAt": "2026-10-07T17:06:56.645Z",
+      "completedAt": "2026-10-07T17:06:56.645Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2297,8 +2303,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.251Z",
-      "completedAt": "2026-10-07T16:50:14.251Z",
+      "startedAt": "2026-10-07T17:06:56.646Z",
+      "completedAt": "2026-10-07T17:06:56.646Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2311,8 +2317,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.251Z",
-      "completedAt": "2026-10-07T16:50:14.251Z",
+      "startedAt": "2026-10-07T17:06:56.646Z",
+      "completedAt": "2026-10-07T17:06:56.646Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2325,8 +2331,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.252Z",
-      "completedAt": "2026-10-07T16:50:14.252Z",
+      "startedAt": "2026-10-07T17:06:56.647Z",
+      "completedAt": "2026-10-07T17:06:56.647Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2339,8 +2345,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.252Z",
-      "completedAt": "2026-10-07T16:50:14.252Z",
+      "startedAt": "2026-10-07T17:06:56.647Z",
+      "completedAt": "2026-10-07T17:06:56.647Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2351,10 +2357,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 0,
+      "durationMs": 1,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.252Z",
-      "completedAt": "2026-10-07T16:50:14.252Z",
+      "startedAt": "2026-10-07T17:06:56.647Z",
+      "completedAt": "2026-10-07T17:06:56.648Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2367,8 +2373,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.253Z",
-      "completedAt": "2026-10-07T16:50:14.253Z",
+      "startedAt": "2026-10-07T17:06:56.648Z",
+      "completedAt": "2026-10-07T17:06:56.648Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2381,8 +2387,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.253Z",
-      "completedAt": "2026-10-07T16:50:14.253Z",
+      "startedAt": "2026-10-07T17:06:56.648Z",
+      "completedAt": "2026-10-07T17:06:56.648Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2393,10 +2399,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 1,
+      "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.253Z",
-      "completedAt": "2026-10-07T16:50:14.254Z",
+      "startedAt": "2026-10-07T17:06:56.649Z",
+      "completedAt": "2026-10-07T17:06:56.649Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2407,10 +2413,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 0,
+      "durationMs": 1,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.254Z",
-      "completedAt": "2026-10-07T16:50:14.254Z",
+      "startedAt": "2026-10-07T17:06:56.649Z",
+      "completedAt": "2026-10-07T17:06:56.650Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2423,8 +2429,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.254Z",
-      "completedAt": "2026-10-07T16:50:14.254Z",
+      "startedAt": "2026-10-07T17:06:56.650Z",
+      "completedAt": "2026-10-07T17:06:56.650Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2437,8 +2443,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.255Z",
-      "completedAt": "2026-10-07T16:50:14.255Z",
+      "startedAt": "2026-10-07T17:06:56.650Z",
+      "completedAt": "2026-10-07T17:06:56.650Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2451,8 +2457,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.255Z",
-      "completedAt": "2026-10-07T16:50:14.255Z",
+      "startedAt": "2026-10-07T17:06:56.651Z",
+      "completedAt": "2026-10-07T17:06:56.651Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2465,8 +2471,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.255Z",
-      "completedAt": "2026-10-07T16:50:14.255Z",
+      "startedAt": "2026-10-07T17:06:56.651Z",
+      "completedAt": "2026-10-07T17:06:56.651Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2477,10 +2483,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 1,
+      "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.255Z",
-      "completedAt": "2026-10-07T16:50:14.256Z",
+      "startedAt": "2026-10-07T17:06:56.652Z",
+      "completedAt": "2026-10-07T17:06:56.652Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2493,8 +2499,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.256Z",
-      "completedAt": "2026-10-07T16:50:14.256Z",
+      "startedAt": "2026-10-07T17:06:56.652Z",
+      "completedAt": "2026-10-07T17:06:56.652Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2505,10 +2511,10 @@
       "status": "SUCCESS",
       "providerAttempts": 1,
       "persistedStatus": "SUCCESS",
-      "durationMs": 1,
+      "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.256Z",
-      "completedAt": "2026-10-07T16:50:14.257Z",
+      "startedAt": "2026-10-07T17:06:56.653Z",
+      "completedAt": "2026-10-07T17:06:56.653Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2521,8 +2527,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.257Z",
-      "completedAt": "2026-10-07T16:50:14.257Z",
+      "startedAt": "2026-10-07T17:06:56.653Z",
+      "completedAt": "2026-10-07T17:06:56.653Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2535,8 +2541,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.257Z",
-      "completedAt": "2026-10-07T16:50:14.257Z",
+      "startedAt": "2026-10-07T17:06:56.653Z",
+      "completedAt": "2026-10-07T17:06:56.653Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"
@@ -2549,8 +2555,8 @@
       "persistedStatus": "SUCCESS",
       "durationMs": 0,
       "tokensUsed": 13,
-      "startedAt": "2026-10-07T16:50:14.258Z",
-      "completedAt": "2026-10-07T16:50:14.258Z",
+      "startedAt": "2026-10-07T17:06:56.654Z",
+      "completedAt": "2026-10-07T17:06:56.654Z",
       "toolGrantsValid": true,
       "result": "PASS",
       "evidenceLevel": "CODE_VERIFIED"

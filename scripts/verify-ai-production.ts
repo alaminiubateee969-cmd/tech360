@@ -364,6 +364,33 @@ function safeGit(args: string[]): string {
   }
 }
 
+/**
+ * Provenance of the exact tree that was verified. The report file itself is
+ * normally the only difference between "generated here" and "committed there",
+ * so it is excluded from the dirty count instead of being hidden.
+ */
+function gitTreeState(): { headSha: string; treeSha: string; verifiedFilesModified: number; note: string } {
+  const headSha = safeGit(['rev-parse', 'HEAD'])
+  const treeSha = safeGit(['write-tree'])
+  const status = (() => {
+    try {
+      return execFileSync('git', ['status', '--porcelain'], { cwd: REPO, encoding: 'utf8' })
+        .trim().split('\n').filter(Boolean)
+        .filter((line) => !line.includes('docs/ai-production-verification.json'))
+    } catch {
+      return []
+    }
+  })()
+  return {
+    headSha,
+    treeSha,
+    verifiedFilesModified: status.length,
+    note: status.length === 0
+      ? 'the verified tree is exactly HEAD'
+      : `HEAD plus uncommitted changes in ${status.length} file(s); those are the changes this report validates`,
+  }
+}
+
 async function main() {
   env.NODE_ENV = 'test'
   process.env.ZAI_BASE_URL = FAKE_BASE_URL
@@ -1162,6 +1189,7 @@ async function main() {
     repository: 'alaminiubateee969-cmd/tech360',
     branch: safeGit(['rev-parse', '--abbrev-ref', 'HEAD']),
     headSha: safeGit(['rev-parse', 'HEAD']),
+    verifiedTree: gitTreeState(),
     evidenceLevel: 'CODE_VERIFIED',
     evidenceMethod: 'real production modules executed against an in-memory database double and an HTTP-boundary provider double',
     notVerifiableHere: ['real ZAI provider response', 'real MySQL persistence', 'Hostinger deployment', 'https://bdtech360.com', 'AI operations timer inside a running production process'],
