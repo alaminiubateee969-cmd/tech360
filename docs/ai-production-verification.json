@@ -1,0 +1,2548 @@
+{
+  "title": "TECH360 production AI verification (machine-readable, code-level evidence)",
+  "generatedAt": "2026-10-07T16:39:50.951Z",
+  "repository": "alaminiubateee969-cmd/tech360",
+  "branch": "arena/58d15b5d-tech360",
+  "headSha": "7ba1f226e1485a9ddcaaeb373d6f833ea48548c9",
+  "evidenceLevel": "CODE_VERIFIED",
+  "evidenceMethod": "real production modules executed against an in-memory database double and an HTTP-boundary provider double",
+  "notVerifiableHere": [
+    "real ZAI provider response",
+    "real MySQL persistence",
+    "Hostinger deployment",
+    "https://bdtech360.com",
+    "AI operations timer inside a running production process"
+  ],
+  "summary": {
+    "checks": 64,
+    "passed": 64,
+    "failed": 0,
+    "agents": 44,
+    "departments": 110,
+    "agentsExecutableEndToEnd": 44,
+    "perAgentChecksTotal": 396
+  },
+  "registryStatus": {
+    "expectedAgents": 44,
+    "registeredAgents": 44,
+    "expectedDepartments": 110,
+    "registeredDepartments": 110,
+    "duplicateAgentCodes": [],
+    "duplicateDepartmentCodes": [],
+    "missingAgentCodes": [],
+    "orphanAgents": [],
+    "missingDepartmentCodes": [],
+    "healthy": true
+  },
+  "bootstrap": {
+    "seededDepartments": 110,
+    "seededAgents": 44
+  },
+  "checks": [
+    {
+      "check": "registry: 44 agents",
+      "result": "PASS",
+      "evidence": 44
+    },
+    {
+      "check": "registry: 110 departments",
+      "result": "PASS",
+      "evidence": 110
+    },
+    {
+      "check": "registry: 44 unique agent codes",
+      "result": "PASS",
+      "evidence": {
+        "unique": 44
+      }
+    },
+    {
+      "check": "registry: 110 unique department codes",
+      "result": "PASS",
+      "evidence": {
+        "unique": 110
+      }
+    },
+    {
+      "check": "registry: 100% valid department mappings",
+      "result": "PASS",
+      "evidence": {
+        "mapped": 44,
+        "invalid": 0
+      }
+    },
+    {
+      "check": "registry: 100% valid handlers",
+      "result": "PASS",
+      "evidence": {
+        "handler": "runAgent",
+        "invalid": 0
+      }
+    },
+    {
+      "check": "registry: 100% complete agent definitions",
+      "result": "PASS",
+      "evidence": {
+        "complete": 44,
+        "incomplete": 0,
+        "analysisOnlyAgentsWithoutTools": 9,
+        "toollessAgents": [
+          "BIZ-004",
+          "PLN-005",
+          "SCP-006",
+          "SCP-007",
+          "SCP-008",
+          "PRP-009",
+          "COM-010",
+          "CMP-027",
+          "DEP-037"
+        ],
+        "note": "nine agents deliberately declare zero side-effect tools; least privilege grants them nothing"
+      }
+    },
+    {
+      "check": "registry: validateAgentRegistry() reports valid",
+      "result": "PASS",
+      "evidence": {
+        "valid": true,
+        "agentCount": 44,
+        "departmentCount": 110,
+        "duplicateAgentCodes": [],
+        "duplicateDepartmentCodes": [],
+        "invalidDepartmentMappings": [],
+        "invalidHandlers": [],
+        "incompleteAgents": []
+      }
+    },
+    {
+      "check": "bootstrap seeding is idempotent (no duplicates on re-run)",
+      "result": "PASS",
+      "evidence": {
+        "firstRun": {
+          "departments": 110,
+          "agents": 44
+        },
+        "secondRun": {
+          "departments": 110,
+          "agents": 44
+        }
+      }
+    },
+    {
+      "check": "handler name runAgent resolves to a real exported function",
+      "result": "PASS",
+      "evidence": {
+        "exportedByName": "runAgent",
+        "type": "function"
+      }
+    },
+    {
+      "check": "execution: runAgent executes through the centralized pipeline",
+      "result": "PASS",
+      "evidence": {
+        "executionId": "aiagentexecution_155",
+        "status": "SUCCESS",
+        "correlationId": "af8e7128ffa43bcb87670787"
+      }
+    },
+    {
+      "check": "execution: provider request built by createZaiClient: URL, bearer auth, abort signal, system prompt",
+      "result": "PASS",
+      "evidence": {
+        "url": "https://provider.test.invalid/v1/chat/completions",
+        "authorizationHeader": "Bearer <redacted>",
+        "signal": true,
+        "roles": [
+          "system",
+          "user"
+        ]
+      }
+    },
+    {
+      "check": "execution: RUNNING -> SUCCESS persisted with every lifecycle field",
+      "result": "PASS",
+      "evidence": {
+        "executionId": "aiagentexecution_155",
+        "status": "SUCCESS",
+        "agentCode": "CEO-001",
+        "startedAt": "2026-10-07T16:39:40.237Z",
+        "completedAt": "2026-10-07T16:39:40.252Z",
+        "durationMs": 15,
+        "tokensUsed": 42,
+        "metadata": "{\"provider\":\"zai\"}",
+        "error": null
+      }
+    },
+    {
+      "check": "execution: agent counters and token usage updated on success",
+      "result": "PASS",
+      "evidence": {
+        "executionCount": 1,
+        "successCount": 1,
+        "tokensToday": 42
+      }
+    },
+    {
+      "check": "execution: no execution is stranded in RUNNING after a terminal outcome",
+      "result": "PASS",
+      "evidence": {
+        "terminalRows": 1,
+        "strandedRunning": 0
+      }
+    },
+    {
+      "check": "execution: transient 5xx is retried once and then succeeds",
+      "result": "PASS",
+      "evidence": {
+        "providerAttempts": 2,
+        "status": "SUCCESS"
+      }
+    },
+    {
+      "check": "execution: 429 retries stay bounded by MAX_RETRY_ATTEMPTS (no infinite retry)",
+      "result": "PASS",
+      "evidence": {
+        "attempts": 2,
+        "maxAttempts": 2,
+        "persistedStatus": "FAILED",
+        "persistedError": "PROVIDER_ERROR: ZAI provider returned HTTP 429: {\"error\":\"too many requests\"}"
+      }
+    },
+    {
+      "check": "execution: non-transient 401 (invalid API key) is NOT retried",
+      "result": "PASS",
+      "evidence": {
+        "providerAttempts": 1,
+        "status": "FAILED"
+      }
+    },
+    {
+      "check": "execution: persisted provider error is redacted, never carrying the API key",
+      "result": "PASS",
+      "evidence": {
+        "error": "PROVIDER_ERROR: ZAI provider returned HTTP 401: invalid api key [REDACTED]"
+      }
+    },
+    {
+      "check": "execution: network errors are transient (retried) and end FAILED with a terminal row",
+      "result": "PASS",
+      "evidence": {
+        "providerAttempts": 2,
+        "status": "FAILED"
+      }
+    },
+    {
+      "check": "execution: invalid JSON is normalized to INVALID_PROVIDER_RESPONSE",
+      "result": "PASS",
+      "evidence": {
+        "error": "INVALID_PROVIDER_RESPONSE: ZAI provider returned invalid JSON"
+      }
+    },
+    {
+      "check": "execution: empty provider content is refused, never stored as SUCCESS",
+      "result": "PASS",
+      "evidence": {
+        "error": "INVALID_PROVIDER_RESPONSE: ZAI provider response contained empty content"
+      }
+    },
+    {
+      "check": "execution: provider hang ends as TIMEOUT and is persisted",
+      "result": "PASS",
+      "evidence": {
+        "status": "TIMEOUT",
+        "error": "PROVIDER_TIMEOUT: AI provider request timed out after 5000ms",
+        "durationMs": 10159,
+        "elapsedMs": 10160
+      }
+    },
+    {
+      "check": "execution: stale RUNNING executions are reaped as TIMEOUT",
+      "result": "PASS",
+      "evidence": {
+        "reaped": 1,
+        "status": "TIMEOUT",
+        "error": "TIMEOUT: stale RUNNING execution reaped by the execution engine"
+      }
+    },
+    {
+      "check": "execution: unknown agent code is refused before any provider call",
+      "result": "PASS",
+      "evidence": {
+        "status": "FAILED",
+        "providerCalls": 0
+      }
+    },
+    {
+      "check": "execution: invalid department mapping is refused (no provider call)",
+      "result": "PASS",
+      "evidence": {
+        "status": "FAILED",
+        "providerCalls": 0
+      }
+    },
+    {
+      "check": "execution: non-ACTIVE agent cannot execute",
+      "result": "PASS",
+      "evidence": {
+        "error": "Agent REV-002 is PAUSED",
+        "providerCalls": 0
+      }
+    },
+    {
+      "check": "execution: daily quota stops execution before the provider is called",
+      "result": "PASS",
+      "evidence": {
+        "error": "Daily quota exceeded",
+        "providerCalls": 0
+      }
+    },
+    {
+      "check": "execution: ungranted privileged tool is refused and audited",
+      "result": "PASS",
+      "evidence": {
+        "error": "Tool 'payment.verify' not permitted (TOOL_NOT_GRANTED)",
+        "audited": true,
+        "providerCalls": 0
+      }
+    },
+    {
+      "check": "execution: granted tool executes and is audited",
+      "result": "PASS",
+      "evidence": {
+        "status": "SUCCESS",
+        "audited": true
+      }
+    },
+    {
+      "check": "execution: tenant/client isolation: cross-client run is denied",
+      "result": "PASS",
+      "evidence": {
+        "error": "Cross-client access denied",
+        "companyScopedAllowed": true,
+        "providerCallsForDeniedRun": 0
+      }
+    },
+    {
+      "check": "all 44 agents execute end-to-end through runAgent with persistence",
+      "result": "PASS",
+      "evidence": {
+        "executed": 44,
+        "passed": 44,
+        "evidenceLevel": "CODE_VERIFIED (simulated provider + in-memory database double)"
+      }
+    },
+    {
+      "check": "provider: NOT_CONFIGURED when neither variable is present",
+      "result": "PASS",
+      "evidence": {
+        "state": "NOT_CONFIGURED",
+        "configured": false,
+        "baseUrlConfigured": false,
+        "apiKeyConfigured": false,
+        "detail": "ZAI_BASE_URL and ZAI_API_KEY are not configured"
+      }
+    },
+    {
+      "check": "provider: MISCONFIGURED when only one of the two is present",
+      "result": "PASS",
+      "evidence": {
+        "baseUrlOnly": "MISCONFIGURED",
+        "apiKeyOnly": "MISCONFIGURED"
+      }
+    },
+    {
+      "check": "provider: URL validation rejects credentials, query, hash and non-HTTP schemes",
+      "result": "PASS",
+      "evidence": {
+        "rejected": [
+          "https://user:pass@provider.test/v1",
+          "https://provider.test/v1?token=1",
+          "https://provider.test/v1#frag",
+          "ftp://provider.test",
+          "not a url",
+          "provider.test/v1"
+        ],
+        "results": [
+          "MISCONFIGURED",
+          "MISCONFIGURED",
+          "MISCONFIGURED",
+          "MISCONFIGURED",
+          "MISCONFIGURED",
+          "MISCONFIGURED"
+        ]
+      }
+    },
+    {
+      "check": "provider: trailing slashes are normalised on the base URL",
+      "result": "PASS",
+      "evidence": {
+        "baseUrl": "https://provider.test/v1"
+      }
+    },
+    {
+      "check": "provider: status/detail output never contains the API key",
+      "result": "PASS",
+      "evidence": {
+        "serialized": "{\"state\":\"CONFIGURED\",\"configured\":true,\"baseUrlConfigured\":true,\"apiKeyConfigured\":true,\"detail\":\"ZAI provider configuration is present\"}"
+      }
+    },
+    {
+      "check": "provider: createZaiClient fails closed when configuration is incomplete",
+      "result": "PASS",
+      "evidence": {
+        "throws": "PROVIDER_NOT_CONFIGURED"
+      }
+    },
+    {
+      "check": "provider: transient provider statuses are retryable",
+      "result": "PASS",
+      "evidence": {
+        "transientStatuses": [
+          408,
+          409,
+          425,
+          429,
+          500,
+          502,
+          503,
+          504
+        ]
+      }
+    },
+    {
+      "check": "provider: non-transient provider statuses are never retried",
+      "result": "PASS",
+      "evidence": {
+        "permanentStatuses": [
+          400,
+          401,
+          403,
+          404,
+          405,
+          422
+        ]
+      }
+    },
+    {
+      "check": "provider: validation failures (invalid agent/department/permission) never retry",
+      "result": "PASS",
+      "evidence": {
+        "invalidResponse": false,
+        "unknownAgent": false,
+        "authorizationFailure": false
+      }
+    },
+    {
+      "check": "timeout and attempt bounds are as specified",
+      "result": "PASS",
+      "evidence": {
+        "defaultTimeoutMs": 60000,
+        "maxTimeoutMs": 300000,
+        "maxAttempts": 2
+      }
+    },
+    {
+      "check": "ops-lock: process A allowed, concurrent process B skipped (one cycle wins the lease)",
+      "result": "PASS",
+      "evidence": {
+        "winnerCycle": 1,
+        "winnerOk": true,
+        "loser": {
+          "cycle": 0,
+          "ok": false,
+          "message": "overlap protection prevented a concurrent AI operations cycle"
+        }
+      }
+    },
+    {
+      "check": "ops-lock: the lease is a database row in AiOpsLock, not an in-memory variable",
+      "result": "PASS",
+      "evidence": {
+        "lockId": "AI_OPS_SINGLETON",
+        "mechanism": "INSERT row + conditional UPDATE ... WHERE lockedUntil < now (claim wins only if the lease is expired)",
+        "leaseMs": 280000,
+        "processGlobalsFound": 0
+      }
+    },
+    {
+      "check": "ops-lock: lease released at the end of a cycle",
+      "result": "PASS",
+      "evidence": {
+        "owner": null,
+        "lockedUntil": "1970-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "check": "ops-lock: stale lease from a crashed process is recovered",
+      "result": "PASS",
+      "evidence": {
+        "cycle": 2,
+        "previousLockOwner": "crashed-process",
+        "recoveredAt": "2026-10-07T16:39:50.908Z"
+      }
+    },
+    {
+      "check": "ops-lock: an unexpired lease blocks a second process",
+      "result": "PASS",
+      "evidence": {
+        "blocked": true,
+        "message": "overlap protection prevented a concurrent AI operations cycle"
+      }
+    },
+    {
+      "check": "ops-lock: heartbeat is persisted to the database with real cycle state",
+      "result": "PASS",
+      "evidence": {
+        "at": "2026-10-07T16:39:50.908Z",
+        "cycles": 2,
+        "service": "tech360-ai-ops",
+        "status": "SUCCESS",
+        "currentCycle": 2,
+        "lastSuccessAt": "2026-10-07T16:39:50.908Z",
+        "lastDurationMs": 0,
+        "lastError": null
+      }
+    },
+    {
+      "check": "ops-lock: cycle throttle prevents stacked cycles from an external scheduler",
+      "result": "PASS",
+      "evidence": {
+        "throttled": true,
+        "lastRunAt": "2026-10-07T16:39:50.908Z"
+      }
+    },
+    {
+      "check": "instrumentation: register() guards: production only, nodejs runtime only, never during next build",
+      "result": "PASS",
+      "evidence": {
+        "guards": [
+          "NODE_ENV !== 'production'",
+          "NEXT_PHASE === 'phase-production-build'",
+          "NEXT_RUNTIME !== 'nodejs'"
+        ]
+      }
+    },
+    {
+      "check": "instrumentation: AI_OPS_DRIVER=off registers no timer",
+      "result": "PASS",
+      "evidence": {
+        "driver": "off",
+        "globalState": "never created",
+        "timerHandles": 0
+      }
+    },
+    {
+      "check": "instrumentation: AI work never starts during next build",
+      "result": "PASS",
+      "evidence": {
+        "nextPhase": "phase-production-build",
+        "driver": "on",
+        "started": false
+      }
+    },
+    {
+      "check": "instrumentation: AI_OPS_DRIVER=on starts exactly one loop despite repeated register() calls",
+      "result": "PASS",
+      "evidence": {
+        "registerCalls": 3,
+        "loopsStarted": 1,
+        "timerHandlesBeforeCleanup": 1
+      }
+    },
+    {
+      "check": "health: 200 healthy: database, registry, provider, operations heartbeat, driver state",
+      "result": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "uptimeSeconds": 11,
+        "checks": {
+          "aiProvider": {
+            "status": "CONFIGURED",
+            "detail": "ZAI provider configuration is present"
+          },
+          "database": {
+            "status": "UP",
+            "detail": "MySQL via Prisma — connected; core schema available"
+          },
+          "aiAgents": {
+            "status": "UP",
+            "detail": "44 agents registered"
+          },
+          "aiOperations": {
+            "status": "DISABLED",
+            "detail": "AI_OPS_DRIVER=off — in-process AI operations driver is intentionally disabled"
+          }
+        }
+      }
+    },
+    {
+      "check": "health: health response exposes no secret material",
+      "result": "PASS",
+      "evidence": {
+        "bytesScanned": 623,
+        "secretsFound": 0
+      }
+    },
+    {
+      "check": "health: unhealthy state is reported when the database is unreachable (503 + DOWN)",
+      "result": "PASS",
+      "evidence": {
+        "httpStatus": 503,
+        "checks": {
+          "aiProvider": {
+            "status": "CONFIGURED",
+            "detail": "ZAI provider configuration is present"
+          },
+          "database": {
+            "status": "DOWN",
+            "detail": "database connection or core schema check failed"
+          },
+          "aiAgents": {
+            "status": "UNKNOWN",
+            "detail": "database unavailable"
+          },
+          "aiOperations": {
+            "status": "DISABLED",
+            "detail": "AI_OPS_DRIVER=off — in-process AI operations driver is intentionally disabled"
+          }
+        }
+      }
+    },
+    {
+      "check": "health: unconfigured provider is unhealthy in production (503) and only a warning outside it",
+      "result": "PASS",
+      "evidence": {
+        "nonProduction": {
+          "httpStatus": 200,
+          "provider": "MISCONFIGURED"
+        },
+        "production": {
+          "httpStatus": 503,
+          "provider": "MISCONFIGURED"
+        }
+      }
+    },
+    {
+      "check": "admin-ops-status: unauthenticated request rejected",
+      "result": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "body": {
+          "error": "Authentication required",
+          "code": "UNAUTHENTICATED"
+        }
+      }
+    },
+    {
+      "check": "admin-ops-status: non-admin (STAFF) request rejected",
+      "result": "PASS",
+      "evidence": {
+        "httpStatus": 403
+      }
+    },
+    {
+      "check": "admin-ops-status: Super Admin accepted: provider, registry, heartbeat, cycles, execution statistics",
+      "result": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "provider": {
+          "state": "CONFIGURED",
+          "configured": true,
+          "detail": "ZAI provider configuration is present"
+        },
+        "status": "ACTIVE",
+        "heartbeatAgeSec": 0,
+        "intervalSec": 90,
+        "registry": {
+          "agents": 44,
+          "departments": 110,
+          "healthy": true
+        },
+        "agents": {
+          "registered": 44,
+          "totalExecutions": 54,
+          "successes": 48,
+          "failures": 6,
+          "executions24h": 55
+        },
+        "cyclesRecorded": 0,
+        "bytesScanned": 566,
+        "secretsFound": 0
+      }
+    },
+    {
+      "check": "no direct SDK / raw-endpoint provider access outside createZaiClient",
+      "result": "PASS",
+      "evidence": {
+        "linesExamined": 3,
+        "offenders": 0,
+        "singleProviderImplementation": "src/lib/ai-provider.ts"
+      }
+    },
+    {
+      "check": "every file that touches the provider also routes inference through runAgent (or is the engine itself)",
+      "result": "PASS",
+      "evidence": {
+        "filesTouchingProvider": [
+          "src/app/api/admin/clients/[id]/enrich/route.ts"
+        ],
+        "documentedException": [
+          "src/app/api/admin/clients/[id]/enrich/route.ts"
+        ],
+        "exceptionRationale": "evidence gathering via the provider page_reader function (not LLM inference); the agent inference in that route still runs through runAgent and is persisted"
+      }
+    },
+    {
+      "check": "no fabricated provider response in the AI execution path",
+      "result": "PASS",
+      "evidence": {
+        "scope": "src/lib (engine, provider, resilience, registry, ops loop)",
+        "patterns": [
+          "simulat",
+          "fabricat",
+          "fake response",
+          "stubbed response",
+          "hardcoded response",
+          "mock provider",
+          "canned response"
+        ],
+        "linesMatched": 5,
+        "affirmativeFabrications": 0,
+        "prohibitionsReviewedAndIgnored": 5
+      }
+    },
+    {
+      "check": "registry stays healthy after the full verification run",
+      "result": "PASS",
+      "evidence": {
+        "expectedAgents": 44,
+        "registeredAgents": 44,
+        "expectedDepartments": 110,
+        "registeredDepartments": 110,
+        "duplicateAgentCodes": [],
+        "duplicateDepartmentCodes": [],
+        "missingAgentCodes": [],
+        "orphanAgents": [],
+        "missingDepartmentCodes": [],
+        "healthy": true
+      }
+    }
+  ],
+  "agents": [
+    {
+      "agentCode": "CEO-001",
+      "name": "Atlas",
+      "title": "CEO Command Agent",
+      "department": "D001",
+      "departmentName": "Office of the CEO",
+      "tools": [
+        "crm.query",
+        "report.generate",
+        "agent.dispatch"
+      ],
+      "permissions": [
+        "read:all",
+        "report:all"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "REV-002",
+      "name": "Sentry",
+      "title": "Lead Intake Agent",
+      "department": "D010",
+      "departmentName": "Lead Acquisition",
+      "tools": [
+        "crm.createLead"
+      ],
+      "permissions": [
+        "write:leads"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "CRM-003",
+      "name": "Ledger",
+      "title": "CRM Keeper Agent",
+      "department": "D01D",
+      "departmentName": "CRM Administration",
+      "tools": [
+        "crm.query",
+        "crm.update",
+        "comm.link"
+      ],
+      "permissions": [
+        "read:all",
+        "write:crm"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "BIZ-004",
+      "name": "Scout",
+      "title": "Business Detection Agent",
+      "department": "D012",
+      "departmentName": "Business Intelligence",
+      "tools": [],
+      "permissions": [
+        "read:leads"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "PLN-005",
+      "name": "Compass",
+      "title": "Plan Recommendation Agent",
+      "department": "D013",
+      "departmentName": "Solution Advisory",
+      "tools": [],
+      "permissions": [
+        "read:leads"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "SCP-006",
+      "name": "Probe",
+      "title": "Scope Collection Agent",
+      "department": "D014",
+      "departmentName": "Scope Engineering",
+      "tools": [],
+      "permissions": [
+        "read:leads"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "SCP-007",
+      "name": "Auditor",
+      "title": "Scope Review Agent",
+      "department": "D014",
+      "departmentName": "Scope Engineering",
+      "tools": [],
+      "permissions": [
+        "read:leads"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "SCP-008",
+      "name": "Forge",
+      "title": "Final Scope Agent",
+      "department": "D014",
+      "departmentName": "Scope Engineering",
+      "tools": [],
+      "permissions": [
+        "read:leads"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "PRP-009",
+      "name": "Quill",
+      "title": "Proposal Agent",
+      "department": "D015",
+      "departmentName": "Proposal & Quotation",
+      "tools": [],
+      "permissions": [
+        "read:leads",
+        "read:scopes"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "COM-010",
+      "name": "Echo",
+      "title": "Client Communication Agent",
+      "department": "D05A",
+      "departmentName": "Client Communications Hub",
+      "tools": [],
+      "permissions": [
+        "read:clients"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "WAP-011",
+      "name": "Relay",
+      "title": "WhatsApp Agent",
+      "department": "D034",
+      "departmentName": "WhatsApp Cloud Platform",
+      "tools": [
+        "whatsapp.send",
+        "whatsapp.status"
+      ],
+      "permissions": [
+        "send:whatsapp"
+      ],
+      "requiresApproval": true,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "EML-012",
+      "name": "Postman",
+      "title": "Email Agent",
+      "department": "D035",
+      "departmentName": "Messaging & Email Infrastructure",
+      "tools": [
+        "email.send"
+      ],
+      "permissions": [
+        "send:email"
+      ],
+      "requiresApproval": true,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "SMS-013",
+      "name": "Beacon",
+      "title": "SMS Agent",
+      "department": "D035",
+      "departmentName": "Messaging & Email Infrastructure",
+      "tools": [
+        "sms.send"
+      ],
+      "permissions": [
+        "send:sms"
+      ],
+      "requiresApproval": true,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "SOC-014",
+      "name": "Herald",
+      "title": "Social Inbox Agent",
+      "department": "D044",
+      "departmentName": "Social Media",
+      "tools": [
+        "social.receive"
+      ],
+      "permissions": [
+        "read:comms",
+        "write:comms"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "MTG-015",
+      "name": "Tempo",
+      "title": "Meeting Agent",
+      "department": "D058",
+      "departmentName": "Scheduling & Meetings",
+      "tools": [
+        "meeting.schedule"
+      ],
+      "permissions": [
+        "write:meetings"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "PAY-016",
+      "name": "Vault",
+      "title": "Payment Agent",
+      "department": "D051",
+      "departmentName": "Payments Desk",
+      "tools": [
+        "payment.prepare",
+        "payment.verify"
+      ],
+      "permissions": [
+        "read:payments",
+        "write:payments"
+      ],
+      "requiresApproval": true,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "INV-017",
+      "name": "Tally",
+      "title": "Invoice Agent",
+      "department": "D050",
+      "departmentName": "Finance & Billing",
+      "tools": [
+        "invoice.generate"
+      ],
+      "permissions": [
+        "write:invoices"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "PRJ-018",
+      "name": "Anchor",
+      "title": "Project Manager Agent",
+      "department": "D020",
+      "departmentName": "Project Management Office",
+      "tools": [
+        "project.create",
+        "task.create",
+        "task.update"
+      ],
+      "permissions": [
+        "write:projects",
+        "write:tasks"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "TSK-019",
+      "name": "Flow",
+      "title": "Task Agent",
+      "department": "D020",
+      "departmentName": "Project Management Office",
+      "tools": [
+        "task.update"
+      ],
+      "permissions": [
+        "write:tasks"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "CST-020",
+      "name": "Muse",
+      "title": "Content Agent",
+      "department": "D042",
+      "departmentName": "Copywriting",
+      "tools": [
+        "content.create"
+      ],
+      "permissions": [
+        "write:content"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "DSN-021",
+      "name": "Prism",
+      "title": "Design Prompt Agent",
+      "department": "D047",
+      "departmentName": "Brand & Creative",
+      "tools": [
+        "image.prompt"
+      ],
+      "permissions": [
+        "write:content"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "VID-022",
+      "name": "Cine",
+      "title": "Video Script/Plan Agent",
+      "department": "D02A",
+      "departmentName": "Video Production",
+      "tools": [
+        "video.plan"
+      ],
+      "permissions": [
+        "write:content"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "KNW-023",
+      "name": "Sage",
+      "title": "Knowledge Agent",
+      "department": "D03B",
+      "departmentName": "Knowledge Engineering",
+      "tools": [
+        "knowledge.search",
+        "knowledge.index"
+      ],
+      "permissions": [
+        "read:knowledge",
+        "write:knowledge"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "MEM-024",
+      "name": "Recall",
+      "title": "Memory Agent",
+      "department": "D03B",
+      "departmentName": "Knowledge Engineering",
+      "tools": [
+        "memory.write",
+        "memory.search"
+      ],
+      "permissions": [
+        "write:memory",
+        "read:memory"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "SEC-025",
+      "name": "Warden",
+      "title": "Security Agent",
+      "department": "D036",
+      "departmentName": "Security Engineering",
+      "tools": [
+        "security.scan"
+      ],
+      "permissions": [
+        "read:logs",
+        "write:errorlogs"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "FSF-026",
+      "name": "Quartermaster",
+      "title": "File Safety Agent",
+      "department": "D059",
+      "departmentName": "File & Records Management",
+      "tools": [
+        "file.classify",
+        "file.scan"
+      ],
+      "permissions": [
+        "write:files"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "CMP-027",
+      "name": "Judge",
+      "title": "Compliance Agent",
+      "department": "D037",
+      "departmentName": "Compliance & Audit",
+      "tools": [],
+      "permissions": [
+        "read:all"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "EVD-028",
+      "name": "Notary",
+      "title": "Evidence Agent",
+      "department": "D065",
+      "departmentName": "Evidence & Audit Vault",
+      "tools": [
+        "evidence.record"
+      ],
+      "permissions": [
+        "write:files",
+        "write:deliveries"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "DLV-029",
+      "name": "Courier",
+      "title": "Delivery Agent",
+      "department": "D02D",
+      "departmentName": "Handover & Documentation",
+      "tools": [
+        "delivery.prepare",
+        "delivery.confirm"
+      ],
+      "permissions": [
+        "write:deliveries"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "HND-030",
+      "name": "Gatekeeper",
+      "title": "Source Code Handover Agent",
+      "department": "D02D",
+      "departmentName": "Handover & Documentation",
+      "tools": [
+        "handover.prepare",
+        "handover.release"
+      ],
+      "permissions": [
+        "write:handovers"
+      ],
+      "requiresApproval": true,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "APP-031",
+      "name": "Steward",
+      "title": "Client Approval Agent",
+      "department": "D062",
+      "departmentName": "Approval Authority",
+      "tools": [
+        "approval.record"
+      ],
+      "permissions": [
+        "write:scopeapprovals"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "REV-032",
+      "name": "Phoenix",
+      "title": "Revision Agent",
+      "department": "D05B",
+      "departmentName": "Escalations & Disputes",
+      "tools": [
+        "scope.revise"
+      ],
+      "permissions": [
+        "write:scopes"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "ADM-033",
+      "name": "Aegis",
+      "title": "Admin Approval Agent",
+      "department": "D062",
+      "departmentName": "Approval Authority",
+      "tools": [
+        "approval.queue"
+      ],
+      "permissions": [
+        "write:approvals"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "ERR-034",
+      "name": "Sentinel",
+      "title": "Error Monitoring Agent",
+      "department": "D066",
+      "departmentName": "Error Response Unit",
+      "tools": [
+        "error.log",
+        "error.escalate"
+      ],
+      "permissions": [
+        "write:errorlogs"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "PUB-035",
+      "name": "Beacon-S",
+      "title": "Social Publishing Agent",
+      "department": "D044",
+      "departmentName": "Social Media",
+      "tools": [
+        "social.publish"
+      ],
+      "permissions": [
+        "send:social"
+      ],
+      "requiresApproval": true,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "RSK-036",
+      "name": "Hindsight",
+      "title": "Review & Referral Agent",
+      "department": "D078",
+      "departmentName": "Feedback & Reviews",
+      "tools": [
+        "review.request",
+        "referral.request"
+      ],
+      "permissions": [
+        "write:reviews"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "DEP-037",
+      "name": "Pioneer",
+      "title": "Deployment Agent",
+      "department": "D02B",
+      "departmentName": "Deployment & DevOps",
+      "tools": [],
+      "permissions": [
+        "read:projects"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "QA-038",
+      "name": "Inspector",
+      "title": "QA Agent",
+      "department": "D027",
+      "departmentName": "QA & Testing",
+      "tools": [
+        "qa.plan"
+      ],
+      "permissions": [
+        "write:tasks"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "RPT-039",
+      "name": "Pulse",
+      "title": "CEO Reporting Agent",
+      "department": "D004",
+      "departmentName": "Executive Reporting",
+      "tools": [
+        "report.generate"
+      ],
+      "permissions": [
+        "read:all"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "CMD-040",
+      "name": "Oracle",
+      "title": "Command Center Agent",
+      "department": "D003",
+      "departmentName": "Chief of Staff",
+      "tools": [
+        "capability:all"
+      ],
+      "permissions": [
+        "read:all"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "AGC-041",
+      "name": "Midwife",
+      "title": "Agent Creation Agent",
+      "department": "D067",
+      "departmentName": "Agent Creation Board",
+      "tools": [
+        "agent.create"
+      ],
+      "permissions": [
+        "write:agents"
+      ],
+      "requiresApproval": true,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "LRN-042",
+      "name": "Catalyst",
+      "title": "Performance Learning Agent",
+      "department": "D049",
+      "departmentName": "Analytics & Learning",
+      "tools": [
+        "campaign.update"
+      ],
+      "permissions": [
+        "write:campaigns"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "VOX-043",
+      "name": "Vocalist",
+      "title": "Voiceover Agent",
+      "department": "D043",
+      "departmentName": "Bangla Content Studio",
+      "tools": [
+        "tts.plan"
+      ],
+      "permissions": [
+        "write:content"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    },
+    {
+      "agentCode": "OPS-044",
+      "name": "Conductor",
+      "title": "Automation Orchestrator Agent",
+      "department": "D039",
+      "departmentName": "n8n Automation Platform",
+      "tools": [
+        "automation.run",
+        "automation.retry"
+      ],
+      "permissions": [
+        "write:automationlogs"
+      ],
+      "requiresApproval": false,
+      "checks": {
+        "agent exists": "PASS",
+        "agent code valid": "PASS",
+        "department valid": "PASS",
+        "handler exists": "PASS",
+        "handler points to runAgent": "PASS",
+        "system prompt exists": "PASS",
+        "permissions exist": "PASS",
+        "tools are valid": "PASS",
+        "agent is executable": "PASS"
+      },
+      "errors": [],
+      "allChecksPass": true
+    }
+  ],
+  "executions": [
+    {
+      "agentCode": "CEO-001",
+      "executionId": "aiagentexecution_193",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.876Z",
+      "completedAt": "2026-10-07T16:39:50.876Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "REV-002",
+      "executionId": "aiagentexecution_194",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.876Z",
+      "completedAt": "2026-10-07T16:39:50.876Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "CRM-003",
+      "executionId": "aiagentexecution_195",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.877Z",
+      "completedAt": "2026-10-07T16:39:50.877Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "BIZ-004",
+      "executionId": "aiagentexecution_196",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.877Z",
+      "completedAt": "2026-10-07T16:39:50.877Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "PLN-005",
+      "executionId": "aiagentexecution_197",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.877Z",
+      "completedAt": "2026-10-07T16:39:50.877Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "SCP-006",
+      "executionId": "aiagentexecution_198",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.878Z",
+      "completedAt": "2026-10-07T16:39:50.878Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "SCP-007",
+      "executionId": "aiagentexecution_199",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 1,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.878Z",
+      "completedAt": "2026-10-07T16:39:50.879Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "SCP-008",
+      "executionId": "aiagentexecution_200",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.879Z",
+      "completedAt": "2026-10-07T16:39:50.879Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "PRP-009",
+      "executionId": "aiagentexecution_201",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.879Z",
+      "completedAt": "2026-10-07T16:39:50.879Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "COM-010",
+      "executionId": "aiagentexecution_202",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.880Z",
+      "completedAt": "2026-10-07T16:39:50.880Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "WAP-011",
+      "executionId": "aiagentexecution_203",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.880Z",
+      "completedAt": "2026-10-07T16:39:50.880Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "EML-012",
+      "executionId": "aiagentexecution_204",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 1,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.880Z",
+      "completedAt": "2026-10-07T16:39:50.881Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "SMS-013",
+      "executionId": "aiagentexecution_205",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.881Z",
+      "completedAt": "2026-10-07T16:39:50.881Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "SOC-014",
+      "executionId": "aiagentexecution_206",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.881Z",
+      "completedAt": "2026-10-07T16:39:50.881Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "MTG-015",
+      "executionId": "aiagentexecution_207",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.882Z",
+      "completedAt": "2026-10-07T16:39:50.882Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "PAY-016",
+      "executionId": "aiagentexecution_208",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.882Z",
+      "completedAt": "2026-10-07T16:39:50.882Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "INV-017",
+      "executionId": "aiagentexecution_209",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.883Z",
+      "completedAt": "2026-10-07T16:39:50.883Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "PRJ-018",
+      "executionId": "aiagentexecution_210",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.883Z",
+      "completedAt": "2026-10-07T16:39:50.883Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "TSK-019",
+      "executionId": "aiagentexecution_211",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.883Z",
+      "completedAt": "2026-10-07T16:39:50.883Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "CST-020",
+      "executionId": "aiagentexecution_212",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.884Z",
+      "completedAt": "2026-10-07T16:39:50.884Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "DSN-021",
+      "executionId": "aiagentexecution_213",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.884Z",
+      "completedAt": "2026-10-07T16:39:50.884Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "VID-022",
+      "executionId": "aiagentexecution_214",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.884Z",
+      "completedAt": "2026-10-07T16:39:50.884Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "KNW-023",
+      "executionId": "aiagentexecution_215",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.885Z",
+      "completedAt": "2026-10-07T16:39:50.885Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "MEM-024",
+      "executionId": "aiagentexecution_216",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.885Z",
+      "completedAt": "2026-10-07T16:39:50.885Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "SEC-025",
+      "executionId": "aiagentexecution_217",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.886Z",
+      "completedAt": "2026-10-07T16:39:50.886Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "FSF-026",
+      "executionId": "aiagentexecution_218",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.886Z",
+      "completedAt": "2026-10-07T16:39:50.886Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "CMP-027",
+      "executionId": "aiagentexecution_219",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.886Z",
+      "completedAt": "2026-10-07T16:39:50.886Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "EVD-028",
+      "executionId": "aiagentexecution_220",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 1,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.886Z",
+      "completedAt": "2026-10-07T16:39:50.887Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "DLV-029",
+      "executionId": "aiagentexecution_221",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.887Z",
+      "completedAt": "2026-10-07T16:39:50.887Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "HND-030",
+      "executionId": "aiagentexecution_222",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.887Z",
+      "completedAt": "2026-10-07T16:39:50.887Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "APP-031",
+      "executionId": "aiagentexecution_223",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.888Z",
+      "completedAt": "2026-10-07T16:39:50.888Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "REV-032",
+      "executionId": "aiagentexecution_224",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.888Z",
+      "completedAt": "2026-10-07T16:39:50.888Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "ADM-033",
+      "executionId": "aiagentexecution_225",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.889Z",
+      "completedAt": "2026-10-07T16:39:50.889Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "ERR-034",
+      "executionId": "aiagentexecution_226",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.889Z",
+      "completedAt": "2026-10-07T16:39:50.889Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "PUB-035",
+      "executionId": "aiagentexecution_227",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.889Z",
+      "completedAt": "2026-10-07T16:39:50.889Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "RSK-036",
+      "executionId": "aiagentexecution_228",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.890Z",
+      "completedAt": "2026-10-07T16:39:50.890Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "DEP-037",
+      "executionId": "aiagentexecution_229",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.890Z",
+      "completedAt": "2026-10-07T16:39:50.890Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "QA-038",
+      "executionId": "aiagentexecution_230",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.891Z",
+      "completedAt": "2026-10-07T16:39:50.891Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "RPT-039",
+      "executionId": "aiagentexecution_231",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.891Z",
+      "completedAt": "2026-10-07T16:39:50.891Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "CMD-040",
+      "executionId": "aiagentexecution_232",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.891Z",
+      "completedAt": "2026-10-07T16:39:50.891Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "AGC-041",
+      "executionId": "aiagentexecution_233",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.892Z",
+      "completedAt": "2026-10-07T16:39:50.892Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "LRN-042",
+      "executionId": "aiagentexecution_234",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.892Z",
+      "completedAt": "2026-10-07T16:39:50.892Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "VOX-043",
+      "executionId": "aiagentexecution_235",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 1,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.892Z",
+      "completedAt": "2026-10-07T16:39:50.893Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    },
+    {
+      "agentCode": "OPS-044",
+      "executionId": "aiagentexecution_236",
+      "status": "SUCCESS",
+      "providerAttempts": 1,
+      "persistedStatus": "SUCCESS",
+      "durationMs": 0,
+      "tokensUsed": 13,
+      "startedAt": "2026-10-07T16:39:50.893Z",
+      "completedAt": "2026-10-07T16:39:50.893Z",
+      "toolGrantsValid": true,
+      "result": "PASS",
+      "evidenceLevel": "CODE_VERIFIED"
+    }
+  ],
+  "failures": []
+}
