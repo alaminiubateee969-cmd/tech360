@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../src/lib/auth'
-import { DEPARTMENTS, CORE_AGENTS } from '../src/lib/agents/registry'
+import { ensureAgentRegistry } from '../src/lib/agents/bootstrap'
 import { COMPANY } from '../src/lib/constants'
 
 const db = new PrismaClient()
@@ -152,28 +152,12 @@ async function main() {
   })
   console.log(`  ✓ Super Admin: ${adminEmail} (password from ADMIN_PASSWORD${isProduction ? '' : ' or dev fallback'}; must change on first login)`)
 
-  // 2) Departments (110)
-  for (const d of DEPARTMENTS) {
-    await db.department.upsert({ where: { code: d.code }, update: {}, create: d })
-  }
-  console.log(`  ✓ ${DEPARTMENTS.length} departments`)
+  // 2) Canonical AI workforce registry (idempotent and shared with admin bootstrap).
+  const registry = await ensureAgentRegistry(db)
+  console.log(`  ✓ ${registry.departments} departments`)
+  console.log(`  ✓ ${registry.agents} AI agents`)
 
-  // 3) Agents (44)
-  for (const a of CORE_AGENTS) {
-    const dept = await db.department.findUnique({ where: { code: a.dept } })
-    await db.aiAgent.upsert({
-      where: { code: a.code },
-      update: {},
-      create: {
-        code: a.code, name: a.name, title: a.title, purpose: a.purpose, systemPrompt: a.systemPrompt,
-        departmentId: dept?.id ?? null, tools: JSON.stringify(a.tools), permissions: JSON.stringify(a.permissions),
-        requiresApproval: a.requiresApproval ?? false, level: a.level ?? 3, parentCode: a.parentCode ?? null,
-      },
-    })
-  }
-  console.log(`  ✓ ${CORE_AGENTS.length} AI agents`)
-
-  // 4) Prompt templates
+  // 3) Prompt templates
   for (const t of PROMPT_TEMPLATES) {
     await db.promptTemplate.upsert({
       where: { code: t.code },

@@ -298,6 +298,9 @@ jobs:
           SESSION_SECRET: ci_session_secret_only_never_use_in_production_123456
           PORTAL_SECRET: ci_portal_secret_only_never_use_in_production_234567
           OPS_SECRET: ci_ops_secret_only_never_use_in_production_345678
+          ZAI_BASE_URL: https://ci.invalid/v1
+          ZAI_API_KEY: ci_provider_key_only_never_use_in_production
+          AI_OPS_DRIVER: off
         run: |
           set -euo pipefail
           PORT="$(node -e 'const net = require("node:net"); const server = net.createServer(); server.listen(0, "127.0.0.1", () => { console.log(server.address().port); server.close(); });')"

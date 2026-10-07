@@ -9,13 +9,13 @@ export const dynamic = 'force-dynamic'
 
 // REAL agent execution from the admin console (logged, governed)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
+  if (isResponse(g)) return g
   // feature-gate: AI agents switch (Super Admin) — refuses execution,
   // including from the autonomous ops loop trigger path
   if (!(await featureEnabled('ai_agents'))) {
     return Response.json({ error: 'AI agent execution is currently disabled by Super Admin (System → Feature Management).' }, { status: 503 })
   }
-  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
-  if (isResponse(g)) return g
   const { code } = await params
   const clean = sanitizeText(code, 20).toUpperCase()
   const raw = await readJson(req)

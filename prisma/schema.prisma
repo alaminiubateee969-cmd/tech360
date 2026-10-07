@@ -542,11 +542,25 @@ model AiAgentExecution {
   tokensUsed    Int      @default(0)
   durationMs    Int?
   error         String? @db.Text
+  metadata      String? @db.Text // provider and safe execution metadata; never credentials
   createdAt     DateTime @default(now())
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
 
   @@index([agentCode])
   @@index([status])
   @@index([correlationId])
+  @@index([createdAt])
+  @@index([startedAt])
+}
+
+model AiOpsLock {
+  id         String   @id
+  owner      String?
+  lockedUntil DateTime
+  updatedAt  DateTime @updatedAt
+
+  @@index([lockedUntil])
 }
 
 model AiMemory {

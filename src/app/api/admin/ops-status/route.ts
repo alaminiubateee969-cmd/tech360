@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
+import { getZaiProviderStatus } from '@/lib/ai-provider'
+import { getRegistryStatus } from '@/lib/agents/bootstrap'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,12 +14,13 @@ export async function GET(req: NextRequest) {
   const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
 
-  const [heartbeatSetting, lastCycles, agentAgg, exec24h, notificationAgg] = await Promise.all([
+  const [heartbeatSetting, lastCycles, agentAgg, exec24h, notificationAgg, registry] = await Promise.all([
     db.setting.findUnique({ where: { key: 'ops.heartbeat' } }),
     db.automationLog.findMany({ where: { workflow: 'AI_OPS_LOOP' }, orderBy: { startedAt: 'desc' }, take: 15, select: { id: true, startedAt: true, finishedAt: true, status: true, output: true, steps: true } }),
     db.aiAgent.aggregate({ _count: true, _sum: { executionCount: true, successCount: true, failureCount: true } }),
     db.aiAgentExecution.count({ where: { createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } }),
     db.notification.aggregate({ where: { read: false }, _count: true }),
+    getRegistryStatus(),
   ])
 
   // heartbeat value: { at: ISO, cycles: number, service: string }
@@ -56,8 +59,11 @@ export async function GET(req: NextRequest) {
     }
   })
 
+  const provider = getZaiProviderStatus()
   return Response.json({
     status, // ACTIVE | STALE | OFFLINE — honest, never faked
+    provider: { state: provider.state, configured: provider.configured, detail: provider.detail },
+    registry,
     heartbeatAgeSec,
     intervalSec,
     cycles: hbCycles,

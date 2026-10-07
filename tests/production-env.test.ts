@@ -14,6 +14,8 @@ const goodEnvironment: NodeJS.ProcessEnv = {
   SESSION_SECRET: 'ci_session_secret_only_never_use_in_production_123456',
   PORTAL_SECRET: 'ci_portal_secret_only_never_use_in_production_234567',
   OPS_SECRET: 'ci_ops_secret_only_never_use_in_production_345678',
+  ZAI_BASE_URL: 'https://ci.invalid/v1',
+  ZAI_API_KEY: 'ci_provider_key_only_never_use_in_production',
 }
 
 function validate(overrides: Record<string, string | undefined> = {}) {
@@ -88,4 +90,10 @@ test('production runtime rejects reused signing secrets', () => {
   assert.notEqual(result.status, 0)
   assert.match(output, /must be distinct secrets/)
   assert.equal(output.includes(shared), false)
+})
+
+test('production runtime rejects an unknown AI operations driver', () => {
+  const result = validate({ AI_OPS_DRIVER: 'mystery' })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout + result.stderr, /AI_OPS_DRIVER/)
 })
