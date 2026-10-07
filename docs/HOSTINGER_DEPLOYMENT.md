@@ -22,7 +22,7 @@ Create or configure the **Hostinger Node.js Web App** in hPanel. Do not use PHP 
 | Application root | Directory containing root `package.json` (repository root; Hostinger documents blank or `/` for a root-level app) | **NOT VERIFIED** in hPanel |
 | Node.js version | `22` / `22.x` | Code requires 22.x; Hostinger selector **NOT VERIFIED** |
 | Package manager | npm; Hostinger detects it from the committed `package-lock.json` | Repository verified; selected hPanel value **NOT VERIFIED** |
-| Dependency installation | Hostinger-managed install; its GitHub guide describes npm install. CI uses `npm ci --no-audit --no-fund`. | Exact Hostinger install command **NOT VERIFIED** until deployment logs are inspected |
+| Dependency installation | Hostinger-managed install; its GitHub guide describes npm install. CI uses `npm ci --no-audit --no-fund`. The committed `.npmrc` (`include=dev`) forces Hostinger's production-mode `npm install` to include the devDependencies the Next.js build needs; `tw-animate-css` (imported by `src/app/globals.css`) is a regular dependency. | Exact Hostinger install command **NOT VERIFIED** until deployment logs are inspected |
 | Build script | `npm run build` (Hostinger hPanel script value: `build`) | Repository script verified; hPanel setting **NOT VERIFIED** |
 | Output directory | `.next` (Hostinger's documented Next.js server-mode setting) | Repository/Next output verified; hPanel setting **NOT VERIFIED** |
 | Entry file | Leave blank; Hostinger ignores the entry-file field for framework `next` | Documented behavior; actual hPanel value **NOT VERIFIED** |
