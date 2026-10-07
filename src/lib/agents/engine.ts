@@ -1,7 +1,9 @@
-import ZAI from 'z-ai-web-dev-sdk'
 import { db } from '@/lib/db'
+import { createZaiClient, ZaiProviderError } from '@/lib/ai-provider'
+import { withTimeout, resolveAgentTimeoutMs, isTransientRunError, MAX_RETRY_ATTEMPTS, RunTimeoutError } from '@/lib/agents/resilience'
 import { newCorrelationId, logError } from '@/lib/security'
 import { authorizeAgentTool, agentMayAccessClient, type AgentTool } from '@/lib/ai-workforce-policy'
+import { getAgentDefinition } from '@/lib/agents/bootstrap'
 
 // ------------------------------------------------------------
 // Real AI agent execution engine (server-side only)
@@ -36,10 +38,12 @@ export type AgentRunResult = {
   status: string
 }
 
-let zaiPromise: Promise<Awaited<ReturnType<typeof ZAI.create>>> | null = null
-async function getZai() {
-  if (!zaiPromise) zaiPromise = ZAI.create()
-  return zaiPromise
+export { createZaiClient }
+
+function providerErrorMessage(error: unknown): string {
+  if (error instanceof ZaiProviderError) return `${error.code}: ${error.message}`
+  if (error instanceof RunTimeoutError) return `${error.code}: ${error.message}`
+  return error instanceof Error ? error.message : String(error)
 }
 
 function extractJson(raw: string): Record<string, unknown> | null {
@@ -63,35 +67,64 @@ function extractJson(raw: string): Record<string, unknown> | null {
  * Execute an agent by code. Loads its live registry row (DB),
  * enforces governance (status/quota), runs the LLM, records everything.
  */
+export async function reapStaleAgentExecutions(now = new Date()): Promise<number> {
+  const timeoutMs = resolveAgentTimeoutMs()
+  const cutoff = new Date(now.getTime() - (timeoutMs * 2 + 60_000))
+  const stale = await db.aiAgentExecution.findMany({
+    where: { status: 'RUNNING', createdAt: { lt: cutoff } },
+    select: { id: true },
+    take: 50,
+  })
+  if (stale.length === 0) return 0
+  const result = await db.aiAgentExecution.updateMany({
+    where: { id: { in: stale.map((execution) => execution.id) }, status: 'RUNNING' },
+    data: {
+      status: 'TIMEOUT',
+      error: 'TIMEOUT: stale RUNNING execution reaped by the execution engine',
+      durationMs: timeoutMs * 2 + 60_000,
+      completedAt: now,
+    },
+  })
+  return result.count
+}
+
+/**
+ * Execute an agent by code. Loads its live registry row (DB),
+ * validates the canonical department mapping, enforces governance,
+ * calls the configured provider, and records every terminal outcome.
+ */
 export async function runAgent(agentCode: string, run: AgentRunInput): Promise<AgentRunResult> {
+  await reapStaleAgentExecutions().catch(() => 0)
   const correlationId = newCorrelationId()
-  const agent = await db.aiAgent.findUnique({ where: { code: agentCode } })
-  if (!agent) {
+  const definition = getAgentDefinition(agentCode)
+  const agent = await db.aiAgent.findUnique({
+    where: { code: agentCode },
+    include: { department: { select: { code: true } } },
+  })
+  if (!agent || !definition) {
     await logError({ source: 'AGENT', code: 'AGENT_NOT_FOUND', message: `Agent ${agentCode} not found`, correlationId })
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Agent not found', status: 'FAILED' }
+  }
+  if (agent.department?.code !== definition.dept) {
+    const error = `Agent ${agentCode} department mapping is invalid`
+    await logError({ source: 'AGENT', code: 'AGENT_DEPARTMENT_INVALID', message: error, correlationId })
+    return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error, status: 'FAILED' }
   }
   if (agent.status !== 'ACTIVE') {
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: `Agent ${agentCode} is ${agent.status}`, status: 'FAILED' }
   }
-  // --- least-privilege tool authorization -------------------------------
-  // Holding a tool is not implied by being ACTIVE: the agent must have been
-  // granted it explicitly. Every refusal is recorded, so an agent probing for
-  // capability it does not have is visible to the Super Admin.
+
   if (run.tool) {
     const decision = authorizeAgentTool({ status: agent.status, tools: agent.tools, permissions: agent.permissions }, run.tool)
     if (!decision.allowed) {
       await logError({
-        source: 'AGENT',
-        code: `TOOL_DENIED_${decision.code}`,
+        source: 'AGENT', code: `TOOL_DENIED_${decision.code}`,
         message: `Agent ${agentCode} attempted '${run.tool}' without a grant`,
-        correlationId,
-        clientId: run.clientId,
-        workflow: run.workflow,
+        correlationId, clientId: run.clientId, workflow: run.workflow,
       })
       await db.auditLog.create({
         data: {
-          actor: agentCode, action: 'AGENT_TOOL_DENIED',
-          entityType: 'AiAgent', entityId: agentCode,
+          actor: agentCode, action: 'AGENT_TOOL_DENIED', entityType: 'AiAgent', entityId: agentCode,
           clientId: run.clientId ?? null, projectId: run.projectId ?? null,
           details: JSON.stringify({ tool: run.tool, reason: decision.code, correlationId }),
         },
@@ -100,21 +133,12 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     }
   }
 
-  // --- tenant isolation --------------------------------------------------
-  // An agent acting for one client must not operate on another client's
-  // records unless it holds an explicit cross-client grant.
   if (run.clientId && !agentMayAccessClient({ permissions: agent.permissions }, run.actingForClientId ?? null, run.clientId)) {
-    await logError({
-      source: 'AGENT', code: 'CROSS_CLIENT_DENIED',
-      message: `Agent ${agentCode} attempted to act on a client it is not scoped to`,
-      correlationId, workflow: run.workflow,
-    })
+    await logError({ source: 'AGENT', code: 'CROSS_CLIENT_DENIED', message: `Agent ${agentCode} attempted to act on a client it is not scoped to`, correlationId, workflow: run.workflow })
     await db.auditLog.create({
       data: {
-        actor: agentCode, action: 'AGENT_CROSS_CLIENT_DENIED',
-        entityType: 'AiAgent', entityId: agentCode,
-        clientId: run.clientId, projectId: run.projectId ?? null,
-        details: JSON.stringify({ correlationId }),
+        actor: agentCode, action: 'AGENT_CROSS_CLIENT_DENIED', entityType: 'AiAgent', entityId: agentCode,
+        clientId: run.clientId, projectId: run.projectId ?? null, details: JSON.stringify({ correlationId }),
       },
     }).catch(() => null)
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Cross-client access denied', status: 'FAILED' }
@@ -125,82 +149,85 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Daily quota exceeded', status: 'FAILED' }
   }
 
+  const startedAt = new Date()
   const execution = await db.aiAgentExecution.create({
     data: {
       agentCode, correlationId,
-      clientId: run.clientId ?? null,
-      projectId: run.projectId ?? null,
-      workflow: run.workflow ?? null,
-      input: run.input.slice(0, 12000),
-      status: 'RUNNING',
+      clientId: run.clientId ?? null, projectId: run.projectId ?? null,
+      workflow: run.workflow ?? null, input: run.input.slice(0, 12000),
+      status: 'RUNNING', startedAt,
     },
   })
 
-  const started = Date.now()
-  try {
-    const zai = await getZai()
-    const userContent = (run.contextNote ? `${run.contextNote}\n\n` : '') + run.input
-    const messages: Array<{ role: 'assistant' | 'user'; content: string }> = [
-      { role: 'assistant', content: agent.systemPrompt },
-      { role: 'user', content: userContent.slice(0, 24000) },
-    ]
-    const completion = await zai.chat.completions.create({ messages, thinking: { type: 'disabled' } })
-    const output = completion.choices[0]?.message?.content ?? ''
-    if (!output.trim()) throw new Error('Empty response from model')
+  const timeoutMs = resolveAgentTimeoutMs()
+  const userContent = (run.contextNote ? `${run.contextNote}\n\n` : '') + run.input
+  const messages = [
+    { role: 'system' as const, content: agent.systemPrompt },
+    { role: 'user' as const, content: userContent.slice(0, 24000) },
+  ]
+  let lastError: unknown = new Error('Provider did not return a result')
+  let completion: Awaited<ReturnType<ReturnType<typeof createZaiClient>['chat']['completions']['create']>> | null = null
 
-    const json = run.expectJson ? extractJson(output) : null
-    if (run.expectJson && !json) {
-      // execution succeeded but output wasn't parseable — return raw, flag in meta
-      await db.aiAgentExecution.update({
-        where: { id: execution.id },
-        data: {
-          output: output.slice(0, 20000), status: 'SUCCESS',
-          durationMs: Date.now() - started,
-          tokensUsed: Math.ceil((agent.systemPrompt.length + userContent.length + output.length) / 4),
-        },
-      })
-      await db.aiAgent.update({
-        where: { code: agentCode },
-        data: { executionCount: { increment: 1 }, successCount: { increment: 1 }, tokensToday: { increment: 2 } },
-      })
-      return { ok: true, agentCode, executionId: execution.id, correlationId, output, json: null, status: 'SUCCESS' }
+  try {
+    for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        const client = createZaiClient()
+        completion = await withTimeout(
+          (signal) => client.chat.completions.create({ messages, thinking: { type: 'disabled' } }, { signal }),
+          timeoutMs,
+        )
+        break
+      } catch (error) {
+        lastError = error
+        if (!isTransientRunError(error) || attempt === MAX_RETRY_ATTEMPTS - 1) throw error
+        await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)))
+      }
     }
 
+    const output = completion?.choices[0]?.message?.content ?? ''
+    if (!output.trim()) throw new ZaiProviderError('INVALID_PROVIDER_RESPONSE', 'Provider returned empty output')
+    const json = run.expectJson ? extractJson(output) : null
+    if (run.expectJson && !json) throw new ZaiProviderError('INVALID_PROVIDER_RESPONSE', 'Provider output was not valid JSON')
+    const completedAt = new Date()
+    const tokensUsed = typeof completion?.usage?.total_tokens === 'number' ? completion.usage.total_tokens : 0
     await db.aiAgentExecution.update({
       where: { id: execution.id },
       data: {
-        output: output.slice(0, 20000), status: 'SUCCESS',
-        durationMs: Date.now() - started,
-        tokensUsed: Math.ceil((agent.systemPrompt.length + userContent.length + output.length) / 4),
+        output: output.slice(0, 20000), status: 'SUCCESS', tokensUsed,
+        durationMs: completedAt.getTime() - startedAt.getTime(), completedAt,
+        metadata: JSON.stringify({ provider: 'zai' }),
       },
     })
     await db.aiAgent.update({
       where: { code: agentCode },
-      data: { executionCount: { increment: 1 }, successCount: { increment: 1 }, tokensToday: { increment: 2 } },
+      data: { executionCount: { increment: 1 }, successCount: { increment: 1 }, tokensToday: { increment: tokensUsed } },
     })
     if (run.tool) {
       await db.auditLog.create({
         data: {
-          actor: agentCode, action: 'AGENT_TOOL_INVOKED',
-          entityType: 'AiAgent', entityId: agentCode,
+          actor: agentCode, action: 'AGENT_TOOL_INVOKED', entityType: 'AiAgent', entityId: agentCode,
           clientId: run.clientId ?? null, projectId: run.projectId ?? null,
           details: JSON.stringify({ tool: run.tool, executionId: execution.id, correlationId }),
         },
       }).catch(() => null)
     }
     return { ok: true, agentCode, executionId: execution.id, correlationId, output, json, status: 'SUCCESS' }
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
+  } catch (error) {
+    lastError = error
+    const completedAt = new Date()
+    const timeout = error instanceof RunTimeoutError || (error instanceof ZaiProviderError && error.code === 'PROVIDER_TIMEOUT')
+    const status = timeout ? 'TIMEOUT' : 'FAILED'
+    const message = providerErrorMessage(lastError).slice(0, 2000)
     await db.aiAgentExecution.update({
       where: { id: execution.id },
-      data: { status: 'FAILED', error: message.slice(0, 2000), durationMs: Date.now() - started },
+      data: { status, error: message, durationMs: completedAt.getTime() - startedAt.getTime(), completedAt, metadata: JSON.stringify({ provider: 'zai' }) },
     }).catch(() => null)
     await db.aiAgent.update({
       where: { code: agentCode },
       data: { executionCount: { increment: 1 }, failureCount: { increment: 1 } },
     }).catch(() => null)
-    await logError({ source: 'AGENT', code: 'EXECUTION_FAILED', message: `Agent ${agentCode}: ${message}`, correlationId, clientId: run.clientId, workflow: run.workflow })
-    return { ok: false, agentCode, executionId: execution.id, correlationId, output: '', json: null, error: message, status: 'FAILED' }
+    await logError({ source: 'AGENT', code: timeout ? 'EXECUTION_TIMEOUT' : 'EXECUTION_FAILED', message: `Agent ${agentCode}: ${message}`, correlationId, clientId: run.clientId, workflow: run.workflow })
+    return { ok: false, agentCode, executionId: execution.id, correlationId, output: '', json: null, error: message, status }
   }
 }
 

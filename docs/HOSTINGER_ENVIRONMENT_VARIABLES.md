@@ -15,6 +15,11 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `OPS_SECRET` | Authenticates operations endpoints | Secret | Generate a unique random value distinct from the other application secrets | Yes |
 | `ADMIN_EMAIL` | First-boot Super Admin seed account | Non-secret | Owner-selected account | Yes for first seed |
 | `ADMIN_PASSWORD` | First-boot Super Admin seed account | Secret | Owner-generated password, at least 12 characters; change at first login | Yes for first seed |
+| `ZAI_BASE_URL` | ZAI-compatible chat/function API base URL | Non-secret URL | Provider operator | Yes for production AI |
+| `ZAI_API_KEY` | ZAI provider authentication | Secret | Provider operator | Yes for production AI |
+| `AI_OPS_DRIVER` | In-process production driver switch (`on` or `off`) | Non-secret | Owner policy | Yes; use `on` to run cycles |
+| `AGENT_RUN_TIMEOUT_MS` | Per-agent provider timeout, bounded to 5–300 seconds | Non-secret | Owner policy | Optional |
+| `OPS_INTERVAL_SEC` | In-process AI operations interval, minimum 30 seconds | Non-secret | Owner policy | Optional; defaults to 90 |
 
 `NOTIFY_RELAY_TOKEN`, `NOTIFY_RELAY_URL`, `OPS_INTERVAL_SEC`, and `PLATFORM_URL` are used only when the optional relay/operations service is deployed. For a production sidecar, provide unique `OPS_SECRET` and `PLATFORM_URL`; the ai-ops service now refuses to start in production without them. The notify relay refuses `/emit` when its production token is missing. Do not point a production app or sidecar at `localhost`; configure the actual service URL, or leave the optional relay disabled.
 

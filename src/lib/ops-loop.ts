@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 import { executeOpsAction } from '@/lib/ops-actions'
 import { generateCeoReport } from '@/lib/reports'
 import { logError } from '@/lib/security'
+import { randomUUID } from 'node:crypto'
+import { finishCycle, tryStartCycle } from '@/lib/agents/resilience'
 
 // ============================================================
 // TECH360 AUTONOMOUS OPERATIONS LOOP — the production engine.
@@ -96,21 +98,62 @@ export async function opsScan(): Promise<OpsScan> {
   }
 }
 
-// ---------- heartbeat (settings key kept identical to the old format) ----------
+// ---------- database-backed lease and heartbeat ----------
+const OPS_LOCK_ID = 'AI_OPS_SINGLETON'
+const OPS_LEASE_MS = 280_000
+
+type HeartbeatValue = {
+  at: string
+  cycles: number
+  service: string
+  status?: 'RUNNING' | 'SUCCESS' | 'FAILED' | 'HEARTBEAT'
+  currentCycle?: number
+  lastSuccessAt?: string
+  lastFailureAt?: string
+  lastDurationMs?: number
+  lastError?: string | null
+}
+
+async function acquireOpsLease(owner: string): Promise<boolean> {
+  const now = new Date()
+  const lockedUntil = new Date(now.getTime() + OPS_LEASE_MS)
+  await db.aiOpsLock.upsert({
+    where: { id: OPS_LOCK_ID },
+    update: {},
+    create: { id: OPS_LOCK_ID, owner: null, lockedUntil: new Date(0), updatedAt: now },
+  })
+  const claimed = await db.aiOpsLock.updateMany({
+    where: { id: OPS_LOCK_ID, lockedUntil: { lt: now } },
+    data: { owner, lockedUntil },
+  })
+  return claimed.count === 1
+}
+
+async function releaseOpsLease(owner: string): Promise<void> {
+  await db.aiOpsLock.updateMany({ where: { id: OPS_LOCK_ID, owner }, data: { owner: null, lockedUntil: new Date(0) } })
+}
+
+export async function updateAiOperationsHeartbeat(patch: Partial<HeartbeatValue> = {}): Promise<HeartbeatValue> {
+  const existing = await db.setting.findUnique({ where: { key: 'ops.heartbeat' } })
+  let current: HeartbeatValue = { at: new Date(0).toISOString(), cycles: 0, service: 'tech360-ai-ops', status: 'HEARTBEAT' }
+  if (existing) {
+    try { current = { ...current, ...(JSON.parse(existing.value) as Partial<HeartbeatValue>) } } catch { /* replace malformed state honestly */ }
+  }
+  const value = { ...current, ...patch, at: patch.at ?? new Date().toISOString(), service: 'tech360-ai-ops' }
+  const serialized = JSON.stringify(value)
+  if (existing) await db.setting.update({ where: { key: 'ops.heartbeat' }, data: { value: serialized } })
+  else await db.setting.create({ data: { key: 'ops.heartbeat', value: serialized } })
+  return value
+}
+
+// Compatibility endpoint: explicit heartbeat probes still advance the counter.
 export async function recordHeartbeat(): Promise<number> {
   const existing = await db.setting.findUnique({ where: { key: 'ops.heartbeat' } })
   let cycles = 1
   if (existing) {
-    try {
-      const parsed = JSON.parse(existing.value) as { cycles?: number }
-      cycles = (parsed.cycles ?? 0) + 1
-    } catch {
-      cycles = 1
-    }
+    try { cycles = ((JSON.parse(existing.value) as { cycles?: number }).cycles ?? 0) + 1 } catch { cycles = 1 }
   }
-  const value = JSON.stringify({ at: new Date().toISOString(), cycles, service: 'tech360-ai-ops' })
-  if (existing) await db.setting.update({ where: { key: 'ops.heartbeat' }, data: { value } })
-  else await db.setting.create({ data: { key: 'ops.heartbeat', value } })
+  await updateAiOperationsHeartbeat({ cycles, status: 'HEARTBEAT', currentCycle: cycles })
   return cycles
 }
 
@@ -120,7 +163,7 @@ export async function cycleThrottled(minIntervalMs = MIN_CYCLE_INTERVAL_MS): Pro
   if (!row) return { throttled: false, lastRunAt: null }
   const at = new Date(row.value)
   if (Number.isNaN(at.getTime())) return { throttled: false, lastRunAt: null }
-  return { throttled: Date.now() - at.getTime() < minIntervalMs, lastRunAt: row.value }
+  return { throttled: !tryStartCycle(at, new Date(), minIntervalMs), lastRunAt: row.value }
 }
 
 async function markCycleRun(): Promise<void> {
@@ -143,7 +186,18 @@ async function ceoReportDue(): Promise<boolean> {
 // ---------- THE AUTONOMOUS LOOP ----------
 export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 'SCHEDULER'): Promise<CycleSummary> {
   const startedAt = new Date().toISOString()
+  const leaseOwner = randomUUID()
+  const acquired = await acquireOpsLease(leaseOwner)
+  if (!acquired) {
+    return {
+      cycle: 0, trigger, startedAt, finishedAt: new Date().toISOString(), ok: false,
+      performed: [],
+      scanned: { unscored: 0, overdue: 0, failedComms: 0, errors: 0, staleApprovals: 0, failedAutomations: 0, expiredPreviews: 0, quarantinedDocs: 0 },
+      message: 'overlap protection prevented a concurrent AI operations cycle',
+    }
+  }
   const cycle = await recordHeartbeat()
+  await updateAiOperationsHeartbeat({ status: 'RUNNING', currentCycle: cycle })
   const performed: string[] = []
   const scanned: CycleSummary['scanned'] = { unscored: 0, overdue: 0, failedComms: 0, errors: 0, staleApprovals: 0, failedAutomations: 0, expiredPreviews: 0, quarantinedDocs: 0 }
   let ceoReport: CycleSummary['ceoReport'] = null
@@ -159,13 +213,16 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
     const { featureEnabled } = await import('@/lib/features')
     const aiOn = await featureEnabled('ai_agents')
     if (!aiOn) {
+      const finishedAt = new Date()
       const summary: CycleSummary = {
-        cycle, trigger, startedAt, finishedAt: new Date().toISOString(), ok: true,
+        cycle, trigger, startedAt, finishedAt: finishedAt.toISOString(), ok: true,
         performed: [],
         scanned: { unscored: 0, overdue: 0, failedComms: 0, errors: 0, staleApprovals: 0, failedAutomations: 0, expiredPreviews: 0, quarantinedDocs: 0 },
         ceoReport: null,
         message: 'AI agents disabled by Super Admin — scan-only cycle (no agent actions performed).',
       }
+      await updateAiOperationsHeartbeat({ status: 'SUCCESS', currentCycle: cycle, lastSuccessAt: finishedAt.toISOString(), lastDurationMs: finishCycle(new Date(startedAt), finishedAt).durationMs, lastError: null })
+      await releaseOpsLease(leaseOwner)
       return summary
     }
 
@@ -265,9 +322,17 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
     }).catch(() => null)
   }
 
+  const finishedAt = new Date()
+  await updateAiOperationsHeartbeat({
+    status: ok ? 'SUCCESS' : 'FAILED',
+    currentCycle: cycle,
+    ...(ok ? { lastSuccessAt: finishedAt.toISOString(), lastError: null } : { lastFailureAt: finishedAt.toISOString(), lastError: error ?? 'AI operations cycle failed' }),
+    lastDurationMs: finishCycle(new Date(startedAt), finishedAt).durationMs,
+  })
+  await releaseOpsLease(leaseOwner)
   return {
     cycle, trigger, startedAt,
-    finishedAt: new Date().toISOString(),
+    finishedAt: finishedAt.toISOString(),
     ok, performed, error,
     scanned,
     ceoReport,

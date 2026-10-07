@@ -8,6 +8,8 @@ const REQUIRED = [
   "SESSION_SECRET",
   "PORTAL_SECRET",
   "OPS_SECRET",
+  "ZAI_BASE_URL",
+  "ZAI_API_KEY",
 ];
 const SECRET_NAMES = ["SESSION_SECRET", "PORTAL_SECRET", "OPS_SECRET"];
 const errors = [];
@@ -39,6 +41,23 @@ for (const name of ["APP_PUBLIC_URL", "APP_ORIGIN"]) {
   const value = process.env[name];
   if (value && !isCanonicalHttpsOrigin(value)) {
     errors.push(`${name} (must be the canonical HTTPS origin https://bdtech360.com)`);
+  }
+}
+
+const aiOpsDriver = process.env.AI_OPS_DRIVER?.trim().toLowerCase();
+if (aiOpsDriver && !["on", "off"].includes(aiOpsDriver)) {
+  errors.push("AI_OPS_DRIVER (must be on or off)");
+}
+
+const zaiBaseUrl = process.env.ZAI_BASE_URL;
+if (zaiBaseUrl) {
+  try {
+    const parsed = new URL(zaiBaseUrl);
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password || parsed.search || parsed.hash) {
+      errors.push("ZAI_BASE_URL (must be an absolute HTTP(S) URL without credentials or query data)");
+    }
+  } catch {
+    errors.push("ZAI_BASE_URL (invalid URL)");
   }
 }
 

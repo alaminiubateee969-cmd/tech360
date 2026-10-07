@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText } from '@/lib/security'
+import { AGENT_HANDLER, AGENT_REGISTRY_VERSION } from '@/lib/agents/registry'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest) {
     agents: agents.map((a) => ({
       code: a.code, name: a.name, title: a.title, dept: a.department?.code ?? '—', deptName: a.department?.name ?? 'Unassigned',
       category: a.department?.category ?? 'OPERATIONS', purpose: a.purpose, status: a.status,
+      handler: AGENT_HANDLER, version: AGENT_REGISTRY_VERSION,
       executions: a.executionCount, successRate: a.executionCount > 0 ? Math.round((a.successCount / a.executionCount) * 100) : null,
       requiresApproval: a.requiresApproval, level: a.level, tools: JSON.parse(a.tools || '[]'), permissions: JSON.parse(a.permissions || '[]'),
       parentCode: a.parentCode, dailyQuota: a.dailyQuota,

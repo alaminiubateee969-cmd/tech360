@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
-import ZAI from 'z-ai-web-dev-sdk'
+import { createZaiClient } from '@/lib/ai-provider'
+import { withTimeout, resolveAgentTimeoutMs } from '@/lib/agents/resilience'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { featureEnabled } from '@/lib/features'
@@ -101,8 +102,11 @@ function htmlToText(html: string): string {
 async function fetchWebsiteText(url: string): Promise<{ result: EnrichWebResearch; text: string | null }> {
   const fetchedAt = new Date().toISOString()
   try {
-    const zai = await ZAI.create()
-    const page = await zai.functions.invoke('page_reader', { url })
+    const zai = createZaiClient()
+    const page = await withTimeout(
+      (signal) => zai.functions.invoke('page_reader', { url }, { signal }),
+      resolveAgentTimeoutMs(),
+    ) as { code?: number; data?: { html?: string; title?: string } }
     const html = page?.data?.html
     if (page.code !== 200 || !html) {
       return {
@@ -123,7 +127,7 @@ async function fetchWebsiteText(url: string): Promise<{ result: EnrichWebResearc
         url,
         fetchedAt,
         chars: text.length,
-        title: sanitizeText(page.data.title ?? url, 200),
+        title: sanitizeText(page.data?.title ?? url, 200),
       },
       text,
     }
