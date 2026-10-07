@@ -212,9 +212,9 @@ function modelDelegate(name: string) {
       return { count: removed }
     },
     count: async ({ where }: { where?: Row } = {}) => { guardDb(); return rows().filter((r) => applyWhere(r, where)).length },
-    aggregate: async ({ _sum }: { _sum?: Row } = {}) => {
+    aggregate: async ({ where, _sum }: { where?: Row; _sum?: Row } = {}) => {
       guardDb()
-      const all = rows()
+      const all = rows().filter((r) => applyWhere(r, where))
       const sums: Row = {}
       for (const key of Object.keys(_sum ?? {})) sums[key] = all.reduce((total, row) => total + Number(row[key] ?? 0), 0)
       return { _count: all.length, _sum: Object.keys(_sum ?? {}).length ? sums : null }
@@ -683,14 +683,31 @@ async function main() {
     await fakeDb.aiAgent.update({ where: { code: 'REV-002' }, data: { status: 'ACTIVE' } })
     return { error: paused.error, providerCalls: 0 }
   })
+  await record(executionChecks, 'yesterday quota usage does not block today (daily, not permanent)', async () => {
+    providerBehavior = { kind: 'ok', content: 'within quota', tokens: 9 }
+    seedAndPush('AiAgentExecution', { agentCode: 'REV-002', status: 'SUCCESS', tokensUsed: 5_000_000, input: 'x', workflow: 'QUOTA_PROBE', correlationId: 'quota-yesterday', createdAt: new Date(Date.now() - 26 * 3600_000), startedAt: new Date(Date.now() - 26 * 3600_000), completedAt: new Date(Date.now() - 26 * 3600_000), durationMs: 10 })
+    const callsBefore = providerCalls.length
+    const allowed = await runAgent('REV-002', { input: 'x', workflow: 'VERIFY' })
+    assert.equal(allowed.ok, true, `a previous day's usage must not lock the agent out: ${allowed.error}`)
+    assert.equal(providerCalls.length, callsBefore + 1)
+    return { tokensUsedYesterday: 5_000_000, status: allowed.status, providerCalls: 1 }
+  })
   await record(executionChecks, 'daily quota stops execution before the provider is called', async () => {
     const callsBefore = providerCalls.length
-    await fakeDb.aiAgent.update({ where: { code: 'REV-002' }, data: { tokensToday: 200 * 4000 } })
+    seedAndPush('AiAgentExecution', { agentCode: 'REV-002', status: 'SUCCESS', tokensUsed: 200 * 4000, input: 'x', workflow: 'QUOTA_PROBE', correlationId: 'quota-today', createdAt: new Date(), startedAt: new Date(), completedAt: new Date(), durationMs: 10 })
     const over = await runAgent('REV-002', { input: 'x', workflow: 'VERIFY' })
     assert.equal(over.error, 'Daily quota exceeded')
-    assert.equal(providerCalls.length, callsBefore)
+    assert.equal(over.status, 'FAILED')
+    assert.equal(providerCalls.length, callsBefore, 'the provider was called despite the quota being exhausted')
+    assert.equal(table('AiAgentExecution').find((r) => r.correlationId === 'quota-today')!.workflow, 'QUOTA_PROBE')
+    const measured = await engineModule.tokensUsedToday('REV-002')
+    assert.ok(measured >= 200 * 4000, `today's ledger must include the 800,000-token probe, saw ${measured}`)
+    const dayStart = engineModule.startOfUtcDay()
+    assert.equal(`${dayStart.getUTCHours()}:${dayStart.getUTCMinutes()}`, '0:0', 'the quota day must start at UTC midnight')
+    // release the probe so the full 44-agent sweep runs against a clean quota
+    await fakeDb.aiAgentExecution.deleteMany({ where: { workflow: 'QUOTA_PROBE' } })
     await fakeDb.aiAgent.update({ where: { code: 'REV-002' }, data: { tokensToday: 0 } })
-    return { error: over.error, providerCalls: 0 }
+    return { error: over.error, tokensUsedToday: measured, quotaLimitTokens: 200 * 4000, providerCalls: 0, dayBoundary: 'UTC midnight' }
   })
   await record(executionChecks, 'ungranted privileged tool is refused and audited', async () => {
     const callsBefore = providerCalls.length

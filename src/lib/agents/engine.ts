@@ -64,8 +64,9 @@ function extractJson(raw: string): Record<string, unknown> | null {
 }
 
 /**
- * Execute an agent by code. Loads its live registry row (DB),
- * enforces governance (status/quota), runs the LLM, records everything.
+ * Close out executions that were never finished because the process died
+ * mid-request. Anything still RUNNING past twice the configured timeout plus a
+ * minute is recorded as TIMEOUT, so the ledger never shows a phantom in-flight run.
  */
 export async function reapStaleAgentExecutions(now = new Date()): Promise<number> {
   const timeoutMs = resolveAgentTimeoutMs()
@@ -86,6 +87,31 @@ export async function reapStaleAgentExecutions(now = new Date()): Promise<number
     },
   })
   return result.count
+}
+
+/**
+ * A quota unit is an approximate token budget; the number is a policy knob,
+ * not a billing figure.
+ */
+const QUOTA_TOKENS_PER_UNIT = 4000
+
+/** Day boundary used for the per-agent daily quota (UTC, no DST ambiguity). */
+export function startOfUtcDay(now = new Date()): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+}
+
+/**
+ * Tokens actually consumed by this agent today, derived from the execution
+ * ledger. `AiAgent.tokensToday` is only a display cache: deriving the quota
+ * from persisted executions is what makes the daily limit reset itself at the
+ * day boundary instead of locking an agent out permanently.
+ */
+export async function tokensUsedToday(agentCode: string, now = new Date()): Promise<number> {
+  const totals = await db.aiAgentExecution.aggregate({
+    where: { agentCode, status: 'SUCCESS', createdAt: { gte: startOfUtcDay(now) } },
+    _sum: { tokensUsed: true },
+  })
+  return Number(totals._sum.tokensUsed ?? 0)
 }
 
 /**
@@ -144,8 +170,10 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Cross-client access denied', status: 'FAILED' }
   }
 
-  if (agent.tokensToday >= agent.dailyQuota * 4000) {
-    await logError({ source: 'AGENT', code: 'QUOTA_EXCEEDED', message: `Agent ${agentCode} exceeded daily quota`, correlationId })
+  const quotaLimit = agent.dailyQuota * QUOTA_TOKENS_PER_UNIT
+  const tokensToday = await tokensUsedToday(agentCode)
+  if (tokensToday >= quotaLimit) {
+    await logError({ source: 'AGENT', code: 'QUOTA_EXCEEDED', message: `Agent ${agentCode} exceeded daily quota (${tokensToday}/${quotaLimit} tokens today)`, correlationId })
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Daily quota exceeded', status: 'FAILED' }
   }
 
@@ -200,7 +228,9 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     })
     await db.aiAgent.update({
       where: { code: agentCode },
-      data: { executionCount: { increment: 1 }, successCount: { increment: 1 }, tokensToday: { increment: tokensUsed } },
+      // tokensToday is the recomputed day total (not an ever-incremented cache),
+      // so the admin counter and the quota gate agree and reset at the day boundary.
+      data: { executionCount: { increment: 1 }, successCount: { increment: 1 }, tokensToday: tokensToday + tokensUsed },
     })
     if (run.tool) {
       await db.auditLog.create({
