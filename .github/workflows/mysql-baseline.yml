@@ -6,9 +6,9 @@
 #
 #   prisma migrate diff --from-empty --to-schema-datamodel  →  0_init/migration.sql
 #
-# It then proves the baseline by applying it to an empty database with
-# `prisma migrate deploy` (exactly what production runs) and asserting
-# that zero drift remains.
+# It then proves the generated DDL by applying it to an empty disposable
+# database and asserting that zero drift remains. Production continues to use
+# the reviewed incremental migrations via `prisma migrate deploy`.
 #
 # The generated SQL is uploaded as an artifact to be reviewed and
 # committed. Nothing here ever touches a production database.
@@ -102,8 +102,13 @@ jobs:
           fi
           echo "✓ no DROP TABLE / DROP DATABASE / TRUNCATE in the baseline"
 
-      - name: Apply the baseline exactly as production would
-        run: npx prisma migrate deploy
+      # This workflow generates a complete from-empty baseline alongside the
+      # repository's already-applied incremental migrations. `migrate deploy`
+      # would apply both the generated baseline and migrations 1/2, so it would
+      # intentionally fail on duplicate tables. Apply the generated DDL directly
+      # to the empty disposable database, then use Prisma's drift check below.
+      - name: Apply the generated baseline DDL to empty MySQL
+        run: npx prisma db execute --file prisma/migrations/0_init/migration.sql --schema prisma/schema.prisma
 
       - name: Report MySQL text/blob default expressions
         if: always()
