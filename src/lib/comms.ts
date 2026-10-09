@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { COMPANY } from '@/lib/constants'
 import { toE164 } from '@/lib/phone'
+import { DEAD_LETTER, backoffMs, decideRetry, scheduleAfterFailure } from '@/lib/outbox-retry'
 
 // ============================================================
 // TECH360 COMMUNICATIONS — real adapters, honest statuses
@@ -158,6 +159,35 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
 }
 
 // ------------------------------------------------------------
+// Channel dispatch — the send itself, with NO database write.
+// sendCommunication() persists a record around this; the outbox retry
+// path calls it directly so a retry updates the ORIGINAL row instead of
+// inserting a duplicate.
+// ------------------------------------------------------------
+export async function dispatchChannel(entry: { channel: string; to?: string; subject?: string; body: string }): Promise<SendResult> {
+  switch (entry.channel) {
+    case 'WHATSAPP':
+      return sendWhatsApp(entry.to ?? '', entry.body)
+    case 'EMAIL':
+      return sendEmail(entry.to ?? '', entry.subject ?? 'Tech360', wrapEmailHtml(entry.subject ?? 'Tech360', entry.body))
+    case 'SMS':
+      return sendSms(entry.to ?? '', entry.body)
+    default:
+      // Social outbound publishing is approval-gated and provider-specific.
+      return { ok: false, status: 'NOT_CONFIGURED', error: `${entry.channel} outbound not connected` }
+  }
+}
+
+/** True when the Super Admin channel switch currently permits sending. */
+async function channelSwitchAllows(channel: string): Promise<boolean> {
+  const channelFlag: Record<string, 'whatsapp' | 'email' | 'sms'> = { WHATSAPP: 'whatsapp', EMAIL: 'email', SMS: 'sms' }
+  const flag = channelFlag[channel]
+  if (!flag) return true
+  const { featureEnabled } = await import('@/lib/features')
+  return featureEnabled(flag)
+}
+
+// ------------------------------------------------------------
 // Persist + dispatch — every message is recorded against Client ID
 // ------------------------------------------------------------
 export async function sendCommunication(entry: {
@@ -195,40 +225,28 @@ export async function sendCommunication(entry: {
   // When a channel is switched OFF, the send attempt is refused honestly
   // (the Communication record is still kept, status DISABLED_BY_ADMIN) —
   // records stay for the audit trail, but nothing is ever sent.
-  const channelFlag: Record<string, 'whatsapp' | 'email' | 'sms'> = { WHATSAPP: 'whatsapp', EMAIL: 'email', SMS: 'sms' }
-  const flag = channelFlag[entry.channel]
-  if (flag) {
-    const { featureEnabled } = await import('@/lib/features')
-    if (!(await featureEnabled(flag))) {
-      const disabled: SendResult = { ok: false, status: 'DISABLED_BY_ADMIN', error: entry.channel + ' channel is switched OFF by Super Admin — send refused (record kept)' }
-      await db.communication.update({ where: { id: comm.id }, data: { status: disabled.status, error: disabled.error ?? null, sentAt: null } })
-      return { communicationId: comm.id, result: disabled }
-    }
+  if (!(await channelSwitchAllows(entry.channel))) {
+    const disabled: SendResult = { ok: false, status: 'DISABLED_BY_ADMIN', error: entry.channel + ' channel is switched OFF by Super Admin — send refused (record kept)' }
+    await db.communication.update({ where: { id: comm.id }, data: { status: disabled.status, error: disabled.error ?? null, sentAt: null, lastAttemptAt: new Date() } })
+    return { communicationId: comm.id, result: disabled }
   }
 
-  let result: SendResult
-  switch (entry.channel) {
-    case 'WHATSAPP':
-      result = await sendWhatsApp(entry.to ?? '', entry.body)
-      break
-    case 'EMAIL':
-      result = await sendEmail(entry.to ?? '', entry.subject ?? 'Tech360', wrapEmailHtml(entry.subject ?? 'Tech360', entry.body))
-      break
-    case 'SMS':
-      result = await sendSms(entry.to ?? '', entry.body)
-      break
-    default:
-      // Social outbound publishing is approval-gated and provider-specific.
-      result = { ok: false, status: 'NOT_CONFIGURED', error: `${entry.channel} outbound not connected` }
-  }
+  const result = await dispatchChannel(entry)
 
+  // A first-send failure is recorded as FAILED (not DEAD_LETTER) so operators
+  // keep seeing it in the normal failure view, but it already carries a backoff
+  // deadline so the ops loop cannot hammer it on the next tick. `attempts` stays
+  // 0 here: no automatic re-dispatch has happened yet.
+  const now = new Date()
   await db.communication.update({
     where: { id: comm.id },
     data: {
       status: result.status,
       error: result.error ?? null,
       providerMessageId: result.providerMessageId ?? null,
-      sentAt: result.status === 'SENT' ? new Date() : null,
+      sentAt: result.status === 'SENT' ? now : null,
+      lastAttemptAt: now,
+      nextRetryAt: result.status === 'FAILED' ? new Date(now.getTime() + backoffMs(1)) : null,
     },
   })
 
@@ -242,6 +260,181 @@ export async function sendCommunication(entry: {
   }
 
   return { communicationId: comm.id, result }
+}
+
+// ------------------------------------------------------------
+// OUTBOX RETRY — bounded, back-off-respecting, duplicate-safe.
+//
+// Re-dispatches ONE existing outbound record through its real channel
+// adapter and updates THAT record. It never inserts a second row, so a
+// message that keeps failing drains into DEAD_LETTER instead of
+// multiplying. The attempt is claimed with a conditional update on
+// `attempts`, so two concurrent dispatchers (ops loop + an operator
+// clicking retry) cannot both send the same message.
+// ------------------------------------------------------------
+export type OutboxRetryOutcome = {
+  ok: boolean
+  communicationId: string
+  action: 'SENT' | 'FAILED' | 'BACKOFF_WAIT' | 'DEAD_LETTER' | 'NOT_RETRYABLE' | 'DISABLED_BY_ADMIN' | 'SKIPPED'
+  attempts: number
+  reason: string
+  status?: string
+  error?: string | null
+  nextRetryAt?: string | null
+}
+
+export async function retryCommunicationOutbox(
+  commId: string,
+  options: { force?: boolean; actor?: string } = {},
+): Promise<OutboxRetryOutcome> {
+  const comm = await db.communication.findUnique({ where: { id: commId } })
+  if (!comm) {
+    return { ok: false, communicationId: commId, action: 'SKIPPED', attempts: 0, reason: 'Communication not found' }
+  }
+  if (comm.direction !== 'OUT') {
+    return { ok: false, communicationId: comm.id, action: 'SKIPPED', attempts: comm.attempts, reason: 'Only outbound messages can be retried' }
+  }
+
+  const now = new Date()
+  const decision = decideRetry(
+    {
+      id: comm.id,
+      channel: comm.channel,
+      recipient: comm.recipient,
+      status: comm.status,
+      error: comm.error,
+      attempts: comm.attempts,
+      nextRetryAt: comm.nextRetryAt,
+      lastAttemptAt: comm.lastAttemptAt,
+    },
+    now,
+  )
+
+  // An operator retry overrides the backoff window and a spent budget, but it
+  // can never override a permanent failure — a bad recipient stays a bad
+  // recipient, and re-sending would only produce another hard failure.
+  if (decision.action === 'NOT_RETRYABLE' && decision.requiresOperator && comm.status !== DEAD_LETTER) {
+    await db.communication.update({
+      where: { id: comm.id },
+      data: { status: DEAD_LETTER, nextRetryAt: null, lastAttemptAt: now },
+    })
+    await notifyDeadLetter(comm.id, comm.channel, comm.recipient, decision.reason, options.actor)
+    return { ok: false, communicationId: comm.id, action: 'NOT_RETRYABLE', attempts: comm.attempts, reason: decision.reason, status: DEAD_LETTER }
+  }
+
+  if (decision.action === 'DEAD_LETTER') {
+    await db.communication.update({ where: { id: comm.id }, data: { status: DEAD_LETTER, nextRetryAt: null, lastAttemptAt: now } })
+    await notifyDeadLetter(comm.id, comm.channel, comm.recipient, decision.reason, options.actor)
+    return { ok: false, communicationId: comm.id, action: 'DEAD_LETTER', attempts: comm.attempts, reason: decision.reason, status: DEAD_LETTER }
+  }
+
+  if (decision.action === 'BACKOFF_WAIT' && !options.force) {
+    return {
+      ok: false,
+      communicationId: comm.id,
+      action: 'BACKOFF_WAIT',
+      attempts: comm.attempts,
+      reason: decision.reason,
+      status: comm.status,
+      nextRetryAt: comm.nextRetryAt?.toISOString() ?? null,
+    }
+  }
+
+  // ---- claim the attempt (optimistic concurrency) ----
+  const claimed = await db.communication.updateMany({
+    where: { id: comm.id, attempts: comm.attempts },
+    data: { lastAttemptAt: now },
+  })
+  if (claimed.count !== 1) {
+    return {
+      ok: false,
+      communicationId: comm.id,
+      action: 'SKIPPED',
+      attempts: comm.attempts,
+      reason: 'Another dispatcher already claimed this attempt (duplicate send prevented)',
+    }
+  }
+
+  if (!(await channelSwitchAllows(comm.channel))) {
+    const reason = `${comm.channel} channel is switched OFF by Super Admin — retry refused (record kept)`
+    await db.communication.update({ where: { id: comm.id }, data: { status: 'DISABLED_BY_ADMIN', error: reason, nextRetryAt: null } })
+    return { ok: false, communicationId: comm.id, action: 'DISABLED_BY_ADMIN', attempts: comm.attempts, reason, status: 'DISABLED_BY_ADMIN' }
+  }
+
+  // ---- real re-dispatch through the same adapter as the original send ----
+  const result = await dispatchChannel({
+    channel: comm.channel,
+    to: comm.recipient ?? undefined,
+    subject: comm.subject ?? undefined,
+    body: comm.body,
+  })
+
+  if (result.ok) {
+    await db.communication.update({
+      where: { id: comm.id },
+      data: {
+        status: result.status,
+        error: null,
+        providerMessageId: result.providerMessageId ?? null,
+        sentAt: new Date(),
+        attempts: comm.attempts + 1,
+        lastAttemptAt: new Date(),
+        nextRetryAt: null,
+      },
+    })
+    return {
+      ok: true,
+      communicationId: comm.id,
+      action: 'SENT',
+      attempts: comm.attempts + 1,
+      reason: `Delivered on retry #${comm.attempts + 1} via ${comm.channel}`,
+      status: result.status,
+    }
+  }
+
+  // Failure: apply the SAME policy so the record either backs off again or
+  // terminates. The updated error replaces the previous one so diagnostics
+  // always describe the latest attempt.
+  const next = scheduleAfterFailure({ ...comm, error: result.error ?? comm.error, attempts: comm.attempts }, new Date())
+  await db.communication.update({
+    where: { id: comm.id },
+    data: {
+      status: next.status,
+      error: result.error ?? null,
+      attempts: next.attempts,
+      lastAttemptAt: new Date(),
+      nextRetryAt: next.nextRetryAt,
+    },
+  })
+  if (next.deadLettered) await notifyDeadLetter(comm.id, comm.channel, comm.recipient, next.reason, options.actor)
+
+  return {
+    ok: false,
+    communicationId: comm.id,
+    action: next.deadLettered ? 'DEAD_LETTER' : 'FAILED',
+    attempts: next.attempts,
+    reason: result.error ?? next.reason,
+    status: next.status,
+    error: result.error ?? null,
+    nextRetryAt: next.nextRetryAt?.toISOString() ?? null,
+  }
+}
+
+/** One notification per terminal failure, so operators learn why it stopped. */
+async function notifyDeadLetter(id: string, channel: string, recipient: string | null, reason: string, actor?: string): Promise<void> {
+  try {
+    await db.notification.create({
+      data: {
+        type: 'SYSTEM',
+        severity: 'WARNING',
+        title: `${channel} message dead-lettered`,
+        body: `${reason}. Recipient ${recipient ?? 'unknown'}; message ${id}. Automatic retries have stopped — fix the cause and retry manually.${actor ? ` (${actor})` : ''}`,
+        link: 'communications',
+      },
+    })
+  } catch {
+    // A notification failure must never mask the retry outcome.
+  }
 }
 
 // ------------------------------------------------------------

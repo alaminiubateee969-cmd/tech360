@@ -4,6 +4,7 @@ import { generateCeoReport } from '@/lib/reports'
 import { logError } from '@/lib/security'
 import { randomUUID } from 'node:crypto'
 import { finishCycle, tryStartCycle } from '@/lib/agents/resilience'
+import { OUTBOX_MAX_ATTEMPTS } from '@/lib/outbox-retry'
 
 // ============================================================
 // TECH360 AUTONOMOUS OPERATIONS LOOP — the production engine.
@@ -26,7 +27,7 @@ export type OpsScan = {
   ts: string
   unscoredLeads: Array<{ id: string; clientId: string; name: string; businessName: string | null; businessType: string | null; source: string; lead: { requirements: string | null; budgetRange: string | null; projectType: string | null } | null }>
   overdueLeads: Array<{ id: string; clientId: string; name: string; whatsapp: string | null; email: string | null; pipelineStage: string; updatedAt: Date }>
-  retryableComms: Array<{ id: string; clientId: string | null; channel: string; recipient: string | null; body: string; subject: string | null; error: string | null }>
+  retryableComms: Array<{ id: string; clientId: string | null; channel: string; recipient: string | null; body: string; subject: string | null; error: string | null; attempts: number; nextRetryAt: Date | null }>
   failedAutomations: Array<{ id: string; workflow: string; error: string | null; correlationId: string | null; clientId: string | null }>
   unresolvedErrors: Array<{ id: string; source: string; code: string | null; message: string; correlationId: string | null }>
   staleApprovals: Array<{ id: string; type: string; title: string; clientId: string | null; createdAt: Date }>
@@ -61,7 +62,22 @@ export async function opsScan(): Promise<OpsScan> {
       select: { id: true, clientId: true, name: true, whatsapp: true, email: true, pipelineStage: true, updatedAt: true },
       take: 10,
     }),
-    db.communication.findMany({ where: { status: 'FAILED', direction: 'OUT', createdAt: { gte: new Date(now - 7 * 24 * 3600 * 1000) } }, orderBy: { createdAt: 'asc' }, take: 10, select: { id: true, clientId: true, channel: true, recipient: true, body: true, subject: true, error: true } }),
+    // Failed outbound mail that is DUE for a retry: still under the attempt
+    // budget and past its backoff deadline. DEAD_LETTER rows are excluded by
+    // the status filter, so a permanently-undeliverable message is never
+    // re-selected no matter how long it sits in the table.
+    db.communication.findMany({
+      where: {
+        status: 'FAILED',
+        direction: 'OUT',
+        attempts: { lt: OUTBOX_MAX_ATTEMPTS },
+        createdAt: { gte: new Date(now - 7 * 24 * 3600 * 1000) },
+        OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: new Date(now) } }],
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 10,
+      select: { id: true, clientId: true, channel: true, recipient: true, body: true, subject: true, error: true, attempts: true, nextRetryAt: true },
+    }),
     db.automationLog.findMany({ where: { status: 'FAILED', startedAt: { gte: new Date(now - 24 * 3600 * 1000) } }, orderBy: { startedAt: 'desc' }, take: 10, select: { id: true, workflow: true, error: true, correlationId: true, clientId: true } }),
     db.errorLog.findMany({ where: { resolved: false, createdAt: { gte: new Date(now - 24 * 3600 * 1000) } }, orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, source: true, code: true, message: true, correlationId: true } }),
     db.approvalRequest.findMany({ where: { status: 'PENDING', createdAt: { lt: new Date(now - 12 * 3600 * 1000) } }, take: 10, select: { id: true, type: true, title: true, clientId: true, createdAt: true } }),
@@ -248,7 +264,10 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
       performed.push(`followup ${lead.clientId} → ${String(r.data.sendStatus ?? r.data.error ?? '?')}`)
     }
 
-    // 3) FAILED COMM RETRY — safe re-attempt with backoff
+    // 3) FAILED COMM RETRY — re-dispatches the SAME record through
+    // retryCommunicationOutbox: bounded by OUTBOX_MAX_ATTEMPTS, exponentially
+    // backed off, dead-lettered on permanent failure. opsScan already filtered
+    // out rows that are not due, so this never hammers a provider.
     for (const comm of data.retryableComms.slice(0, 3)) {
       const r = await executeOpsAction('RETRY_COMM', { commId: comm.id })
       performed.push(`retry ${comm.channel} → ${String(r.data.status ?? 'failed')}`)
