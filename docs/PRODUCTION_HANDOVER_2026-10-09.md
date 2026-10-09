@@ -211,14 +211,44 @@ not ok 7 - tests/database-workflows.test.ts
 
 `.github/workflows/ci.yml:273` runs `npm test`, so CI picks up the new flag automatically.
 
-**Migration safety:** `prisma migrate deploy` could not be run here (no engine, no MySQL).
-Instead, `tests/outbox-migration-parity.test.ts` statically proves the hand-written SQL matches
-`schema.prisma` (column names, MySQL types, nullability, defaults, index names), that every
-`@@index` on `Communication` has a migration creating it, and that the file contains no
-destructive statement. CI still performs the authoritative `prisma migrate diff --exit-code`
-drift check against a disposable MySQL 8.0.
+**Migration safety:** `prisma migrate deploy` could not be run in this sandbox (no engine, no
+MySQL). Two independent checks cover it instead:
 
-**Status of the repair: PASS in source and test. NOT VERIFIED against a real MySQL instance.**
+1. **Local static parity** — `tests/outbox-migration-parity.test.ts` proves the hand-written SQL
+   matches `schema.prisma` (column names, MySQL types, nullability, defaults, index names), that
+   every `@@index` on `Communication` has a migration creating it, and that the file contains no
+   destructive statement.
+2. **CI against real MySQL** — see §5.1.
+
+**Status of the repair: PASS in source, unit test, integration test, and CI against MySQL 8.0.
+Still NOT VERIFIED against the *production* Hostinger database** (no hPanel access this session).
+
+### 5.1 CI evidence — the checks this sandbox could not run
+
+Branch `arena/3b287e56-tech360`, commit `b4f7471`, PR **#20**:
+
+```
+Generate + prove the MySQL baseline   pass  1m10s
+Validate against MySQL                pass  2m36s
+```
+
+`gh pr checks 20` reports both jobs **pass**. The `Validate against MySQL` job
+(`.github/workflows/ci.yml`) runs the steps that were blocked locally, so a green result here is
+direct evidence for each:
+
+| CI step | What it proves about this change |
+|---|---|
+| `Prisma schema is in sync with the MySQL type map` | the `Communication` field additions are valid MySQL |
+| `Generate Prisma client` | the engine download succeeds in CI, so the 3 local typecheck errors are environmental |
+| `Apply migrations to the disposable MySQL (as production would)` | **migration `3_outbox_retry_integrity` applied cleanly to a real MySQL 8.0** |
+| `Baseline must leave zero schema drift` | `prisma migrate diff --exit-code` — the hand-written SQL matches `schema.prisma` exactly |
+| `Typecheck` | clean once the client is generated — no new type errors from this change |
+| `Business and database isolation tests (MySQL)` | includes `tests/database-workflows.test.ts`, the one test that fails locally |
+| `Verify production seed bootstrap is idempotent and non-destructive` | the schema change did not break seeding |
+| `Production build` + `Validate standalone server` + `Smoke-test the generated production server` | the application still builds and boots with this change |
+
+**CI green is repository evidence only.** Per blocker `B-001` it does **not** prove Hostinger
+deployed this SHA; that remains separately unverified.
 
 ---
 
@@ -233,9 +263,9 @@ Statuses below come from reading/executing the named files, not from documentati
 | T03 | Conversation saved and visible in CRM | **PARTIAL** | Persistence PASSES (`ChatConversation`/`ChatMessage`). CRM sync FAILS: the route writes only a `TrackingEvent` named `lead`, never a CRM `Lead`/`Client` |
 | T04 | Returning customer's history retrieved | **PARTIAL** | `latestConversationFor()` in `src/lib/chat.ts` keys on `anonId` only; not linked to a CRM customer record |
 | T05 | AI creates a CRM task, assigns an agent | **NOT VERIFIED** | Requires DB + configured provider |
-| T06 | Agent executes and persists a result | **NOT VERIFIED (source looks correct)** | `src/lib/agents/engine.ts` writes `AiAgentExecution` with real gating; cannot run without DB + provider |
+| T06 | Agent executes and persists a result | **NOT VERIFIED** | `src/lib/agents/engine.ts` writes `AiAgentExecution` with real gating; needs a configured `ZAI_*` provider. No AI answer was produced or claimed in this session |
 | T07 | Follow-up queued and sent via email | **NOT VERIFIED** | `sendCommunication` writes `QUEUED` then dispatches via nodemailer; no SMTP available here |
-| T08 | Delivery status and failure retries recorded | **PASS (source + tests) / NOT VERIFIED in prod** | This is the §4 repair; 12 integration tests execute the real path |
+| T08 | Delivery status and failure retries recorded | **PASS** (source + 12 integration tests + CI MySQL) / not yet exercised on live SMTP | This is the §4 repair; the real `retryCommunicationOutbox()` is executed by the tests, and CI applied the migration with zero drift |
 | T09 | Project creation succeeds | **NOT VERIFIED** | DB required |
 | T10 | Planner creates trackable work items | **NOT VERIFIED** | DB + provider required |
 | T11 | Approved tool creates a real downloadable artifact | **NOT VERIFIED** | `FileRecord` stores real bytes (`content Bytes? @db.LongBlob`); `scripts/build-source-archive.sh` exists. No artifact produced in this session |
@@ -280,9 +310,10 @@ Statuses below come from reading/executing the named files, not from documentati
    history, HTTPS, `/api/health` and a real AI/email round-trip all still require hPanel access
    and provider credentials that this session does not have. Carried forward from `B-001`…`B-006`.
 
-6. **`prisma generate` is blocked in this sandbox**, so no local build or DB-backed test could
-   run. CI (full network) is the only place the 3 typecheck errors and
-   `database-workflows.test.ts` can be cleared.
+6. **RESOLVED for this change:** `prisma generate` is blocked in this sandbox, so the 3
+   typecheck errors and `database-workflows.test.ts` could not be cleared locally. CI on commit
+   `b4f7471` cleared both (see §5.1) and also applied the new migration to a real MySQL 8.0 with
+   zero drift. Local `npm run build` remains impossible in this sandbox for future work.
 
 ---
 
