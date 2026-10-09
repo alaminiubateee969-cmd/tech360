@@ -928,7 +928,29 @@ model EmailCampaign {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  events         CampaignEvent[]
+
   @@index([status])
+}
+
+// Engagement evidence for a sent email campaign — the open pixel and the
+// click redirect both write one row per real recipient interaction
+// (email-marketing parity: mohamed11sk/Email-markting open pixel,
+// knsoftic/Email_Markting click tracking). Rows are only ever created by
+// the public tracking endpoints; nothing is simulated.
+model CampaignEvent {
+  id        String   @id @default(cuid())
+  campaign  EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId String
+  kind      String // OPEN | CLICK
+  email     String? // subscriber email when the signed token resolves
+  targetUrl String? @db.Text // CLICK: the destination the link redirected to
+  userAgent String? @db.Text
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([campaignId, kind])
+  @@index([campaignId, kind, email])
 }
 
 // ============================================================

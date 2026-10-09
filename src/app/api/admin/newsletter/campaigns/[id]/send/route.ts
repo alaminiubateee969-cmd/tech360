@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { audit } from '@/lib/security'
 import { channelConfigured, sendCommunication } from '@/lib/comms'
-import { sanitizeCampaignHtml, signUnsubToken } from '@/lib/newsletter'
+import { sanitizeCampaignHtml, signUnsubToken, signTrackToken, injectTracking } from '@/lib/newsletter'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,8 +55,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const failures: Array<{ email: string; error: string }> = []
   for (const sub of subscribers) {
     const unsubUrl = `${baseUrl}/api/newsletter/unsubscribe?token=${encodeURIComponent(signUnsubToken(sub.email))}`
+    // Engagement tracking (email-marketing parity): campaign-body links go
+    // through the click redirect and the open pixel is appended — both
+    // signed to this subscriber. The unsubscribe footer is added AFTER
+    // injection so the opt-out link is never tracked.
+    const trackToken = signTrackToken(campaign.id, sub.email)
     const html =
-      sanitizeCampaignHtml(campaign.body) +
+      injectTracking(campaign.id, sanitizeCampaignHtml(campaign.body), baseUrl, trackToken) +
       `\n<p style="font-size:12px;color:#94a3b8;margin-top:24px;">You receive this because you subscribed to TECH360 insights. ` +
       `<a href="${unsubUrl}" style="color:#009FE3;">Unsubscribe</a> — one click, instant.</p>`
     const res = await sendCommunication({

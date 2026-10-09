@@ -54,6 +54,12 @@ const PLATFORM_VERIFIED = {
   'https://openrouter.ai': 'Fetched 200 — "The Unified Interface For Every Model"; 500+ models, OpenAI-compatible gateway.',
   'https://openrouter.ai/blog/tutorials/build-tool-calling-agent-loop': 'Fetched 200 — "Build a Reliable Tool-Calling Agent Loop on OpenRouter" (9/17/2026), the loop shape adopted in src/lib/agents/engine.ts.',
   'https://developer.meta.com/ai': 'Domain answers to automated clients with HTTP 403 (bot protection); the Meta AI developer portal is reachable in a browser.',
+  // October 9 batch — researched via platform web search on 2026-10-09 (the
+  // sandbox egress allowlist blocks these hosts for direct fetches).
+  'https://www.enerpize.com': 'Researched 2026-10-09 via platform web search — "Enerpize: cloud-based all-in-one ERP for SMBs" by IZAM: accounting, sales/invoicing, POS, inventory, HR/payroll, CRM, purchasing, operations; 30+ modules, SMB pricing from $9.99/month.',
+  'https://www.aipraktor.com': 'Researched 2026-10-09 via platform web search — "AiPraktor" (Bengali-language site): an AI agent for Messenger, Instagram and WhatsApp that answers customers, recognizes products from photos, takes voice-note orders and sends courier updates.',
+  'https://supercool.com': 'Researched 2026-10-09 via platform web search — Supercool (Famous Labs / Deal.ai): an AI creation platform ("synthetic intelligence") for building websites, videos, music and books from a description; launched a chat-based website builder (Aug 2026 press coverage).',
+  'https://join.supercool.com': 'Researched 2026-10-09 via platform web search — the join/signup portal of the same Supercool product.',
 }
 
 function platformVerified(url) {
@@ -217,6 +223,24 @@ const REFERENCES = [
   ['https://openrouter.ai', 'Model gateway', 'NOT_APPLICABLE — model access is provided by the server-side SDK; no self-hosted gateway is required.'],
   ['https://openrouter.ai/blog/tutorials/build-tool-calling-agent-loop', 'Agent-loop tutorial', 'ADOPTED — the tool-calling loop with strict JSON, retries and execution records is implemented in `src/lib/agents/engine.ts`.'],
   ['https://developer.meta.com/ai', 'Meta AI dev', 'NOT_APPLICABLE — Meta developer platform docs; WhatsApp Cloud API is the implemented Meta integration.'],
+
+  // ── October 9 batch (email marketing · doc-chat · prompt gallery · GPT tooling) ──
+  ['https://github.com/mohamed11sk/Email-markting', 'Email marketing', 'ADOPTED — the open-rate tracking pixel from this PHP app ships as `/api/newsletter/track/open` (signed per-subscriber 1×1 GIF, one CampaignEvent row per real open) with per-campaign opens/open-rate in the Newsletter view.'],
+  ['https://github.com/knsoftic/Email_Markting', 'Email marketing', 'ADOPTED — click tracking from this Laravel platform ships as `/api/newsletter/track/click` (302 redirect, deduplicated unique clicks, safe http(s)-only destinations) plus unique opens/clicks/CTR per campaign and list totals. Multi-tenant SMTP rotation and IMAP inbound remain out of scope (single-tenant platform, honest channel states).'],
+  ['https://github.com/Lin-jun-xiang/docGPT-langchain', 'Doc-chat / RAG', 'ADOPTED — "chat with your docs" parity: `POST /api/admin/knowledge/upload` accepts PDF (unpdf), DOCX (mammoth) and TXT/MD/CSV/JSON/HTML with REAL text extraction, deterministic content scanning and sha256 provenance, indexing each document for the existing AI-ranked knowledge search (`src/lib/doc-extract.ts`).'],
+  ['https://github.com/songguoxs/gpt4o-image-prompts', 'Prompt gallery', 'ADOPTED — the curated prompt-pattern gallery ships as `src/data/image-prompts.ts` (36 English patterns across 8 business categories with tags, placeholders and tips) browsable, searchable, tag-filterable and one-click copyable in the admin Prompt Library view (`src/components/admin/PromptLibraryView.tsx`).'],
+  ['https://github.com/FoundationAgents/MetaGPT', 'Multi-agent framework', 'NOT_APPLICABLE as a Python framework. ADOPTED analogue — the AI Software Factory (one brief → pages/models/endpoints/agents/docs) plus the 44-agent registry with roles, tools, approvals and SOP-driven execution records.'],
+  ['https://github.com/ramon-victor/freegpt-webui', 'GPT web UI', 'NOT_APPLICABLE — archived reverse-engineered free-GPT UI. TECH360 chat is shipped natively (ChatWidget + Conversations inbox) and uses the official server-side SDK.'],
+  ['https://github.com/teremterem/claude-code-gpt-5-codex', 'CLI adapter', 'NOT_APPLICABLE — developer CLI proxy for running Claude Code against other models.'],
+  ['https://github.com/GetGoAPI/Free-GPT-Grok-Gemini-Claude-API', 'Free LLM API relay', 'NOT_APPLICABLE — third-party free-model relay. Model access comes from the server-side SDK; routing business data through unofficial relays would violate the platform security posture.'],
+  ['https://github.com/zai-org/GLM-5', 'LLM release', 'NOT_APPLICABLE — model weights/release notes. TECH360 uses hosted SDK models and never claims a self-hosted LLM.'],
+  ['https://github.com/GAIR-NLP/LiveTalk', 'Avatar video research', 'NOT_APPLICABLE — real-time interactive avatar video diffusion model (needs a 24GB+ GPU); same boundary as the other video-model references: Media Studio plans content, it does not render avatars.'],
+  ['https://github.com/tinystruct/smalltalk', 'Java chat module', 'NOT_APPLICABLE — Java chat integration library; live chat is a shipped native feature (`ChatConversation`/`ChatMessage` + shared inbox).'],
+  ['https://github.com/morluto/rea', 'Reverse-engineering agents', 'NOT_APPLICABLE — binary analysis CLI for reverse engineering. ADOPTED analogue — the governed agent registry with per-agent tools/permissions/approvals.'],
+  ['https://www.enerpize.com', 'SMB ERP SaaS', 'ADOPTED (applicable core) — invoicing with per-invoice payment allocation, quotes→projects→payments lifecycle, client portal and finance KPIs cover the agency-applicable ERP core; inventory/POS/payroll/manufacturing modules are out of scope (TECH360 sells services, not SKUs).'],
+  ['https://www.aipraktor.com', 'AI commerce agent', 'ADOPTED (applicable core) — a Bengali Messenger/Instagram/WhatsApp commerce agent. TECH360\'s shipped analogs: the honest WhatsApp channel architecture + automation service catalog, the DB-backed live chat with chat-to-lead conversion, and AI Software Factory support/booking verticals a client can order. A standalone consumer commerce agent is a client deliverable, not this platform.'],
+  ['https://supercool.com', 'AI creation platform', 'ADOPTED (applicable core) — conversational create-anything platform. The in-product analogs are the AI Software Factory (brief → deliverable app), Media Studio, Content Studio and the NL Command Center; TECH360 does not market a consumer creative suite.'],
+  ['https://join.supercool.com', 'AI creation platform', 'NOT_APPLICABLE — the signup/join portal of supercool.com (same product, same disposition).'],
 ]
 
 function ghHeaders() {

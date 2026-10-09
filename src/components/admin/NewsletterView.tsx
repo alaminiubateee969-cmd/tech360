@@ -62,6 +62,7 @@ interface CampaignRow {
   agentExecId?: string | null
   createdBy?: string | null
   createdAt?: string | null
+  engagement?: { opens: number; clicks: number; lastEventAt: string | null }
 }
 
 interface NewsletterResponse {
@@ -69,7 +70,7 @@ interface NewsletterResponse {
   subscribers?: SubscriberRow[]
   campaigns?: CampaignRow[]
   growth?: Array<{ date?: string | null; total?: number | null }>
-  stats?: { active?: number | null; unsubscribed?: number | null; total?: number | null; campaignsSent?: number | null }
+  stats?: { active?: number | null; unsubscribed?: number | null; total?: number | null; campaignsSent?: number | null; totalUniqueOpens?: number | null; totalUniqueClicks?: number | null }
 }
 
 const TOOLTIP_STYLE: React.CSSProperties = {
@@ -373,6 +374,30 @@ export function NewsletterView() {
                       {isSent ? ` · sent ${fmtDateShort(c.sentAt)} to ${c.recipientCount ?? 0} recipient(s)` : ''}
                     </p>
                   </div>
+                  {isSent ? (
+                    <div className="mt-3 grid grid-cols-4 gap-2 rounded-md border border-slate-800 bg-slate-900/40 p-2" aria-label={`Engagement for ${c.name}`}>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-600">Opens</p>
+                        <p className="text-sm font-semibold text-slate-200">{num(c.engagement?.opens ?? 0)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-600">Open rate</p>
+                        <p className="text-sm font-semibold text-slate-200">
+                          {c.recipientCount ? Math.round(((c.engagement?.opens ?? 0) / c.recipientCount) * 100) : 0}%
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-600">Clicks</p>
+                        <p className="text-sm font-semibold text-[#009FE3]">{num(c.engagement?.clicks ?? 0)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-600">CTR</p>
+                        <p className="text-sm font-semibold text-[#009FE3]">
+                          {c.recipientCount ? Math.round(((c.engagement?.clicks ?? 0) / c.recipientCount) * 100) : 0}%
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                   {isDraft ? (
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <Button
@@ -409,7 +434,8 @@ export function NewsletterView() {
         <span>
           <span className="font-medium text-slate-400">Sends are honest:</span> the EMAIL channel must be configured by Super Admin
           before any campaign can go out. Drafting uses the real CST-020 agent execution — when the provider is unavailable the
-          failure is shown exactly as it happened, and no draft is created.
+          failure is shown exactly as it happened, and no draft is created. Open and click numbers come from the real tracking
+          pixel and link redirect embedded in each sent email — they stay at zero until a real recipient actually interacts.
         </span>
       </p>
 
