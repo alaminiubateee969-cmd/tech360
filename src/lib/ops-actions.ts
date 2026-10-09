@@ -101,14 +101,16 @@ export async function executeOpsAction(action: string, payload: OpsPayload): Pro
 
       case 'RETRY_COMM': {
         const commId = sanitizeText(payload.commId, 40)
-        const comm = await db.communication.findUnique({ where: { id: commId } })
-        if (!comm) return fail(404, 'Communication not found')
-        if (comm.direction !== 'OUT') return fail(400, 'Only outbound messages can be retried')
-        const { result } = await sendCommunication({
-          clientId: comm.clientId ?? undefined, channel: comm.channel, to: comm.recipient ?? undefined,
-          subject: comm.subject ?? undefined, body: comm.body, agentCode: 'OPS-CONDUCTOR',
-        })
-        return { ok: result.status === 'SENT', status: 200, data: { action: 'RETRY_COMM', status: result.status, error: result.error ?? null } }
+        // Goes through the outbox retry policy: bounded attempts, exponential
+        // backoff, DEAD_LETTER on permanent failure, and it updates the ORIGINAL
+        // record instead of inserting a duplicate row per attempt.
+        const { retryCommunicationOutbox } = await import('@/lib/comms')
+        const r = await retryCommunicationOutbox(commId, { actor: sanitizeText(String(payload.actor ?? 'AI_OPS'), 80) })
+        return {
+          ok: r.ok,
+          status: r.communicationId === commId && r.action !== 'SKIPPED' ? 200 : 404,
+          data: { action: 'RETRY_COMM', status: r.status ?? r.action, attempts: r.attempts, retryAction: r.action, error: r.reason ?? null },
+        }
       }
 
       case 'EXPIRE_PREVIEWS': {

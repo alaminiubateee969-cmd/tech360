@@ -325,8 +325,14 @@ model Communication {
   messageType       String   @default("TEXT") // TEXT | TEMPLATE | MEDIA | DOCUMENT | SYSTEM
   templateName      String?
   providerMessageId String?
-  status            String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | RECEIVED | FAILED | NOT_CONFIGURED
+  status            String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | RECEIVED | FAILED | NOT_CONFIGURED | DISABLED_BY_ADMIN | DEAD_LETTER
   error             String? @db.Text
+  // Outbox retry bookkeeping — see src/lib/outbox-retry.ts.
+  // attempts counts AUTOMATIC re-dispatches (the original send is 0).
+  // nextRetryAt null means "eligible now"; DEAD_LETTER never retries.
+  attempts          Int      @default(0)
+  lastAttemptAt     DateTime?
+  nextRetryAt       DateTime?
   workflowId        String?  // automation log id / n8n workflow code
   agentCode         String?  // originating agent
   approvalId        String?  // linked approval request
@@ -338,6 +344,7 @@ model Communication {
   @@index([clientId, channel])
   @@index([status])
   @@index([channel, direction])
+  @@index([status, nextRetryAt])
 }
 
 model Meeting {

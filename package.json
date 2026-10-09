@@ -9,7 +9,7 @@
     "start": "NODE_ENV=production node .next/standalone/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "tsx --test --experimental-test-module-mocks tests/**/*.test.ts",
     "test:business": "tsx --test tests/business-policies.test.ts",
     "db:verify": "node scripts/verify-database.mjs",
     "verify:ai": "tsx scripts/verify-ai-production.ts --out docs/ai-production-verification.json",
