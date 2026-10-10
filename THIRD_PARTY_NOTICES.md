@@ -11,6 +11,16 @@ Each project's licence text is available in its repository.
 | Admin Marketing Kit (`src/data/marketing-templates.ts`) — copy frameworks | [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) | MIT |
 | n8n W26 Lead Enrichment (`n8n/W26_LEAD_ENRICHMENT.json`) — validate → score → route design | [parthasarathy123/n8n-gtm-lead-enrichment](https://github.com/parthasarathy123/n8n-gtm-lead-enrichment) (Apify/Clay/Zoho/Sheets legs replaced by free sources) | MIT |
 | SMS channel (`src/lib/comms.ts`) — calls the httpSMS HTTP API | [NdoleStudio/httpsms](https://github.com/NdoleStudio/httpsms) (AGPL-3.0, used only as an external service — none of its code is included), [httpsms-node](https://github.com/NdoleStudio/httpsms-node) (MIT, API shape reference) | AGPL-3.0 / MIT |
+| Newsletter engagement tracking (`src/lib/newsletter.ts` — open pixel, click redirect, unique-open/click stats) — tracking design pattern | [mohamed11sk/Email-markting](https://github.com/mohamed11sk/Email-markting) (open-pixel concept), [knsoftic/Email_Markting](https://github.com/knsoftic/Email_Markting) (open+click concept). Both repos carry **no licence file** — no code was copied; the TECH360 implementation is original (HMAC-signed tokens, deduplicated events, safe redirects) | no licence — concepts only |
+| Knowledge upload with text extraction (`src/lib/doc-extract.ts`, `/api/admin/knowledge/upload`) — "chat with your docs" ingestion pattern (PDF/WORD/CSV/TXT) | [Lin-jun-xiang/docGPT-langchain](https://github.com/Lin-jun-xiang/docGPT-langchain) | MIT |
+| Curated image-prompt pattern library (`src/data/image-prompts.ts`) — browsable tag-filterable gallery concept; all 36 prompts are original English business patterns written for this codebase, none copied | [songguoxs/gpt4o-image-prompts](https://github.com/songguoxs/gpt4o-image-prompts) (**no licence file** — gallery concept only, zero prompt text reused) | no licence — concept only |
+
+## Runtime dependencies added for knowledge extraction
+
+| Package | Purpose | Licence |
+|---|---|---|
+| [unpdf](https://github.com/unjs/unpdf) | Serverless-friendly PDF text extraction for knowledge uploads | MIT |
+| [mammoth](https://github.com/mwilliamson/mammoth.js) | DOCX → raw-text extraction for knowledge uploads | BSD-2-Clause |
 
 ## Deliberately not integrated
 AGPL/GPL projects whose code would impose copyleft on this product (RSSHub, Firecrawl, VoiceStudio, OpenViking, SiYuan, idurar-erp-crm, frappe/crm, linphone) — run them as separate services if needed. Projects with no licence file cannot legally be reused.

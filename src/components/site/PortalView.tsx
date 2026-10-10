@@ -19,7 +19,7 @@ import {
   Download, KeyRound, Eye, Package, ArrowRight, CheckCircle2, Clock, Lock,
   Star, Handshake, LinkIcon, Undo2, Paperclip, Trash2, FileUp, FileCheck2,
   ShieldAlert, File as FileIcon, Upload, CalendarDays, Video, CalendarX, Send,
-  Receipt, Loader2, X,
+  Receipt, Loader2, X, Bot,
 } from 'lucide-react'
 
 type PortalData = {
@@ -35,6 +35,7 @@ type PortalData = {
   payments: Array<{ milestone: string | null; amount: number; currency: string; status: string; verifiedAt: string | null }>
   invoices: Array<{ number: string; amount: number; currency: string; status: string; notes: string | null }>
   communications: Array<{ channel: string; direction: string; subject: string | null; preview: string; status: string; at: string }>
+  workforce: Array<{ id: string; agentName: string; agentTitle: string | null; work: string; status: string; at: string; durationMs: number | null }>
   meetings: Array<{ id: string; status: string; scheduledAt: string | null; reason: string | null; channel: string | null; bookingLink: string | null; notes: string | null; clientResponse: string | null; clientRespondedAt: string | null }>
   documents: Array<{ id: string; name: string; mimeType: string; size: number; note: string | null; scanStatus: string; direction: string; classification: string; at: string }>
   policy: { previewBeforePayment: boolean; sourceAfterFullPayment: boolean; supportContact: string; whatsapp: string }
@@ -184,8 +185,7 @@ export default function PortalView() {
         {/* Left column: project + scope + payments (min-w-0 lets cards shrink on mobile) */}
         <div className="min-w-0 space-y-6 lg:col-span-2">
           {/* Project */}
-          <SectionCard icon={<Package className="h-5 w-5" />} title="Your project">
-            {data.project ? (
+          <SectionCard icon={<Package className="h-5 w-5" />} title="Your project">            {data.project ? (
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -211,6 +211,9 @@ export default function PortalView() {
               <EmptyLine text="Your project is created after preview approval and payment verification — you will see it here the moment it starts." />
             )}
           </SectionCard>
+
+          {/* AI workforce at work (SuperCool-inspired delivery transparency) */}
+          <WorkforceCard entries={data.workforce} />
 
           {/* Scope */}
           <SectionCard icon={<FileText className="h-5 w-5" />} title={data.scope ? `Final Scope of Work (v${data.scope.version})` : 'Scope of Work'}>
@@ -981,6 +984,56 @@ function MeetingsCard({ meetings, onDone }: { meetings: PortalData['meetings']; 
 }
 
 // ---------------- Shared bits ----------------
+// AI workforce activity — a WORK LOG for the client (which agent, what kind
+// of work, status, when). Never shows agent input/output payloads: those stay
+// internal until the team deliberately shares a deliverable.
+function WorkforceCard({ entries }: { entries: PortalData['workforce'] }) {
+  const WORKFORCE_STATUS: Record<string, { label: string; className: string }> = {
+    RUNNING: { label: 'Working now', className: 'border-sky-200 bg-sky-50 text-sky-700' },
+    SUCCESS: { label: 'Completed', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+    FAILED: { label: 'Needs attention', className: 'border-red-200 bg-red-50 text-red-700' },
+    TIMEOUT: { label: 'Timed out', className: 'border-amber-200 bg-amber-50 text-amber-700' },
+    AWAITING_APPROVAL: { label: 'Awaiting approval', className: 'border-violet-200 bg-violet-50 text-violet-700' },
+  }
+  return (
+    <SectionCard icon={<Bot className="h-5 w-5" />} title="Our AI team at work">
+      {entries.length > 0 ? (
+        <div>
+          <p className="mb-3 text-xs text-slate-500">
+            Your project is delivered by our AI workforce — specialized agents working around the clock under human supervision.
+            This is their work log; finished work reaches you through previews and deliveries, never as raw output.
+          </p>
+          <ol className="space-y-2.5">
+            {entries.map((e) => {
+              const s = WORKFORCE_STATUS[e.status] ?? { label: e.status, className: 'border-slate-200 bg-slate-50 text-slate-600' }
+              return (
+                <li key={e.id} className="flex items-start gap-2.5">
+                  <span className="mt-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#063B8F]/10" aria-hidden="true">
+                    <Bot className="size-3.5 text-[#063B8F]" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-800">
+                      {e.agentName}
+                      {e.agentTitle ? <span className="font-normal text-slate-500"> — {e.agentTitle}</span> : null}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {e.work} · {fmtDate(e.at)}
+                      {e.durationMs != null ? ` · ${Math.max(1, Math.round(e.durationMs / 1000))}s` : ''}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${s.className}`}>{s.label}</span>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      ) : (
+        <EmptyLine text="No AI work has run on your account yet — activity appears here as your project moves through delivery." />
+      )}
+    </SectionCard>
+  )
+}
+
 function SectionCard({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <motion.section initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.35 }}>

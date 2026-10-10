@@ -11,15 +11,25 @@ export async function GET() {
   if (!(await featureEnabled('public_website')) || (await featureEnabled('maintenance_mode'))) {
     return Response.json({ reviews: [] })
   }
-  const reviews = await db.review.findMany({
-    where: { published: true, status: 'APPROVED', consent: true },
-    orderBy: { moderatedAt: 'desc' },
-    take: 12,
-    include: {
-      client: { select: { name: true, businessName: true, country: true } },
-      project: { select: { name: true, plan: true } },
-    },
-  })
+  let reviews
+  try {
+    reviews = await db.review.findMany({
+      where: { published: true, status: 'APPROVED', consent: true },
+      orderBy: { moderatedAt: 'desc' },
+      take: 12,
+      include: {
+        client: { select: { name: true, businessName: true, country: true } },
+        project: { select: { name: true, plan: true } },
+      },
+    })
+  } catch {
+    // honest degradation: the database did not answer — an empty list with
+    // the reason is truthful; a fabricated or half-loaded list is not.
+    return Response.json(
+      { reviews: [], error: 'Reviews are temporarily unavailable — the database did not answer.' },
+      { status: 503 },
+    )
+  }
 
   return Response.json({
     reviews: reviews.map((r) => ({

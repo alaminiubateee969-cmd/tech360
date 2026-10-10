@@ -1881,9 +1881,9 @@ export const STATS: { value: string; label: string; note: string }[] = [
     note: "TECH360 LLC · Missouri LC014737249 · EIN 98-1940053 — on-record operations, verifiable.",
   },
   {
-    value: "100+",
+    value: "110",
     label: "internal departments",
-    note: "A structured delivery organisation — every engagement runs through accountable departments, not one inbox.",
+    note: "A structured delivery organisation — 110 departments are defined in the platform's department registry and seeded into its database; every engagement runs through accountable departments, not one inbox.",
   },
   {
     value: "20",

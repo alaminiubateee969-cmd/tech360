@@ -10,7 +10,7 @@ One codebase, three surfaces:
 |---|---|---|
 | **Public website** | `/` (hash routes `#/services`, `#/industries`, `#/work`, `#/blog`, …) | Marketing site, blog, case studies, contact intake → real lead in the CRM |
 | **Client portal** | `/#/portal` (Client ID + email/WhatsApp) | Projects, milestones, meetings, files, previews, approvals, payments, invoices, handover |
-| **Super Admin console** | `/#/admin` (role-based login) | CRM, projects, payments, invoices (official pad documents), 44-agent AI workforce, NL Command Center, **AI Software Factory**, **Media Studio**, **Feed Hub**, **Calls & SMS**, governance switches, ops loop monitor, analytics, logs |
+| **Super Admin console** | `/#/admin` (role-based login) | CRM, projects, payments, invoices (official pad documents), 44-agent AI workforce, NL Command Center, **AI Software Factory**, **Media Studio**, **Feed Hub**, **Calls & SMS**, engagement-tracked newsletter (open pixel + click redirect, honest zeros until real sends), knowledge base with real PDF/DOCX/CSV/TXT upload + extraction, curated image-prompt library, governance switches, ops loop monitor, analytics, logs |
 | **Design kit** | `/#/design-kit` | The live design system: buttons, accessibly-labelled sequence/funnel/swimlane diagrams, infographics, interface mockups and tokens — the same components the site and generated client apps use |
 
 The official **company letterhead** (owner-provided pad + logo) drives every document the platform issues — SOW previews, tax invoices, the handover & acceptance certificate, printed legal policies (`src/lib/letterhead.ts`, see `OFFICIAL-DOCUMENTS.md`).

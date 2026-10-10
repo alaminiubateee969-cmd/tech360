@@ -5,20 +5,42 @@ import {
   Activity,
   AlertOctagon,
   BadgeCheck,
+  BarChart3,
+  BookOpen,
   Bot,
+  Boxes,
   Building2,
   CheckCircle2,
+  Clapperboard,
   Clock,
   CreditCard,
   DollarSign,
+  FileBarChart,
   FileClock,
   FolderKanban,
   ListTodo,
+  LucideIcon,
+  Mail,
+  Megaphone,
   MessageSquare,
+  MessagesSquare,
+  Newspaper,
+  PhoneCall,
+  Radar,
   RefreshCw,
+  Rss,
   Rocket,
+  ScrollText,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Terminal,
   UserPlus,
   Users,
+  Wallet,
+  Workflow,
   Zap,
 } from 'lucide-react'
 import {
@@ -203,7 +225,69 @@ function AiOpsCard({ loading }: { loading: boolean }) {
   )
 }
 
-export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => void }) {
+// ============================================================
+// MODULE DIRECTORY — every operating module reachable from the
+// dashboard in one click (Enerpize-style modular-ERP overview).
+// Ids mirror the sidebar routes in AdminApp exactly.
+// ============================================================
+const MODULE_DIRECTORY: Array<{ section: string; items: Array<{ id: string; label: string; blurb: string; icon: LucideIcon }> }> = [
+  {
+    section: 'Operations',
+    items: [
+      { id: 'ops', label: 'Ops Monitor', blurb: 'Heartbeats, queues and retries', icon: Radar },
+      { id: 'chat', label: 'Live Chat Inbox', blurb: 'Visitor threads and conversions', icon: MessagesSquare },
+      { id: 'approvals', label: 'Approvals', blurb: 'Client decisions waiting on you', icon: ShieldCheck },
+      { id: 'projects', label: 'Projects', blurb: 'Delivery board and artifacts', icon: FolderKanban },
+    ],
+  },
+  {
+    section: 'Relationships',
+    items: [
+      { id: 'leads', label: 'Leads', blurb: 'Inquiries before qualification', icon: UserPlus },
+      { id: 'clients', label: 'Clients', blurb: 'Records and journey stages', icon: Building2 },
+      { id: 'communications', label: 'Communications', blurb: 'Follow-ups and outreach', icon: MessageSquare },
+      { id: 'telephony', label: 'Calls & SMS', blurb: 'Voice and text activity', icon: PhoneCall },
+    ],
+  },
+  {
+    section: 'Finance & Production',
+    items: [
+      { id: 'payments', label: 'Payments', blurb: 'Milestones and verification', icon: Wallet },
+      { id: 'factory', label: 'App Factory', blurb: 'Conversations into scoped builds', icon: Boxes },
+      { id: 'media', label: 'Media Studio', blurb: 'Generated media and assets', icon: Clapperboard },
+      { id: 'blog', label: 'Blog Studio', blurb: 'Write, schedule, publish', icon: Newspaper },
+    ],
+  },
+  {
+    section: 'Growth & Intelligence',
+    items: [
+      { id: 'reviews', label: 'Reviews & Referrals', blurb: 'Moderate client feedback', icon: Star },
+      { id: 'newsletter', label: 'Newsletter', blurb: 'Campaigns and subscribers', icon: Mail },
+      { id: 'feeds', label: 'Feed Hub', blurb: 'Tech and industry updates', icon: Rss },
+      { id: 'seo', label: 'SEO Audit', blurb: 'Site health and keywords', icon: Search },
+      { id: 'marketing', label: 'Marketing Kit', blurb: 'Reusable collateral', icon: Megaphone },
+      { id: 'prompts', label: 'Prompt Library', blurb: 'Curated prompt recipes', icon: Sparkles },
+      { id: 'agents', label: 'AI Workforce', blurb: 'Registry, runs, approvals', icon: Bot },
+      { id: 'command', label: 'Command Center', blurb: 'Ask the Oracle in plain English', icon: Terminal },
+      { id: 'memory', label: 'AI Memory', blurb: 'What the AI remembers', icon: BookOpen },
+      { id: 'knowledge', label: 'Knowledge Base', blurb: 'Documents powering answers', icon: BookOpen },
+      { id: 'content', label: 'Content Studio', blurb: 'AI drafts under review', icon: Clapperboard },
+      { id: 'analytics', label: 'Analytics', blurb: 'Traffic and funnels', icon: BarChart3 },
+    ],
+  },
+  {
+    section: 'System',
+    items: [
+      { id: 'logs', label: 'Logs', blurb: 'Immutable audit trail', icon: ScrollText },
+      { id: 'n8n', label: 'n8n Workflows', blurb: 'External integrations', icon: Workflow },
+      { id: 'reports', label: 'Reports', blurb: 'Scheduled and on-demand', icon: FileBarChart },
+      { id: 'team', label: 'Team', blurb: 'Roles and sessions', icon: Users },
+      { id: 'settings', label: 'Settings', blurb: 'Flags and integrations', icon: Settings },
+    ],
+  },
+]
+
+export function DashboardView({ onOpenClient, onNavigate }: { onOpenClient: (id: string) => void; onNavigate: (id: string) => void }) {
   const { data, loading, error, refresh } = useApi<DashboardResponse>('/api/admin/dashboard')
   const stats = data?.stats
   const pipeline = (data?.pipeline ?? []).map((p) => ({
@@ -268,6 +352,39 @@ export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => 
 
       {/* LIVE AI operations evidence strip */}
       <AiOpsCard loading={loading} />
+
+      {/* Module directory — one click to any operating module */}
+      <SectionCard
+        title="Modules"
+        description="Every operating module of the platform, one click away."
+        contentClassName="p-4"
+      >
+        <nav aria-label="Platform modules" className="space-y-4">
+          {MODULE_DIRECTORY.map((group) => (
+            <div key={group.section}>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{group.section}</p>
+              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {group.items.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(m.id)}
+                      className="flex w-full items-start gap-2.5 rounded-lg border border-slate-700/70 bg-slate-800/40 p-2.5 text-left transition hover:border-[#009FE3]/60 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009FE3]"
+                      aria-label={`Open ${m.label} — ${m.blurb}`}
+                    >
+                      <m.icon className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-semibold text-slate-200">{m.label}</span>
+                        <span className="block truncate text-[10.5px] text-slate-500">{m.blurb}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </SectionCard>
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">

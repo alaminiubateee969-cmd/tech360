@@ -16,9 +16,18 @@ export async function POST(req: NextRequest) {
   const raw = await readJson(req)
   const email = sanitizeEmail(raw.email)
   if (!email) return Response.json({ error: 'Valid email required' }, { status: 400 })
-  await db.formSubmission.create({
-    data: { form: 'NEWSLETTER', name: 'Newsletter Subscriber', email, status: 'PROCESSED', ip, details: sanitizeText(raw.interest, 200) || null },
-  })
+  try {
+    await db.formSubmission.create({
+      data: { form: 'NEWSLETTER', name: 'Newsletter Subscriber', email, status: 'PROCESSED', ip, details: sanitizeText(raw.interest, 200) || null },
+    })
+  } catch {
+    // honest degradation: if the subscription could not be persisted it was
+    // NOT subscribed — reporting success would be a lie.
+    return Response.json(
+      { error: 'Subscription is temporarily unavailable — please try again shortly.' },
+      { status: 503 },
+    )
+  }
   // NewsletterSubscriber — idempotent by email. A previously
   // unsubscribed visitor who signs up again simply returns to ACTIVE
   // (resubscribe by action, not by a new row).
