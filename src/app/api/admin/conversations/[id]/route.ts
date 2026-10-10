@@ -85,6 +85,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       data: {
         lastMessageAt: new Date(),
         lastMessagePreview: body.slice(0, 120),
+        lastSender: 'ADMIN',
         unreadCount: 0,
       },
     })
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const sys = await db.chatMessage.create({
       data: { conversationId, sender: 'SYSTEM', body: `Conversation closed by ${g.user.email}` },
     })
-    await db.chatConversation.update({ where: { id: conversationId }, data: { lastMessageAt: now, lastMessagePreview: sys.body.slice(0, 120) } })
+    await db.chatConversation.update({ where: { id: conversationId }, data: { lastMessageAt: now, lastMessagePreview: sys.body.slice(0, 120), lastSender: 'SYSTEM' } })
     await audit({
       actor: g.user.email,
       action: 'CHAT_CLOSED',
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const sys = await db.chatMessage.create({
       data: { conversationId, sender: 'SYSTEM', body: `Conversation reopened by ${g.user.email}` },
     })
-    await db.chatConversation.update({ where: { id: conversationId }, data: { lastMessageAt: now, lastMessagePreview: sys.body.slice(0, 120) } })
+    await db.chatConversation.update({ where: { id: conversationId }, data: { lastMessageAt: now, lastMessagePreview: sys.body.slice(0, 120), lastSender: 'SYSTEM' } })
     await audit({
       actor: g.user.email,
       action: 'CHAT_REOPENED',

@@ -559,7 +559,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
               ) : projectId ? (
                 <ProjectDetailView projectId={projectId} onBack={() => setProjectId(null)} />
               ) : view === 'dashboard' ? (
-                <DashboardView onOpenClient={openClient} />
+                <DashboardView onOpenClient={openClient} onNavigate={(id) => navigate(id as Parameters<typeof navigate>[0])} />
               ) : view === 'ops' ? (
                 <OpsView />
               ) : view === 'leads' ? (

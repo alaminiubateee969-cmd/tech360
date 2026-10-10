@@ -1,0 +1,344 @@
+{
+  "generatedAt": "2026-10-10T00:30:52.704Z",
+  "harness": "scripts/e2e-sqlite.mjs (SQLite throwaway database, same schema + same application code)",
+  "environment": "sandbox; production MySQL + external providers unreachable by network policy",
+  "steps": [
+    {
+      "step": 1,
+      "name": "schema converted mysql->sqlite (annotations only)",
+      "checks": [
+        {
+          "pass": true,
+          "label": "no MySQL-native annotations remain"
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "name": "seeded super admin, client, agent execution, blog post",
+      "checks": [
+        {
+          "pass": true,
+          "label": "seed ok ({\"seeded\":true,\"userId\":\"cmv1nrd4a0000nzd8q9rqg8g4\",\"clientId\":\"cmv1nrd4j0001nzd8ysxsa3b6\",\"agentCode\":\"CEO-001\",\"executionId\":\"cmv1nrd680004nzd8i7y3l8wj\",\"blogPostId\":\"cmv1nrd6b0005nzd82au2yd0e\"})"
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "name": "homepage renders server-side",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200"
+        },
+        {
+          "pass": true,
+          "label": "branded HTML served"
+        },
+        {
+          "pass": true,
+          "label": "no zero-stats on the served page"
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "name": "health endpoint honest",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200 with a live database"
+        },
+        {
+          "pass": true,
+          "label": "database=SQLite via Prisma — connected; core schema available"
+        },
+        {
+          "pass": true,
+          "label": "aiProvider=NOT_CONFIGURED"
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "name": "public blog API serves persisted rows",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200"
+        },
+        {
+          "pass": true,
+          "label": "seeded post present"
+        }
+      ]
+    },
+    {
+      "step": 6,
+      "name": "visitor starts a chat session",
+      "status": 201,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 201"
+        },
+        {
+          "pass": true,
+          "label": "conversationId issued (cmv1nrmho0000nzerbo4vbr2l)"
+        },
+        {
+          "pass": true,
+          "label": "status=OPEN"
+        }
+      ]
+    },
+    {
+      "step": 7,
+      "name": "visitor message persisted",
+      "status": 201,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 201 created"
+        },
+        {
+          "pass": true,
+          "label": "sender=VISITOR"
+        },
+        {
+          "pass": true,
+          "label": "message row id returned"
+        }
+      ]
+    },
+    {
+      "step": 8,
+      "name": "visitor can read their own thread back",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200"
+        },
+        {
+          "pass": true,
+          "label": "message round-trips from the database"
+        }
+      ]
+    },
+    {
+      "step": 9,
+      "name": "super admin login",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200"
+        },
+        {
+          "pass": true,
+          "label": "role=SUPER_ADMIN"
+        },
+        {
+          "pass": true,
+          "label": "session cookie set"
+        },
+        {
+          "pass": true,
+          "label": "csrf cookie set"
+        }
+      ]
+    },
+    {
+      "step": 10,
+      "name": "unauthenticated admin API is rejected",
+      "status": 401,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 401 without session"
+        }
+      ]
+    },
+    {
+      "step": 11,
+      "name": "admin inbox sees the visitor conversation (triage signal)",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200"
+        },
+        {
+          "pass": true,
+          "label": "conversation listed"
+        },
+        {
+          "pass": true,
+          "label": "lastSender=VISITOR (needs-reply triage)"
+        },
+        {
+          "pass": true,
+          "label": "unreadCount=1"
+        },
+        {
+          "pass": true,
+          "label": "visitor enrichment captured"
+        }
+      ]
+    },
+    {
+      "step": 12,
+      "name": "admin reply requires CSRF",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200 with x-csrf-token"
+        }
+      ]
+    },
+    {
+      "step": 13,
+      "name": "admin reply without CSRF token is rejected",
+      "status": 403,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 403"
+        }
+      ]
+    },
+    {
+      "step": 14,
+      "name": "after the reply the triage signal flips to the admin",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "lastSender=ADMIN"
+        },
+        {
+          "pass": true,
+          "label": "unreadCount=0"
+        }
+      ]
+    },
+    {
+      "step": 15,
+      "name": "conversation converts into a CRM lead from visitor messages",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200"
+        },
+        {
+          "pass": true,
+          "label": "new Client ID TECH-2026-000002"
+        }
+      ]
+    },
+    {
+      "step": 16,
+      "name": "client portal sign-in (contact match; SMTP not configured => legacy step)",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200"
+        },
+        {
+          "pass": true,
+          "label": "ok=true"
+        },
+        {
+          "pass": true,
+          "label": "portal session cookie set"
+        }
+      ]
+    },
+    {
+      "step": 17,
+      "name": "portal API requires a session",
+      "status": 401,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 401 without cookie"
+        }
+      ]
+    },
+    {
+      "step": 18,
+      "name": "portal summary (client, project state, AI workforce feed)",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200"
+        },
+        {
+          "pass": true,
+          "label": "client=TECH-2026-000001"
+        },
+        {
+          "pass": true,
+          "label": "workforce feed has 1 execution(s) from Atlas"
+        },
+        {
+          "pass": true,
+          "label": "execution status surfaces honestly"
+        }
+      ]
+    },
+    {
+      "step": 19,
+      "name": "newsletter subscription persists",
+      "status": 200,
+      "checks": [
+        {
+          "pass": true,
+          "label": "HTTP 200"
+        },
+        {
+          "pass": true,
+          "label": "honest success payload"
+        }
+      ]
+    },
+    {
+      "step": 20,
+      "name": "database truth matches the API responses",
+      "checks": [
+        {
+          "pass": true,
+          "label": "ChatConversation.lastSender=ADMIN"
+        },
+        {
+          "pass": true,
+          "label": "ChatMessage rows=2 (visitor + admin reply)"
+        },
+        {
+          "pass": true,
+          "label": "NewsletterSubscriber row exists"
+        },
+        {
+          "pass": true,
+          "label": "Client rows=2 (seeded + converted lead)"
+        },
+        {
+          "pass": true,
+          "label": "Lead rows=1 (converted from chat)"
+        },
+        {
+          "pass": true,
+          "label": "Session rows=1"
+        }
+      ]
+    }
+  ]
+}

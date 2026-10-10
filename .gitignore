@@ -74,3 +74,4 @@ tool-results/
 /public/downloads/
 *.pem
 *.key
+.e2e-tmp/

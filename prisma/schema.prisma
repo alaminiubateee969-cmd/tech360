@@ -872,13 +872,14 @@ model Setting {
 model ChatConversation {
   id                 String   @id @default(cuid())
   anonId             String
-  status             String   @default("OPEN") // OPEN | CLOSED
+  status             String    @default("OPEN") // OPEN | CLOSED
   visitorName        String?
   visitorEmail       String?
   visitorPhone       String?
   subject            String? @db.Text
   lastMessagePreview String? @db.Text
   lastMessageAt      DateTime @default(now())
+  lastSender         String? // VISITOR | ADMIN | SYSTEM — denormalized triage signal (who has the last word)
   unreadCount        Int      @default(0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
       subject: c.subject,
       lastMessagePreview: c.lastMessagePreview,
       lastMessageAt: c.lastMessageAt,
+      lastSender: c.lastSender,
       unreadCount: c.unreadCount,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,

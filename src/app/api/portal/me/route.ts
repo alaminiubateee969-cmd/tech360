@@ -60,6 +60,25 @@ export async function GET(req: NextRequest) {
     select: { id: true, originalName: true, mimeType: true, size: true, note: true, scanStatus: true, relatedType: true, classification: true, createdAt: true },
   })
 
+  // AI workforce activity feed (agent-driven delivery transparency) — a WORK
+  // LOG only: which agent, what kind of work, status and when. The input and
+  // output payloads stay internal (they can contain analysis the team has
+  // not chosen to share), so clients see the team at work, never drafts.
+  const workforceExecutions = await db.aiAgentExecution.findMany({
+    where: { clientId: client.id },
+    orderBy: { startedAt: 'desc' },
+    take: 8,
+    select: {
+      id: true,
+      status: true,
+      workflow: true,
+      startedAt: true,
+      completedAt: true,
+      durationMs: true,
+      agent: { select: { code: true, name: true, title: true } },
+    },
+  })
+
   return Response.json({
     client: {
       clientId: client.clientId,
@@ -108,6 +127,15 @@ export async function GET(req: NextRequest) {
     communications: communications.map((c) => ({
       channel: c.channel, direction: c.direction, subject: c.subject,
       preview: (c.body ?? '').slice(0, 160), status: c.status, at: c.createdAt,
+    })),
+    workforce: workforceExecutions.map((e) => ({
+      id: e.id,
+      agentName: e.agent?.name ?? 'AI agent',
+      agentTitle: e.agent?.title ?? null,
+      work: (e.workflow ?? 'general work').replace(/_/g, ' ').toLowerCase(),
+      status: e.status,
+      at: e.startedAt,
+      durationMs: e.completedAt ? e.durationMs : null,
     })),
     meetings: client.meetings.map((m) => ({
       id: m.id,

@@ -34,6 +34,7 @@ type ConversationRow = {
   subject: string | null
   lastMessagePreview: string | null
   lastMessageAt: string
+  lastSender: 'VISITOR' | 'ADMIN' | 'SYSTEM' | null
   unreadCount: number
   createdAt: string
   updatedAt: string
@@ -312,7 +313,7 @@ export function ConversationsView() {
                         type="button"
                         onClick={() => openConversation(c.id)}
                         aria-current={active ? 'true' : undefined}
-                        aria-label={`Conversation with ${visitorLabel(c)}${c.subject ? ` about ${c.subject}` : ''}, ${c.messageCount} messages, last activity ${fmtAgo(c.lastMessageAt)}`}
+                        aria-label={`Conversation with ${visitorLabel(c)}${c.subject ? ` about ${c.subject}` : ''}, ${c.messageCount} messages, last activity ${fmtAgo(c.lastMessageAt)}${c.status === 'OPEN' && c.lastSender === 'VISITOR' ? ', waiting on a reply' : ''}`}
                         className={`w-full rounded-lg border p-2.5 text-left transition ${
                           active
                             ? 'border-[#009FE3]/50 bg-[#009FE3]/10'
@@ -326,6 +327,14 @@ export function ConversationsView() {
                             className={`size-2 shrink-0 rounded-full ${c.status === 'OPEN' ? 'bg-emerald-400' : 'bg-slate-600'}`}
                           />
                           <p className="min-w-0 flex-1 truncate text-sm font-medium text-slate-200">{visitorLabel(c)}</p>
+                          {c.status === 'OPEN' && c.lastSender === 'VISITOR' && (
+                            <span
+                              title="The visitor has the last word — this thread is waiting on a reply"
+                              className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400"
+                            >
+                              needs reply
+                            </span>
+                          )}
                           {c.unreadCount > 0 && (
                             <span
                               className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400"
