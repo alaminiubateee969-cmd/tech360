@@ -28,6 +28,7 @@ import {
   verifyTrackToken,
 } from '../src/lib/newsletter'
 import { extractDocumentText, sha256Hex } from '../src/lib/doc-extract'
+import { zipSync, strToU8 } from 'fflate'
 import { IMAGE_PROMPTS, IMAGE_PROMPT_CATEGORIES, allPromptTags, promptPlaceholders } from '../src/data/image-prompts'
 
 const ROOT = join(__dirname, '..')
@@ -211,6 +212,45 @@ describe('doc extraction: PDF (unpdf)', () => {
     const res = await extractDocumentText(Buffer.from('%PDF-1.4 not really a pdf'), 'broken.pdf', 'application/pdf')
     assert.equal(res.ok, false)
     if (!res.ok) assert.ok(res.error.includes('PDF parsing failed'))
+  })
+})
+
+describe('doc extraction: real DOCX (WordprocessingML via fflate, mammoth-free)', () => {
+  // Hand-built minimal-but-valid .docx: a ZIP containing the OOXML parts Word
+  // actually reads. Built with fflate so the test needs no fixtures on disk.
+  const docx = (() => {
+    const documentXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+      '<w:body>',
+      '<w:p><w:r><w:t>TECH360 knowledge upload</w:t></w:r></w:p>',
+      '<w:p><w:r><w:t>Budget &amp; timeline &lt;approved&gt;</w:t></w:r></w:p>',
+      '<w:p><w:r><w:t>Second</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t>paragraph</w:t></w:r></w:p>',
+      '</w:body></w:document>',
+    ].join('')
+    return Buffer.from(zipSync({
+      '[Content_Types].xml': strToU8('<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>'),
+      'word/document.xml': strToU8(documentXml),
+      'word/footnotes.xml': strToU8('<?xml version="1.0"?><w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:footnote w:id="1"><w:p><w:r><w:t>footnote insight</w:t></w:r></w:p></w:footnote></w:footnotes>'),
+    }))
+  })()
+
+  it('extracts paragraph text, entities and footnotes from a real .docx archive', async () => {
+    const res = await extractDocumentText(docx, 'spec.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    assert.equal(res.ok, true, JSON.stringify(res))
+    if (res.ok) {
+      assert.ok(res.text.includes('TECH360 knowledge upload'), `extracted: ${res.text.slice(0, 120)}`)
+      assert.ok(res.text.includes('Budget & timeline <approved>'), 'entities decode correctly')
+      assert.ok(res.text.includes('footnote insight'), 'footnotes are included')
+      assert.ok(/\n/.test(res.text), 'paragraph boundaries are preserved')
+    }
+  })
+
+  it('refuses a zip that is not a Word document instead of faking text', async () => {
+    const fakeZip = Buffer.from(zipSync({ 'not-word.txt': strToU8('hello') }))
+    const res = await extractDocumentText(fakeZip, 'fake.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    assert.equal(res.ok, false)
+    if (!res.ok) assert.ok(res.error.includes('Word parsing failed'))
   })
 })
 

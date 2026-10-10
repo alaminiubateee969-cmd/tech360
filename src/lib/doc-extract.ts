@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { unzipSync, strFromU8 } from 'fflate'
 
 // ============================================================
 // KNOWLEDGE-BASE DOCUMENT TEXT EXTRACTION
@@ -27,9 +28,57 @@ function extOf(filename: string): string {
   return (base.split('.').pop() ?? '').toLowerCase()
 }
 
+/**
+ * Extract readable text from a .docx (Office Open XML WordprocessingML).
+ *
+ * A .docx is a ZIP archive whose body lives in word/document.xml (plus
+ * optional footnotes/endnotes). We unzip with fflate — a tiny, zero-dependency,
+ * MIT-licensed library — and reduce the WordprocessingML to plain text:
+ * `w:p` closes a paragraph, `w:tab`/`w:br` map to whitespace, everything
+ * else is stripped and entities are decoded. This replaces mammoth (whose
+ * argparse/sprintf-js chain carried an unpatched DoS advisory,
+ * GHSA-hp3w-g68c-fv3c) with a dependency-light path we fully control.
+ * Malformed archives throw and are reported honestly by the caller.
+ */
+function extractDocxText(bytes: Buffer): string {
+  const parts = ['word/document.xml', 'word/footnotes.xml', 'word/endnotes.xml']
+  const chunks: string[] = []
+  for (const part of parts) {
+    let xml: string
+    try {
+      xml = strFromU8(unzipSync(new Uint8Array(bytes))[part])
+    } catch {
+      continue // part absent — fine; a fully invalid archive surfaces below
+    }
+    const text = xml
+      .replace(/<w:tab\b[^>]*\/?>/g, '\t')
+      .replace(/<w:br\b[^>]*\/?>/g, '\n')
+      .replace(/<\/w:p>/g, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/&#(\d+);/g, (_, d: string) => {
+        try { return String.fromCodePoint(Number(d)) } catch { return '' }
+      })
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, h: string) => {
+        try { return String.fromCodePoint(parseInt(h, 16)) } catch { return '' }
+      })
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+    if (text) chunks.push(text)
+  }
+  if (chunks.length === 0) {
+    throw new Error('not a readable .docx archive (missing word/document.xml)')
+  }
+  return chunks.join('\n\n')
+}
+
 /** Strip tags/entities down to readable text (for HTML-ish inputs). */
-function htmlToText(html: string): string {
-  return html
+function htmlToText(html: string): string {  return html
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
     .replace(/<\/(p|div|li|h[1-6]|tr|section|article|blockquote)>/gi, '\n')
@@ -61,8 +110,9 @@ function decodeTextBuffer(bytes: Buffer): string | null {
 
 /**
  * Extract the searchable text from an uploaded knowledge document.
- * PDF is parsed with unpdf (serverless pdf.js), DOCX with mammoth;
- * text-family formats are decoded natively.
+ * PDF is parsed with unpdf (serverless pdf.js), DOCX with the built-in
+ * WordprocessingML extractor (fflate unzip); text-family formats are
+ * decoded natively.
  */
 export async function extractDocumentText(bytes: Buffer, filename: string, mimeType: string): Promise<ExtractResult> {
   if (bytes.length === 0) return { ok: false, error: 'The file is empty.' }
@@ -103,12 +153,10 @@ export async function extractDocumentText(bytes: Buffer, filename: string, mimeT
     }
   }
 
-  // ---- DOCX (mammoth) ------------------------------------------------------
+  // ---- DOCX (self-contained extractor: unzip + WordprocessingML text) ------
   if (ext === 'docx' || mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
     try {
-      const mammoth = await import('mammoth')
-      const result = await mammoth.extractRawText({ buffer: bytes })
-      const text = (result.value ?? '').trim()
+      const text = extractDocxText(bytes)
       if (!text) return { ok: false, error: 'The Word document contains no readable text.' }
       return { ok: true, text: text.slice(0, 500_000) }
     } catch (err) {
