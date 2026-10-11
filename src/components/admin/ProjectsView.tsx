@@ -1,16 +1,33 @@
 'use client'
 
-import { useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   CheckCircle2,
   Circle,
+  Columns3,
   ExternalLink,
   FolderKanban,
   Loader2,
   RefreshCw,
+  Table2,
   XCircle,
 } from 'lucide-react'
+import {
+  DndContext,
+  DragOverlay,
+  pointerWithin,
+  closestCenter,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 import {
   api,
@@ -77,9 +94,29 @@ function paymentStatus(p: ProjectSummary): string {
 
 export function ProjectsView({ onOpenProject }: { onOpenProject: (id: string) => void }) {
   const [status, setStatus] = useState('ALL')
+  const [viewMode, setViewMode] = useState<'table' | 'board'>('table')
   const url = status === 'ALL' ? '/api/admin/projects' : `/api/admin/projects?status=${status}`
   const { data, loading, error, refresh } = useApi<{ projects?: ProjectSummary[] }>(url)
   const projects = data?.projects ?? []
+  const [localProjects, setLocalProjects] = useState<ProjectSummary[] | null>(null)
+  const displayProjects = localProjects ?? projects
+  useEffect(() => { setLocalProjects(null) }, [projects])
+  const handleProjectMove = useCallback(async (projectId: string, nextStatus: string) => {
+    const prev = displayProjects
+    // optimistic
+    setLocalProjects(prev.map((pr) => pr.id === projectId ? { ...pr, status: nextStatus } : pr))
+    try {
+      const res = await fetch(`/api/admin/projects/${encodeURIComponent(projectId)}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: nextStatus }) })
+      const json = await res.json().catch(()=> ({}))
+      if (!res.ok) throw new Error(json.error || `Move failed (${res.status})`)
+      // success — refresh to get server truth
+      refresh()
+    } catch (err) {
+      setLocalProjects(prev)
+      const msg = err instanceof Error ? err.message : 'Move failed'
+      toast.error(msg)
+    }
+  }, [displayProjects, refresh])
 
   return (
     <div>
@@ -100,19 +137,26 @@ export function ProjectsView({ onOpenProject }: { onOpenProject: (id: string) =>
         }
       />
 
-      <div className="mb-3 flex justify-start">
-        <label htmlFor="proj-status" className="sr-only">Filter by status</label>
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger id="proj-status" className="h-9 w-[190px] border-slate-800 bg-slate-950/60 text-slate-200">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
-            <SelectItem value="ALL">All statuses</SelectItem>
-            {[...PROJECT_STATUSES, 'ON_HOLD', 'CANCELLED'].map((s) => (
-              <SelectItem key={s} value={s}>{prettify(s)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <label htmlFor="proj-status" className="sr-only">Filter by status</label>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger id="proj-status" className="h-9 w-[190px] border-slate-800 bg-slate-950/60 text-slate-200">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+              <SelectItem value="ALL">All statuses</SelectItem>
+              {[...PROJECT_STATUSES, 'ON_HOLD', 'CANCELLED'].map((s) => (
+                <SelectItem key={s} value={s}>{prettify(s)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="hidden text-xs text-slate-600 sm:inline">{displayProjects.length} project(s) · Board drag reuses same PATCH validation as table (STAFF+ forward-1, MANAGER skips, 409 guard)</span>
+        </div>
+        <div className="flex rounded-lg border border-slate-700 p-1">
+          <button type="button" onClick={() => setViewMode('table')} aria-pressed={viewMode === 'table'} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${viewMode === 'table' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}><Table2 className="size-3.5" /> Table</button>
+          <button type="button" onClick={() => setViewMode('board')} aria-pressed={viewMode === 'board'} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${viewMode === 'board' ? 'bg-[#009FE3] text-white' : 'text-slate-500 hover:text-slate-300'}`}><Columns3 className="size-3.5" /> Board</button>
+        </div>
       </div>
 
       {error ? (
@@ -121,32 +165,110 @@ export function ProjectsView({ onOpenProject }: { onOpenProject: (id: string) =>
         </div>
       ) : null}
 
-      <DataTable
-        columns={[
-          { key: 'code', header: 'Code', cell: (p) => <span className="font-mono text-xs text-[#009FE3]">{p.code || '—'}</span> },
-          { key: 'client', header: 'Client', cell: (p) => <span className="font-medium text-slate-200">{p.client ? clientDisplayName(p.client) : '—'}</span> },
-          { key: 'name', header: 'Project', cell: (p) => <span className="text-slate-300">{p.name}</span> },
-          { key: 'plan', header: 'Plan', cell: (p) => <span className="text-slate-400">{p.plan || '—'}</span> },
-          { key: 'status', header: 'Status', cell: (p) => <StatusBadge status={p.status} /> },
-          { key: 'total', header: 'Total', cell: (p) => <span className="tabular-nums text-slate-300">{fmtMoney(num(p.totalAmount), p.currency ?? 'USD')}</span> },
-          { key: 'paid', header: 'Paid', cell: (p) => <span className="tabular-nums text-emerald-400">{fmtMoney(num(p.paidAmount), p.currency ?? 'USD')}</span> },
-          { key: 'paystatus', header: 'Payment', cell: (p) => <StatusBadge status={paymentStatus(p)} /> },
-          { key: 'started', header: 'Started', cell: (p) => <span className="text-xs text-slate-500">{fmtDateShort(p.startedAt)}</span> },
-        ]}
-        rows={projects}
-        loading={loading}
-        rowKey={(p) => p.id}
-        onRowClick={(p) => onOpenProject(p.id)}
-        empty={
-          <EmptyState
-            icon={FolderKanban}
-            title={status !== 'ALL' ? 'No projects with this status' : 'No projects yet'}
-            description={status !== 'ALL' ? 'Try a different status filter.' : 'A project is created when a verified payment activates an approved scope.'}
-          />
-        }
-        aria-label="Projects table"
-      />
+      {viewMode === 'table' ? (
+        <DataTable
+          columns={[
+            { key: 'code', header: 'Code', cell: (p) => <span className="font-mono text-xs text-[#009FE3]">{p.code || '—'}</span> },
+            { key: 'client', header: 'Client', cell: (p) => <span className="font-medium text-slate-200">{p.client ? clientDisplayName(p.client) : '—'}</span> },
+            { key: 'name', header: 'Project', cell: (p) => <span className="text-slate-300">{p.name}</span> },
+            { key: 'plan', header: 'Plan', cell: (p) => <span className="text-slate-400">{p.plan || '—'}</span> },
+            { key: 'status', header: 'Status', cell: (p) => <StatusBadge status={p.status} /> },
+            { key: 'total', header: 'Total', cell: (p) => <span className="tabular-nums text-slate-300">{fmtMoney(num(p.totalAmount), p.currency ?? 'USD')}</span> },
+            { key: 'paid', header: 'Paid', cell: (p) => <span className="tabular-nums text-emerald-400">{fmtMoney(num(p.paidAmount), p.currency ?? 'USD')}</span> },
+            { key: 'paystatus', header: 'Payment', cell: (p) => <StatusBadge status={paymentStatus(p)} /> },
+            { key: 'started', header: 'Started', cell: (p) => <span className="text-xs text-slate-500">{fmtDateShort(p.startedAt)}</span> },
+          ]}
+          rows={displayProjects}
+          loading={loading}
+          rowKey={(p) => p.id}
+          onRowClick={(p) => onOpenProject(p.id)}
+          empty={
+            <EmptyState
+              icon={FolderKanban}
+              title={status !== 'ALL' ? 'No projects with this status' : 'No projects yet'}
+              description={status !== 'ALL' ? 'Try a different status filter.' : 'A project is created when a verified payment activates an approved scope.'}
+            />
+          }
+          aria-label="Projects table"
+        />
+      ) : (
+        <ProjectsBoard projects={displayProjects} loading={loading} onMove={handleProjectMove} onOpen={onOpenProject} />
+      )}
     </div>
+  )
+}
+
+function ProjectCard({ project, onOpen }: { project: ProjectSummary; onOpen: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: project.id, data: { project } })
+  const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="rounded-lg border border-slate-800 bg-slate-900/70 p-2.5 text-left hover:border-slate-700">
+      <button type="button" onClick={() => onOpen(project.id)} className="w-full text-left">
+        <p className="truncate text-xs font-mono font-semibold text-[#009FE3]">{project.code || project.id.slice(0,8)}</p>
+        <p className="truncate text-sm font-semibold text-slate-200">{project.name}</p>
+        <p className="truncate text-xs text-slate-500">{project.client ? clientDisplayName(project.client) : '—'} · {project.plan || '—'}</p>
+        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500"><StatusBadge status={project.status} /> {fmtMoney(num(project.paidAmount), project.currency ?? 'USD')}/{fmtMoney(num(project.totalAmount), project.currency ?? 'USD')}</p>
+      </button>
+    </div>
+  )
+}
+
+function ProjectsBoard({ projects, loading, onMove, onOpen }: { projects: ProjectSummary[]; loading: boolean; onMove: (id: string, status: string) => void; onOpen: (id: string) => void }) {
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
+  const columns = [...PROJECT_STATUSES, 'ON_HOLD', 'CANCELLED'] as const
+  const grouped = useMemo(() => {
+    const m = new Map<string, ProjectSummary[]>()
+    for (const c of columns) m.set(c, [])
+    for (const pr of projects) {
+      const s = (pr.status ?? 'PLANNING').toUpperCase()
+      if (!m.has(s)) m.set(s, [])
+      m.get(s)!.push(pr)
+    }
+    return m
+  }, [projects, columns])
+  const handleDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id))
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveId(null)
+    const { active, over } = e
+    if (!over) return
+    const activeProj = projects.find((p) => p.id === String(active.id))
+    if (!activeProj) return
+    let targetStatus: string | null = null
+    const overId = String(over.id)
+    // over is either a column id or a card id
+    if ((columns as readonly string[]).includes(overId)) targetStatus = overId
+    else {
+      const overProj = projects.find((p) => p.id === overId)
+      if (overProj) targetStatus = (overProj.status ?? 'PLANNING').toUpperCase()
+    }
+    if (!targetStatus) return
+    if ((activeProj.status ?? '').toUpperCase() === targetStatus) return
+    void onMove(activeProj.id, targetStatus)
+  }
+  if (loading) return <div className="grid gap-2 text-xs text-slate-500">Loading board…</div>
+  return (
+    <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex gap-3 overflow-x-auto pb-3">
+        {columns.map((col) => {
+          const items = grouped.get(col) ?? []
+          return (
+            <div key={col} className="w-[260px] shrink-0 rounded-xl border border-slate-800 bg-slate-950/30">
+              <div className="sticky top-0 flex items-center justify-between border-b border-slate-800 bg-slate-900/60 px-3 py-2">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{prettify(col)}</span>
+                <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400">{items.length}</span>
+              </div>
+              <SortableContext id={col} items={items.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2 p-2 min-h-[120px]">
+                  {items.length === 0 ? <p className="rounded border border-dashed border-slate-700 p-3 text-center text-xs text-slate-600">Drop here</p> : items.map((pr) => <ProjectCard key={pr.id} project={pr} onOpen={onOpen} />)}
+                </div>
+              </SortableContext>
+            </div>
+          )
+        })}
+      </div>
+      <DragOverlay>{activeId ? (() => { const pr = projects.find((p) => p.id === activeId); return pr ? <div className="w-[260px] rounded-lg border border-[#009FE3]/50 bg-slate-900 p-2.5 shadow-lg"><p className="truncate text-xs font-mono text-[#009FE3]">{pr.code}</p><p className="truncate text-sm font-semibold text-slate-100">{pr.name}</p></div> : null })() : null}</DragOverlay>
+    </DndContext>
   )
 }
 
