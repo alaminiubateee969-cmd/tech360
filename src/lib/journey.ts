@@ -852,7 +852,11 @@ export async function activateProject(clientRowId: string, projectId?: string) {
 // ------------------------------------------------------------
 // STEP 11 — Completion / final payment / handover gates
 // ------------------------------------------------------------
-export async function prepareHandover(clientRowId: string, projectId: string, actor: string) {
+type PrepareHandoverResult =
+  | { blocked: true; reason: string }
+  | { blocked: false; handover: Awaited<ReturnType<typeof db.handoverRecord.create>>; reused?: boolean }
+
+export async function prepareHandover(clientRowId: string, projectId: string, actor: string): Promise<PrepareHandoverResult> {
   const project = await db.project.findUnique({
     where: { id: projectId },
     include: { client: true, payments: true, handovers: true, deliveries: true, tasks: true },
