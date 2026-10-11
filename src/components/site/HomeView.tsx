@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX, MessageCircle, Mail, Smartphone, CreditCard, Workflow, Github, Layers, Bot, ShieldCheck, Globe, Users, Megaphone, FolderKanban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,10 @@ import { FeaturesModulesDiagram } from "./diagrams";
 import { PrimaryLink, OutlineLink, AIAssistantLink, LinkArrow } from "./buttons";
 
 /* ------------------------------------------------------------------ */
-/* Cinematic hero                                                      */
+/* Buffer-grade hero — spec §4 headline                               */
 /* ------------------------------------------------------------------ */
 
-const HERO_WORDS = ["Strategy.", "Software.", "Automation.", "Growth."];
+const HERO_WORDS_NEW = ["One Platform.", "Your Entire Business.", "Powered by AI."] as const;
 
 function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -128,15 +128,15 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
         </motion.div>
 
         <h1 id="hero-heading" className="max-w-3xl">
-          {HERO_WORDS.map((word, i) => (
+          {HERO_WORDS_NEW.map((word, i) => (
             <motion.span
               key={word}
               initial={{ opacity: 0, y: 28 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.65, delay: 0.15 + i * 0.14, ease: [0.21, 0.47, 0.32, 0.98] }}
               className={cn(
-                "block text-4xl font-bold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl",
-                i === HERO_WORDS.length - 1 ? "text-[#009FE3]" : "text-white"
+                "block font-bold leading-[1.08] tracking-tight",
+                i === 2 ? "text-[#009FE3] text-4xl sm:text-6xl lg:text-7xl" : i === 1 ? "text-white text-3xl sm:text-5xl lg:text-6xl" : "text-white text-4xl sm:text-6xl lg:text-7xl"
               )}
             >
               {word}
@@ -149,6 +149,14 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.85 }}
           className="mt-6 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg"
+        >
+          Manage customers, conversations, marketing, projects, automation and delivery from one intelligent workspace.
+        </motion.p>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.95 }}
+          className="mt-3 max-w-2xl text-sm leading-relaxed text-white/60"
         >
           {COMPANY.subline}
         </motion.p>
@@ -171,13 +179,13 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
             Start Your Project
             <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-1" aria-hidden="true" />
           </PrimaryLink>
-          <OutlineLink href="#/work" dark>
-            Explore Our Work
+          <OutlineLink href="#/about" dark>
+            Explore TECH360
           </OutlineLink>
           <AIAssistantLink label="Talk to Tech360" />
         </motion.div>
 
-        {/* Trust strip */}
+        {/* Trust strip — honest, four pillars */}
         <motion.ul
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -209,6 +217,105 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
           )}
           Sound: {soundOn ? "On" : "Off"}
         </button>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Integration showcase — 8 tiles, honest status (§4)                   */
+/* ------------------------------------------------------------------ */
+
+type IntegStatus = "AVAILABLE" | "REQUIRES_SETUP" | "CONNECTED" | "NOT_CONFIGURED";
+const INTEGRATIONS: Array<{ key: string; label: string; blurb: string; status: IntegStatus; icon: React.ReactNode }> = [
+  { key: "whatsapp", label: "WhatsApp", blurb: "Cloud API • templates", status: "REQUIRES_SETUP", icon: <MessageCircle className="size-5" /> },
+  { key: "facebook", label: "Facebook", blurb: "Messenger & pages", status: "REQUIRES_SETUP", icon: <Users className="size-5" /> },
+  { key: "email", label: "Email", blurb: "SMTP • campaigns", status: "REQUIRES_SETUP", icon: <Mail className="size-5" /> },
+  { key: "sms", label: "SMS", blurb: "Gateway • OTP", status: "REQUIRES_SETUP", icon: <Smartphone className="size-5" /> },
+  { key: "stripe", label: "Stripe", blurb: "Checkout • webhooks", status: "AVAILABLE", icon: <CreditCard className="size-5" /> },
+  { key: "n8n", label: "n8n", blurb: "26 workflows", status: "AVAILABLE", icon: <Workflow className="size-5" /> },
+  { key: "github", label: "GitHub", blurb: "Factory export", status: "AVAILABLE", icon: <Github className="size-5" /> },
+  { key: "nextjs", label: "Next.js", blurb: "16 • React 19", status: "AVAILABLE", icon: <Layers className="size-5" /> },
+];
+
+function statusTone(s: IntegStatus): string {
+  switch (s) {
+    case "CONNECTED": return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    case "AVAILABLE": return "bg-sky-50 text-sky-700 border-sky-200";
+    case "REQUIRES_SETUP": return "bg-amber-50 text-amber-700 border-amber-200";
+    case "NOT_CONFIGURED": return "bg-slate-50 text-slate-600 border-slate-200";
+  }
+}
+function statusLabel(s: IntegStatus): string {
+  switch (s) {
+    case "CONNECTED": return "Connected";
+    case "AVAILABLE": return "Available";
+    case "REQUIRES_SETUP": return "Requires setup";
+    case "NOT_CONFIGURED": return "Not configured";
+  }
+}
+
+function IntegrationShowcase() {
+  return (
+    <section aria-labelledby="integrations-heading" className="border-b border-[#E2E8F0] bg-white">
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="integrations-heading" className="text-xs font-bold uppercase tracking-[0.18em] text-[#009FE3]">Integrations</h2>
+            <p className="mt-2 text-lg font-semibold tracking-tight text-[#0B1F33]">Plays with the tools you already use</p>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[#526173]">Honest states — nothing is shown as connected until credentials are verified. WhatsApp, Email and SMS require setup; Stripe, n8n and GitHub are ready to connect.</p>
+          </div>
+          <a href="#/technologies" className="hidden text-sm font-semibold text-[#009FE3] hover:text-[#063B8F] sm:inline-flex">View stack →</a>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+          {INTEGRATIONS.map((it) => (
+            <div key={it.key} className="group flex flex-col items-start gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 transition hover:border-[#009FE3]/30 hover:shadow-[0_8px_20px_rgba(6,59,143,0.08)]">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-[#F4FAFF] text-[#063B8F] group-hover:bg-[#009FE3] group-hover:text-white transition-colors">{it.icon}</span>
+              <div>
+                <p className="text-sm font-semibold text-[#0B1F33]">{it.label}</p>
+                <p className="text-[11px] leading-snug text-[#526173]">{it.blurb}</p>
+              </div>
+              <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", statusTone(it.status))}>{statusLabel(it.status)}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-[#526173]">Status meanings: <span className="font-semibold text-[#0B1F33]">Available</span> = code is ready, credentials not yet verified. <span className="font-semibold text-amber-700">Requires setup</span> = provider credentials and policy approval required. Nothing sends while <span className="font-semibold">NOT_CONFIGURED</span>.</p>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Trust by numbers — verifiable, not invented (§4)                    */
+/* ------------------------------------------------------------------ */
+
+function TrustByNumbers() {
+  const stats = [
+    { value: String(SERVICES.length), label: "Services", note: "From websites to AI agents — every service is a real delivery track." },
+    { value: String(INDUSTRIES.length), label: "Industries", note: "eCommerce to legal — systems shaped to sector reality." },
+    { value: String(CASE_STUDIES.length), label: "Representative engagements", note: "Anonymised patterns; references under NDA on request." },
+    { value: "20", label: "Pipeline stages", note: "First message → final delivery, tracked end-to-end." },
+  ];
+  return (
+    <section aria-labelledby="trust-numbers-heading" className="bg-[#F8FCFF]">
+      <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="trust-numbers-heading" className="text-xs font-bold uppercase tracking-[0.18em] text-[#009FE3]">Credibility</h2>
+            <p className="mt-2 text-lg font-semibold tracking-tight text-[#0B1F33]">Numbers you can verify</p>
+            <p className="mt-1 text-sm leading-relaxed text-[#526173]">Derived from configuration — not marketing inflation. Company: {COMPANY.legalName} · Missouri {COMPANY.missouriLLC} · EIN {COMPANY.ein}.</p>
+          </div>
+          <div className="hidden items-center gap-2 text-xs text-[#526173] sm:flex"><ShieldCheck className="size-4 text-[#18B83A]" /> No invented customer counts</div>
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-xl border border-[#E2E8F0] bg-white p-5">
+              <p className="text-2xl font-black tracking-tight text-[#0B1F33]">{s.value}</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#009FE3]">{s.label}</p>
+              <p className="mt-2 text-xs leading-relaxed text-[#526173]">{s.note}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -258,6 +365,81 @@ const FLAGSHIP_SLUGS = [
 
 function FlagshipServices() {
   const flagship = FLAGSHIP_SLUGS.map((slug) => SERVICES.find((s) => s.slug === slug)!).filter(Boolean);
+  const featureIcons: Record<string, React.ReactNode> = {
+    "premium-business-websites": <Globe className="size-5" />,
+    "ecommerce-platforms": <CreditCard className="size-5" />,
+    "custom-crm-development": <Users className="size-5" />,
+    "whatsapp-automation": <MessageCircle className="size-5" />,
+    "n8n-workflow-automation": <Workflow className="size-5" />,
+    "ai-agent-systems": <Bot className="size-5" />,
+  };
+  const previews: Record<string, { eyebrow: string; mock: React.ReactNode }> = {
+    "premium-business-websites": {
+      eyebrow: "Preview before payment",
+      mock: (
+        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
+          <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-2"><span className="size-2 rounded-full bg-red-400" /><span className="size-2 rounded-full bg-amber-400" /><span className="size-2 rounded-full bg-emerald-400" /><span className="ml-2 text-[10px] text-[#526173]">yourbrand.com — Preview</span></div>
+          <div className="mt-3 h-20 rounded bg-gradient-to-br from-[#009FE3]/15 via-[#063B8F]/10 to-[#18B83A]/15" />
+          <div className="mt-2 flex gap-2"><span className="h-2 w-16 rounded bg-[#E2E8F0]" /><span className="h-2 w-10 rounded bg-[#009FE3]/30" /></div>
+        </div>
+      ),
+    },
+    "ecommerce-platforms": {
+      eyebrow: "Checkout, not just catalogue",
+      mock: (
+        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
+          <div className="flex gap-2">
+            <div className="h-16 w-16 rounded bg-[#F4FAFF] border border-[#E2E8F0]" />
+            <div className="flex-1 space-y-2"><div className="h-3 w-24 rounded bg-[#0B1F33]/10" /><div className="h-2 w-16 rounded bg-[#009FE3]/20" /><div className="h-6 w-full rounded bg-[#009FE3] "><span className="flex h-full items-center justify-center text-[10px] font-bold text-white">Checkout — bKash • Nagad • Stripe</span></div></div>
+          </div>
+        </div>
+      ),
+    },
+    "custom-crm-development": {
+      eyebrow: "One Client ID, every record",
+      mock: (
+        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2"><span className="text-[11px] font-bold text-[#0B1F33]">TECH-2026-000123</span><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">CONTACTED</span></div>
+          <div className="mt-2 flex gap-1.5"><span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">WhatsApp ✓</span><span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">Email ✓</span><span className="rounded bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-600">SMS</span></div>
+        </div>
+      ),
+    },
+    "whatsapp-automation": {
+      eyebrow: "Human-like, but honest",
+      mock: (
+        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
+          <div className="space-y-2">
+            <div className="rounded-lg bg-[#F4FAFF] p-2 text-[11px] text-[#0B1F33]">Hi, I need an e-commerce website.</div>
+            <div className="rounded-lg bg-[#009FE3] p-2 text-[11px] text-white">Great — what do you sell, and how do you take payments?</div>
+            <div className="flex gap-1"><span className="size-1.5 rounded-full bg-[#18B83A]" /><span className="text-[10px] text-[#526173]">AI assistant · typing…</span></div>
+          </div>
+        </div>
+      ),
+    },
+    "n8n-workflow-automation": {
+      eyebrow: "26 workflows, not promises",
+      mock: (
+        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
+          <div className="flex items-center gap-2 text-[11px]"><span className="rounded bg-[#063B8F] px-2 py-1 text-white font-bold">Lead intake</span><ArrowRight className="size-3 text-[#009FE3]" /><span className="rounded border border-[#E2E8F0] px-2 py-1 text-[#526173]">Enrich</span><ArrowRight className="size-3 text-[#009FE3]" /><span className="rounded border border-[#E2E8F0] px-2 py-1 text-[#526173]">Notify</span></div>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-[#E2E8F0]"><div className="h-full w-2/3 rounded-full bg-[#18B83A]" /></div>
+        </div>
+      ),
+    },
+    "ai-agent-systems": {
+      eyebrow: "PM → Architect → Engineer → QA",
+      mock: (
+        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <span className="flex size-6 items-center justify-center rounded-full bg-[#063B8F] text-white text-[10px]">PM</span><span className="h-px w-4 bg-[#E2E8F0]" />
+            <span className="flex size-6 items-center justify-center rounded-full bg-[#009FE3] text-white text-[10px]">AR</span><span className="h-px w-4 bg-[#E2E8F0]" />
+            <span className="flex size-6 items-center justify-center rounded-full bg-[#18B83A] text-white text-[10px]">EN</span><span className="h-px w-4 bg-[#E2E8F0]" />
+            <span className="flex size-6 items-center justify-center rounded-full bg-slate-200 text-[#526173] text-[10px]">QA</span>
+          </div>
+          <div className="mt-2 flex gap-1"><span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">SUCCESS</span><span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">RUNNING</span></div>
+        </div>
+      ),
+    },
+  };
   return (
     <section aria-labelledby="services-heading" className="bg-[#F4FAFF]">
       <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
@@ -265,30 +447,60 @@ function FlagshipServices() {
           id="services-heading"
           eyebrow="What we do"
           title="Six ways we move a business forward"
-          description="Twenty engineering services, one operating principle: show you the result before you pay for it."
+          description="Twenty engineering services, one operating principle: show you the result before you pay for it. Each block is a real interface preview, not a stock illustration."
         />
-        <RevealList className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {flagship.map((service) => (
-            <RevealItem key={service.slug}>
-              <a
-                href={`#/services/${service.slug}`}
-                className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-6 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-[0_12px_32px_rgba(6,59,143,0.1)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
-              >
-                <span className="flex size-11 items-center justify-center rounded-lg bg-[#009FE3]/10 text-[#009FE3] transition-colors group-hover:bg-[#009FE3] group-hover:text-white">
-                  <Icon name={service.icon} className="size-5" />
-                </span>
-                <h3 className="mt-5 text-lg font-semibold text-[#0B1F33]">{service.title}</h3>
-                <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-[#526173]">
-                  {service.tagline} {service.solution.split(".")[0]}.
-                </p>
-                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#009FE3]">
-                  View service
-                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                </span>
-              </a>
-            </RevealItem>
-          ))}
-        </RevealList>
+        <div className="mt-12 space-y-8">
+          {flagship.map((service, idx) => {
+            const even = idx % 2 === 0;
+            const prev = previews[service.slug];
+            return (
+              <Reveal key={service.slug}>
+                <div className={cn("grid gap-6 rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-[0_8px_24px_rgba(6,59,143,0.06)] lg:grid-cols-12 lg:p-8", even ? "" : "lg:[&>*:first-child]:order-2")}>
+                  <div className="lg:col-span-7">
+                    <div className="flex items-center gap-3">
+                      <span className="flex size-10 items-center justify-center rounded-xl bg-[#063B8F] text-white">{featureIcons[service.slug] ?? <Icon name={service.icon} className="size-5" />}</span>
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#009FE3]">{prev?.eyebrow ?? service.tagline}</p>
+                        <h3 className="text-xl font-bold tracking-tight text-[#0B1F33]">{service.title}</h3>
+                      </div>
+                    </div>
+                    <div className="mt-5 space-y-4">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Problem</p>
+                        <p className="mt-1 text-sm leading-relaxed text-[#526173]">{service.problem}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Solution</p>
+                        <p className="mt-1 text-sm leading-relaxed text-[#526173]">{service.solution}</p>
+                      </div>
+                      <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                        {service.features.slice(0, 4).map((f) => (
+                          <li key={f} className="flex gap-2 text-xs leading-relaxed text-[#0B1F33]/80"><CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-[#18B83A]" />{f}</li>
+                        ))}
+                      </ul>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <a href={`#/services/${service.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#009FE3] px-4 text-sm font-semibold text-white hover:bg-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3]">View service <ArrowRight className="size-4" /></a>
+                        <a href="#/contact" className="inline-flex min-h-10 items-center rounded-lg border border-[#E2E8F0] bg-white px-4 text-sm font-semibold text-[#0B1F33] hover:border-[#009FE3]/30">Start this project</a>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="lg:col-span-5">
+                    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FCFF] p-4">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#526173]">Interface preview — {service.title}</p>
+                      <div className="mt-3">{prev?.mock}</div>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {service.tech.slice(0, 4).map((t) => (
+                          <span key={t} className="rounded-md border border-[#E2E8F0] bg-white px-2 py-1 text-[11px] font-medium text-[#526173]">{t}</span>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-xs leading-relaxed text-[#526173]"><span className="font-semibold text-[#0B1F33]">Outcome:</span> {service.example}</p>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+            );
+          })}
+        </div>
         <div className="mt-10 text-center">
           <OutlineLink href="#/services">All 20 services</OutlineLink>
         </div>
@@ -815,6 +1027,8 @@ export default function HomeView({
   return (
     <main id="main-content">
       <Hero onNavigate={onNavigate} />
+      <IntegrationShowcase />
+      <TrustByNumbers />
       <IndustriesServedStrip />
       <FlagshipServices />
       <WhyTech360 />

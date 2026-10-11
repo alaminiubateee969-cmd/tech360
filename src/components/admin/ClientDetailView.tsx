@@ -632,43 +632,7 @@ export function ClientDetailView({
         </TabsContent>
 
         <TabsContent value="comms" className="mt-3">
-          <SectionCard title="Communications" description="Every message across channels — statuses are reported exactly as the providers returned them" contentClassName="p-0">
-            <DataTable
-              columns={[
-                { key: 'channel', header: 'Channel', cell: (c) => <span className="text-xs font-medium text-slate-300">{prettify(c.channel)}</span> },
-                {
-                  key: 'dir',
-                  header: 'Dir',
-                  cell: (c) =>
-                    (c.direction ?? '').toUpperCase() === 'IN' ? (
-                      <span className="text-[11px] font-semibold text-[#009FE3]">IN</span>
-                    ) : (
-                      <span className="text-[11px] font-semibold text-slate-500">OUT</span>
-                    ),
-                },
-                { key: 'recipient', header: 'Recipient', cell: (c) => <span className="text-xs text-slate-400">{c.recipient || c.sender || '—'}</span> },
-                {
-                  key: 'body',
-                  header: 'Message',
-                  className: 'max-w-[280px]',
-                  cell: (c) => (
-                    <div className="min-w-0">
-                      {c.subject ? <p className="truncate text-xs font-medium text-slate-300">{c.subject}</p> : null}
-                      <p className="truncate text-xs text-slate-500">{c.body || '—'}</p>
-                    </div>
-                  ),
-                },
-                { key: 'status', header: 'Status', cell: (c) => <StatusBadge status={c.status} title={c.error ?? undefined} /> },
-                { key: 'provider', header: 'Provider ID', cell: (c) => <span className="font-mono text-[11px] text-slate-600">{c.providerMessageId || '—'}</span> },
-                { key: 'date', header: 'Date', cell: (c) => <span className="text-xs text-slate-500">{fmtDate(c.sentAt ?? c.createdAt)}</span> },
-              ]}
-              rows={data?.communications}
-              rowKey={(c) => c.id}
-              empty={<EmptyState title="No communications yet" description="Messages sent and received for this client will appear here." />}
-              aria-label="Client communications"
-              maxHeightClass="max-h-[60vh]"
-            />
-          </SectionCard>
+          <ClientCommsInbox communications={data?.communications ?? []} />
         </TabsContent>
 
         <TabsContent value="scope" className="mt-3">
@@ -1928,4 +1892,60 @@ function AiResearchPanel({ clientId, clientLabel }: { clientId: string; clientLa
       )}
     </div>
   )
+
+function ClientCommsInbox({ communications }: { communications: Array<Record<string, unknown>> }) {
+  const [mode, setMode] = useState<'table' | 'inbox'>('inbox')
+  const rows = (communications ?? []) as Array<{ id: string; channel?: string; direction?: string; recipient?: string | null; sender?: string | null; subject?: string | null; body?: string | null; status?: string | null; providerMessageId?: string | null; error?: string | null; sentAt?: string | null; createdAt?: string | null }>
+  if (rows.length === 0) return <SectionCard title="Communications" description="Every message across channels — bubble thread anchored to Client ID"><EmptyState title="No communications yet" description="Messages sent and received for this client will appear here — bubbles left (IN) slate, right (OUT) cyan with honest provider ticks." /></SectionCard>
+  const sorted = rows.slice().sort((a, b) => new Date(a.sentAt ?? a.createdAt ?? 0).getTime() - new Date(b.sentAt ?? b.createdAt ?? 0).getTime())
+  return (
+    <SectionCard
+      title="Communications — Unified thread"
+      description={`Client 360° bubbles — same rows as the global inbox, filtered to ${rows.length} message(s) for this Client ID. Identity: Client ID is the join key.`}
+      actions={
+        <div className="flex rounded-lg border border-slate-700 p-1">
+          <button type="button" onClick={() => setMode('table')} aria-pressed={mode === 'table'} className={`rounded-md px-2 py-1 text-xs font-semibold ${mode === 'table' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}>Table</button>
+          <button type="button" onClick={() => setMode('inbox')} aria-pressed={mode === 'inbox'} className={`rounded-md px-2 py-1 text-xs font-semibold ${mode === 'inbox' ? 'bg-[#009FE3] text-white' : 'text-slate-500 hover:text-slate-300'}`}>Inbox</button>
+        </div>
+      }
+      contentClassName={mode === 'inbox' ? 'p-3' : 'p-0'}
+    >
+      {mode === 'table' ? (
+        <DataTable
+          columns={[
+            { key: 'channel', header: 'Channel', cell: (c: typeof rows[number]) => <span className="text-xs font-medium text-slate-300">{prettify(c.channel ?? '')}</span> },
+            { key: 'dir', header: 'Dir', cell: (c: typeof rows[number]) => ((c.direction ?? '').toUpperCase() === 'IN' ? <span className="text-[11px] font-semibold text-[#009FE3]">IN</span> : <span className="text-[11px] font-semibold text-slate-500">OUT</span>) },
+            { key: 'recipient', header: 'Recipient', cell: (c: typeof rows[number]) => <span className="text-xs text-slate-400">{(c.recipient || c.sender || '—') as string}</span> },
+            { key: 'body', header: 'Message', className: 'max-w-[280px]', cell: (c: typeof rows[number]) => (<div className="min-w-0">{c.subject ? <p className="truncate text-xs font-medium text-slate-300">{c.subject}</p> : null}<p className="truncate text-xs text-slate-500">{c.body || '—'}</p></div>) },
+            { key: 'status', header: 'Status', cell: (c: typeof rows[number]) => <StatusBadge status={c.status ?? ''} title={c.error ?? undefined} /> },
+            { key: 'provider', header: 'Provider ID', cell: (c: typeof rows[number]) => <span className="font-mono text-[11px] text-slate-600">{c.providerMessageId || '—'}</span> },
+            { key: 'date', header: 'Date', cell: (c: typeof rows[number]) => <span className="text-xs text-slate-500">{fmtDate((c.sentAt ?? c.createdAt) as string)}</span> },
+          ]}
+          rows={rows as never}
+          rowKey={(c: never) => (c as { id: string }).id}
+          aria-label="Client communications table"
+          maxHeightClass="max-h-[60vh]"
+        />
+      ) : (
+        <ol className="space-y-2" aria-label={`Unified thread — ${rows.length} message(s)`}>
+          {sorted.map((c) => {
+            const inbound = (c.direction ?? '').toUpperCase() === 'IN'
+            const ticks = (c.status ?? '').toUpperCase() === 'SENT' ? '✓' : (c.status ?? '').toUpperCase() === 'DELIVERED' ? '✓✓' : (c.status ?? '').toUpperCase() === 'READ' ? '✓✓ (read)' : null
+            return (
+              <li key={c.id} className={`flex ${inbound ? 'justify-start' : 'justify-end'}`}>
+                <div className={`max-w-[78%] rounded-2xl px-3 py-2 ${inbound ? 'bg-slate-800 text-slate-100 rounded-bl-sm' : 'bg-[#009FE3] text-white rounded-br-sm'}`}>
+                  <p className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold opacity-80"><span className="rounded-full bg-black/15 px-1.5 py-0.5">{prettify(c.channel ?? '')}</span> {c.direction} · {fmtDate(c.sentAt ?? c.createdAt)} {ticks ? <span className="ml-1">{ticks}</span> : null}</p>
+                  {c.subject ? <p className="mt-1 text-xs font-semibold opacity-90">{c.subject}</p> : null}
+                  <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed">{c.body || '—'}</p>
+                  <p className="mt-1.5 flex flex-wrap gap-1 text-[11px] opacity-70"><StatusBadge status={c.status ?? ''} /> {c.providerMessageId ? <span className="font-mono">{c.providerMessageId}</span> : null} {c.error ? <span className="text-amber-300">{c.error}</span> : null}</p>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </SectionCard>
+  )
+}
+
 }

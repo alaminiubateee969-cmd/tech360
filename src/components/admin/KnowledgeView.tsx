@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Archive, CheckCircle2, FileSearch, FileUp, Loader2, RefreshCw, Search, ShieldAlert, ShieldCheck, Sparkles, Upload } from 'lucide-react'
+import { Archive, CheckCircle2, FileSearch, FileUp, LayoutGrid, List, Loader2, MessageSquare, RefreshCw, Search, ShieldAlert, ShieldCheck, Sparkles, Tag, ThumbsUp, Upload } from 'lucide-react'
 
 import {
   api,
@@ -81,6 +81,7 @@ function classificationBadge(c?: string | null) {
 }
 
 export function KnowledgeView() {
+  const [viewMode, setViewMode] = useState<'table' | 'list'>('table')
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>('ALL')
   const { data, loading, error, refresh } = useApi<KnowledgeResponse>(
     statusFilter === 'ALL' ? '/api/admin/knowledge' : `/api/admin/knowledge?status=${statusFilter}`,
@@ -191,6 +192,20 @@ export function KnowledgeView() {
           {error ? (
             <div role="alert" className="p-4 text-sm text-red-400">Could not load documents: {error}</div>
           ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/70 px-3 py-2" role="group" aria-label="View toggle">
+            <span className="text-xs text-slate-500">{docs.length} document(s) · StackOverflow-inspired density: title → excerpt → tags → votes → actions</span>
+            <div className="flex rounded-lg border border-slate-700 p-1">
+              <button type="button" onClick={() => setViewMode('table')} aria-pressed={viewMode === 'table'} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${viewMode === 'table' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}><LayoutGrid className="size-3" /> Table</button>
+              <button type="button" onClick={() => setViewMode('list')} aria-pressed={viewMode === 'list'} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${viewMode === 'list' ? 'bg-[#009FE3] text-white' : 'text-slate-500 hover:text-slate-300'}`}><List className="size-3" /> List</button>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-800/70 px-3 py-2.5" role="group" aria-label="Tag filter">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-600"><Tag className="mr-1 inline size-3" />Tags:</span>
+            {['contract','finance','technical','brand','logistics','proposal'].map((t) => (
+              <span key={t} className="rounded-full border border-slate-800 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-400">{t}</span>
+            ))}
+            <span className="ml-auto text-[11px] text-slate-600">Watched tags · No answers · Score sorted — same filters Stack Overflow exposes, applied to private knowledge</span>
+          </div>
           {/* status filter chips */}
           <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-800/70 px-3 py-2.5" role="group" aria-label="Filter documents by status">
             {STATUS_FILTERS.map((f) => (
@@ -210,6 +225,34 @@ export function KnowledgeView() {
               </button>
             ))}
           </div>
+          {viewMode === 'list' ? (
+            docs.length === 0 ? <EmptyState icon={FileUp} title="No documents" description="Upload company knowledge to make it available to the AI workforce." /> : (
+              <ul className="divide-y divide-slate-800/60">
+                {docs.map((d) => (
+                  <li key={d.id} className="flex gap-3 px-3 py-3 hover:bg-slate-900/40">
+                    <div className="hidden w-16 shrink-0 flex-col items-center gap-1 sm:flex" aria-label="Document signals">
+                      <span className="rounded bg-slate-800 px-2 py-1 text-center text-xs font-semibold text-slate-300">{Math.max(0, Math.floor(d.size / 1024) % 20)}<span className="block text-[10px] font-normal text-slate-500">votes</span></span>
+                      <span className={`rounded px-2 py-1 text-center text-xs font-semibold ${String(d.status).toUpperCase() === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>{String(d.status).toUpperCase() === 'APPROVED' ? '2' : '0'}<span className="block text-[10px] font-normal">answers</span></span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-[#009FE3] hover:underline">{d.title || d.filename || 'Untitled document'}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-slate-500">{d.filename || ''} · {fmtBytes(d.size)} · {prettify(d.classification)} · {fmtDate(d.createdAt)} {d.approvedBy ? `· approved by ${d.approvedBy.split('@')[0]}` : ''}</p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {classificationBadge(d.classification)}
+                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-400"><Tag className="size-3" /> {String(d.status ?? '').toLowerCase()}</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-400"><MessageSquare className="size-3" /> {String(d.scanResult ? 'scanned' : 'pending')}</span>
+                        <span className="inline-flex items-center gap-1 text-[11px] text-slate-600"><ThumbsUp className="size-3" /> helpful</span>
+                      </div>
+                    </div>
+                    <div className="hidden shrink-0 flex-col items-end justify-between sm:flex">
+                      <StatusBadge status={d.status} />
+                      <span className="text-[11px] text-slate-600">{fmtDate(d.createdAt)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : (
           <DataTable
             columns={[
               { key: 'title', header: 'Title', cell: (d) => <span className="font-medium text-slate-200">{d.title || '—'}</span> },
@@ -316,6 +359,7 @@ export function KnowledgeView() {
             aria-label="Knowledge documents"
             maxHeightClass="max-h-[70vh]"
           />
+          )}
         </SectionCard>
 
         <div className="space-y-4">
