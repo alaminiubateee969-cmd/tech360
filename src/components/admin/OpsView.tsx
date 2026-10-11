@@ -47,6 +47,8 @@ type OpsAgentJob = {
   agentCode: string
   clientId: string | null
   workflow: string | null
+  taskType: string
+  toolName: string | null
   status: string
   approvalState: string
   attempts: number
@@ -227,7 +229,7 @@ export function OpsView() {
           <span className="text-xs text-slate-500">Database-backed statuses · claims · attempts · approval gates</span>
         </div>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Counts below come from AgentJob rows. Jobs currently record inference only; they do not prove tool side effects, QA, delivery, or customer acceptance. A PM → Architect → Engineer → QA → Delivery handoff is not yet implemented as durable stage jobs.
+          Counts come from persisted AgentJob rows. Durable jobs currently support model inference and the single allowlisted internal task.create tool; that tool creates a human-owned TODO, not completed work. External provider actions, QA evidence, delivery, and customer acceptance are separate gates; a PM → Architect → Engineer → QA → Delivery handoff is not yet implemented as durable stage jobs.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
           {['QUEUED', 'RUNNING', 'RETRYING', 'AWAITING_APPROVAL', 'COMPLETED', 'FAILED', 'TIMED_OUT', 'CANCELLED'].map((state) => (
@@ -248,7 +250,7 @@ export function OpsView() {
                   <StatusBadge status={job.status} />
                   <span className="font-mono text-[10px] text-slate-400">{job.agentCode}</span>
                   {job.clientId ? <span className="text-[10px] text-slate-500">client row {job.clientId}</span> : null}
-                  <span className="text-[10px] text-slate-600">{job.workflow ?? 'INFERENCE'} · attempt {job.attempts}/{job.maxAttempts}</span>
+                  <span className="text-[10px] text-slate-600">{job.workflow ?? 'MANUAL'} · {job.taskType === 'TOOL_CALL' ? `tool ${job.toolName ?? 'unknown'}` : 'inference'} · attempt {job.attempts}/{job.maxAttempts}</span>
                   <span className="ml-auto text-[10px] text-slate-600">{fmtTime(job.createdAt)}</span>
                   {job.lastError ? <p className="basis-full truncate text-[10px] text-red-400">{job.lastError}</p> : null}
                 </li>

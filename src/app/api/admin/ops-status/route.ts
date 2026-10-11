@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     db.notification.aggregate({ where: { read: false }, _count: true }),
     getRegistryStatus(),
     db.agentJob.groupBy({ by: ['status'], _count: { _all: true } }),
-    db.agentJob.findMany({ orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, agentCode: true, clientId: true, workflow: true, status: true, approvalState: true, attempts: true, maxAttempts: true, createdAt: true, startedAt: true, completedAt: true, lastError: true } }),
+    db.agentJob.findMany({ orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, agentCode: true, clientId: true, workflow: true, taskType: true, toolName: true, status: true, approvalState: true, attempts: true, maxAttempts: true, createdAt: true, startedAt: true, completedAt: true, lastError: true } }),
   ])
 
   // heartbeat value: { at: ISO, cycles: number, service: string }
