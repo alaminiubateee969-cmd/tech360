@@ -24,11 +24,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return Response.json({ error: 'decision must be APPROVED or REJECTED' }, { status: 400 })
   }
 
+  // Atomically claim the pending decision so concurrent requests cannot execute
+  // a high-risk action twice.
+  const claimed = await db.approvalRequest.updateMany({
+    where: { id: approval.id, status: 'PENDING' },
+    data: {
+      status: decision === 'REJECTED' ? 'REJECTED' : 'EXECUTING',
+      decidedBy: g.user.id,
+      decisionNote: note || null,
+      updatedAt: new Date(),
+    },
+  })
+  if (claimed.count !== 1) return Response.json({ error: 'This approval was already claimed by another decision.' }, { status: 409 })
+
   if (decision === 'REJECTED') {
-    await db.approvalRequest.update({
-      where: { id: approval.id },
-      data: { status: 'REJECTED', decidedBy: g.user.id, decisionNote: note || null, updatedAt: new Date() },
-    })
     await audit({ actor: g.user.email, action: 'APPROVAL_REJECTED', userId: g.user.id, clientId: approval.clientId ?? undefined, entityId: approval.id, details: { type: approval.type, note } })
     return Response.json({ ok: true, result: { status: 'REJECTED' }, message: 'Action rejected. Nothing was executed.' })
   }
@@ -49,8 +58,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
       case 'SOURCE_HANDOVER': {
         const handoverId = String(payload.handoverId ?? '')
-        result = await releaseHandover(handoverId, g.user.id)
-        message = `Source package released. Secure link: ${(result as { link?: string }).link}`
+        result = await releaseHandover(handoverId, g.user.id, approval.id)
+        const handoverResult = result as { link?: string; artifactCount?: number; notificationStatus?: string }
+        message = `Approved source package released with ${handoverResult.artifactCount ?? 0} pinned artifact(s); the secure ZIP is assembled when downloaded. Client notification status: ${handoverResult.notificationStatus ?? 'UNKNOWN'}. Portal/download link: ${handoverResult.link ?? 'available in client portal'}`
         break
       }
       default: {
@@ -68,11 +78,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         break
       }
     }
+    // Bearer download URLs must not be written into approval/audit logs. Keep
+    // the actionable URL in the authorized response only.
+    const persistedResult = approval.type === 'SOURCE_HANDOVER' && result && typeof result === 'object'
+      ? {
+          status: (result as { status?: string }).status,
+          artifactCount: (result as { artifactCount?: number }).artifactCount,
+          notificationStatus: (result as { notificationStatus?: string }).notificationStatus,
+        }
+      : result
     await db.approvalRequest.update({
       where: { id: approval.id },
-      data: { status: 'EXECUTED', decidedBy: g.user.id, decisionNote: note || null, executedAt: new Date(), result: JSON.stringify(result).slice(0, 4000), updatedAt: new Date() },
+      data: { status: 'EXECUTED', decidedBy: g.user.id, decisionNote: note || null, executedAt: new Date(), result: JSON.stringify(persistedResult).slice(0, 4000), updatedAt: new Date() },
     })
-    await audit({ actor: g.user.email, action: 'APPROVAL_APPROVED_EXECUTED', userId: g.user.id, clientId: approval.clientId ?? undefined, entityId: approval.id, details: { type: approval.type, result } })
+    await audit({ actor: g.user.email, action: 'APPROVAL_APPROVED_EXECUTED', userId: g.user.id, clientId: approval.clientId ?? undefined, entityId: approval.id, details: { type: approval.type, result: persistedResult } })
     return Response.json({ ok: true, result, message })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'unknown'

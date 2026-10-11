@@ -1,5 +1,7 @@
 # Tech360 deployment verification matrix
 
+> **Historical snapshot from 2026-10-03; current CI note updated 2026-10-11.** This matrix records the PR #11 deployment audit and is superseded for current source/build evidence by [`TECH360_FINAL_IMPLEMENTATION_INVENTORY.md`](./TECH360_FINAL_IMPLEMENTATION_INVENTORY.md). Current GitHub `main` is `76d60e503642795f321f036655921859fab061c6` (PR #22); its run #102 failed at Lint. PR #23 remains open, without recorded review or merge. The latest fully CI-tested application/migration source snapshot was `de9c102914033e2a117c5efcf313f79b1b0c10a1`; PR run [38132189762](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38132189762) passed the full MySQL-backed workflow. The later update is evidence documentation only. A supplied Hostinger log succeeded at `286c433`, 25 commits behind current `main`; neither it nor this historical matrix verifies the live domain/current deployment.
+
 **Status: PRODUCTION VERIFICATION REQUIRED.** This matrix separates repository evidence from Hostinger/account state. It is not a production success certificate.
 
 ## GitHub/source snapshot

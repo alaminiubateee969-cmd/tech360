@@ -5,7 +5,11 @@ import { sendCommunication, emailTemplate, wrapEmailHtml, escapeHtml } from '@/l
 import { newCorrelationId, logError, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { PAD_CSS, padHeader, padMeta, padFooter, padSignatures, docDate } from '@/lib/letterhead'
-import { evaluateProjectClosure } from '@/lib/lifecycle-policy'
+import { evaluateDeliveryAcceptance, evaluateProjectClosure } from '@/lib/lifecycle-policy'
+import { hasExplicitContactConsent, selectWelcomeChannel } from '@/lib/contact-policy'
+import { hasAcceptedPreviewDelivery } from '@/lib/preview-policy'
+import { createHandoverManifest, parseHandoverManifest, verifyHandoverArtifacts } from '@/lib/handover-artifacts'
+import { normalizeIdentity, resolveOrCreateVerifiedClient, type VerifiedIdentityProof } from '@/lib/identity-resolver'
 
 // Tokenized preview links expire after this many days (env-overridable).
 const PREVIEW_TTL_DAYS = Math.max(1, Number(process.env.PREVIEW_TTL_DAYS ?? 30) || 30)
@@ -86,62 +90,92 @@ export async function intakeLead(input: {
   projectType?: string
   budgetRange?: string
   preferredContact?: string
+  contactConsent?: unknown
+  providerMessageId?: string
+  verifiedIdentities?: VerifiedIdentityProof[]
   tracking?: unknown
   formId?: string
 }): Promise<{ clientId: string; clientRowId: string; logId: string }> {
-  const log = await startLog('LEAD_INTAKE', input.source, undefined, input)
+  // Keep contact details out of automation-log inputs; the CRM stores the
+  // minimum required record, while the log tracks only workflow metadata.
+  const log = await startLog('LEAD_INTAKE', input.source, undefined, { source: input.source, providerEvent: Boolean(input.providerMessageId), hasFormId: Boolean(input.formId) })
   try {
-    // De-dupe by email / whatsapp / phone
-    let existing: Awaited<ReturnType<typeof db.client.findFirst>> = null
-    if (input.email) existing = await db.client.findFirst({ where: { email: input.email, deletedAt: null } })
-    if (!existing && (input.whatsapp || input.phone)) {
-      const tel = input.whatsapp ?? input.phone
-      existing = await db.client.findFirst({ where: { OR: [{ whatsapp: tel }, { phone: tel }], deletedAt: null } })
-    }
-
-    let clientRow: Awaited<ReturnType<typeof db.client.findFirst>>
-    if (existing) {
-      clientRow = await db.client.update({
-        where: { id: existing.id },
-        data: {
-          name: existing.name || input.name || 'Unknown',
-          businessName: existing.businessName ?? input.businessName ?? null,
-          email: existing.email ?? input.email ?? null,
-          whatsapp: existing.whatsapp ?? input.whatsapp ?? null,
-          phone: existing.phone ?? input.phone ?? null,
-          country: existing.country ?? input.country ?? null,
-        },
-      })
-    } else {
-      const clientId = await nextClientId()
-      clientRow = await db.client.create({
-        data: {
-          clientId,
-          name: sanitizeText(input.name, 200) || 'Unknown Contact',
-          businessName: sanitizeText(input.businessName, 200) || null,
-          businessType: input.businessType || null,
-          email: input.email || null,
-          phone: input.phone || null,
-          whatsapp: input.whatsapp || null,
-          country: input.country || null,
-          source: input.source,
-          status: 'LEAD',
-          pipelineStage: 'NEW',
-          preferredContact: input.preferredContact || null,
-        },
-      })
-      await rememberMemory({ scope: 'CLIENT', key: `origin:${clientRow.id}`, content: `Client originated from ${input.source} on ${new Date().toISOString()}. First message: ${sanitizeText(input.message, 500)}`, clientId: clientRow.id, importance: 7 })
-    }
-
     if (input.formId) {
-      await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSED' } }).catch(() => null)
+      const priorSubmission = await db.formSubmission.findUnique({ where: { id: input.formId }, select: { clientId: true, status: true } })
+      if (priorSubmission?.clientId) {
+        const priorClient = await db.client.findUnique({ where: { id: priorSubmission.clientId } })
+        if (priorSubmission.status === 'PROCESSED' && priorClient) {
+          await finishLog(log.id, 'SUCCESS', { clientId: priorClient.clientId, idempotentReplay: true })
+          return { clientId: priorClient.clientId, clientRowId: priorClient.id, logId: log.id }
+        }
+        throw new Error('This form submission is already processing or needs operator review; duplicate intake was refused.')
+      }
+    }
+
+    const createData = {
+      clientId: await nextClientId(),
+      name: sanitizeText(input.name, 200) || 'Unknown Contact',
+      businessName: sanitizeText(input.businessName, 200) || null,
+      businessType: sanitizeText(input.businessType, 80) || null,
+      email: sanitizeText(input.email, 320) || null,
+      phone: sanitizeText(input.phone, 40) || null,
+      whatsapp: sanitizeText(input.whatsapp, 40) || null,
+      country: sanitizeText(input.country, 80) || null,
+      source: sanitizeText(input.source, 40).toUpperCase() || 'UNKNOWN',
+      status: 'LEAD',
+      pipelineStage: 'NEW',
+      preferredContact: sanitizeText(input.preferredContact, 40) || null,
+    }
+
+    // Raw website/email/phone values are not identity proof. Only provider-
+    // verified identities may automatically link an intake to an existing row.
+    let clientRow: Awaited<ReturnType<typeof db.client.findUnique>>
+    let isNewClient = true
+    if (input.verifiedIdentities?.length) {
+      const resolved = await resolveOrCreateVerifiedClient(createData, input.verifiedIdentities)
+      clientRow = resolved.client
+      isNewClient = resolved.created
+      if (!isNewClient) {
+        const verifiedEmail = input.verifiedIdentities.some((proof) =>
+          proof.type === 'EMAIL' && normalizeIdentity('EMAIL', proof.value) === normalizeIdentity('EMAIL', createData.email ?? ''),
+        )
+        const verifiedPhone = input.verifiedIdentities.some((proof) =>
+          proof.type === 'PHONE' && normalizeIdentity('PHONE', proof.value) === normalizeIdentity('PHONE', createData.whatsapp || createData.phone || ''),
+        )
+        clientRow = await db.client.update({
+          where: { id: resolved.client.id },
+          data: {
+            name: resolved.client.name === 'Unknown Contact' ? createData.name : resolved.client.name,
+            businessName: resolved.client.businessName ?? createData.businessName,
+            businessType: resolved.client.businessType ?? createData.businessType,
+            email: verifiedEmail ? resolved.client.email ?? createData.email : resolved.client.email,
+            whatsapp: verifiedPhone ? resolved.client.whatsapp ?? createData.whatsapp : resolved.client.whatsapp,
+            phone: verifiedPhone && normalizeIdentity('PHONE', createData.phone || '') === normalizeIdentity('PHONE', createData.whatsapp || '')
+              ? resolved.client.phone ?? createData.phone
+              : resolved.client.phone,
+            country: resolved.client.country ?? createData.country,
+          },
+        })
+      }
+    } else {
+      // Unverified email/phone are contact data only, not identity proof.
+      clientRow = await db.client.create({ data: createData })
+    }
+    if (!clientRow) throw new Error('Client intake did not create or resolve a client record.')
+    if (input.formId) {
+      await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSING' } })
+    }
+
+    if (isNewClient) {
+      await rememberMemory({ scope: 'CLIENT', key: `origin:${clientRow.id}`, content: `Client originated from ${input.source} on ${new Date().toISOString()}. First message: ${sanitizeText(input.message, 500)}`, clientId: clientRow.id, importance: 7 })
     }
 
     // Save the original inbound message
     await db.communication.create({
       data: {
-        clientId: clientRow.id, channel: input.source, direction: 'IN',
-        sender: input.name ?? null, body: sanitizeText(input.message, 8000),
+        clientId: clientRow.id, channel: createData.source, direction: 'IN',
+        sender: sanitizeText(input.name, 200) || null, body: sanitizeText(input.message, 8000),
+        providerMessageId: input.providerMessageId ?? null,
         status: 'RECEIVED',
       },
     })
@@ -162,32 +196,57 @@ export async function intakeLead(input: {
 
     await stepLog(log.id, 'client_created', { clientId: clientRow.clientId })
 
-    // Auto-advance: business detection
-    await detectBusiness(clientRow.id, input.message)
+    if (isNewClient) {
+      // Website enquiries require the exact boolean consent checked by the form;
+      // inbound messages may receive a reply only on their originating channel.
+      const hasContactPermission = createData.source !== 'WEBSITE' || hasExplicitContactConsent(input.contactConsent)
+      const selectedChannel = hasContactPermission ? selectWelcomeChannel(createData.source, clientRow.preferredContact) : null
+      let welcomeAccepted = false
+      if (selectedChannel === 'WHATSAPP' && clientRow.whatsapp) {
+        const r = await sendCommunication({
+          clientId: clientRow.id,
+          channel: 'WHATSAPP',
+          to: clientRow.whatsapp,
+          body: `Hi ${clientRow.name}, thank you for contacting Tech360. Your reference ID is ${clientRow.clientId}. Our team is reviewing your requirements and will reply shortly. — Team Tech360`,
+          agentCode: 'WAP-011',
+          workflowId: log.id,
+        })
+        welcomeAccepted = r.result.ok && r.result.status === 'SENT'
+        await stepLog(log.id, 'welcome_whatsapp', { status: r.result.status, providerAccepted: welcomeAccepted })
+      } else if (selectedChannel === 'EMAIL' && clientRow.email) {
+        const r = await sendCommunication({
+          clientId: clientRow.id,
+          channel: 'EMAIL',
+          to: clientRow.email,
+          subject: 'Welcome to Tech360 — we received your request',
+          body: emailTemplate('WELCOME', { name: clientRow.name, extra: '' }).body.replace('{{clientId}}', clientRow.clientId),
+          agentCode: 'EML-012',
+          workflowId: log.id,
+        })
+        welcomeAccepted = r.result.ok && r.result.status === 'SENT'
+        await stepLog(log.id, 'welcome_email', { status: r.result.status, providerAccepted: welcomeAccepted })
+      } else {
+        await stepLog(log.id, 'welcome_skipped', {
+          reason: !hasContactPermission ? 'explicit website contact consent was not recorded' : 'no usable selected contact channel',
+        })
+      }
 
-    await setStage(clientRow.id, 'CONTACTED', 'First message processed')
-    await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id })
-
-    // Send honest welcome (WhatsApp if configured, else email if configured — else logged only)
-    const whatsapp = clientRow.whatsapp
-    const email = clientRow.email
-    if (whatsapp) {
-      const tpl = emailTemplate('WELCOME', { name: clientRow.name })
-      const r = await sendCommunication({ clientId: clientRow.id, channel: 'WHATSAPP', to: whatsapp, body: `Hi ${clientRow.name}, thank you for contacting Tech360. Your reference ID is ${clientRow.clientId}. Our team is reviewing your requirements and will reply shortly. — Team Tech360`, agentCode: 'EML-012', workflowId: log.id })
-      await stepLog(log.id, 'welcome_whatsapp', { status: r.result.status })
+      if (welcomeAccepted) await setStage(clientRow.id, 'CONTACTED', 'Welcome send accepted by selected provider channel')
+      // Business detection runs after the welcome attempt. It may update
+      // businessType, but only an accepted welcome can advance the pipeline.
+      const businessRun = await detectBusiness(clientRow.id, input.message, { advanceStage: welcomeAccepted })
+      await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id, welcomeAccepted, businessDetectionOk: businessRun.ok })
+    } else {
+      await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id, reusedVerifiedIdentity: true })
     }
-    if (email) {
-      const r = await sendCommunication({
-        clientId: clientRow.id, channel: 'EMAIL', to: email, subject: 'Welcome to Tech360 — we received your request',
-        body: emailTemplate('WELCOME', { name: clientRow.name, extra: '' }).body.replace('{{clientId}}', clientRow.clientId),
-        agentCode: 'EML-012', workflowId: log.id,
-      })
-      await stepLog(log.id, 'welcome_email', { status: r.result.status })
-    }
 
+    if (input.formId) {
+      await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSED' } })
+    }
     return { clientId: clientRow.clientId, clientRowId: clientRow.id, logId: log.id }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
+    if (input.formId) await db.formSubmission.updateMany({ where: { id: input.formId, status: 'PROCESSING' }, data: { status: 'FAILED' } }).catch(() => null)
     await finishLog(log.id, 'FAILED', undefined, msg)
     await logError({ source: 'AUTOMATION', code: 'LEAD_INTAKE_FAILED', message: msg, workflow: 'LEAD_INTAKE' })
     throw e
@@ -197,7 +256,7 @@ export async function intakeLead(input: {
 // ------------------------------------------------------------
 // STEP 2 — Business detection (AI, real execution)
 // ------------------------------------------------------------
-export async function detectBusiness(clientRowId: string, messageText?: string) {
+export async function detectBusiness(clientRowId: string, messageText?: string, options: { advanceStage?: boolean } = {}) {
   const client = await db.client.findUnique({ where: { id: clientRowId }, include: { lead: true } })
   if (!client) throw new Error('Client not found')
   const text = messageText ?? client.lead?.requirements ?? `${client.businessName ?? ''} ${client.name}`
@@ -208,7 +267,7 @@ export async function detectBusiness(clientRowId: string, messageText?: string) 
   if (run.ok && run.json) {
     const businessType = sanitizeText(run.json.businessType, 80)
     await db.client.update({ where: { id: client.id }, data: { businessType } })
-    await setStage(client.id, 'BUSINESS_IDENTIFIED', 'AI business detection')
+    if (options.advanceStage !== false) await setStage(client.id, 'BUSINESS_IDENTIFIED', 'AI business detection')
     await rememberMemory({ scope: 'CLIENT', key: `business:${client.id}`, content: `Business type detected: ${businessType} (confidence ${run.json.confidence ?? 'n/a'})`, clientId: client.id, importance: 6, agentCode: 'BIZ-004' })
   } else if (run.error) {
     await logError({ source: 'AUTOMATION', code: 'BUSINESS_DETECTION_FAILED', message: run.error, clientId: client.clientId, workflow: 'BUSINESS_DETECTION' })
@@ -444,32 +503,70 @@ export async function generatePreview(clientRowId: string) {
   if (!finalScope) throw new Error('Final scope required before preview')
 
   const content = JSON.parse(finalScope.content || '{}') as Record<string, unknown>
-  const existing = await db.preview.count({ where: { clientId: client.id } })
-  const token = publicToken()
-  const html = buildPreviewHtml(client, content, existing + 1)
+  const now = new Date()
+  const activePreview = await db.preview.findFirst({
+    where: {
+      clientId: client.id,
+      scopeVersion: finalScope.version,
+      status: { in: ['GENERATED', 'SENT', 'VIEWED'] },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+  const base = process.env.APP_PUBLIC_URL ?? ''
+  if (activePreview) {
+    return {
+      previewId: activePreview.id,
+      token: activePreview.token,
+      link: `${base}/api/preview/${activePreview.token}`,
+      status: activePreview.status,
+      reused: true,
+      delivery: [],
+    }
+  }
 
+  const existingCount = await db.preview.count({ where: { clientId: client.id } })
+  const token = publicToken()
+  const html = buildPreviewHtml(client, content, existingCount + 1)
   const preview = await db.preview.create({
     data: {
       token, clientId: client.id, projectId: null, scopeVersion: finalScope.version,
-      version: existing + 1, status: 'GENERATED', html,
-      // security: tokenized preview links expire after 30 days (configurable)
+      version: existingCount + 1, status: 'GENERATED', html,
       expiresAt: new Date(Date.now() + PREVIEW_TTL_DAYS * 24 * 3600 * 1000),
     },
   })
   await db.previewEvent.create({ data: { previewId: preview.id, type: 'GENERATED' } })
 
-  // send preview link
-  const base = process.env.APP_PUBLIC_URL ?? ''
   const link = `${base}/api/preview/${token}`
-  if (client.whatsapp) {
-    await sendCommunication({ clientId: client.id, channel: 'WHATSAPP', to: client.whatsapp, body: `Hi ${client.name}, your project preview is ready: ${link} — review before payment, then reply APPROVED or send change requests. — Team Tech360`, agentCode: 'WAP-011' })
+  const attempts: Array<{ channel: string; status: string; ok: boolean }> = []
+  const channel = selectWelcomeChannel(client.source, client.preferredContact)
+  if (channel === 'WHATSAPP' && client.whatsapp) {
+    const result = await sendCommunication({
+      clientId: client.id,
+      channel,
+      to: client.whatsapp,
+      body: `Hi ${client.name}, your project preview is ready: ${link} — review before payment, then reply APPROVED or send change requests. — Team Tech360`,
+      agentCode: 'WAP-011',
+    })
+    attempts.push({ channel, status: result.result.status, ok: result.result.ok })
+  } else if (channel === 'EMAIL' && client.email) {
+    const result = await sendCommunication({
+      clientId: client.id,
+      channel,
+      to: client.email,
+      subject: 'Your project preview is ready',
+      body: emailTemplate('PREVIEW', { name: client.name, link }).body,
+      agentCode: 'EML-012',
+    })
+    attempts.push({ channel, status: result.result.status, ok: result.result.ok })
   }
-  if (client.email) {
-    await sendCommunication({ clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'Your project preview is ready', body: emailTemplate('PREVIEW', { name: client.name, link }).body, agentCode: 'EML-012' })
-  }
-  await db.preview.update({ where: { id: preview.id }, data: { status: 'SENT', sentAt: new Date() } })
-  await db.previewEvent.create({ data: { previewId: preview.id, type: 'SENT' } })
-  return { previewId: preview.id, token, link }
+
+  const accepted = hasAcceptedPreviewDelivery(attempts)
+  const updated = accepted
+    ? await db.preview.update({ where: { id: preview.id }, data: { status: 'SENT', sentAt: new Date() } })
+    : preview
+  if (accepted) await db.previewEvent.create({ data: { previewId: preview.id, type: 'SENT' } })
+  return { previewId: updated.id, token, link, status: updated.status, reused: false, delivery: attempts }
 }
 
 function buildPreviewHtml(client: { clientId: string; name: string; businessName: string | null }, content: Record<string, unknown>, version: number): string {
@@ -616,7 +713,11 @@ export async function recalcInvoiceStatus(invoiceId: string): Promise<string | n
 export async function verifyPayment(paymentId: string, adminUserId: string) {
   const payment = await db.payment.findUnique({ where: { id: paymentId }, include: { client: true, project: true, invoice: true } })
   if (!payment) throw new Error('Payment not found')
-  await db.payment.update({ where: { id: payment.id }, data: { status: 'PAID', verifiedBy: adminUserId, verifiedAt: new Date() } })
+  if (['FAILED', 'REFUNDED', 'CANCELLED'].includes(payment.status)) throw new Error(`A ${payment.status.toLowerCase()} payment cannot be verified.`)
+  const alreadyVerified = payment.status === 'PAID'
+  if (!alreadyVerified) {
+    await db.payment.update({ where: { id: payment.id }, data: { status: 'PAID', verifiedBy: adminUserId, verifiedAt: new Date() } })
+  }
   const client = payment.client
   const project = payment.project
 
@@ -659,14 +760,14 @@ export async function verifyPayment(paymentId: string, adminUserId: string) {
     }
   }
   // confirmation email
-  if (client?.email) {
+  if (!alreadyVerified && client?.email) {
     await sendCommunication({
       clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'Payment received — thank you',
       body: emailTemplate('PAYMENT_CONFIRMED', { name: client.name, extra: `<p>Payment of <strong>${payment.amount} ${payment.currency}</strong> verified on ${new Date().toDateString()}.</p>` }).body, agentCode: 'EML-012',
     })
   }
-  await audit({ actor: `admin:${adminUserId}`, action: 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null } })
-  return { ok: true }
+  await audit({ actor: `admin:${adminUserId}`, action: alreadyVerified ? 'PAYMENT_VERIFICATION_RECONCILED' : 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null } })
+  return { ok: true, idempotent: alreadyVerified }
 }
 
 // ------------------------------------------------------------
@@ -675,7 +776,22 @@ export async function verifyPayment(paymentId: string, adminUserId: string) {
 export async function activateProject(clientRowId: string, projectId?: string) {
   const client = await db.client.findUnique({ where: { id: clientRowId }, include: { lead: true, projects: true, scopes: true } })
   if (!client) throw new Error('Client not found')
+
   let project = projectId ? await db.project.findUnique({ where: { id: projectId } }) : null
+  if (projectId && !project) throw new Error('Project not found')
+  if (project && project.clientId !== client.id) throw new Error('Project does not belong to this client')
+  if (!project) {
+    project = client.projects
+      .filter((candidate) => !['COMPLETED', 'CANCELLED'].includes(candidate.status))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null
+  }
+
+  const paymentCount = await db.payment.count({
+    where: { clientId: client.id, status: 'PAID', ...(project ? { projectId: project.id } : { projectId: null }) },
+  })
+  if (paymentCount === 0) throw new Error('A verified payment linked to this client or project is required before activation.')
+  if (project && ['COMPLETED', 'CANCELLED'].includes(project.status)) throw new Error('A completed or cancelled project cannot be reactivated.')
+
   if (!project) {
     const finalScope = client.scopes.filter((s) => s.status === 'FINAL').sort((a, b) => b.version - a.version)[0]
     const code = await nextProjectCode()
@@ -694,127 +810,341 @@ export async function activateProject(clientRowId: string, projectId?: string) {
       },
     })
     if (finalScope) await db.scopeOfWork.updateMany({ where: { id: finalScope.id }, data: { projectId: project.id } })
-  } else {
+  } else if (project.status !== 'ACTIVE') {
     project = await db.project.update({ where: { id: project.id }, data: { status: 'ACTIVE', startedAt: project.startedAt ?? new Date() } })
   }
 
   await setStage(client.id, 'PROJECT_ACTIVE', `Project ${project.code} active`)
 
-  // AI task breakdown (Anchor)
-  const run = await runAgent('PRJ-018', {
-    input: `Create task breakdown for project ${project.code}: ${project.name}\nScope: ${project.description ?? ''}\nPlan: ${project.plan ?? 'unknown'}`,
-    clientId: client.id, projectId: project.id, workflow: 'PROJECT_TASKS', expectJson: true,
-  })
-  if (run.ok && run.json && Array.isArray(run.json.tasks)) {
-    let order = 0
-    for (const t of (run.json.tasks as Array<Record<string, unknown>>)) {
-      await db.projectTask.create({
-        data: {
-          projectId: project.id,
-          title: sanitizeText(String(t.title ?? t.name ?? `Task ${order + 1}`), 200),
-          description: sanitizeText(String(t.description ?? ''), 2000) || null,
-          priority: ['LOW', 'MEDIUM', 'HIGH'].includes(String(t.priority)) ? String(t.priority) : 'MEDIUM',
-          assigneeType: String(t.assigneeType ?? 'AGENT') === 'HUMAN' ? 'HUMAN' : 'AGENT',
-          order: order++,
-        },
-      })
+  // Existing tasks are the idempotency marker: a retry never reruns the model
+  // or duplicates its persisted breakdown.
+  const existingTasks = await db.projectTask.count({ where: { projectId: project.id } })
+  let taskRun: Awaited<ReturnType<typeof runAgent>> | null = null
+  if (existingTasks === 0) {
+    taskRun = await runAgent('PRJ-018', {
+      input: `Create task breakdown for project ${project.code}: ${project.name}\nScope: ${project.description ?? ''}\nPlan: ${project.plan ?? 'unknown'}`,
+      clientId: client.id, projectId: project.id, workflow: 'PROJECT_TASKS', expectJson: true,
+    })
+    if (taskRun.ok && taskRun.json && Array.isArray(taskRun.json.tasks)) {
+      let order = 0
+      for (const t of taskRun.json.tasks as Array<Record<string, unknown>>) {
+        await db.projectTask.create({
+          data: {
+            projectId: project.id,
+            title: sanitizeText(String(t.title ?? t.name ?? `Task ${order + 1}`), 200),
+            description: sanitizeText(String(t.description ?? ''), 2000) || null,
+            priority: ['LOW', 'MEDIUM', 'HIGH'].includes(String(t.priority)) ? String(t.priority) : 'MEDIUM',
+            assigneeType: String(t.assigneeType ?? 'AGENT') === 'HUMAN' ? 'HUMAN' : 'AGENT',
+            order: order++,
+          },
+        })
+      }
     }
   }
-  // Delivery record
-  await db.delivery.create({ data: { clientId: client.id, projectId: project.id, checklist: '{}' } })
-  return { project, taskRun: run }
+
+  // Delivery initialization is idempotent and does not claim delivery itself.
+  const delivery = await db.delivery.findFirst({ where: { projectId: project.id } })
+  if (!delivery) await db.delivery.create({ data: { clientId: client.id, projectId: project.id, checklist: '{}' } })
+  const taskCount = await db.projectTask.count({ where: { projectId: project.id } })
+  return { project, taskRun, taskCount }
 }
 
 // ------------------------------------------------------------
 // STEP 11 — Completion / final payment / handover gates
 // ------------------------------------------------------------
-export async function prepareHandover(clientRowId: string, projectId: string, actor: string) {
-  const project = await db.project.findUnique({ where: { id: projectId }, include: { client: true, payments: true, handovers: true, deliveries: true } })
+type PrepareHandoverResult =
+  | { blocked: true; reason: string }
+  | { blocked: false; handover: Awaited<ReturnType<typeof db.handoverRecord.create>>; reused?: boolean }
+
+export async function prepareHandover(clientRowId: string, projectId: string, actor: string): Promise<PrepareHandoverResult> {
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    include: { client: true, payments: true, handovers: true, deliveries: true, tasks: true },
+  })
   if (!project) throw new Error('Project not found')
-  const paid = project.payments.filter((p) => p.status === 'PAID').reduce((a, p) => a + p.amount, 0)
+  if (project.clientId !== clientRowId) throw new Error('Project does not belong to this client')
+
+  const paid = project.payments.filter((payment) => payment.status === 'PAID').reduce((total, payment) => total + payment.amount, 0)
   const fullPayment = project.totalAmount > 0 ? paid >= project.totalAmount : paid > 0
   if (!fullPayment) {
     await logError({ source: 'AUTOMATION', code: 'HANDOVER_BLOCKED', message: `Handover blocked for ${project.code}: payment incomplete (${paid}/${project.totalAmount})`, clientId: project.client.clientId, workflow: 'HANDOVER' })
-    return { blocked: true, reason: `Full payment verification required before source code handover. Paid: ${paid} ${project.currency} of ${project.totalAmount} ${project.currency}.` }
+    return { blocked: true, reason: `Full payment verification required before handover. Paid: ${paid} ${project.currency} of ${project.totalAmount} ${project.currency}.` }
   }
-  const existing = project.handovers.filter((h) => h.type === 'SOURCE_CODE')[0]
-  if (existing) return { blocked: false, handover: existing }
+  if (project.tasks.length === 0 || project.tasks.some((task) => task.status !== 'DONE')) {
+    return { blocked: true, reason: 'Every project task must be completed before source handover can be prepared.' }
+  }
 
-  const token = publicToken()
-  const run = await runAgent('HND-030', {
-    input: `Prepare handover manifest for project ${project.code} (${project.name}). Client: ${project.client.clientId}. Full payment verified: ${fullPayment}.`,
-    clientId: project.clientId, projectId: project.id, workflow: 'HANDOVER', expectJson: true,
+  const artifacts = await db.fileRecord.findMany({
+    where: {
+      clientId: project.clientId,
+      projectId: project.id,
+      relatedType: 'DELIVERY',
+      scanStatus: 'CLEAN',
+      classification: { in: ['PUBLIC', 'PRIVATE'] },
+      content: { not: null },
+      sha256: { not: null },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, originalName: true, mimeType: true, size: true, sha256: true, clientId: true, projectId: true, relatedType: true, scanStatus: true, classification: true, content: true },
   })
+  const manifest = createHandoverManifest(
+    project.id,
+    artifacts.filter((file) => file.sha256).map((file) => ({
+      id: file.id, originalName: file.originalName, mimeType: file.mimeType, size: file.size, sha256: file.sha256!,
+    })),
+  )
+  if (!manifest || !verifyHandoverArtifacts(manifest, artifacts, project.clientId)) {
+    return { blocked: true, reason: 'No complete, source-code-containing, scan-passed project artifact set is attached. Attach the intended source files and remove any secrets before retrying.' }
+  }
+
+  const existing = project.handovers
+    .filter((handover) => handover.type === 'SOURCE_CODE')
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+  if (existing) {
+    const existingManifest = parseHandoverManifest(existing.contents, project.id)
+    if (!existingManifest) {
+      return { blocked: true, reason: 'A legacy handover record has no verifiable artifact list. It requires operator review; no new release approval was created.' }
+    }
+    const expired = existing.status !== 'CONFIRMED' && (existing.status === 'EXPIRED' || Boolean(existing.expiryAt && existing.expiryAt <= new Date()))
+    if (!expired) return { blocked: false, handover: existing, reused: true }
+    // Create a new token + approval for an expired package. The old token stays
+    // expired, and the new approval is bound to the current exact manifest.
+  }
+
   const handover = await db.handoverRecord.create({
     data: {
-      clientId: project.clientId, projectId: project.id, type: 'SOURCE_CODE',
-      packageToken: token, status: 'PENDING_APPROVAL',
+      clientId: project.clientId,
+      projectId: project.id,
+      type: 'SOURCE_CODE',
+      packageToken: publicToken(),
+      status: 'PENDING_APPROVAL',
       paymentVerifiedAt: new Date(),
-      contents: run.output.slice(0, 8000),
+      contents: JSON.stringify(manifest),
       expiryAt: new Date(Date.now() + 14 * 24 * 3600 * 1000),
     },
   })
   await db.approvalRequest.create({
     data: {
-      type: 'SOURCE_HANDOVER', title: `Release source code — ${project.code} (${project.client.clientId})`,
-      description: 'Full payment verified. Approve release of the source-code package to the client.',
-      clientId: project.clientId, agentCode: 'HND-030', risk: 'HIGH',
-      payload: JSON.stringify({ handoverId: handover.id }), requestedBy: actor,
+      type: 'SOURCE_HANDOVER',
+      title: `Release source code — ${project.code} (${project.client.clientId})`,
+      description: `Full payment and completed tasks verified. Review and approve the exact ${manifest.files.length}-file artifact manifest; release packages the pinned file bytes.`,
+      clientId: project.clientId,
+      projectId: project.id,
+      agentCode: 'HND-030',
+      risk: 'HIGH',
+      payload: JSON.stringify({ handoverId: handover.id, artifactIds: manifest.files.map((file) => file.id), manifest }),
+      requestedBy: actor,
     },
   })
-  await setStage(project.clientId, 'HANDOVER', 'Handover pending admin approval')
+  await setStage(project.clientId, 'HANDOVER', 'Verified artifact manifest pending Super Admin approval')
   return { blocked: false, handover }
 }
 
-export async function releaseHandover(handoverId: string, adminUserId: string) {
+export async function releaseHandover(handoverId: string, adminUserId: string, approvalRequestId: string) {
+  const approval = await db.approvalRequest.findUnique({ where: { id: approvalRequestId } })
+  if (!approval || approval.type !== 'SOURCE_HANDOVER' || approval.status !== 'EXECUTING') {
+    throw new Error('A pending Super Admin handover approval is required before release.')
+  }
+  let approvalPayload: Record<string, unknown>
+  try {
+    approvalPayload = JSON.parse(approval.payload || '{}') as Record<string, unknown>
+  } catch {
+    throw new Error('Approval payload is invalid.')
+  }
+  if (String(approvalPayload.handoverId ?? '') !== handoverId) throw new Error('Approval does not authorize this handover.')
+  if (approval.decidedBy !== adminUserId) throw new Error('Approval executor does not match the deciding Super Admin.')
+
   const handover = await db.handoverRecord.findUnique({ where: { id: handoverId }, include: { project: true, client: true } })
   if (!handover) throw new Error('Handover record not found')
-  const project = await db.project.findUnique({ where: { id: handover.projectId }, include: { payments: true, client: true } })
-  if (!project) throw new Error('Project not found')
-  const paid = project.payments.filter((p) => p.status === 'PAID').reduce((a, p) => a + p.amount, 0)
-  if (project.totalAmount > 0 && paid < project.totalAmount) {
-    throw new Error('BLOCKED: full payment verification required before releasing source code.')
+  if (handover.status !== 'PENDING_APPROVAL') throw new Error('Handover is not awaiting approval.')
+  if (handover.expiryAt && handover.expiryAt <= new Date()) throw new Error('BLOCKED: handover package expired; prepare a fresh manifest and approval.')
+  if (approval.clientId !== handover.clientId || approval.projectId !== handover.projectId || handover.project.clientId !== handover.clientId) {
+    throw new Error('Approval and handover tenant do not match.')
   }
-  await db.handoverRecord.update({
-    where: { id: handover.id },
-    data: { status: 'RELEASED', releasedBy: adminUserId, releasedAt: new Date() },
+
+  const project = await db.project.findUnique({ where: { id: handover.projectId }, include: { payments: true, client: true, tasks: true } })
+  if (!project) throw new Error('Project not found')
+  const paid = project.payments.filter((payment) => payment.status === 'PAID').reduce((total, payment) => total + payment.amount, 0)
+  const fullPayment = project.totalAmount > 0 ? paid >= project.totalAmount : paid > 0
+  if (!fullPayment) throw new Error('BLOCKED: full payment verification required before releasing source code.')
+  if (project.tasks.length === 0 || project.tasks.some((task) => task.status !== 'DONE')) {
+    throw new Error('BLOCKED: every project task must be completed before releasing source code.')
+  }
+
+  const manifest = parseHandoverManifest(handover.contents, project.id)
+  if (!manifest) throw new Error('BLOCKED: handover has no valid, project-bound artifact manifest.')
+  const approvedManifest = parseHandoverManifest(JSON.stringify(approvalPayload.manifest ?? null), project.id)
+  if (!approvedManifest || JSON.stringify(approvedManifest) !== JSON.stringify(manifest)) {
+    throw new Error('BLOCKED: the approved artifact manifest no longer matches the package manifest.')
+  }
+  const approvedIds = Array.isArray(approvalPayload.artifactIds)
+    ? approvalPayload.artifactIds.filter((id): id is string => typeof id === 'string').sort()
+    : []
+  const manifestIds = manifest.files.map((file) => file.id).sort()
+  if (new Set(approvedIds).size !== approvedIds.length || JSON.stringify(approvedIds) !== JSON.stringify(manifestIds)) {
+    throw new Error('BLOCKED: approval file list no longer matches the pinned manifest.')
+  }
+
+  const artifacts = await db.fileRecord.findMany({
+    where: {
+      id: { in: manifest.files.map((file) => file.id) },
+      clientId: handover.clientId,
+      projectId: project.id,
+      relatedType: 'DELIVERY',
+      scanStatus: 'CLEAN',
+      classification: { in: ['PUBLIC', 'PRIVATE'] },
+      content: { not: null },
+      sha256: { not: null },
+    },
+    select: { id: true, originalName: true, mimeType: true, size: true, sha256: true, clientId: true, projectId: true, relatedType: true, scanStatus: true, classification: true, content: true },
   })
-  await db.project.update({ where: { id: project.id }, data: { status: 'HANDOVER' } })
+  if (!verifyHandoverArtifacts(manifest, artifacts, handover.clientId)) {
+    throw new Error('BLOCKED: one or more approved artifact bytes, hashes, tenant links, or scan states changed.')
+  }
+
+  const now = new Date()
+  await db.$transaction(async (tx) => {
+    const claimed = await tx.handoverRecord.updateMany({
+      where: { id: handover.id, clientId: handover.clientId, projectId: project.id, status: 'PENDING_APPROVAL' },
+      data: { status: 'RELEASED', releasedBy: adminUserId, releasedAt: now, passwordChangeRequestedAt: now },
+    })
+    if (claimed.count !== 1) throw new Error('Handover was already released or changed by another request.')
+    await tx.project.update({ where: { id: project.id }, data: { status: 'HANDOVER' } })
+  })
+  await setStage(project.clientId, 'HANDOVER', 'Exact approved artifact package released')
+
   const base = process.env.APP_PUBLIC_URL ?? ''
   const link = `${base}/api/handover/${handover.packageToken}/download`
-  const client = project.client
-  if (client.whatsapp) {
-    await sendCommunication({ clientId: client.id, channel: 'WHATSAPP', to: client.whatsapp, body: `Hi ${client.name}, your source package is ready (project ${project.code}). Secure download (valid 14 days): ${link} — After downloading, please change all temporary passwords and confirm. — Team Tech360`, agentCode: 'HND-030' })
+  let notificationStatus = 'NOT_CONFIGURED'
+  try {
+    const channel = selectWelcomeChannel(project.client.source, project.client.preferredContact)
+    let result: Awaited<ReturnType<typeof sendCommunication>> | null = null
+    if (channel === 'WHATSAPP' && project.client.whatsapp) {
+      result = await sendCommunication({
+        clientId: project.client.id,
+        channel,
+        to: project.client.whatsapp,
+        body: `Hi ${project.client.name}, your approved project package is available at ${link}. Please change any temporary passwords and confirm receipt and function after download. — Team Tech360`,
+        agentCode: 'HND-030',
+      })
+    } else if (channel === 'EMAIL' && project.client.email) {
+      result = await sendCommunication({
+        clientId: project.client.id,
+        channel,
+        to: project.client.email,
+        subject: 'Approved source package — secure download',
+        body: emailTemplate('HANDOVER', { name: project.client.name, link }).body,
+        agentCode: 'EML-012',
+      })
+    }
+    if (result) notificationStatus = result.result.ok && result.result.status === 'SENT' ? 'PROVIDER_ACCEPTED' : 'FAILED'
+    if (notificationStatus === 'FAILED') {
+      await logError({ source: 'COMMS', code: 'HANDOVER_NOTIFICATION_FAILED', message: 'The approved package was released, but the selected provider did not accept the notification. The client was not reported as notified.', clientId: project.client.clientId, workflow: 'HANDOVER' })
+    }
+  } catch {
+    notificationStatus = 'FAILED'
+    await logError({ source: 'COMMS', code: 'HANDOVER_NOTIFICATION_FAILED', message: 'The approved package was released, but the selected provider notification could not be completed. The client was not reported as notified.', clientId: project.client.clientId, workflow: 'HANDOVER' }).catch(() => null)
   }
-  if (client.email) {
-    await sendCommunication({ clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'Source code handover — secure download', body: emailTemplate('HANDOVER', { name: client.name, link }).body, agentCode: 'EML-012' })
-  }
-  await db.handoverRecord.update({ where: { id: handover.id }, data: { passwordChangeRequestedAt: new Date() } })
-  await audit({ actor: `admin:${adminUserId}`, action: 'SOURCE_HANDOVER_RELEASED', clientId: client.clientId, projectId: project.id, details: { packageToken: handover.packageToken } })
-  return { link }
+
+  await audit({
+    actor: `admin:${adminUserId}`,
+    action: 'SOURCE_HANDOVER_RELEASED',
+    clientId: project.client.clientId,
+    projectId: project.id,
+    entityId: handover.id,
+    details: { artifactCount: manifest.files.length, notificationStatus },
+  })
+  return { link, artifactCount: manifest.files.length, notificationStatus, status: 'RELEASED' as const }
 }
 
-export async function confirmDelivery(clientRowId: string, answers: { received: boolean; working: boolean; passwordsChanged: boolean; satisfied?: boolean }) {
-  const client = await db.client.findUnique({ where: { id: clientRowId }, include: { projects: true } })
-  if (!client) throw new Error('Client not found')
-  const project = client.projects.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
-  if (!project) throw new Error('Project not found')
-  const delivery = await db.delivery.upsert({
-    where: { id: (await db.delivery.findFirst({ where: { projectId: project.id } }))?.id ?? 'none' },
-    create: { clientId: client.id, projectId: project.id, checklist: '{}', status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) },
-    update: { status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) },
-  }).catch(async () => {
-    const existing = await db.delivery.findFirst({ where: { projectId: project.id } })
-    if (existing) return db.delivery.update({ where: { id: existing.id }, data: { status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) } })
-    return db.delivery.create({ data: { clientId: client.id, projectId: project.id, checklist: '{}', status: 'CONFIRMED', clientConfirmedAt: new Date(), confirmationAnswers: JSON.stringify(answers) } })
-  })
-  const handover = await db.handoverRecord.findFirst({ where: { projectId: project.id, type: 'SOURCE_CODE' } })
-  if (handover && answers.passwordsChanged) {
-    await db.handoverRecord.update({ where: { id: handover.id }, data: { passwordChangeConfirmedAt: new Date(), status: 'CONFIRMED' } })
+export async function confirmDelivery(
+  clientRowId: string,
+  answers: { received: boolean; working: boolean; passwordsChanged: boolean; satisfied?: boolean; notes?: string },
+  projectId?: string,
+) {
+  if (typeof answers.received !== 'boolean' || typeof answers.working !== 'boolean' || typeof answers.passwordsChanged !== 'boolean') {
+    throw new Error('Explicit receipt, function, and password-change answers are required.')
   }
-  await setStage(client.id, 'PASSWORD_CHANGE', answers.passwordsChanged ? 'Password change confirmed' : 'Delivery confirmed, password change pending')
-  await rememberMemory({ scope: 'CLIENT', key: `delivery:${client.id}`, content: `Delivery confirmed at ${new Date().toISOString()}: received=${answers.received}, working=${answers.working}, passwordsChanged=${answers.passwordsChanged}, satisfied=${answers.satisfied ?? 'n/a'}`, clientId: client.id, importance: 8 })
-  return { delivery }
+  const client = await db.client.findUnique({ where: { id: clientRowId } })
+  if (!client) throw new Error('Client not found')
+  const project = projectId
+    ? await db.project.findUnique({ where: { id: projectId } })
+    : await db.project.findFirst({ where: { clientId: client.id }, orderBy: { createdAt: 'desc' } })
+  if (!project) throw new Error('Project not found')
+  if (project.clientId !== client.id) throw new Error('Project does not belong to this client')
+
+  const decision = evaluateDeliveryAcceptance({ received: answers.received, working: answers.working })
+  const handover = await db.handoverRecord.findFirst({
+    where: { projectId: project.id, type: 'SOURCE_CODE' },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (decision.accepted && (!handover || !['DOWNLOADED', 'CONFIRMED'].includes(handover.status))) {
+    throw new Error('The approved project package must be downloaded before delivery can be accepted.')
+  }
+
+  const now = new Date()
+  const notes = sanitizeText(answers.notes, 2000) || null
+  const confirmationAnswers = JSON.stringify({
+    received: answers.received,
+    working: answers.working,
+    passwordsChanged: answers.passwordsChanged,
+    satisfied: answers.satisfied,
+    notes,
+  })
+  const existingDelivery = await db.delivery.findFirst({ where: { projectId: project.id }, orderBy: { createdAt: 'desc' } })
+  const delivery = existingDelivery
+    ? await db.delivery.update({
+        where: { id: existingDelivery.id },
+        data: { status: decision.status, clientConfirmedAt: decision.accepted ? now : null, confirmationAnswers },
+      })
+    : await db.delivery.create({
+        data: {
+          clientId: client.id,
+          projectId: project.id,
+          checklist: '{}',
+          status: decision.status,
+          clientConfirmedAt: decision.accepted ? now : null,
+          confirmationAnswers,
+        },
+      })
+
+  if (handover) {
+    if (decision.accepted && answers.passwordsChanged) {
+      await db.handoverRecord.update({
+        where: { id: handover.id },
+        data: { passwordChangeConfirmedAt: now, confirmedAt: now, status: 'CONFIRMED' },
+      })
+    } else if (!decision.accepted && handover.status === 'CONFIRMED') {
+      await db.handoverRecord.update({ where: { id: handover.id }, data: { status: 'DOWNLOADED', confirmedAt: null } })
+    }
+  }
+
+  if (!decision.accepted) {
+    const followUpTitle = 'Client-reported delivery issue — human follow-up'
+    const followUp = await db.projectTask.findFirst({
+      where: { projectId: project.id, title: followUpTitle, assigneeType: 'HUMAN', status: { not: 'DONE' } },
+    })
+    const description = `Client reported ${decision.code.toLowerCase().replace(/_/g, ' ')}. ${notes ? `Details: ${notes}` : 'No additional notes were provided.'}`
+    if (followUp) {
+      await db.projectTask.update({ where: { id: followUp.id }, data: { description, status: 'TODO', priority: 'HIGH' } })
+    } else {
+      await db.projectTask.create({
+        data: { projectId: project.id, title: followUpTitle, description, status: 'TODO', priority: 'HIGH', assigneeType: 'HUMAN' },
+      })
+    }
+    await setStage(client.id, 'DELIVERY', 'Client reported a delivery issue; human follow-up is required')
+  } else {
+    await setStage(client.id, 'PASSWORD_CHANGE', answers.passwordsChanged ? 'Delivery accepted and password change confirmed' : 'Delivery accepted; password change confirmation remains pending')
+  }
+
+  await rememberMemory({
+    scope: 'CLIENT',
+    key: `delivery:${project.id}`,
+    content: `Delivery response recorded at ${now.toISOString()}: accepted=${decision.accepted}, received=${answers.received}, working=${answers.working}, passwordsChanged=${answers.passwordsChanged}.`,
+    clientId: client.id,
+    importance: 8,
+  })
+  return { delivery, accepted: decision.accepted, code: decision.accepted ? 'ACCEPTED' : decision.code }
 }
 
 // ------------------------------------------------------------
@@ -855,14 +1185,26 @@ export async function closeProject(projectId: string, actor: string) {
     include: { client: true, payments: true, tasks: true, deliveries: true, handovers: true },
   })
   if (!project) throw new Error('Project not found')
-  const paid = project.payments.filter((p) => p.status === 'PAID').reduce((a, p) => a + p.amount, 0)
-  const delivery = project.deliveries.find((row) => row.status === 'CONFIRMED')
-  const handover = project.handovers.find((row) => row.type === 'SOURCE_CODE')
+  const paid = project.payments.filter((payment) => payment.status === 'PAID').reduce((total, payment) => total + payment.amount, 0)
+  const delivery = project.deliveries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+  const handover = project.handovers
+    .filter((row) => row.type === 'SOURCE_CODE')
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+  let deliveryAnswers: { received: boolean; working: boolean } | null = null
+  try {
+    const parsed = JSON.parse(delivery?.confirmationAnswers ?? 'null') as Record<string, unknown> | null
+    if (parsed && typeof parsed.received === 'boolean' && typeof parsed.working === 'boolean') {
+      deliveryAnswers = { received: parsed.received, working: parsed.working }
+    }
+  } catch {
+    deliveryAnswers = null
+  }
   const closure = evaluateProjectClosure({
     totalAmount: project.totalAmount,
     paidAmount: paid,
     taskStatuses: project.tasks.map((task) => task.status),
     deliveryStatus: delivery?.status,
+    deliveryAnswers,
     handoverStatus: handover?.status,
   })
   if (!closure.allowed) {

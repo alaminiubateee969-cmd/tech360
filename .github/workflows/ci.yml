@@ -253,6 +253,14 @@ jobs:
           set -e
           if [ "$rc" = "2" ]; then
             echo "::error::schema drift — the committed baseline does not reproduce schema.prisma"
+            node --input-type=module - <<'NODE'
+          import fs from 'node:fs'
+          const lines = fs.readFileSync('/tmp/drift.sql', 'utf8').trim().split(/\r?\n/)
+          for (const line of lines.slice(0, 60)) {
+            const safe = line.slice(0, 500).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')
+            console.log(`::error::schema drift detail: ${safe}`)
+          }
+          NODE
             cat /tmp/drift.sql
             exit 1
           elif [ "$rc" != "0" ]; then

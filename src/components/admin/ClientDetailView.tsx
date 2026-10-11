@@ -46,9 +46,11 @@ import {
   type ApprovalItem,
   type ApprovalsResponse,
   type ClientDetailResponse,
+  type CommunicationRecord,
   type DocumentRecord,
   type MeetingRecord,
   type PaymentRecord,
+  type ProjectSummary,
 } from '@/lib/admin-client'
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { DataTable, type Column } from './shared/DataTable'
@@ -593,6 +595,8 @@ export function ClientDetailView({
             ['meetings', `Meetings (${(data?.meetings ?? []).length})`],
             ['memory', `Memory (${(data?.memories ?? []).length})`],
             ['automation', `Automation (${(data?.automationLogs ?? []).length})`],
+            ...(Array.isArray(data?.agentJobs) ? [['agentJobs', `Agent Jobs (${data.agentJobs.length})`]] : []),
+            ...(Array.isArray(data?.verifiedIdentities) ? [['identities', `Verified identities (${data.verifiedIdentities.length})`]] : []),
             ['research', 'AI Research'],
           ].map(([v, label]) => (
             <TabsTrigger
@@ -632,7 +636,7 @@ export function ClientDetailView({
         </TabsContent>
 
         <TabsContent value="comms" className="mt-3">
-          <ClientCommsInbox communications={data?.communications ?? []} />
+          <ClientCommsInbox clientId={client?.id ?? ''} communications={data?.communications ?? []} />
         </TabsContent>
 
         <TabsContent value="scope" className="mt-3">
@@ -778,6 +782,7 @@ export function ClientDetailView({
           <DocumentsPanel
             clientId={client.clientId}
             documents={data?.documents ?? []}
+            projects={projects}
             onChanged={refresh}
           />
         </TabsContent>
@@ -828,6 +833,48 @@ export function ClientDetailView({
               aria-label="Automation logs"
               maxHeightClass="max-h-[60vh]"
             />
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="agentJobs" className="mt-3">
+          <SectionCard title="Durable AgentJob history" description="Super Admin-only inference ledger for this canonical client. A completed inference does not imply an external action or delivered artifact.">
+            {(data?.agentJobs ?? []).length === 0 ? (
+              <EmptyState title="No durable agent jobs" description="Queued inference requests linked to this client will appear here with approval, retry, and terminal status." />
+            ) : (
+              <ol className="space-y-2">
+                {(data?.agentJobs ?? []).map((job) => (
+                  <li key={job.id} className="rounded-md border border-slate-800 bg-slate-950/50 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge status={job.status} />
+                      <span className="font-mono text-xs text-slate-300">{job.agentCode}</span>
+                      <span className="text-[10px] text-slate-500">attempt {num(job.attempts)}/{num(job.maxAttempts)}</span>
+                      <span className="ml-auto text-[10px] text-slate-600">{fmtDate(job.completedAt ?? job.startedAt ?? job.createdAt)}</span>
+                    </div>
+                    <p className="mt-1 font-mono text-[10px] text-slate-600">{job.correlationId}{job.workflow ? ` · ${job.workflow}` : ''} · {job.approvalState}</p>
+                    {job.lastError ? <p className="mt-2 text-xs text-red-400">{job.lastError}</p> : null}
+                    {job.output ? <details className="mt-2 rounded border border-slate-800 p-2"><summary className="cursor-pointer text-[10px] text-slate-500">View persisted inference output</summary><div className="mt-2"><Markdownish text={job.output} /></div></details> : null}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="identities" className="mt-3">
+          <SectionCard title="Verified identities" description="Super Admin-only verification metadata. Raw identifiers and HMAC digests are not returned in this view.">
+            {(data?.verifiedIdentities ?? []).length === 0 ? (
+              <EmptyState title="No verified identities linked" description="Website contact fields are unverified claims. A signed WhatsApp event or an audited Super Admin verification is required before linking." />
+            ) : (
+              <ul className="space-y-2">
+                {(data?.verifiedIdentities ?? []).map((identity) => (
+                  <li key={identity.id} className="flex flex-wrap items-center gap-2 rounded-md border border-slate-800 bg-slate-950/50 p-3">
+                    <span className="rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-300">{identity.identityType}</span>
+                    <span className="text-xs text-slate-400">Verified via {prettify(identity.verificationSource)}</span>
+                    <span className="ml-auto text-[10px] text-slate-600">{fmtDate(identity.verifiedAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </SectionCard>
         </TabsContent>
 
@@ -934,7 +981,7 @@ export function ClientDetailView({
 
 // ---------------- Documents hub panel (moderation + two-way sharing) ----------------
 const DOC_CLASSIFICATIONS = ['PUBLIC', 'PRIVATE', 'CONFIDENTIAL', 'HIGHLY_SENSITIVE'] as const
-const DOC_ACCEPT = '.pdf,.txt,.md,.csv,.json,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.webp'
+const DOC_ACCEPT = '.pdf,.txt,.md,.csv,.json,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.webp,.js,.ts,.tsx,.jsx,.py,.css,.html,.sql,.yaml,.yml,.toml'
 
 function docScanTone(status: string): string {
   if (status === 'CLEAN') return 'bg-emerald-500/15 text-emerald-300'
@@ -952,16 +999,20 @@ function fmtDocSize(n: number): string {
 function DocumentsPanel({
   clientId,
   documents,
+  projects,
   onChanged,
 }: {
   clientId: string
   documents: DocumentRecord[]
+  projects: ProjectSummary[]
   onChanged: () => void
 }) {
   const [shareOpen, setShareOpen] = useState(false)
   const [shareFile, setShareFile] = useState<File | null>(null)
   const [shareNote, setShareNote] = useState('')
   const [shareClass, setShareClass] = useState<string>('PRIVATE')
+  const [sharePurpose, setSharePurpose] = useState<'ADMIN_SHARE' | 'DELIVERY'>('ADMIN_SHARE')
+  const [shareProjectId, setShareProjectId] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [shareBusy, setShareBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -973,11 +1024,14 @@ function DocumentsPanel({
     if (!shareFile) { toast.error('Choose a file first.'); return }
     setShareBusy(true)
     try {
-      const res = await api.docShare(clientId, shareFile, shareNote.trim(), shareClass)
-      toast.success(res.message ?? 'File shared with the client.')
+      if (sharePurpose === 'DELIVERY' && !shareProjectId) { toast.error('Select a project before attaching a handover artifact.'); return }
+      const res = await api.docShare(clientId, shareFile, shareNote.trim(), shareClass, sharePurpose === 'DELIVERY' ? shareProjectId : undefined)
+      toast.success(res.message ?? (sharePurpose === 'DELIVERY' ? 'Project artifact scanned and attached.' : 'File shared with the client.'))
       setShareOpen(false)
       setShareFile(null)
       setShareNote('')
+      setSharePurpose('ADMIN_SHARE')
+      setShareProjectId('')
       if (fileInputRef.current) fileInputRef.current.value = ''
       onChanged()
     } catch (e) {
@@ -1049,7 +1103,7 @@ function DocumentsPanel({
                         </span>
                       </div>
                       <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-slate-500">
-                        <span>{d.direction === 'SHARED' ? 'shared by Tech360' : 'client upload'}</span>
+                        <span>{d.relatedType === 'DELIVERY' ? `project handover artifact${d.projectId ? ` · ${d.projectId}` : ''}` : d.direction === 'SHARED' ? 'shared by Tech360' : 'client upload'}</span>
                         <span>· {fmtDocSize(d.size)}</span>
                         <span>· {d.downloads} dl</span>
                         <span>· {d.uploadedBy || '—'}</span>
@@ -1120,13 +1174,44 @@ function DocumentsPanel({
               <Paperclip className="size-4" aria-hidden="true" /> Share a file with {clientId}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              The file is scanned with the same engine as client uploads — flagged files are refused, never delivered.
-              Clean files become visible in the client portal instantly.
+              Files use deterministic signature and credential-pattern checks; external malware scanning is not configured. Never upload production credentials or customer data.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="share-file" className="text-xs text-slate-400">File (≤ 5MB · pdf, docx, xlsx, images, text)</Label>
+              <Label className="text-xs text-slate-400">Upload purpose</Label>
+              <Select value={sharePurpose} onValueChange={(value) => {
+                const purpose = value as 'ADMIN_SHARE' | 'DELIVERY'
+                setSharePurpose(purpose)
+                if (purpose === 'DELIVERY') setShareClass('PRIVATE')
+              }}>
+                <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Upload purpose">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                  <SelectItem value="ADMIN_SHARE">Share a client document</SelectItem>
+                  <SelectItem value="DELIVERY">Attach a project handover artifact</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {sharePurpose === 'DELIVERY' ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-400">Project</Label>
+                <Select value={shareProjectId} onValueChange={setShareProjectId}>
+                  <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Project for handover artifact">
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                    {projects.filter((project) => !['COMPLETED', 'CANCELLED'].includes(project.status ?? '')).map((project) => (
+                      <SelectItem key={project.id} value={project.id}>{project.code ?? project.id} · {project.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] leading-relaxed text-amber-300">Handover artifacts stay hidden from the client until a Super Admin approves the exact file list after payment verification. The download package contains the uploaded files unchanged.</p>
+              </div>
+            ) : null}
+            <div className="space-y-1.5">
+              <Label htmlFor="share-file" className="text-xs text-slate-400">File (≤ 5MB · approved documents and source text files)</Label>
               <input
                 ref={fileInputRef}
                 id="share-file"
@@ -1140,41 +1225,45 @@ function DocumentsPanel({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="share-note" className="text-xs text-slate-400">Note shown to the client</Label>
+              <Label htmlFor="share-note" className="text-xs text-slate-400">{sharePurpose === 'DELIVERY' ? 'Internal artifact note' : 'Note shown to the client'}</Label>
               <Input
                 id="share-note"
                 value={shareNote}
                 onChange={(e) => setShareNote(e.target.value)}
-                placeholder="e.g. Milestone 2 invoice — bank transfer copy"
+                placeholder={sharePurpose === 'DELIVERY' ? 'e.g. Approved release candidate 1.0' : 'e.g. Milestone 2 invoice — bank transfer copy'}
                 maxLength={300}
                 className="h-9 border-slate-800 bg-slate-950/60 text-slate-200"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Classification</Label>
-              <Select value={shareClass} onValueChange={setShareClass}>
-                <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Classification">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
-                  {DOC_CLASSIFICATIONS.map((c) => (
-                    <SelectItem key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {['CONFIDENTIAL', 'HIGHLY_SENSITIVE'].includes(shareClass) && (
-                <p className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">
-                  <ShieldAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-                  Sensitive classification — the client sees the label; the file stays bound to their Client ID and every download is audited.
-                </p>
-              )}
-            </div>
+            {sharePurpose === 'DELIVERY' ? (
+              <p className="rounded-md border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-400">Classification: PRIVATE. These files are not visible in the client document list; only the approved handover package contains them.</p>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-400">Classification</Label>
+                <Select value={shareClass} onValueChange={setShareClass}>
+                  <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Classification">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                    {DOC_CLASSIFICATIONS.map((c) => (
+                      <SelectItem key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {['CONFIDENTIAL', 'HIGHLY_SENSITIVE'].includes(shareClass) && (
+                  <p className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">
+                    <ShieldAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                    Sensitive classification — the client sees the label; the file stays bound to their Client ID and every download is audited.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShareOpen(false)} disabled={shareBusy} className="text-slate-400 hover:text-slate-200">Cancel</Button>
-            <Button onClick={share} disabled={shareBusy || !shareFile} className="font-semibold" style={{ background: ACCENT }}>
+            <Button onClick={share} disabled={shareBusy || !shareFile || (sharePurpose === 'DELIVERY' && !shareProjectId)} className="font-semibold" style={{ background: ACCENT }}>
               {shareBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
-              Scan &amp; share
+              {sharePurpose === 'DELIVERY' ? 'Scan & attach artifact' : 'Scan & share'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1892,10 +1981,14 @@ function AiResearchPanel({ clientId, clientLabel }: { clientId: string; clientLa
       )}
     </div>
   )
+}
 
-function ClientCommsInbox({ communications }: { communications: Array<Record<string, unknown>> }) {
+export function ClientCommsInbox({ clientId, communications }: { clientId: string; communications: CommunicationRecord[] }) {
   const [mode, setMode] = useState<'table' | 'inbox'>('inbox')
-  const rows = (communications ?? []) as Array<{ id: string; channel?: string; direction?: string; recipient?: string | null; sender?: string | null; subject?: string | null; body?: string | null; status?: string | null; providerMessageId?: string | null; error?: string | null; sentAt?: string | null; createdAt?: string | null }>
+  // Defense in depth: the client-detail API already nests communications
+  // under the requested database client, and the view filters again so a
+  // malformed/stale response cannot render another client's messages.
+  const rows = communications.filter((communication) => communication.clientId === clientId)
   if (rows.length === 0) return <SectionCard title="Communications" description="Every message across channels — bubble thread anchored to Client ID"><EmptyState title="No communications yet" description="Messages sent and received for this client will appear here — bubbles left (IN) slate, right (OUT) cyan with honest provider ticks." /></SectionCard>
   const sorted = rows.slice().sort((a, b) => new Date(a.sentAt ?? a.createdAt ?? 0).getTime() - new Date(b.sentAt ?? b.createdAt ?? 0).getTime())
   return (
@@ -1921,8 +2014,8 @@ function ClientCommsInbox({ communications }: { communications: Array<Record<str
             { key: 'provider', header: 'Provider ID', cell: (c: typeof rows[number]) => <span className="font-mono text-[11px] text-slate-600">{c.providerMessageId || '—'}</span> },
             { key: 'date', header: 'Date', cell: (c: typeof rows[number]) => <span className="text-xs text-slate-500">{fmtDate((c.sentAt ?? c.createdAt) as string)}</span> },
           ]}
-          rows={rows as never}
-          rowKey={(c: never) => (c as { id: string }).id}
+          rows={rows}
+          rowKey={(c) => c.id}
           aria-label="Client communications table"
           maxHeightClass="max-h-[60vh]"
         />
@@ -1946,6 +2039,4 @@ function ClientCommsInbox({ communications }: { communications: Array<Record<str
       )}
     </SectionCard>
   )
-}
-
 }

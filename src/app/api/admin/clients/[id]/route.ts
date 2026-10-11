@@ -25,13 +25,42 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       automationLogs: { orderBy: { startedAt: 'desc' }, take: 30 },
       approvals: { orderBy: { createdAt: 'desc' }, take: 30 },
       files: {
-        where: { relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE'] } },
+        where: { relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE', 'DELIVERY'] } },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, originalName: true, mimeType: true, size: true, note: true, classification: true, scanStatus: true, scanResult: true, relatedType: true, uploadedBy: true, downloads: true, createdAt: true },
+        select: { id: true, originalName: true, mimeType: true, size: true, note: true, classification: true, scanStatus: true, scanResult: true, relatedType: true, projectId: true, uploadedBy: true, downloads: true, createdAt: true },
       },
     },
   })
   if (!client) return Response.json({ error: 'Client not found' }, { status: 404 })
+
+  // Agent workforce internals and prompts/results are Super Admin-only.
+  // Staff receive null rather than an empty array so the UI does not imply
+  // that a complete job history was queried for their role.
+  const agentJobs = g.user.role === 'SUPER_ADMIN'
+    ? await db.agentJob.findMany({
+      where: { clientId: client.id },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: { id: true, agentCode: true, correlationId: true, workflow: true, status: true, approvalState: true, attempts: true, maxAttempts: true, createdAt: true, startedAt: true, completedAt: true, lastError: true, output: true },
+    })
+    : null
+  const verifiedIdentities = g.user.role === 'SUPER_ADMIN'
+    ? await db.clientIdentity.findMany({
+      where: { clientId: client.id },
+      orderBy: { verifiedAt: 'desc' },
+      take: 50,
+      select: { id: true, identityType: true, verificationSource: true, verifiedAt: true },
+    })
+    : null
+
+  const agentJobAudits = g.user.role === 'SUPER_ADMIN' && agentJobs?.length
+    ? await db.auditLog.findMany({
+      where: { entityType: 'AgentJob', entityId: { in: agentJobs.map((job) => job.id) } },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+      select: { action: true, actor: true, entityId: true, createdAt: true },
+    })
+    : []
 
   const projects = await db.project.findMany({
     where: { clientId: client.id },
@@ -49,10 +78,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   client.approvals.forEach((a) => tl.push({ at: a.createdAt, type: 'APPROVAL', text: `Approval [${a.type}] ${a.status}: ${a.title}` }))
   client.memories.forEach((m) => tl.push({ at: m.createdAt, type: 'MEMORY', text: `Memory [${m.scope}] ${m.key}` }))
   client.automationLogs.forEach((l) => tl.push({ at: l.startedAt, type: 'AUTOMATION', text: `${l.workflow} ${l.status}` }))
+  agentJobs?.forEach((job) => tl.push({ at: job.completedAt ?? job.startedAt ?? job.createdAt, type: 'AGENT_JOB', text: `${job.agentCode} inference job ${job.status} (attempt ${job.attempts}/${job.maxAttempts})${job.approvalState === 'PENDING' ? ' · approval required' : ''}` }))
+  verifiedIdentities?.forEach((identity) => tl.push({ at: identity.verifiedAt, type: 'IDENTITY_VERIFIED', text: `${identity.identityType} identity verified via ${identity.verificationSource}` }))
+  agentJobAudits.forEach((entry) => tl.push({ at: entry.createdAt, type: 'AGENT_JOB_AUDIT', text: `${entry.action} by ${entry.actor}` }))
   client.files.forEach((f) => tl.push({
     at: f.createdAt,
     type: 'DOCUMENT',
-    text: `${f.relatedType === 'ADMIN_SHARE' ? 'Shared with client' : 'Client uploaded'}: ${f.originalName} (${f.scanStatus})`,
+    text: `${f.relatedType === 'DELIVERY' ? 'Project handover artifact attached' : f.relatedType === 'ADMIN_SHARE' ? 'Shared with client' : 'Client uploaded'}: ${f.originalName} (${f.scanStatus})`,
   }))
   projects.forEach((p) => {
     tl.push({ at: p.createdAt, type: 'PROJECT', text: `Project ${p.code} created (${p.status})` })
@@ -73,6 +105,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     memories,
     automationLogs,
     approvals,
+    agentJobs,
+    verifiedIdentities,
     documents: files.map((f) => ({
       id: f.id,
       name: f.originalName,
@@ -82,7 +116,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       classification: f.classification,
       scanStatus: f.scanStatus,
       scanResult: f.scanResult ? safeParse(f.scanResult) : null,
-      direction: f.relatedType === 'ADMIN_SHARE' ? 'SHARED' : 'UPLOADED',
+      direction: f.relatedType === 'ADMIN_SHARE' || f.relatedType === 'DELIVERY' ? 'SHARED' : 'UPLOADED',
+      relatedType: f.relatedType,
+      projectId: f.projectId,
       uploadedBy: f.uploadedBy,
       downloads: f.downloads,
       at: f.createdAt,

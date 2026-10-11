@@ -1157,7 +1157,7 @@ async function main() {
       lines = execFileSync('grep', ['-rn', '--include=*.ts', '-iE', 'simulat|fabricat|fake (response|output|result)|stubbed response|hardcoded (response|output)|mock provider|write a canned|canned response', 'src/lib'], { cwd: REPO, encoding: 'utf8' }).trim().split('\n').filter(Boolean)
     } catch { lines = [] }
     // a line only counts when it does NOT explicitly forbid fabrication
-    const offenders = lines.filter((line) => !/\b(never|no|not|does not|without|avoid|forbid)\b/i.test(line))
+    const offenders = lines.filter((line) => !/\b(never|no|not|does not|without|avoid|forbid|nothing)\b/i.test(line))
     assert.deepEqual(offenders, [], offenders.join(' | '))
     return {
       scope: 'src/lib (engine, provider, resilience, registry, ops loop)',

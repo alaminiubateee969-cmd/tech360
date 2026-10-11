@@ -289,7 +289,7 @@ export default function PortalView() {
           <SectionCard icon={<Eye className="h-5 w-5" />} title="Project preview">
             {data.preview ? (
               <div>
-                <p className="text-sm text-slate-600">Preview v{data.preview.version} · status: <span className="font-semibold lowercase">{data.preview.status}</span></p>
+                <p className="text-sm text-slate-600">Preview v{data.preview.version} · status: <span className="font-semibold">{data.preview.status === 'SENT' ? 'provider accepted send request' : data.preview.status.toLowerCase()}</span></p>
                 <p className="mt-2 text-xs text-slate-500">Review everything before any payment decision. Approve or request changes right inside the preview.</p>
                 <Button asChild className="mt-4 w-full gap-2 bg-[#009FE3] hover:bg-[#063B8F]">
                   <a href={data.preview.link} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /> Open preview</a>
@@ -306,7 +306,7 @@ export default function PortalView() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   {data.handover.status === 'PENDING_APPROVAL' && <><Clock className="h-4 w-4 text-amber-500" /><span className="text-slate-600">Prepared — awaiting Tech360 release approval</span></>}
-                  {['RELEASED', 'DOWNLOADED', 'CONFIRMED'].includes(data.handover.status) && <><CheckCircle2 className="h-4 w-4 text-[#18B83A]" /><span className="text-slate-600">Released after full payment verification</span></>}
+                  {['RELEASED', 'DOWNLOADED', 'CONFIRMED'].includes(data.handover.status) && <><CheckCircle2 className="h-4 w-4 text-[#18B83A]" /><span className="text-slate-600">Approved project ZIP is available for download</span></>}
                 </div>
                 {data.handover.downloadLink && (
                   <Button asChild className="w-full gap-2 bg-[#063B8F] hover:bg-[#0B1F33]">
@@ -314,13 +314,13 @@ export default function PortalView() {
                   </Button>
                 )}
                 {data.handover.confirmLink && !data.handover.passwordChangeConfirmed && (
-                  <PasswordConfirm link={data.handover.confirmLink} onDone={load} />
+                  <DeliveryConfirmation link={data.handover.confirmLink} onDone={load} />
                 )}
                 {data.handover.passwordChangeConfirmed && (
                   <p className="flex items-center gap-2 rounded-lg bg-[#18B83A]/10 p-2.5 text-xs text-[#116b26]"><KeyRound className="h-3.5 w-3.5" /> Password change confirmed — thank you.</p>
                 )}
               </div>
-            ) : <EmptyLine text="The source package is released only after full payment verification — by policy, automatically enforced." />}
+            ) : <EmptyLine text="The actual source ZIP requires verified full payment, completed project tasks, attached source files, and Super Admin release approval." />}
           </SectionCard>
 
           {/* Policy card */}
@@ -350,23 +350,70 @@ export default function PortalView() {
   )
 }
 
-// ---------------- Password-change confirmation (real action) ----------------
-function PasswordConfirm({ link, onDone }: { link: string; onDone: () => void }) {
+// ---------------- Explicit delivery and password confirmation ----------------
+function DeliveryConfirmation({ link, onDone }: { link: string; onDone: () => void }) {
+  const [received, setReceived] = useState(false)
+  const [working, setWorking] = useState(false)
+  const [passwordsChanged, setPasswordsChanged] = useState(false)
+  const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState(false)
-  const confirm = async () => {
+  const [resultMessage, setResultMessage] = useState('')
+
+  const submit = async () => {
     setBusy(true)
     try {
-      await fetch(link, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ passwordsChanged: true, received: true, working: true, notes: 'Confirmed via client portal' }) })
-      setDone(true)
+      const res = await fetch(link, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ received, working, passwordsChanged, notes: notes.trim() }),
+      })
+      const result = await res.json().catch(() => ({})) as { error?: string; message?: string; accepted?: boolean }
+      if (!res.ok) {
+        toast.error(result.error ?? 'Your confirmation could not be recorded.')
+        return
+      }
+      const message = result.message ?? 'Your response was recorded.'
+      setResultMessage(message)
+      if (result.accepted) toast.success(message)
+      else toast.info(message)
       onDone()
-    } finally { setBusy(false) }
+    } catch {
+      toast.error('Could not reach the handover service. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
-  if (done) return <p className="flex items-center gap-2 rounded-lg bg-[#18B83A]/10 p-2.5 text-xs text-[#116b26]"><KeyRound className="h-3.5 w-3.5" /> Password change confirmed — thank you.</p>
+
+  if (resultMessage) return <p className="rounded-lg bg-[#F4FAFF] p-3 text-xs leading-relaxed text-[#063B8F]">{resultMessage}</p>
+
   return (
-    <Button onClick={confirm} disabled={busy} variant="outline" className="w-full gap-2 border-[#063B8F] text-[#063B8F] hover:bg-[#F4FAFF]">
-      <KeyRound className="h-4 w-4" /> {busy ? 'Confirming…' : 'I changed my passwords'}
-    </Button>
+    <div className="space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+      <p className="text-sm font-semibold text-[#0B1F33]">Please answer each item honestly</p>
+      <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-slate-700">
+        <Checkbox checked={received} onCheckedChange={(checked) => setReceived(checked === true)} className="mt-0.5" />
+        <span>I received the project deliverables.</span>
+      </label>
+      <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-slate-700">
+        <Checkbox checked={working} onCheckedChange={(checked) => setWorking(checked === true)} className="mt-0.5" />
+        <span>I tested the deliverables and they work as agreed.</span>
+      </label>
+      <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-slate-700">
+        <Checkbox checked={passwordsChanged} onCheckedChange={(checked) => setPasswordsChanged(checked === true)} className="mt-0.5" />
+        <span>I changed the temporary passwords and credentials.</span>
+      </label>
+      <Textarea
+        value={notes}
+        onChange={(event) => setNotes(event.target.value)}
+        maxLength={2000}
+        placeholder="Describe any delivery issue or follow-up needed."
+        className="min-h-20 bg-white"
+        aria-label="Delivery issue or follow-up notes"
+      />
+      <p className="text-xs leading-relaxed text-slate-500">A missing or negative answer records a support follow-up and does not close your project.</p>
+      <Button onClick={submit} disabled={busy} variant="outline" className="w-full gap-2 border-[#063B8F] text-[#063B8F] hover:bg-[#F4FAFF]">
+        <KeyRound className="h-4 w-4" /> {busy ? 'Recording…' : received && working ? 'Record my answers' : 'Report a delivery issue'}
+      </Button>
+    </div>
   )
 }
 

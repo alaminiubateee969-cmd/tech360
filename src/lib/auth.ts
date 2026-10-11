@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'crypto'
 import { db } from '@/lib/db'
-import { Session } from '@prisma/client'
+import type { Session } from '@prisma/client'
 import { cookies } from 'next/headers'
 import { SESSION_COOKIE, SESSION_TTL_HOURS, CSRF_COOKIE } from '@/lib/constants'
 export { hasRole, isSuperAdmin } from '@/lib/access-policy'

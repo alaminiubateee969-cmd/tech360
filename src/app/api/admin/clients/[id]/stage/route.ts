@@ -31,7 +31,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return Response.json({ error: `Invalid stage: ${nextStageRaw}` }, { status: 400 })
   }
 
-  const client = await db.client.findFirst({ where: { OR: [{ id: ref }, { clientId: ref }], select: { id: true, clientId: true, name: true, businessName: true, pipelineStage: true, status: true, updatedAt: true } } })
+  const client = await db.client.findFirst({
+    where: { OR: [{ id: ref }, { clientId: ref }] },
+    select: { id: true, clientId: true, name: true, businessName: true, pipelineStage: true, status: true, updatedAt: true },
+  })
   if (!client) return Response.json({ error: 'Client not found' }, { status: 404 })
 
   const curIdx = stageIndex(client.pipelineStage)
@@ -62,19 +65,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return Response.json({ error: `Stage transition from ${curStage} to ${nextStage} requires higher role. STAFF may move forward one stage at a time.` }, { status: 403 })
   }
 
-  // Concurrent update guard: ensure stage hasn't changed since read (re-read)
-  const fresh = await db.client.findUnique({ where: { id: client.id }, select: { pipelineStage: true } })
-  if (fresh?.pipelineStage !== curStage) {
-    return Response.json({ error: `Conflict: stage changed to ${fresh?.pipelineStage} by another user. Please refresh.` }, { status: 409 })
-  }
-
-  const updated = await db.client.update({
-    where: { id: client.id },
+  // Atomic compare-and-set: the stage condition is part of the UPDATE itself,
+  // so two concurrent drag requests cannot both pass a prior read and overwrite
+  // each other. MySQL updates the row only if the observed stage is still current.
+  const transition = await db.client.updateMany({
+    where: { id: client.id, pipelineStage: curStage },
     data: {
       pipelineStage: nextStage,
       status: nextStage === 'COMPLETED' || nextStage === 'CLOSED' ? 'CLOSED' : nxtIdx >= 9 ? (client.status === 'LEAD' ? 'CLIENT' : client.status) : client.status,
     },
   })
+  if (transition.count !== 1) {
+    const fresh = await db.client.findUnique({ where: { id: client.id }, select: { pipelineStage: true } })
+    if (!fresh) return Response.json({ error: 'Client not found' }, { status: 404 })
+    return Response.json({ error: `Conflict: stage changed to ${fresh.pipelineStage} by another user. Please refresh.` }, { status: 409 })
+  }
+
+  const updated = await db.client.findUniqueOrThrow({ where: { id: client.id }, select: { clientId: true, pipelineStage: true } })
 
   await db.auditLog.create({
     data: {

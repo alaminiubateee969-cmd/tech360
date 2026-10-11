@@ -231,7 +231,7 @@ export function KnowledgeView() {
                 {docs.map((d) => (
                   <li key={d.id} className="flex gap-3 px-3 py-3 hover:bg-slate-900/40">
                     <div className="hidden w-16 shrink-0 flex-col items-center gap-1 sm:flex" aria-label="Document signals">
-                      <span className="rounded bg-slate-800 px-2 py-1 text-center text-xs font-semibold text-slate-300">{Math.max(0, Math.floor(d.size / 1024) % 20)}<span className="block text-[10px] font-normal text-slate-500">votes</span></span>
+                      <span className="rounded bg-slate-800 px-2 py-1 text-center text-xs font-semibold text-slate-300">{Math.max(0, Math.floor((d.size ?? 0) / 1024) % 20)}<span className="block text-[10px] font-normal text-slate-500">votes</span></span>
                       <span className={`rounded px-2 py-1 text-center text-xs font-semibold ${String(d.status).toUpperCase() === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>{String(d.status).toUpperCase() === 'APPROVED' ? '2' : '0'}<span className="block text-[10px] font-normal">answers</span></span>
                     </div>
                     <div className="min-w-0 flex-1">

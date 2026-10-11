@@ -96,6 +96,9 @@ model Client {
   deliveries      Delivery[]
   handovers       HandoverRecord[]
   contentAssets   ContentAsset[]
+  agentJobs       AgentJob[]
+  identities      ClientIdentity[]
+  inboundEvents   InboundWebhookReceipt[]
 
   @@index([pipelineStage])
   @@index([status])
@@ -156,6 +159,7 @@ model Project {
   reviews     Review[]
   files       FileRecord[]
   contentAssets ContentAsset[]
+  agentJobs     AgentJob[]
 
   @@index([clientId])
   @@index([status])
@@ -530,6 +534,7 @@ model AiAgent {
   updatedAt    DateTime @updatedAt
 
   executions AiAgentExecution[]
+  jobs       AgentJob[]
 
   @@index([departmentId])
   @@index([status])
@@ -559,6 +564,91 @@ model AiAgentExecution {
   @@index([correlationId])
   @@index([createdAt])
   @@index([startedAt])
+}
+
+// Durable inference queue. This records a specific model-inference request,
+// not proof that a business artifact or external side effect was completed.
+model AgentJob {
+  id             String   @id @default(cuid())
+  idempotencyKey String   @unique
+  payloadHash    String   @db.Char(64)
+  taskType       String   @default("INFERENCE") // INFERENCE; external actions require separately authorized tools
+  agentCode      String
+  agent          AiAgent  @relation(fields: [agentCode], references: [code], onDelete: Restrict)
+  clientId       String?
+  client         Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  projectId      String?
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  correlationId  String   @unique
+  workflow       String?
+  input          String   @db.LongText
+  contextNote    String?  @db.LongText
+  expectJson     Boolean  @default(false)
+  status         String   @default("QUEUED") // QUEUED | RUNNING | RETRYING | AWAITING_APPROVAL | COMPLETED | FAILED | TIMED_OUT | CANCELLED
+  approvalState  String   @default("NOT_REQUIRED") // NOT_REQUIRED | PENDING | APPROVED | REJECTED
+  requestedBy    String?
+  approvedBy     String?
+  approvedAt     DateTime?
+  approvalNote   String?  @db.Text
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(3)
+  checkpoint     String?  @db.LongText // JSON: phase, executionId, safe worker metadata
+  output         String?  @db.LongText
+  lastError      String?  @db.Text
+  availableAt    DateTime @default(now())
+  claimedBy      String?
+  leaseUntil     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  @@index([status, availableAt, createdAt])
+  @@index([status, leaseUntil])
+  @@index([clientId, createdAt])
+  @@index([agentCode, createdAt])
+  @@index([projectId, createdAt])
+}
+
+// PII-safe client identity index. Only verified identifiers are persisted; the
+// normalized value itself is never stored, only a keyed HMAC-SHA-256 digest.
+model ClientIdentity {
+  id                String   @id @default(cuid())
+  clientId          String
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  identityType      String   @db.VarChar(16) // EMAIL | PHONE
+  normalizedHash    String   @db.Char(64)
+  verificationSource String  @db.VarChar(40)
+  verifiedAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([identityType, normalizedHash], map: "ClientIdentity_identityType_normalizedHash_key")
+  @@index([clientId])
+  @@map("client_identities")
+}
+
+// Provider webhook replay receipt with a bounded lease and token-based claim.
+model InboundWebhookReceipt {
+  id              String   @id @default(cuid())
+  provider        String   @db.VarChar(16)
+  eventIdHash     String   @db.Char(64)
+  eventType       String   @default("MESSAGE") @db.VarChar(32)
+  status          String   @default("PROCESSING") @db.VarChar(16) // PROCESSING | PROCESSED | FAILED
+  clientId        String?
+  client          Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  attempts        Int      @default(1)
+  claimToken      String?  @db.VarChar(36)
+  leaseExpiresAt  DateTime?
+  lastError       String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  processedAt     DateTime?
+
+  @@unique([provider, eventIdHash], map: "InboundWebhookReceipt_provider_eventIdHash_key")
+  @@index([status, leaseExpiresAt])
+  @@index([clientId, createdAt])
+  @@map("inbound_webhook_receipts")
 }
 
 model AiOpsLock {

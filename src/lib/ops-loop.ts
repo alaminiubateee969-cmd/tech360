@@ -242,6 +242,14 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
       return summary
     }
 
+    // Durable queue work is claimed from MySQL only after the global AI switch
+    // is checked. The queue survives process restarts; expired worker leases are
+    // recovered on the next scheduled cycle.
+    const { processAgentJobBatch } = await import('@/lib/agents/jobs')
+    const jobBatch = await processAgentJobBatch(1)
+    for (const job of jobBatch.processed) performed.push(`agent-job ${job.id} → ${job.status}`)
+    if (jobBatch.recovered > 0) performed.push(`recovered ${jobBatch.recovered} expired agent-job lease(s)`)
+
     const data = await opsScan()
     scanned.unscored = data.unscoredLeads.length
     scanned.overdue = data.overdueLeads.length

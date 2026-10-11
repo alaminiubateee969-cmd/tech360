@@ -334,4 +334,7 @@ export function MediaStudioView() {
           ) : <p className="rounded-lg border border-dashed border-slate-700 bg-slate-900/30 p-4 text-center text-xs text-slate-500">Select a job in the list above to see its shot plan, narration and captions.</p>}
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
 

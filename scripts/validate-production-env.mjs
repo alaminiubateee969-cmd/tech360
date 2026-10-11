@@ -11,7 +11,7 @@ const REQUIRED = [
   "ZAI_BASE_URL",
   "ZAI_API_KEY",
 ];
-const SECRET_NAMES = ["SESSION_SECRET", "PORTAL_SECRET", "OPS_SECRET"];
+const SECRET_NAMES = ["SESSION_SECRET", "PORTAL_SECRET", "OPS_SECRET", "IDENTITY_HASH_SECRET"];
 const errors = [];
 
 if (process.env.NODE_ENV !== "production") {
@@ -20,6 +20,10 @@ if (process.env.NODE_ENV !== "production") {
 
 for (const name of REQUIRED) {
   if (!process.env[name]?.trim()) errors.push(`${name} (required)`);
+}
+
+if ((process.env.WHATSAPP_APP_SECRET?.trim() || process.env.WHATSAPP_TOKEN?.trim()) && !process.env.IDENTITY_HASH_SECRET?.trim()) {
+  errors.push("IDENTITY_HASH_SECRET (required when a WhatsApp integration is configured)");
 }
 
 function isCanonicalHttpsOrigin(value) {
