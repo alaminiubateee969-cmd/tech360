@@ -14,7 +14,7 @@ CREATE TABLE `client_identities` (
     UNIQUE INDEX `ClientIdentity_identityType_normalizedHash_key`(`identityType`, `normalizedHash`),
     INDEX `ClientIdentity_clientId_idx`(`clientId`),
     PRIMARY KEY (`id`),
-    CONSTRAINT `ClientIdentity_clientId_fkey` FOREIGN KEY (`clientId`) REFERENCES `Client`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT `client_identities_clientId_fkey` FOREIGN KEY (`clientId`) REFERENCES `Client`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `inbound_webhook_receipts` (
@@ -36,5 +36,5 @@ CREATE TABLE `inbound_webhook_receipts` (
     INDEX `InboundWebhookReceipt_status_leaseExpiresAt_idx`(`status`, `leaseExpiresAt`),
     INDEX `InboundWebhookReceipt_clientId_createdAt_idx`(`clientId`, `createdAt`),
     PRIMARY KEY (`id`),
-    CONSTRAINT `InboundWebhookReceipt_clientId_fkey` FOREIGN KEY (`clientId`) REFERENCES `Client`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT `inbound_webhook_receipts_clientId_fkey` FOREIGN KEY (`clientId`) REFERENCES `Client`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
