@@ -50,6 +50,7 @@ import {
   type DocumentRecord,
   type MeetingRecord,
   type PaymentRecord,
+  type ProjectSummary,
 } from '@/lib/admin-client'
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { DataTable, type Column } from './shared/DataTable'
@@ -781,6 +782,7 @@ export function ClientDetailView({
           <DocumentsPanel
             clientId={client.clientId}
             documents={data?.documents ?? []}
+            projects={projects}
             onChanged={refresh}
           />
         </TabsContent>
@@ -979,7 +981,7 @@ export function ClientDetailView({
 
 // ---------------- Documents hub panel (moderation + two-way sharing) ----------------
 const DOC_CLASSIFICATIONS = ['PUBLIC', 'PRIVATE', 'CONFIDENTIAL', 'HIGHLY_SENSITIVE'] as const
-const DOC_ACCEPT = '.pdf,.txt,.md,.csv,.json,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.webp'
+const DOC_ACCEPT = '.pdf,.txt,.md,.csv,.json,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.webp,.js,.ts,.tsx,.jsx,.py,.css,.html,.sql,.yaml,.yml,.toml'
 
 function docScanTone(status: string): string {
   if (status === 'CLEAN') return 'bg-emerald-500/15 text-emerald-300'
@@ -997,16 +999,20 @@ function fmtDocSize(n: number): string {
 function DocumentsPanel({
   clientId,
   documents,
+  projects,
   onChanged,
 }: {
   clientId: string
   documents: DocumentRecord[]
+  projects: ProjectSummary[]
   onChanged: () => void
 }) {
   const [shareOpen, setShareOpen] = useState(false)
   const [shareFile, setShareFile] = useState<File | null>(null)
   const [shareNote, setShareNote] = useState('')
   const [shareClass, setShareClass] = useState<string>('PRIVATE')
+  const [sharePurpose, setSharePurpose] = useState<'ADMIN_SHARE' | 'DELIVERY'>('ADMIN_SHARE')
+  const [shareProjectId, setShareProjectId] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [shareBusy, setShareBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -1018,11 +1024,14 @@ function DocumentsPanel({
     if (!shareFile) { toast.error('Choose a file first.'); return }
     setShareBusy(true)
     try {
-      const res = await api.docShare(clientId, shareFile, shareNote.trim(), shareClass)
-      toast.success(res.message ?? 'File shared with the client.')
+      if (sharePurpose === 'DELIVERY' && !shareProjectId) { toast.error('Select a project before attaching a handover artifact.'); return }
+      const res = await api.docShare(clientId, shareFile, shareNote.trim(), shareClass, sharePurpose === 'DELIVERY' ? shareProjectId : undefined)
+      toast.success(res.message ?? (sharePurpose === 'DELIVERY' ? 'Project artifact scanned and attached.' : 'File shared with the client.'))
       setShareOpen(false)
       setShareFile(null)
       setShareNote('')
+      setSharePurpose('ADMIN_SHARE')
+      setShareProjectId('')
       if (fileInputRef.current) fileInputRef.current.value = ''
       onChanged()
     } catch (e) {
@@ -1094,7 +1103,7 @@ function DocumentsPanel({
                         </span>
                       </div>
                       <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-slate-500">
-                        <span>{d.direction === 'SHARED' ? 'shared by Tech360' : 'client upload'}</span>
+                        <span>{d.relatedType === 'DELIVERY' ? `project handover artifact${d.projectId ? ` · ${d.projectId}` : ''}` : d.direction === 'SHARED' ? 'shared by Tech360' : 'client upload'}</span>
                         <span>· {fmtDocSize(d.size)}</span>
                         <span>· {d.downloads} dl</span>
                         <span>· {d.uploadedBy || '—'}</span>
@@ -1165,13 +1174,44 @@ function DocumentsPanel({
               <Paperclip className="size-4" aria-hidden="true" /> Share a file with {clientId}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              The file is scanned with the same engine as client uploads — flagged files are refused, never delivered.
-              Clean files become visible in the client portal instantly.
+              Files use deterministic signature and credential-pattern checks; external malware scanning is not configured. Never upload production credentials or customer data.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="share-file" className="text-xs text-slate-400">File (≤ 5MB · pdf, docx, xlsx, images, text)</Label>
+              <Label className="text-xs text-slate-400">Upload purpose</Label>
+              <Select value={sharePurpose} onValueChange={(value) => {
+                const purpose = value as 'ADMIN_SHARE' | 'DELIVERY'
+                setSharePurpose(purpose)
+                if (purpose === 'DELIVERY') setShareClass('PRIVATE')
+              }}>
+                <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Upload purpose">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                  <SelectItem value="ADMIN_SHARE">Share a client document</SelectItem>
+                  <SelectItem value="DELIVERY">Attach a project handover artifact</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {sharePurpose === 'DELIVERY' ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-400">Project</Label>
+                <Select value={shareProjectId} onValueChange={setShareProjectId}>
+                  <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Project for handover artifact">
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                    {projects.filter((project) => !['COMPLETED', 'CANCELLED'].includes(project.status ?? '')).map((project) => (
+                      <SelectItem key={project.id} value={project.id}>{project.code ?? project.id} · {project.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] leading-relaxed text-amber-300">Handover artifacts stay hidden from the client until a Super Admin approves the exact file list after payment verification. The download package contains the uploaded files unchanged.</p>
+              </div>
+            ) : null}
+            <div className="space-y-1.5">
+              <Label htmlFor="share-file" className="text-xs text-slate-400">File (≤ 5MB · approved documents and source text files)</Label>
               <input
                 ref={fileInputRef}
                 id="share-file"
@@ -1185,41 +1225,45 @@ function DocumentsPanel({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="share-note" className="text-xs text-slate-400">Note shown to the client</Label>
+              <Label htmlFor="share-note" className="text-xs text-slate-400">{sharePurpose === 'DELIVERY' ? 'Internal artifact note' : 'Note shown to the client'}</Label>
               <Input
                 id="share-note"
                 value={shareNote}
                 onChange={(e) => setShareNote(e.target.value)}
-                placeholder="e.g. Milestone 2 invoice — bank transfer copy"
+                placeholder={sharePurpose === 'DELIVERY' ? 'e.g. Approved release candidate 1.0' : 'e.g. Milestone 2 invoice — bank transfer copy'}
                 maxLength={300}
                 className="h-9 border-slate-800 bg-slate-950/60 text-slate-200"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Classification</Label>
-              <Select value={shareClass} onValueChange={setShareClass}>
-                <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Classification">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
-                  {DOC_CLASSIFICATIONS.map((c) => (
-                    <SelectItem key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {['CONFIDENTIAL', 'HIGHLY_SENSITIVE'].includes(shareClass) && (
-                <p className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">
-                  <ShieldAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-                  Sensitive classification — the client sees the label; the file stays bound to their Client ID and every download is audited.
-                </p>
-              )}
-            </div>
+            {sharePurpose === 'DELIVERY' ? (
+              <p className="rounded-md border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-400">Classification: PRIVATE. These files are not visible in the client document list; only the approved handover package contains them.</p>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-400">Classification</Label>
+                <Select value={shareClass} onValueChange={setShareClass}>
+                  <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Classification">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                    {DOC_CLASSIFICATIONS.map((c) => (
+                      <SelectItem key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {['CONFIDENTIAL', 'HIGHLY_SENSITIVE'].includes(shareClass) && (
+                  <p className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">
+                    <ShieldAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                    Sensitive classification — the client sees the label; the file stays bound to their Client ID and every download is audited.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShareOpen(false)} disabled={shareBusy} className="text-slate-400 hover:text-slate-200">Cancel</Button>
-            <Button onClick={share} disabled={shareBusy || !shareFile} className="font-semibold" style={{ background: ACCENT }}>
+            <Button onClick={share} disabled={shareBusy || !shareFile || (sharePurpose === 'DELIVERY' && !shareProjectId)} className="font-semibold" style={{ background: ACCENT }}>
               {shareBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
-              Scan &amp; share
+              {sharePurpose === 'DELIVERY' ? 'Scan & attach artifact' : 'Scan & share'}
             </Button>
           </DialogFooter>
         </DialogContent>

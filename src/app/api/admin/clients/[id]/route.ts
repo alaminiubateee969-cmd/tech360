@@ -25,9 +25,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       automationLogs: { orderBy: { startedAt: 'desc' }, take: 30 },
       approvals: { orderBy: { createdAt: 'desc' }, take: 30 },
       files: {
-        where: { relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE'] } },
+        where: { relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE', 'DELIVERY'] } },
         orderBy: { createdAt: 'desc' },
-        select: { id: true, originalName: true, mimeType: true, size: true, note: true, classification: true, scanStatus: true, scanResult: true, relatedType: true, uploadedBy: true, downloads: true, createdAt: true },
+        select: { id: true, originalName: true, mimeType: true, size: true, note: true, classification: true, scanStatus: true, scanResult: true, relatedType: true, projectId: true, uploadedBy: true, downloads: true, createdAt: true },
       },
     },
   })
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   client.files.forEach((f) => tl.push({
     at: f.createdAt,
     type: 'DOCUMENT',
-    text: `${f.relatedType === 'ADMIN_SHARE' ? 'Shared with client' : 'Client uploaded'}: ${f.originalName} (${f.scanStatus})`,
+    text: `${f.relatedType === 'DELIVERY' ? 'Project handover artifact attached' : f.relatedType === 'ADMIN_SHARE' ? 'Shared with client' : 'Client uploaded'}: ${f.originalName} (${f.scanStatus})`,
   }))
   projects.forEach((p) => {
     tl.push({ at: p.createdAt, type: 'PROJECT', text: `Project ${p.code} created (${p.status})` })
@@ -116,7 +116,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       classification: f.classification,
       scanStatus: f.scanStatus,
       scanResult: f.scanResult ? safeParse(f.scanResult) : null,
-      direction: f.relatedType === 'ADMIN_SHARE' ? 'SHARED' : 'UPLOADED',
+      direction: f.relatedType === 'ADMIN_SHARE' || f.relatedType === 'DELIVERY' ? 'SHARED' : 'UPLOADED',
+      relatedType: f.relatedType,
+      projectId: f.projectId,
       uploadedBy: f.uploadedBy,
       downloads: f.downloads,
       at: f.createdAt,

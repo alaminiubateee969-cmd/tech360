@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const doc = await db.fileRecord.findFirst({
-    where: { id, relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE'] } },
+    where: { id, relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE', 'DELIVERY'] } },
     select: { id: true, filename: true, originalName: true, mimeType: true, size: true, scanStatus: true, content: true, client: { select: { clientId: true } } },
   })
   if (!doc) return Response.json({ error: 'Document not found.' }, { status: 404 })

@@ -599,6 +599,8 @@ export interface DocumentRecord {
   scanStatus: string // CLEAN | QUARANTINED | REJECTED
   scanResult?: { verdict?: string; notes?: string[]; sha256?: string; releasedBy?: string; rejectedBy?: string } | null
   direction: 'UPLOADED' | 'SHARED'
+  relatedType?: string | null
+  projectId?: string | null
   uploadedBy?: string | null
   downloads: number
   at: string
@@ -934,12 +936,13 @@ export const api = {
       method: 'POST',
       body: { action },
     }),
-  docShare: (clientId: string, file: File, note: string, classification: string) => {
+  docShare: (clientId: string, file: File, note: string, classification: string, projectId?: string) => {
     const form = new FormData()
     form.append('file', file)
     form.append('clientId', clientId)
     if (note) form.append('note', note)
     form.append('classification', classification)
+    if (projectId) form.append('projectId', projectId)
     return fetch('/api/admin/documents', {
       method: 'POST',
       headers: { 'x-csrf-token': getCsrf() },

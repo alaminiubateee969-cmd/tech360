@@ -2,8 +2,13 @@ import assert from 'node:assert/strict'
 import { createHash, randomBytes } from 'node:crypto'
 import { after, before, describe, it } from 'node:test'
 import { PrismaClient } from '@prisma/client'
+import { NextRequest } from 'next/server'
 
+import { POST as confirmHandover } from '../src/app/api/handover/[token]/confirm/route'
+import { GET as downloadHandover } from '../src/app/api/handover/[token]/download/route'
 import { evaluateStripePayment } from '../src/lib/commerce-policy'
+import { activateProject, closeProject, confirmDelivery, prepareHandover, releaseHandover } from '../src/lib/journey'
+import { scanDocumentBytes, serializeScanResult } from '../src/lib/files'
 import { getAgentDefinition } from '../src/lib/agents/bootstrap'
 import { AgentJobDecisionConflict, AgentJobIdempotencyConflict, claimNextAgentJob, decideAgentJob, enqueueAgentJob } from '../src/lib/agents/jobs'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent, linkVerifiedIdentityToClient, resolveOrCreateVerifiedClient, VerifiedIdentityConflictError } from '../src/lib/identity-resolver'
@@ -39,10 +44,75 @@ before(async () => {
 })
 
 after(async () => {
-  // Client cascades clean all test-owned relational records. The disposable
-  // CI database contains no production data; run-scoped IDs prevent overlap.
+  // This suite uses a disposable MySQL database. Clean non-cascading blob,
+  // audit, notification and error records before removing run-scoped clients.
+  await db.fileRecord.deleteMany({ where: { clientId: { in: [alphaId, betaId] } } }).catch(() => null)
+  await db.auditLog.deleteMany({ where: { clientId: { startsWith: run } } }).catch(() => null)
+  await db.notification.deleteMany({ where: { body: { contains: run } } }).catch(() => null)
+  await db.errorLog.deleteMany({ where: { message: { contains: run } } }).catch(() => null)
   await db.client.deleteMany({ where: { clientId: { startsWith: run } } })
   await db.$disconnect()
+})
+
+describe('payment-gated project activation', () => {
+  it('refuses to create or activate a project without a verified payment', async () => {
+    await assert.rejects(() => activateProject(alphaId), /verified payment/i)
+    assert.equal(await db.project.count({ where: { clientId: alphaId } }), 0)
+  })
+
+  it('rejects a supplied project owned by another client even when the requester has a paid record', async () => {
+    const project = await db.project.create({
+      data: { code: `${run}-B-PROJECT`, clientId: betaId, name: 'Beta-only project', status: 'PLANNING' },
+    })
+    await db.payment.create({
+      data: { clientId: alphaId, amount: 100, currency: 'USD', method: 'TEST', status: 'PAID', transactionId: `${run}-cross-client-payment` },
+    })
+    await assert.rejects(() => activateProject(alphaId, project.id), /does not belong to this client/i)
+    assert.equal((await db.project.findUniqueOrThrow({ where: { id: project.id } })).status, 'PLANNING')
+  })
+
+  it('activates only with a linked verified payment and reuses existing tasks and delivery on retry', async () => {
+    const project = await db.project.create({
+      data: { code: `${run}-ACTIVATE`, clientId: alphaId, name: 'Retry-safe activation', status: 'PLANNING', totalAmount: 100 },
+    })
+    await db.payment.create({
+      data: { clientId: alphaId, projectId: project.id, amount: 100, currency: 'USD', method: 'TEST', status: 'PAID', transactionId: `${run}-activation-payment` },
+    })
+    await db.projectTask.create({ data: { projectId: project.id, title: 'Existing approved work item', status: 'TODO' } })
+
+    const first = await activateProject(alphaId, project.id)
+    const second = await activateProject(alphaId, project.id)
+    assert.equal(first.taskRun, null)
+    assert.equal(second.taskRun, null)
+    assert.equal((await db.project.findUniqueOrThrow({ where: { id: project.id } })).status, 'ACTIVE')
+    assert.equal(await db.projectTask.count({ where: { projectId: project.id } }), 1)
+    assert.equal(await db.delivery.count({ where: { projectId: project.id } }), 1)
+  })
+})
+
+describe('database-backed client delivery confirmation', () => {
+  it('records negative answers as a partial delivery and creates a human follow-up instead of closing', async () => {
+    const project = await db.project.create({
+      data: { code: `${run}-DELIVERY-ISSUE`, clientId: alphaId, name: 'Delivery issue test', status: 'DELIVERY' },
+    })
+    const result = await confirmDelivery(alphaId, {
+      received: true,
+      working: false,
+      passwordsChanged: true,
+      notes: 'Checkout flow does not load.',
+    }, project.id)
+
+    assert.equal(result.accepted, false)
+    assert.equal(result.delivery.status, 'PARTIAL')
+    assert.equal(result.delivery.clientConfirmedAt, null)
+    const answers = JSON.parse(result.delivery.confirmationAnswers ?? '{}') as Record<string, unknown>
+    assert.equal(answers.received, true)
+    assert.equal(answers.working, false)
+    const followUp = await db.projectTask.findFirst({ where: { projectId: project.id, assigneeType: 'HUMAN' } })
+    assert.ok(followUp)
+    assert.equal(followUp?.status, 'TODO')
+    assert.match(followUp?.description ?? '', /checkout flow/i)
+  })
 })
 
 describe('database-backed tenant isolation', () => {
@@ -296,5 +366,89 @@ describe('failed payment verification has no activation side effect', () => {
     assert.equal(unchangedProject.status, 'PLANNING')
     assert.equal(unchangedProject.paymentStatus, 'PENDING')
     assert.equal(unchangedPayment.status, 'PENDING')
+  })
+})
+
+describe('approved source handover end-to-end', () => {
+  it('serves the pinned project artifact bytes and closes only after explicit positive answers', async () => {
+    const project = await db.project.create({
+      data: { code: `${run}-HANDOVER`, clientId: alphaId, name: 'Test source handover', status: 'DELIVERY', totalAmount: 100, paidAmount: 100, paymentStatus: 'PAID' },
+    })
+    const payment = await db.payment.create({
+      data: { clientId: alphaId, projectId: project.id, amount: 100, currency: 'USD', method: 'TEST', status: 'PAID', transactionId: `${run}-HANDOVER-PAY` },
+    })
+    const task = await db.projectTask.create({ data: { projectId: project.id, title: 'Implementation and QA', status: 'DONE', assigneeType: 'HUMAN' } })
+    const sourceBytes = Buffer.from('export const healthCheck = () => "ok";\\n')
+    const scan = scanDocumentBytes(sourceBytes, 'application/typescript', 'health.ts')
+    assert.equal(scan.status, 'SCANNED')
+    const artifact = await db.fileRecord.create({
+      data: {
+        clientId: alphaId,
+        projectId: project.id,
+        relatedType: 'DELIVERY',
+        classification: 'PRIVATE',
+        filename: `handover-${scan.sha256.slice(0, 10)}.ts`,
+        originalName: 'health.ts',
+        mimeType: 'application/typescript',
+        size: sourceBytes.length,
+        sha256: scan.sha256,
+        scanStatus: 'CLEAN',
+        scanResult: serializeScanResult(scan),
+        content: sourceBytes,
+        uploadedBy: 'test-super-admin',
+      },
+    })
+
+    try {
+      const prepared = await prepareHandover(alphaId, project.id, 'test-super-admin')
+      assert.equal(prepared.blocked, false)
+      if (prepared.blocked) throw new Error(prepared.reason)
+      const handover = prepared.handover
+      const approval = await db.approvalRequest.findFirstOrThrow({ where: { type: 'SOURCE_HANDOVER', clientId: alphaId, status: 'PENDING' }, orderBy: { createdAt: 'desc' } })
+      const approvalPayload = JSON.parse(approval.payload) as { handoverId: string; manifest: { projectId: string; files: Array<{ id: string; sha256: string }> } }
+      assert.equal(approvalPayload.handoverId, handover.id)
+      assert.equal(approvalPayload.manifest.projectId, project.id)
+      assert.deepEqual(approvalPayload.manifest.files.map((file) => ({ id: file.id, sha256: file.sha256 })), [{ id: artifact.id, sha256: scan.sha256 }])
+      await db.approvalRequest.update({ where: { id: approval.id }, data: { status: 'EXECUTING', decidedBy: 'test-super-admin' } })
+      const released = await releaseHandover(handover.id, 'test-super-admin', approval.id)
+      assert.equal(released.artifactCount, 1)
+      await db.approvalRequest.update({ where: { id: approval.id }, data: { status: 'EXECUTED', executedAt: new Date() } })
+
+      const request = new NextRequest(`https://example.test/api/handover/${handover.packageToken}/download`, { headers: { 'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}` } })
+      const response = await downloadHandover(request, { params: Promise.resolve({ token: handover.packageToken }) })
+      assert.equal(response.status, 200)
+      assert.equal(response.headers.get('Content-Type'), 'application/zip')
+      const zipBytes = Buffer.from(await response.arrayBuffer())
+      assert.equal(response.headers.get('X-Artifact-SHA256'), createHash('sha256').update(zipBytes).digest('hex'))
+      const JSZip = (await import('jszip')).default
+      const zip = await JSZip.loadAsync(zipBytes)
+      assert.equal(await zip.file('source/health.ts')?.async('string'), sourceBytes.toString())
+      const zippedManifest = JSON.parse(await zip.file('handover-manifest.json')!.async('string')) as { artifacts: Array<{ sha256: string }> }
+      assert.equal(zippedManifest.artifacts[0]?.sha256, scan.sha256)
+      assert.equal((await db.handoverRecord.findUniqueOrThrow({ where: { id: handover.id } })).status, 'DOWNLOADED')
+
+      const incompleteRequest = new NextRequest(`https://example.test/api/handover/${handover.packageToken}/confirm`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': `198.51.100.${Math.floor(Math.random() * 200) + 1}` },
+        body: JSON.stringify({ passwordsChanged: true }),
+      })
+      const incompleteResponse = await confirmHandover(incompleteRequest, { params: Promise.resolve({ token: handover.packageToken }) })
+      assert.equal(incompleteResponse.status, 400)
+      assert.equal(await db.delivery.count({ where: { projectId: project.id } }), 0)
+
+      const accepted = await confirmDelivery(alphaId, { received: true, working: true, passwordsChanged: true }, project.id)
+      assert.equal(accepted.accepted, true)
+      assert.equal(accepted.delivery.status, 'CONFIRMED')
+      assert.equal((await db.handoverRecord.findUniqueOrThrow({ where: { id: handover.id } })).status, 'CONFIRMED')
+      assert.deepEqual(await closeProject(project.id, 'test-super-admin'), { ok: true })
+      assert.equal((await db.project.findUniqueOrThrow({ where: { id: project.id } })).status, 'COMPLETED')
+    } finally {
+      await db.fileRecord.deleteMany({ where: { id: artifact.id } })
+      await db.auditLog.deleteMany({ where: { projectId: project.id } })
+      await db.notification.deleteMany({ where: { body: { contains: project.code } } })
+      await db.payment.deleteMany({ where: { id: payment.id } })
+      await db.projectTask.deleteMany({ where: { id: task.id } })
+      await db.project.deleteMany({ where: { id: project.id } })
+    }
   })
 })

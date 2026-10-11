@@ -14,6 +14,24 @@ export const DOC_MIME: Record<string, string> = {
   'text/markdown': 'md',
   'text/csv': 'csv',
   'application/json': 'json',
+  'application/javascript': 'js',
+  'text/javascript': 'js',
+  'application/typescript': 'ts',
+  'text/typescript': 'ts',
+  'video/mp2t': 'ts',
+  'text/tsx': 'tsx',
+  'text/jsx': 'jsx',
+  'text/css': 'css',
+  'text/html': 'html',
+  'text/x-python': 'py',
+  'application/x-python-code': 'py',
+  'application/sql': 'sql',
+  'text/sql': 'sql',
+  'application/x-yaml': 'yaml',
+  'text/yaml': 'yaml',
+  'text/x-yaml': 'yaml',
+  'application/toml': 'toml',
+  'text/toml': 'toml',
   'application/pdf': 'pdf',
   'application/msword': 'doc',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
@@ -39,7 +57,10 @@ export function resolveExt(declaredMime: string, filename: string): string | nul
   const byMime = DOC_MIME[declaredMime]
   const basename = filename.replace(/\\/g, '/').split('/').pop() ?? ''
   const fromName = (basename.split('.').pop() ?? '').toLowerCase()
-  if (byMime && fromName && byMime !== fromName && !(byMime === 'jpg' && fromName === 'jpeg')) return null
+  const textSourceExtensions = ['js', 'ts', 'tsx', 'jsx', 'py', 'css', 'html', 'sql', 'yaml', 'yml', 'toml']
+  if (byMime === 'txt' && textSourceExtensions.includes(fromName)) return fromName
+  const compatibleFamily = (byMime === 'js' && fromName === 'jsx') || (byMime === 'ts' && fromName === 'tsx')
+  if (byMime && fromName && byMime !== fromName && !compatibleFamily && !(byMime === 'jpg' && fromName === 'jpeg')) return null
   if (byMime) return byMime
   if (fromName && DOC_EXT_LIST.includes(fromName)) return fromName
   return null
@@ -70,11 +91,20 @@ export function scanDocumentBytes(bytes: Buffer, declaredMime: string, filename:
   if (bytes.subarray(0, 2).equals(Buffer.from([0x4d, 0x5a]))) flag('executable MZ signature')
   if (bytes.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46]))) flag('executable ELF signature')
 
-  if (['txt', 'md', 'csv', 'json'].includes(ext)) {
-    const text = bytes.toString('utf8').slice(0, 64 * 1024)
-    if (/<script[\s>]/i.test(text)) flag('contains <script> markup')
+  const textExtensions = ['txt', 'md', 'csv', 'json', 'js', 'ts', 'tsx', 'jsx', 'py', 'css', 'html', 'sql', 'yaml', 'yml', 'toml']
+  if (textExtensions.includes(ext)) {
+    const text = bytes.toString('utf8')
+    if (bytes.includes(0)) flag('contains NUL bytes in a text/source file')
+    if (['txt', 'md', 'csv', 'json'].includes(ext) && /<script[\s>]/i.test(text)) flag('contains <script> markup')
     if (/BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY/.test(text)) flag('contains private key material')
     if (/eval\(atob\(/i.test(text)) flag('encoded payload pattern')
+    if (/(?:sk_(?:live|test)_[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{20,}|AIza[0-9A-Za-z_-]{35})/.test(text)) {
+      flag('contains a credential/token pattern')
+    }
+    if (/(?:api[_-]?key|client[_-]?secret|password|secret|access[_-]?token)\s*[:=]\s*["'][^"'\s]{16,}["']/i.test(text)) {
+      flag('contains a likely hard-coded secret')
+    }
+    notes.push('text/source rules and credential-pattern checks run; external malware scanning is not configured')
   } else {
     const starts = (...values: number[]) => bytes.subarray(0, values.length).equals(Buffer.from(values))
     const structurallyValid =

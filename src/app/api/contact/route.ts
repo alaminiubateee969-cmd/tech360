@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { intakeLead } from '@/lib/journey'
 import { readJson, sanitizeText, sanitizeEmail, sanitizePhone, rateLimit, clientIp, logError, audit } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
+import { hasExplicitContactConsent } from '@/lib/contact-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +22,9 @@ export async function POST(req: NextRequest) {
   if (!rl.ok) return Response.json({ error: 'Too many submissions. Please try again later or message us on WhatsApp.' }, { status: 429 })
 
   const raw = await readJson(req)
+  if (!hasExplicitContactConsent(raw.consent)) {
+    return Response.json({ error: 'Explicit consent is required before we can process your enquiry.', fields: { consent: 'Please agree to the Privacy Policy.' } }, { status: 400 })
+  }
   const name = sanitizeText(raw.name, 200)
   const emailInput = sanitizeText(raw.email, 320)
   const email = sanitizeEmail(emailInput)
@@ -38,6 +42,9 @@ export async function POST(req: NextRequest) {
   if (!email && !whatsapp) errors.contact = 'Email or WhatsApp number is required'
   if (emailInput && !email) errors.email = 'Invalid email'
   if (details.length < 20) errors.details = 'Please describe your project (at least 20 characters)'
+  if (!['WhatsApp', 'Email', 'Phone'].includes(preferredContact)) errors.preferredContact = 'Choose a contact method.'
+  if (preferredContact === 'Email' && !email) errors.preferredContact = 'Enter an email address for your preferred contact method.'
+  if ((preferredContact === 'WhatsApp' || preferredContact === 'Phone') && !whatsapp) errors.preferredContact = 'Enter a reachable phone number for your preferred contact method.'
   if (Object.keys(errors).length > 0) return Response.json({ error: 'Validation failed', fields: errors }, { status: 400 })
 
   try {
@@ -78,7 +85,7 @@ export async function POST(req: NextRequest) {
     const result = await intakeLead({
       source: 'WEBSITE',
       name, businessName, businessType, email, whatsapp: whatsapp || undefined,
-      country, message, projectType, budgetRange, preferredContact,
+      country, message, projectType, budgetRange, preferredContact, contactConsent: raw.consent,
       tracking: raw.tracking, formId: submission.id,
     })
 
