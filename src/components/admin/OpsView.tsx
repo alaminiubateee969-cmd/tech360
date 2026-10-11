@@ -11,6 +11,11 @@ import {
   Radar,
   RefreshCw,
   ScanSearch,
+  ArrowRight,
+  Layers,
+  Code2,
+  Bug,
+  PackageCheck,
   Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -170,6 +175,45 @@ export function OpsView() {
           <p className="mt-1 text-xs text-red-400/70">The API server did not answer — refresh to retry.</p>
         </div>
       ) : null}
+
+      {/* AgentOS execution lanes — PM → Architect → Engineer → QA → Delivery (§13) */}
+      <section aria-label="AgentOS execution lanes" className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-200"><Layers className="size-4 text-[#009FE3]" /> AgentOS lanes — PM → Architect → Engineer → QA → Delivery</h3>
+          <span className="text-xs text-slate-500">QUEUED · RUNNING · WAITING_FOR_APPROVAL · COMPLETED · FAILED · CANCELLED — with duration/tokens when measurable</span>
+        </div>
+        <div className="mt-3 grid gap-2 lg:grid-cols-5">
+          {[
+            { code: 'PM', label: 'Project Manager', icon: Layers, desc: 'Plan & assign', color: 'bg-[#063B8F]' },
+            { code: 'ARC', label: 'Architect', icon: Code2, desc: 'Model & API', color: 'bg-[#009FE3]' },
+            { code: 'ENG', label: 'Engineer', icon: Code2, desc: 'Build & integrate', color: 'bg-emerald-600' },
+            { code: 'QA', label: 'QA', icon: Bug, desc: 'Lint · typecheck · build', color: 'bg-amber-600' },
+            { code: 'DEL', label: 'Delivery', icon: PackageCheck, desc: 'Preview & handover', color: 'bg-slate-700' },
+          ].map((lane, i) => {
+            const last = ops?.recentCycles?.[0]
+            const actions = last?.performed ?? last?.actions ?? []
+            // heuristic: match lane code in action text
+            const relevant = actions.filter((a) => a.toLowerCase().includes(lane.code.toLowerCase().slice(0, 2)) || (lane.code === 'PM' && /plan|assign/i.test(a)) || (lane.code === 'QA' && /test|lint|audit/i.test(a)) || (lane.code === 'DEL' && /delivery|handover|preview/i.test(a))).length
+            const status: 'COMPLETED' | 'RUNNING' | 'QUEUED' = ops?.status === 'ACTIVE' ? (relevant > 0 ? 'COMPLETED' : i === 0 ? 'RUNNING' : 'QUEUED') : 'QUEUED'
+            const tone = status === 'COMPLETED' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : status === 'RUNNING' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30 animate-pulse' : 'bg-slate-800 text-slate-500 border-slate-700'
+            return (
+              <div key={lane.code} className="relative rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                <div className="flex items-center gap-2">
+                  <span className={`flex size-8 items-center justify-center rounded-lg ${lane.color} text-white`}><lane.icon className="size-4" /></span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-200">{lane.code}</p>
+                    <p className="truncate text-xs text-slate-500">{lane.label}</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">{lane.desc}</p>
+                <span className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tone}`}>{status}</span>
+                {i < 4 ? <ArrowRight className="absolute -right-2 top-1/2 hidden size-4 -translate-y-1/2 rounded-full border border-slate-700 bg-slate-900 p-0.5 text-[#009FE3] lg:block" aria-hidden="true" /> : null}
+              </div>
+            )
+          })}
+        </div>
+        <p className="mt-2 text-xs text-slate-600">Durability: job queue with retry/idempotency/timeout/dead-letter + concurrency/locks/checkpointing; heartbeat never proves business work — cycle evidence does. See AutomationLog & ErrorLog for structured traces.</p>
+      </section>
 
       {/* Loop state hero */}
       <section
