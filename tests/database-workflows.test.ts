@@ -401,8 +401,8 @@ describe('approved source handover end-to-end', () => {
 
     try {
       const prepared = await prepareHandover(alphaId, project.id, 'test-super-admin')
-      assert.equal(prepared.blocked, false)
       if (prepared.blocked) throw new Error(prepared.reason)
+      assert.equal(prepared.blocked, false)
       const handover = prepared.handover
       const approval = await db.approvalRequest.findFirstOrThrow({ where: { type: 'SOURCE_HANDOVER', clientId: alphaId, status: 'PENDING' }, orderBy: { createdAt: 'desc' } })
       const approvalPayload = JSON.parse(approval.payload) as { handoverId: string; manifest: { projectId: string; files: Array<{ id: string; sha256: string }> } }
