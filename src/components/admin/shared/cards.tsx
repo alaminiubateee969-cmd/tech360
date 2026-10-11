@@ -88,6 +88,7 @@ export function KpiCard({
 }
 
 export function SectionCard({
+  id,
   title,
   description,
   actions,
@@ -95,6 +96,7 @@ export function SectionCard({
   className,
   contentClassName,
 }: {
+  id?: string
   title?: ReactNode
   description?: ReactNode
   actions?: ReactNode
@@ -103,7 +105,7 @@ export function SectionCard({
   contentClassName?: string
 }) {
   return (
-    <section className={cn(CARD, className)} aria-label={typeof title === 'string' ? title : undefined}>
+    <section id={id} className={cn(CARD, className)} aria-label={typeof title === 'string' ? title : undefined}>
       {title || actions ? (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
           <div className="min-w-0">

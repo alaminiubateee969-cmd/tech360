@@ -46,6 +46,7 @@ import {
   type ApprovalItem,
   type ApprovalsResponse,
   type ClientDetailResponse,
+  type CommunicationRecord,
   type DocumentRecord,
   type MeetingRecord,
   type PaymentRecord,
@@ -632,7 +633,7 @@ export function ClientDetailView({
         </TabsContent>
 
         <TabsContent value="comms" className="mt-3">
-          <ClientCommsInbox communications={data?.communications ?? []} />
+          <ClientCommsInbox clientId={client?.id ?? ''} communications={data?.communications ?? []} />
         </TabsContent>
 
         <TabsContent value="scope" className="mt-3">
@@ -1892,10 +1893,14 @@ function AiResearchPanel({ clientId, clientLabel }: { clientId: string; clientLa
       )}
     </div>
   )
+}
 
-function ClientCommsInbox({ communications }: { communications: Array<Record<string, unknown>> }) {
+export function ClientCommsInbox({ clientId, communications }: { clientId: string; communications: CommunicationRecord[] }) {
   const [mode, setMode] = useState<'table' | 'inbox'>('inbox')
-  const rows = (communications ?? []) as Array<{ id: string; channel?: string; direction?: string; recipient?: string | null; sender?: string | null; subject?: string | null; body?: string | null; status?: string | null; providerMessageId?: string | null; error?: string | null; sentAt?: string | null; createdAt?: string | null }>
+  // Defense in depth: the client-detail API already nests communications
+  // under the requested database client, and the view filters again so a
+  // malformed/stale response cannot render another client's messages.
+  const rows = communications.filter((communication) => communication.clientId === clientId)
   if (rows.length === 0) return <SectionCard title="Communications" description="Every message across channels — bubble thread anchored to Client ID"><EmptyState title="No communications yet" description="Messages sent and received for this client will appear here — bubbles left (IN) slate, right (OUT) cyan with honest provider ticks." /></SectionCard>
   const sorted = rows.slice().sort((a, b) => new Date(a.sentAt ?? a.createdAt ?? 0).getTime() - new Date(b.sentAt ?? b.createdAt ?? 0).getTime())
   return (
@@ -1921,8 +1926,8 @@ function ClientCommsInbox({ communications }: { communications: Array<Record<str
             { key: 'provider', header: 'Provider ID', cell: (c: typeof rows[number]) => <span className="font-mono text-[11px] text-slate-600">{c.providerMessageId || '—'}</span> },
             { key: 'date', header: 'Date', cell: (c: typeof rows[number]) => <span className="text-xs text-slate-500">{fmtDate((c.sentAt ?? c.createdAt) as string)}</span> },
           ]}
-          rows={rows as never}
-          rowKey={(c: never) => (c as { id: string }).id}
+          rows={rows}
+          rowKey={(c) => c.id}
           aria-label="Client communications table"
           maxHeightClass="max-h-[60vh]"
         />
@@ -1946,6 +1951,4 @@ function ClientCommsInbox({ communications }: { communications: Array<Record<str
       )}
     </SectionCard>
   )
-}
-
 }

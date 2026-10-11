@@ -1,5 +1,7 @@
 # Tech360 deployment verification matrix
 
+> **Historical snapshot, 2026-10-03.** This matrix records the PR #11 deployment audit and is superseded for current source/build evidence by [`TECH360_FINAL_IMPLEMENTATION_INVENTORY.md`](./TECH360_FINAL_IMPLEMENTATION_INVENTORY.md). Current GitHub `main` is `76d60e503642795f321f036655921859fab061c6` (PR #22); CI run #102 failed at Lint. A later operator-supplied Hostinger log succeeded at `286c433`, which is 25 commits behind current `main`. Neither that log nor this historical matrix verifies the live domain/current deployment.
+
 **Status: PRODUCTION VERIFICATION REQUIRED.** This matrix separates repository evidence from Hostinger/account state. It is not a production success certificate.
 
 ## GitHub/source snapshot
