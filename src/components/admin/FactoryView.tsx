@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Boxes, Download, FileCode2, Loader2, PackageCheck, RefreshCw, Sparkles } from 'lucide-react'
+import { Boxes, Download, FileCode2, Github, Globe, GraduationCap, LayoutDashboard, Megaphone, ShoppingCart, Store, Stethoscope, Users, CalendarDays, Wand2, Loader2, PackageCheck, RefreshCw, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { fetchJson, ApiError } from '@/lib/admin-client'
@@ -108,6 +108,29 @@ export function FactoryView() {
   const toggleModule = (m: string) =>
     setForm((f) => ({ ...f, modules: f.modules.includes(m) ? f.modules.filter((x) => x !== m) : [...f.modules, m] }))
 
+  const FACTORY_TEMPLATES: Array<{ key: string; title: string; blurb: string; vertical: (typeof VERTICALS)[number]; modules: string[]; icon: React.ReactNode; color: string }> = [
+    { key: 'business-website', title: 'Business Website', blurb: '12-page marketing site + blog + contact → lead', vertical: 'crm', modules: ['clients', 'communications', 'content'], icon: <Globe className="size-6" />, color: 'from-[#009FE3] to-[#063B8F]' },
+    { key: 'ecommerce', title: 'E-commerce Platform', blurb: 'Catalog • cart • checkout • orders', vertical: 'ecommerce', modules: ['clients', 'projects', 'invoices', 'payments', 'communications'], icon: <ShoppingCart className="size-6" />, color: 'from-emerald-500 to-teal-600' },
+    { key: 'crm', title: 'CRM System', blurb: 'Leads → pipeline → 360° clients', vertical: 'crm', modules: ['leads', 'pipeline', 'clients', 'communications', 'analytics'], icon: <Users className="size-6" />, color: 'from-violet-500 to-indigo-600' },
+    { key: 'education', title: 'Education Portal', blurb: 'Courses • admissions • student hub', vertical: 'education', modules: ['leads', 'clients', 'projects', 'knowledge', 'portal'], icon: <GraduationCap className="size-6" />, color: 'from-amber-500 to-orange-600' },
+    { key: 'booking', title: 'Booking System', blurb: 'Availability • slots • payments', vertical: 'booking', modules: ['clients', 'projects', 'payments', 'communications', 'portal'], icon: <CalendarDays className="size-6" />, color: 'from-rose-500 to-pink-600' },
+    { key: 'marketing', title: 'Marketing Automation', blurb: 'Campaigns • email • social queue', vertical: 'marketing', modules: ['newsletter', 'content', 'communications', 'analytics'], icon: <Megaphone className="size-6" />, color: 'from-cyan-500 to-sky-600' },
+    { key: 'support', title: 'AI Agent App', blurb: 'Chat • knowledge • agent lanes', vertical: 'support', modules: ['chat', 'knowledge', 'communications'], icon: <Wand2 className="size-6" />, color: 'from-slate-700 to-slate-900' },
+    { key: 'saas-dashboard', title: 'SaaS Dashboard', blurb: 'Metrics • tenants • billing', vertical: 'crm', modules: ['analytics', 'invoices', 'payments', 'projects', 'reviews'], icon: <LayoutDashboard className="size-6" />, color: 'from-[#063B8F] to-[#0B1F33]' },
+  ]
+
+  const applyTemplate = (tpl: (typeof FACTORY_TEMPLATES)[number]) => {
+    setForm((f) => ({
+      ...f,
+      appName: f.appName || tpl.title,
+      vertical: tpl.vertical,
+      modules: [...new Set([...tpl.modules])],
+      notes: f.notes || `Template: ${tpl.title} — ${tpl.blurb}`,
+    }))
+    toast.success(`Template "${tpl.title}" applied — edit client/name then generate.`)
+    document.getElementById('factory-brief')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -115,7 +138,20 @@ export function FactoryView() {
         description="Turn one brief into a real, reviewed client application: pages, data model, API, agents and automations — then export the source, approve, deliver and hand it over. The blueprint engine is deterministic; nothing is delivered unreviewed."
       />
 
-      <SectionCard title="1 · Brief" description="Everything below is stored with the app so the client’s request and our blueprint always line up.">
+      <SectionCard title="Templates — one click to start (Qwen-inspired)" description="Pick a starter; the vertical + modules + notes prefill the brief below. Every template becomes a real Next.js/Prisma app — not a mock.">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {FACTORY_TEMPLATES.map((tpl) => (
+            <button key={tpl.key} type="button" onClick={() => applyTemplate(tpl)} className="group flex flex-col rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-left transition hover:-translate-y-0.5 hover:border-[#009FE3]/40 hover:bg-slate-900 hover:shadow-[0_8px_20px_rgba(6,59,143,0.12)]">
+              <span className={cn('flex size-11 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow', tpl.color)}>{tpl.icon}</span>
+              <span className="mt-3 text-sm font-semibold text-slate-100">{tpl.title}</span>
+              <span className="mt-1 text-xs leading-relaxed text-slate-500">{tpl.blurb}</span>
+              <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#009FE3]">Use template →</span>
+            </button>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard title="1 · Brief" description="Everything below is stored with the app so the client’s request and our blueprint always line up." id="factory-brief">
         <form onSubmit={create} className="grid gap-3 md:grid-cols-2">
           <label className="text-xs text-slate-400">Application name
             <input required value={form.appName} onChange={(e) => setForm({ ...form, appName: e.target.value })} className={cn(INPUT, 'mt-1 w-full')} placeholder="Northwind Client Hub" />
