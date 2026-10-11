@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCheck, Loader2, RefreshCw, ShieldAlert, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { ArrowRight, CheckCheck, Clock, FileText, Loader2, RefreshCw, ShieldAlert, ShieldCheck, ThumbsDown, ThumbsUp } from 'lucide-react'
 
 import {
   api,
@@ -85,6 +85,26 @@ export function ApprovalsView() {
           </Button>
         }
       />
+
+      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-3" aria-label="Approval swimlane">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400"><ShieldCheck className="size-3.5 text-[#009FE3]" /> Approval swimlane — Request → Triage → Decision → Execution → Audit (every gate is audit-logged)</p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-5">
+          {[
+            { label: 'Request', icon: FileText, desc: 'Agent creates pending request' },
+            { label: 'Triage', icon: Clock, desc: 'Risk badge + client context' },
+            { label: 'Decision', icon: ThumbsUp, desc: 'Approve / Reject + note' },
+            { label: 'Execution', icon: CheckCheck, desc: 'Gated action runs, result captured' },
+            { label: 'Audit', icon: ShieldAlert, desc: 'AuditLog + AutomationLog' },
+          ].map((step, i) => (
+            <div key={step.label} className="relative rounded-lg border border-slate-800 bg-slate-950/40 p-2.5">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-300"><step.icon className="size-3.5 text-[#009FE3]" /> {step.label}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{step.desc}</p>
+              {i < 4 ? <ArrowRight className="absolute -right-2 top-1/2 hidden size-3 -translate-y-1/2 rounded-full border border-slate-700 bg-slate-900 p-0.5 text-[#009FE3] sm:block" aria-hidden="true" /> : null}
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-600">Buffer Collaborate parity: approval workflow on the same calendar/queue that holds the content — here the queue is the governance list below.</p>
+      </section>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="bg-slate-900/80 p-1">
