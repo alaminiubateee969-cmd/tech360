@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react'
 import {
   Bot,
+  Check,
   ChevronRight,
+  ClipboardList,
   Download,
   Loader2,
   Play,
@@ -23,6 +25,8 @@ import {
   useApi,
   type AgentDetailResponse,
   type AgentFull,
+  type AgentJobRow,
+  type AgentJobsResponse,
   type AgentRow,
   type AgentsResponse,
   type DepartmentRow,
@@ -301,6 +305,7 @@ export function AgentsView() {
       )}
 
       {selectedCode ? <AgentDetailDialog code={selectedCode} onClose={() => setSelectedCode(null)} /> : null}
+      <AgentJobsPanel />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
@@ -353,6 +358,74 @@ export function AgentsView() {
   )
 }
 
+function AgentJobsPanel() {
+  const { data, loading, error, refresh } = useApi<AgentJobsResponse>('/api/admin/agents/jobs?limit=25')
+  const jobs = data?.jobs ?? []
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  async function decide(job: AgentJobRow, decision: 'APPROVE' | 'REJECT') {
+    if (busyId) return
+    setBusyId(job.id)
+    try {
+      await api.decideAgentJob(job.id, decision)
+      toast.success(decision === 'APPROVE' ? 'Job approved and queued.' : 'Job rejected and cancelled.')
+      refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not record the job decision.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <section aria-label="Durable AgentJob history" className={cn(CARD, 'mt-5')}>
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200"><ClipboardList className="size-4 text-[#009FE3]" aria-hidden="true" /> Durable inference jobs</h2>
+          <p className="mt-0.5 text-xs text-slate-500">MySQL-persisted queue, approval state, retries, and worker outcomes. Completion means inference completed—not that a customer deliverable or external action occurred.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="border-slate-800 bg-transparent text-slate-300">
+          <RefreshCw className={loading ? 'size-3.5 animate-spin' : 'size-3.5'} aria-hidden="true" /> Refresh
+        </Button>
+      </header>
+      {error ? <p role="alert" className="p-4 text-xs text-red-400">Could not load AgentJob history: {error}</p> : null}
+      {loading && jobs.length === 0 ? <div className="space-y-2 p-4"><Skeleton className="h-14 w-full bg-slate-800/50" /><Skeleton className="h-14 w-full bg-slate-800/50" /></div> : null}
+      {!loading && jobs.length === 0 ? <div className="p-3"><EmptyState icon={ClipboardList} title="No durable jobs yet" description="Queue an inference job from an agent profile. Jobs that require approval stay blocked until a Super Admin decides." /></div> : null}
+      {jobs.length > 0 ? (
+        <ul className="divide-y divide-slate-800/70">
+          {jobs.map((job) => (
+            <li key={job.id} className="space-y-2 px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={job.status} />
+                <span className="font-mono text-[11px] text-slate-400">{job.agentCode}</span>
+                <span className="text-xs font-medium text-slate-200">{job.agent?.name ?? 'Agent'}</span>
+                <span className="text-[10px] text-slate-600">attempt {num(job.attempts)}/{num(job.maxAttempts)}</span>
+                <span className="ml-auto text-[10px] text-slate-600">{fmtDate(job.createdAt)}</span>
+              </div>
+              <p className="text-xs text-slate-400">{job.client?.clientId ? `${job.client.clientId} · ${job.client.name ?? 'Client'} · ` : ''}{job.project?.code ? `${job.project.code} · ` : ''}{job.workflow ?? 'Inference'}</p>
+              {job.lastError ? <p className="rounded border border-red-500/20 bg-red-500/5 px-2 py-1.5 text-[11px] text-red-300">{job.lastError}</p> : null}
+              {job.output ? <details className="rounded border border-slate-800 bg-slate-950/40 p-2"><summary className="cursor-pointer text-[10px] text-slate-500">View persisted inference output</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[11px] text-slate-300">{job.output}</pre></details> : null}
+              {job.status === 'AWAITING_APPROVAL' ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] text-amber-300">Approval required; worker will not claim this job.</span>
+                  <div className="ml-auto flex gap-2">
+                    <Button size="sm" onClick={() => decide(job, 'APPROVE')} disabled={Boolean(busyId)} className="h-7 bg-emerald-700 text-[11px] text-white hover:bg-emerald-600">
+                      {busyId === job.id ? <Loader2 className="size-3 animate-spin" aria-hidden="true" /> : <Check className="size-3" aria-hidden="true" />} Approve
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => decide(job, 'REJECT')} disabled={Boolean(busyId)} className="h-7 border-slate-700 text-[11px] text-slate-300">
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  )
+}
+
 function AgentRowItem({ agent, onClick }: { agent: AgentRow; onClick: () => void }) {
   return (
     <li>
@@ -388,6 +461,9 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
   const executions = data?.executions ?? []
   const [input, setInput] = useState('')
   const [running, setRunning] = useState(false)
+  const [queueBusy, setQueueBusy] = useState(false)
+  const [queuedJob, setQueuedJob] = useState<{ id: string; status: string; approvalState?: string | null } | null>(null)
+  const [pendingQueueKey, setPendingQueueKey] = useState<{ payload: string; key: string } | null>(null)
   const [runResult, setRunResult] = useState<{
     ok?: boolean
     status?: string | null
@@ -416,6 +492,29 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
       toast.error(msg)
     } finally {
       setRunning(false)
+    }
+  }
+
+  async function queueDurableRun() {
+    if (queueBusy || running) return
+    if (!input.trim()) {
+      toast.error('Enter input before queueing an inference job.')
+      return
+    }
+    setQueueBusy(true)
+    try {
+      const payload = input.trim()
+      const idempotencyKey = pendingQueueKey?.payload === payload ? pendingQueueKey.key : `admin-${code}-${crypto.randomUUID()}`
+      setPendingQueueKey({ payload, key: idempotencyKey })
+      const res = await api.queueAgentJob(code, payload, idempotencyKey, { expectJson: true })
+      if (!res.job) throw new Error(res.message ?? 'The server did not return a persisted job.')
+      setQueuedJob({ id: res.job.id, status: res.job.status, approvalState: res.job.approvalState })
+      setPendingQueueKey(null)
+      toast.success(res.job.status === 'AWAITING_APPROVAL' ? 'Job persisted and is awaiting Super Admin approval.' : 'Inference job persisted in the durable queue.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not queue the durable inference job.')
+    } finally {
+      setQueueBusy(false)
     }
   }
 
@@ -493,13 +592,26 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
                 aria-label={`Input for agent ${code}`}
                 className="border-slate-800 bg-slate-950/60 text-sm text-slate-200"
               />
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="text-[10px] text-slate-600">Real execution — output and status come from the agent engine.</p>
-                <Button size="sm" onClick={run} disabled={running} className="font-semibold" style={{ background: ACCENT }}>
-                  {running ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Play className="size-3.5" aria-hidden="true" />}
-                  Run
-                </Button>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[10px] text-slate-600">Run now is synchronous. Queue durable persists an inference request for the scheduled worker; it does not authorize external side effects.</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={queueDurableRun} disabled={running || queueBusy} className="border-slate-700 bg-transparent text-slate-200">
+                    {queueBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <ClipboardList className="size-3.5" aria-hidden="true" />}
+                    Queue durable
+                  </Button>
+                  <Button size="sm" onClick={run} disabled={running || queueBusy} className="font-semibold" style={{ background: ACCENT }}>
+                    {running ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Play className="size-3.5" aria-hidden="true" />}
+                    Run now
+                  </Button>
+                </div>
               </div>
+              {queuedJob ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2">
+                  <StatusBadge status={queuedJob.status} />
+                  <span className="font-mono text-[10px] text-slate-500">job: {queuedJob.id}</span>
+                  {queuedJob.approvalState === 'PENDING' ? <span className="text-[10px] text-amber-300">Awaiting Super Admin approval</span> : <span className="text-[10px] text-slate-500">Refresh Durable inference jobs below for worker updates.</span>}
+                </div>
+              ) : null}
               {runResult ? (
                 <div className="mt-3 space-y-2 rounded-md border border-slate-800 bg-slate-950/60 p-3">
                   <div className="flex flex-wrap items-center gap-2">

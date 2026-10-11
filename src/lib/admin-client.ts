@@ -31,6 +31,7 @@ export class ApiError extends Error {
 export interface FetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
+  headers?: Record<string, string>
 }
 
 function extractError(data: unknown, status: number): string {
@@ -44,7 +45,7 @@ function extractError(data: unknown, status: number): string {
 
 export async function fetchJson<T>(url: string, opts: FetchOptions = {}): Promise<T> {
   const method = opts.method ?? 'GET'
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...(opts.headers ?? {}) }
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
   if (method !== 'GET') headers['x-csrf-token'] = getCsrf()
   const res = await fetch(url, {
@@ -549,8 +550,31 @@ export interface TimelineEvent {
   type?: string | null
   text?: string | null
 }
+export interface ClientAgentJobRecord {
+  id: string
+  agentCode: string
+  correlationId: string
+  workflow?: string | null
+  status: string
+  approvalState: string
+  attempts: number
+  maxAttempts: number
+  createdAt: string
+  startedAt?: string | null
+  completedAt?: string | null
+  lastError?: string | null
+  output?: string | null
+}
+export interface ClientVerifiedIdentityRecord {
+  id: string
+  identityType: 'EMAIL' | 'PHONE'
+  verificationSource: string
+  verifiedAt: string
+}
 export interface ClientDetailResponse {
   client: ClientRecord
+  agentJobs?: ClientAgentJobRecord[] | null
+  verifiedIdentities?: ClientVerifiedIdentityRecord[] | null
   lead?: LeadRecord | null
   communications?: CommunicationRecord[]
   scopes?: ScopeRecord[]
@@ -673,6 +697,35 @@ export interface ExecutionRecord {
   workflow?: string | null
   createdAt?: string | null
 }
+export interface AgentJobRow {
+  id: string
+  agentCode: string
+  correlationId: string
+  clientId?: string | null
+  projectId?: string | null
+  workflow?: string | null
+  taskType?: string | null
+  status: string
+  approvalState?: string | null
+  requestedBy?: string | null
+  approvedBy?: string | null
+  attempts?: number | null
+  maxAttempts?: number | null
+  availableAt?: string | null
+  startedAt?: string | null
+  completedAt?: string | null
+  createdAt?: string | null
+  lastError?: string | null
+  input?: string | null
+  output?: string | null
+  agent?: { name?: string | null } | null
+  client?: { clientId?: string | null; name?: string | null } | null
+  project?: { code?: string | null; name?: string | null } | null
+}
+export interface AgentJobsResponse { jobs?: AgentJobRow[] }
+export interface AgentJobResponse { job?: AgentJobRow & { checkpoint?: string | null; approvalNote?: string | null; payloadHash?: string | null } }
+export interface AgentJobEnqueueResponse { ok?: boolean; created?: boolean; job?: Pick<AgentJobRow, 'id' | 'status' | 'approvalState' | 'correlationId' | 'agentCode' | 'createdAt'>; message?: string }
+
 export interface AgentDetailResponse { agent: AgentFull; executions?: ExecutionRecord[] }
 export interface AgentRunResponse {
   ok?: boolean
@@ -918,6 +971,27 @@ export const api = {
     fetchJson<AgentRunResponse>(`/api/admin/agents/${encodeURIComponent(code)}/run`, {
       method: 'POST',
       body: { input, expectJson },
+    }),
+  agentJobs: (opts?: { status?: string; agentCode?: string; clientId?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (opts?.status) query.set('status', opts.status)
+    if (opts?.agentCode) query.set('agentCode', opts.agentCode)
+    if (opts?.clientId) query.set('clientId', opts.clientId)
+    if (opts?.limit) query.set('limit', String(opts.limit))
+    const serialized = query.toString()
+    return fetchJson<AgentJobsResponse>(`/api/admin/agents/jobs${serialized ? `?${serialized}` : ''}`)
+  },
+  agentJob: (id: string) => fetchJson<AgentJobResponse>(`/api/admin/agents/jobs/${encodeURIComponent(id)}`),
+  queueAgentJob: (code: string, input: string, idempotencyKey: string, opts?: { expectJson?: boolean; clientId?: string; projectId?: string }) =>
+    fetchJson<AgentJobEnqueueResponse>(`/api/admin/agents/${encodeURIComponent(code)}/jobs`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: { input, expectJson: opts?.expectJson ?? true, clientId: opts?.clientId, projectId: opts?.projectId },
+    }),
+  decideAgentJob: (id: string, decision: 'APPROVE' | 'REJECT', note?: string) =>
+    fetchJson<{ ok?: boolean; job?: { id: string; status: string; approvalState: string } }>(`/api/admin/agents/jobs/${encodeURIComponent(id)}/decision`, {
+      method: 'POST',
+      body: { decision, note },
     }),
   createAgent: (purpose: string, description: string) =>
     fetchJson<{ ok?: boolean; message?: string }>('/api/admin/agents/create', {

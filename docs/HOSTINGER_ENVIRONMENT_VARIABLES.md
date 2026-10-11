@@ -32,6 +32,7 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` | PayPal integration flags | Mixed; secrets marked by name | PayPal dashboard | Optional; integration is not enabled by empty values |
 | `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD` | SSLCommerz integration flags | Mixed; password is secret | SSLCommerz dashboard | Optional |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp Cloud API and webhook verification | Secret | Meta developer console | Optional |
+| `IDENTITY_HASH_SECRET` | Keyed HMAC index for verified client identity; at least 32 random bytes and stable across deployments | Secret | Owner-generated; preserve securely and do not rotate without an identity-index migration | Required when WhatsApp is configured
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | SMTP email delivery | `SMTP_PASS` secret; others configuration | Mail provider | Optional; required before email sending |
 | `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` | Generic SMS delivery | `SMS_API_KEY` secret; others configuration | SMS provider | Optional |
 | `HTTPSMS_API_KEY`, `HTTPSMS_BASE_URL`, `HTTPSMS_FROM` | HTTP SMS provider adapter | `HTTPSMS_API_KEY` secret; base URL/sender are configuration | httpsSMS account | Optional |
@@ -46,7 +47,7 @@ The repository also contains dynamic feature metadata for the payment credential
 ## Production safety
 
 - `.env.example` lists variable names with empty values only; it is not a source of production settings.
-- `npm start` runs `scripts/validate-production-env.mjs` before launching the standalone server. It requires a credentialed MySQL URL with a database name, the canonical HTTPS origins, and three distinct random application secrets of at least 32 characters. It reports variable names only and never prints values; it does not guess or hard-code the Hostinger database endpoint.
+- `npm start` runs `scripts/validate-production-env.mjs` before launching the standalone server. It requires a credentialed MySQL URL with a database name, the canonical HTTPS origins, and three distinct random application secrets of at least 32 characters. If either WhatsApp token or app secret is configured, it also requires `IDENTITY_HASH_SECRET`; any supplied identity key is length-checked and must remain stable across deployments. The validator reports variable names only and never prints values; it does not guess or hard-code the Hostinger database endpoint.
 - An authorized operator must confirm `DATABASE_URL` exactly matches the actual Hostinger MySQL panel before any deployment build can apply migrations. The hPanel values, connection, migration state, and backup remain **NOT VERIFIED**.
 - `ADMIN_EMAIL` and `ADMIN_PASSWORD` are required for the one-time production seed; `ADMIN_PASSWORD` is not needed by normal runtime startup and must be removed after seeding/password change.
 - Do not commit a production `.env` file.

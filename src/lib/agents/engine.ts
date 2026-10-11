@@ -12,6 +12,7 @@ import { getAgentDefinition } from '@/lib/agents/bootstrap'
 
 export type AgentRunInput = {
   input: string
+  correlationId?: string
   clientId?: string
   projectId?: string
   workflow?: string
@@ -121,7 +122,7 @@ export async function tokensUsedToday(agentCode: string, now = new Date()): Prom
  */
 export async function runAgent(agentCode: string, run: AgentRunInput): Promise<AgentRunResult> {
   await reapStaleAgentExecutions().catch(() => 0)
-  const correlationId = newCorrelationId()
+  const correlationId = run.correlationId ?? newCorrelationId()
   const definition = getAgentDefinition(agentCode)
   const agent = await db.aiAgent.findUnique({
     where: { code: agentCode },

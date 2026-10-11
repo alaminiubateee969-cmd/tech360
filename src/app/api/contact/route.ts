@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
 
   const raw = await readJson(req)
   const name = sanitizeText(raw.name, 200)
-  const email = sanitizeEmail(raw.email)
+  const emailInput = sanitizeText(raw.email, 320)
+  const email = sanitizeEmail(emailInput)
   const whatsapp = sanitizePhone(raw.whatsapp)
   const details = sanitizeText(raw.details ?? raw.projectDetails, 8000)
   const businessName = sanitizeText(raw.businessName, 200)
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
   const errors: Record<string, string> = {}
   if (name.length < 2) errors.name = 'Name is required'
   if (!email && !whatsapp) errors.contact = 'Email or WhatsApp number is required'
-  if (email && !email) errors.email = 'Invalid email'
+  if (emailInput && !email) errors.email = 'Invalid email'
   if (details.length < 20) errors.details = 'Please describe your project (at least 20 characters)'
   if (Object.keys(errors).length > 0) return Response.json({ error: 'Validation failed', fields: errors }, { status: 400 })
 

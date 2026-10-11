@@ -594,6 +594,8 @@ export function ClientDetailView({
             ['meetings', `Meetings (${(data?.meetings ?? []).length})`],
             ['memory', `Memory (${(data?.memories ?? []).length})`],
             ['automation', `Automation (${(data?.automationLogs ?? []).length})`],
+            ...(Array.isArray(data?.agentJobs) ? [['agentJobs', `Agent Jobs (${data.agentJobs.length})`]] : []),
+            ...(Array.isArray(data?.verifiedIdentities) ? [['identities', `Verified identities (${data.verifiedIdentities.length})`]] : []),
             ['research', 'AI Research'],
           ].map(([v, label]) => (
             <TabsTrigger
@@ -829,6 +831,48 @@ export function ClientDetailView({
               aria-label="Automation logs"
               maxHeightClass="max-h-[60vh]"
             />
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="agentJobs" className="mt-3">
+          <SectionCard title="Durable AgentJob history" description="Super Admin-only inference ledger for this canonical client. A completed inference does not imply an external action or delivered artifact.">
+            {(data?.agentJobs ?? []).length === 0 ? (
+              <EmptyState title="No durable agent jobs" description="Queued inference requests linked to this client will appear here with approval, retry, and terminal status." />
+            ) : (
+              <ol className="space-y-2">
+                {(data?.agentJobs ?? []).map((job) => (
+                  <li key={job.id} className="rounded-md border border-slate-800 bg-slate-950/50 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge status={job.status} />
+                      <span className="font-mono text-xs text-slate-300">{job.agentCode}</span>
+                      <span className="text-[10px] text-slate-500">attempt {num(job.attempts)}/{num(job.maxAttempts)}</span>
+                      <span className="ml-auto text-[10px] text-slate-600">{fmtDate(job.completedAt ?? job.startedAt ?? job.createdAt)}</span>
+                    </div>
+                    <p className="mt-1 font-mono text-[10px] text-slate-600">{job.correlationId}{job.workflow ? ` · ${job.workflow}` : ''} · {job.approvalState}</p>
+                    {job.lastError ? <p className="mt-2 text-xs text-red-400">{job.lastError}</p> : null}
+                    {job.output ? <details className="mt-2 rounded border border-slate-800 p-2"><summary className="cursor-pointer text-[10px] text-slate-500">View persisted inference output</summary><div className="mt-2"><Markdownish text={job.output} /></div></details> : null}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="identities" className="mt-3">
+          <SectionCard title="Verified identities" description="Super Admin-only verification metadata. Raw identifiers and HMAC digests are not returned in this view.">
+            {(data?.verifiedIdentities ?? []).length === 0 ? (
+              <EmptyState title="No verified identities linked" description="Website contact fields are unverified claims. A signed WhatsApp event or an audited Super Admin verification is required before linking." />
+            ) : (
+              <ul className="space-y-2">
+                {(data?.verifiedIdentities ?? []).map((identity) => (
+                  <li key={identity.id} className="flex flex-wrap items-center gap-2 rounded-md border border-slate-800 bg-slate-950/50 p-3">
+                    <span className="rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-300">{identity.identityType}</span>
+                    <span className="text-xs text-slate-400">Verified via {prettify(identity.verificationSource)}</span>
+                    <span className="ml-auto text-[10px] text-slate-600">{fmtDate(identity.verifiedAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </SectionCard>
         </TabsContent>
 

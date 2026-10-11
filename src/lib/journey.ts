@@ -6,6 +6,8 @@ import { newCorrelationId, logError, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { PAD_CSS, padHeader, padMeta, padFooter, padSignatures, docDate } from '@/lib/letterhead'
 import { evaluateProjectClosure } from '@/lib/lifecycle-policy'
+import { resolveOrCreateVerifiedClient } from '@/lib/identity-resolver'
+import type { VerifiedIdentityProof } from '@/lib/identity-policy'
 
 // Tokenized preview links expire after this many days (env-overridable).
 const PREVIEW_TTL_DAYS = Math.max(1, Number(process.env.PREVIEW_TTL_DAYS ?? 30) || 30)
@@ -88,60 +90,86 @@ export async function intakeLead(input: {
   preferredContact?: string
   tracking?: unknown
   formId?: string
+  providerMessageId?: string
+  verifiedIdentities?: VerifiedIdentityProof[]
 }): Promise<{ clientId: string; clientRowId: string; logId: string }> {
-  const log = await startLog('LEAD_INTAKE', input.source, undefined, input)
+  const log = await startLog('LEAD_INTAKE', input.source, undefined, {
+    hasEmail: Boolean(input.email),
+    hasPhone: Boolean(input.phone || input.whatsapp),
+    identityTypes: input.verifiedIdentities?.map((identity) => identity.type) ?? [],
+    hasProviderMessageId: Boolean(input.providerMessageId),
+    hasFormId: Boolean(input.formId),
+  })
   try {
-    // De-dupe by email / whatsapp / phone
-    let existing: Awaited<ReturnType<typeof db.client.findFirst>> = null
-    if (input.email) existing = await db.client.findFirst({ where: { email: input.email, deletedAt: null } })
-    if (!existing && (input.whatsapp || input.phone)) {
-      const tel = input.whatsapp ?? input.phone
-      existing = await db.client.findFirst({ where: { OR: [{ whatsapp: tel }, { phone: tel }], deletedAt: null } })
+    // A retried form event with the same persisted submission id must not
+    // create another communication or restart the first-contact workflow.
+    if (input.formId) {
+      const priorSubmission = await db.formSubmission.findUnique({ where: { id: input.formId }, select: { clientId: true, status: true } })
+      if (priorSubmission?.clientId) {
+        const priorClient = await db.client.findUnique({ where: { id: priorSubmission.clientId } })
+        if (priorSubmission.status === 'PROCESSED' && priorClient) {
+          await finishLog(log.id, 'SUCCESS', { clientId: priorClient.clientId, idempotentReplay: true })
+          return { clientId: priorClient.clientId, clientRowId: priorClient.id, logId: log.id }
+        }
+        throw new Error('This form submission is already processing or needs operator review; duplicate intake was refused.')
+      }
     }
 
-    let clientRow: Awaited<ReturnType<typeof db.client.findFirst>>
-    if (existing) {
-      clientRow = await db.client.update({
-        where: { id: existing.id },
-        data: {
-          name: existing.name || input.name || 'Unknown',
-          businessName: existing.businessName ?? input.businessName ?? null,
-          email: existing.email ?? input.email ?? null,
-          whatsapp: existing.whatsapp ?? input.whatsapp ?? null,
-          phone: existing.phone ?? input.phone ?? null,
-          country: existing.country ?? input.country ?? null,
-        },
-      })
+    const createData = {
+      clientId: await nextClientId(),
+      name: sanitizeText(input.name, 200) || 'Unknown Contact',
+      businessName: sanitizeText(input.businessName, 200) || null,
+      businessType: input.businessType || null,
+      email: input.email || null,
+      phone: input.phone || null,
+      whatsapp: input.whatsapp || null,
+      country: input.country || null,
+      source: input.source,
+      status: 'LEAD',
+      pipelineStage: 'NEW',
+      preferredContact: input.preferredContact || null,
+    }
+
+    let clientRow: Awaited<ReturnType<typeof db.client.findUnique>>
+    let isNewClient = true
+    if (input.verifiedIdentities?.length) {
+      const resolved = await resolveOrCreateVerifiedClient(createData, input.verifiedIdentities)
+      clientRow = resolved.client
+      isNewClient = resolved.created
+      if (!isNewClient) {
+        clientRow = await db.client.update({
+          where: { id: resolved.client.id },
+          data: {
+            name: resolved.client.name === 'Unknown Contact' ? createData.name : resolved.client.name,
+            businessName: resolved.client.businessName ?? createData.businessName,
+            email: resolved.client.email ?? createData.email,
+            whatsapp: resolved.client.whatsapp ?? createData.whatsapp,
+            phone: resolved.client.phone ?? createData.phone,
+            country: resolved.client.country ?? createData.country,
+          },
+        })
+      }
     } else {
-      const clientId = await nextClientId()
-      clientRow = await db.client.create({
-        data: {
-          clientId,
-          name: sanitizeText(input.name, 200) || 'Unknown Contact',
-          businessName: sanitizeText(input.businessName, 200) || null,
-          businessType: input.businessType || null,
-          email: input.email || null,
-          phone: input.phone || null,
-          whatsapp: input.whatsapp || null,
-          country: input.country || null,
-          source: input.source,
-          status: 'LEAD',
-          pipelineStage: 'NEW',
-          preferredContact: input.preferredContact || null,
-        },
-      })
+      // Unverified email/phone fields are stored as contact data only. They
+      // must never be used to merge one person's submission into another
+      // client's record.
+      clientRow = await db.client.create({ data: createData })
+    }
+    if (!clientRow) throw new Error('Client creation or identity resolution failed.')
+    if (input.formId) {
+      await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSING' } })
+    }
+
+    if (isNewClient) {
       await rememberMemory({ scope: 'CLIENT', key: `origin:${clientRow.id}`, content: `Client originated from ${input.source} on ${new Date().toISOString()}. First message: ${sanitizeText(input.message, 500)}`, clientId: clientRow.id, importance: 7 })
     }
 
-    if (input.formId) {
-      await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSED' } }).catch(() => null)
-    }
-
-    // Save the original inbound message
+    // Save the original inbound message; provider ids are persisted for replay audits.
     await db.communication.create({
       data: {
         clientId: clientRow.id, channel: input.source, direction: 'IN',
         sender: input.name ?? null, body: sanitizeText(input.message, 8000),
+        providerMessageId: input.providerMessageId ?? null,
         status: 'RECEIVED',
       },
     })
@@ -160,34 +188,40 @@ export async function intakeLead(input: {
       update: { requirements: sanitizeText(input.message, 4000) },
     })
 
-    await stepLog(log.id, 'client_created', { clientId: clientRow.clientId })
+    await stepLog(log.id, 'client_created', { clientId: clientRow.clientId, isNewClient })
 
-    // Auto-advance: business detection
-    await detectBusiness(clientRow.id, input.message)
+    // Only the first verified contact starts AI detection and outbound welcome.
+    // A repeated/concurrent first-contact event cannot send duplicate welcomes.
+    if (isNewClient) {
+      await detectBusiness(clientRow.id, input.message)
+      await setStage(clientRow.id, 'CONTACTED', 'First message processed')
+      await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id })
 
-    await setStage(clientRow.id, 'CONTACTED', 'First message processed')
-    await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id })
-
-    // Send honest welcome (WhatsApp if configured, else email if configured — else logged only)
-    const whatsapp = clientRow.whatsapp
-    const email = clientRow.email
-    if (whatsapp) {
-      const tpl = emailTemplate('WELCOME', { name: clientRow.name })
-      const r = await sendCommunication({ clientId: clientRow.id, channel: 'WHATSAPP', to: whatsapp, body: `Hi ${clientRow.name}, thank you for contacting Tech360. Your reference ID is ${clientRow.clientId}. Our team is reviewing your requirements and will reply shortly. — Team Tech360`, agentCode: 'EML-012', workflowId: log.id })
-      await stepLog(log.id, 'welcome_whatsapp', { status: r.result.status })
+      const whatsapp = clientRow.whatsapp
+      const email = clientRow.email
+      if (whatsapp) {
+        const r = await sendCommunication({ clientId: clientRow.id, channel: 'WHATSAPP', to: whatsapp, body: `Hi ${clientRow.name}, thank you for contacting Tech360. Your reference ID is ${clientRow.clientId}. Our team is reviewing your requirements and will reply shortly. — Team Tech360`, agentCode: 'EML-012', workflowId: log.id })
+        await stepLog(log.id, 'welcome_whatsapp', { status: r.result.status })
+      }
+      if (email) {
+        const r = await sendCommunication({
+          clientId: clientRow.id, channel: 'EMAIL', to: email, subject: 'Welcome to Tech360 — we received your request',
+          body: emailTemplate('WELCOME', { name: clientRow.name, extra: '' }).body.replace('{{clientId}}', clientRow.clientId),
+          agentCode: 'EML-012', workflowId: log.id,
+        })
+        await stepLog(log.id, 'welcome_email', { status: r.result.status })
+      }
+    } else {
+      await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id, reusedVerifiedIdentity: true })
     }
-    if (email) {
-      const r = await sendCommunication({
-        clientId: clientRow.id, channel: 'EMAIL', to: email, subject: 'Welcome to Tech360 — we received your request',
-        body: emailTemplate('WELCOME', { name: clientRow.name, extra: '' }).body.replace('{{clientId}}', clientRow.clientId),
-        agentCode: 'EML-012', workflowId: log.id,
-      })
-      await stepLog(log.id, 'welcome_email', { status: r.result.status })
-    }
 
+    if (input.formId) {
+      await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSED' } })
+    }
     return { clientId: clientRow.clientId, clientRowId: clientRow.id, logId: log.id }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
+    if (input.formId) await db.formSubmission.updateMany({ where: { id: input.formId, status: 'PROCESSING' }, data: { status: 'FAILED' } }).catch(() => null)
     await finishLog(log.id, 'FAILED', undefined, msg)
     await logError({ source: 'AUTOMATION', code: 'LEAD_INTAKE_FAILED', message: msg, workflow: 'LEAD_INTAKE' })
     throw e
