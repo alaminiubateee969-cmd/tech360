@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Download, Eye, RefreshCw, Search } from 'lucide-react'
+import { Download, Eye, RefreshCw, Search, Table2, Kanban } from 'lucide-react'
 
 import { fmtDateShort, useApi, type ClientsResponse } from '@/lib/admin-client'
 import { DataTable, type Column } from './shared/DataTable'
@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { LeadsBoard } from './LeadsBoard'
 
 const STAGES = [
   'NEW', 'CONTACTED', 'BUSINESS_IDENTIFIED', 'PLAN_RECOMMENDED', 'SCOPE_COLLECTION',
@@ -50,6 +51,7 @@ export function LeadsView({
   const [stage, setStage] = useState<string>('ALL')
   const [status, setStatus] = useState<string>(mode === 'leads' ? 'LEAD' : 'ALL')
   const [page, setPage] = useState(1)
+  const [view, setView] = useState<'table' | 'board'>('table')
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -64,9 +66,14 @@ export function LeadsView({
     if (query.trim()) p.set('query', query.trim())
     if (stage !== 'ALL') p.set('stage', stage)
     if (status !== 'ALL') p.set('status', status)
-    p.set('page', String(page))
+    if (view === 'board') {
+      p.set('page', '1')
+      p.set('perPage', '100')
+    } else {
+      p.set('page', String(page))
+    }
     return `/api/admin/clients?${p.toString()}`
-  }, [query, stage, status, page])
+  }, [query, stage, status, page, view])
 
   const { data, loading, error, refresh } = useApi<ClientsResponse>(url)
   const rows = data?.clients ?? []
@@ -122,6 +129,24 @@ export function LeadsView({
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label="View mode" className="inline-flex overflow-hidden rounded-lg border border-slate-800">
+              <button
+                type="button"
+                aria-pressed={view === 'table'}
+                onClick={() => setView('table')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition ${view === 'table' ? 'bg-[#009FE3] text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+              >
+                <Table2 className="size-3.5" /> Table
+              </button>
+              <button
+                type="button"
+                aria-pressed={view === 'board'}
+                onClick={() => setView('board')}
+                className={`inline-flex items-center gap-1.5 border-l border-slate-800 px-3 py-1.5 text-xs font-semibold transition ${view === 'board' ? 'bg-[#009FE3] text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+              >
+                <Kanban className="size-3.5" /> Board
+              </button>
+            </div>
             {isLeads ? (
               <Button
                 variant="outline"
@@ -204,26 +229,31 @@ export function LeadsView({
         </div>
       ) : null}
 
-      <DataTable
-        columns={columns}
-        rows={rows}
-        loading={loading}
-        rowKey={(r) => r.id}
-        onRowClick={(r) => onOpenClient(r.id)}
-        empty={
-          <EmptyState
-            title={query || stage !== 'ALL' || status !== 'ALL' ? 'No records match these filters' : isLeads ? 'No leads yet' : 'No clients yet'}
-            description={
-              query || stage !== 'ALL' || status !== 'ALL'
-                ? 'Try clearing the search or filters.'
-                : 'New inquiries will appear here.'
+      {view === 'board' ? (
+        <LeadsBoard rows={rows as unknown as Parameters<typeof LeadsBoard>[0]['rows']} onOpenClient={onOpenClient} onMoved={refresh} />
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            rows={rows}
+            loading={loading}
+            rowKey={(r) => r.id}
+            onRowClick={(r) => onOpenClient(r.id)}
+            empty={
+              <EmptyState
+                title={query || stage !== 'ALL' || status !== 'ALL' ? 'No records match these filters' : isLeads ? 'No leads yet' : 'No clients yet'}
+                description={
+                  query || stage !== 'ALL' || status !== 'ALL'
+                    ? 'Try clearing the search or filters.'
+                    : 'New inquiries will appear here.'
+                }
+              />
             }
+            aria-label={isLeads ? 'Leads table' : 'Clients table'}
           />
-        }
-        aria-label={isLeads ? 'Leads table' : 'Clients table'}
-      />
-
-      <Pager page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} loading={loading} unit="records" />
+          <Pager page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} loading={loading} unit="records" />
+        </>
+      )}
     </div>
   )
 }
