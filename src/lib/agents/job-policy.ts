@@ -34,6 +34,7 @@ export function isRetryableAgentJobFailure(status: string, error: string | null 
   const message = error ?? ''
   if (/^PROVIDER_TIMEOUT\b/.test(message)) return true
   if (/^PROVIDER_ERROR: ZAI provider request could not be completed\b/.test(message)) return true
+  if (/^TOOL_TEMPORARY_FAILURE\b/.test(message)) return true
   const httpStatus = message.match(/\bHTTP\s+(\d{3})\b/i)?.[1]
   if (httpStatus) {
     const code = Number(httpStatus)

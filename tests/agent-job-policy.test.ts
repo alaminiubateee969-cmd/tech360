@@ -17,6 +17,7 @@ describe('durable AgentJob retry policy', () => {
   it('retries only transient provider failures within the attempt budget', () => {
     assert.equal(isRetryableAgentJobFailure('TIMEOUT', 'PROVIDER_TIMEOUT: timed out', 1, 3), true)
     assert.equal(isRetryableAgentJobFailure('FAILED', 'PROVIDER_ERROR: ZAI provider returned HTTP 503: unavailable', 1, 3), true)
+    assert.equal(isRetryableAgentJobFailure('FAILED', 'TOOL_TEMPORARY_FAILURE: database operation failed (P2034)', 1, 3), true)
     assert.equal(isRetryableAgentJobFailure('FAILED', 'PROVIDER_NOT_CONFIGURED: missing credentials', 1, 3), false)
     assert.equal(isRetryableAgentJobFailure('FAILED', 'Daily quota exceeded', 1, 3), false)
     assert.equal(isRetryableAgentJobFailure('TIMEOUT', 'PROVIDER_TIMEOUT: timed out', 3, 3), false)

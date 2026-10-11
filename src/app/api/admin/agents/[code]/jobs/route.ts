@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-/** Queue a durable, idempotent inference request. This does not itself perform external actions. */
+/** Queue an idempotent inference request or a narrowly allowlisted internal tool call. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
@@ -25,8 +25,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
 
   const clientId = raw.clientId ? sanitizeText(raw.clientId, 64) : null
   const projectId = raw.projectId ? sanitizeText(raw.projectId, 64) : null
+  const toolName = raw.toolName === undefined ? null : sanitizeText(raw.toolName, 80)
   if (raw.clientId && !clientId) return Response.json({ error: 'Invalid client ID.' }, { status: 400 })
   if (raw.projectId && !projectId) return Response.json({ error: 'Invalid project ID.' }, { status: 400 })
+  if (raw.toolName !== undefined && !toolName) return Response.json({ error: 'Invalid tool name.' }, { status: 400 })
+  if (raw.toolArgs !== undefined && (!raw.toolArgs || typeof raw.toolArgs !== 'object' || Array.isArray(raw.toolArgs))) {
+    return Response.json({ error: 'Tool arguments must be a JSON object.' }, { status: 400 })
+  }
 
   try {
     const result = await enqueueAgentJob({
@@ -37,8 +42,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
       clientId,
       projectId,
       workflow: 'MANUAL_ADMIN_DURABLE',
-      contextNote: `Durable inference requested by authorized admin user ${g.user.id}.`,
+      contextNote: `Durable job requested by authorized admin user ${g.user.id}.`,
       requestedBy: g.user.id,
+      toolName,
+      toolArgs: raw.toolArgs,
     })
     return Response.json({
       ok: true,
@@ -49,9 +56,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cod
         approvalState: result.job.approvalState,
         correlationId: result.job.correlationId,
         agentCode: result.job.agentCode,
+        taskType: result.job.taskType,
+        toolName: result.job.toolName,
         createdAt: result.job.createdAt,
       },
-      message: result.created ? 'Durable inference job persisted.' : 'Existing idempotent job returned.',
+      message: result.created
+        ? (result.job.taskType === 'TOOL_CALL' ? 'Durable allowlisted tool job persisted.' : 'Durable inference job persisted.')
+        : 'Existing idempotent job returned.',
     }, { status: result.created ? 202 : 200 })
   } catch (error) {
     if (error instanceof AgentJobIdempotencyConflict) return Response.json({ error: error.message }, { status: 409 })

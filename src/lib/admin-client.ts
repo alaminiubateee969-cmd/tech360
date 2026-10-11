@@ -555,6 +555,8 @@ export interface ClientAgentJobRecord {
   agentCode: string
   correlationId: string
   workflow?: string | null
+  taskType?: string | null
+  toolName?: string | null
   status: string
   approvalState: string
   attempts: number
@@ -707,6 +709,7 @@ export interface AgentJobRow {
   projectId?: string | null
   workflow?: string | null
   taskType?: string | null
+  toolName?: string | null
   status: string
   approvalState?: string | null
   requestedBy?: string | null
@@ -726,7 +729,7 @@ export interface AgentJobRow {
 }
 export interface AgentJobsResponse { jobs?: AgentJobRow[] }
 export interface AgentJobResponse { job?: AgentJobRow & { checkpoint?: string | null; approvalNote?: string | null; payloadHash?: string | null } }
-export interface AgentJobEnqueueResponse { ok?: boolean; created?: boolean; job?: Pick<AgentJobRow, 'id' | 'status' | 'approvalState' | 'correlationId' | 'agentCode' | 'createdAt'>; message?: string }
+export interface AgentJobEnqueueResponse { ok?: boolean; created?: boolean; job?: Pick<AgentJobRow, 'id' | 'status' | 'approvalState' | 'correlationId' | 'agentCode' | 'taskType' | 'toolName' | 'createdAt'>; message?: string }
 
 export interface AgentDetailResponse { agent: AgentFull; executions?: ExecutionRecord[] }
 export interface AgentRunResponse {
@@ -985,11 +988,11 @@ export const api = {
     return fetchJson<AgentJobsResponse>(`/api/admin/agents/jobs${serialized ? `?${serialized}` : ''}`)
   },
   agentJob: (id: string) => fetchJson<AgentJobResponse>(`/api/admin/agents/jobs/${encodeURIComponent(id)}`),
-  queueAgentJob: (code: string, input: string, idempotencyKey: string, opts?: { expectJson?: boolean; clientId?: string; projectId?: string }) =>
+  queueAgentJob: (code: string, input: string, idempotencyKey: string, opts?: { expectJson?: boolean; clientId?: string; projectId?: string; toolName?: string; toolArgs?: Record<string, unknown> }) =>
     fetchJson<AgentJobEnqueueResponse>(`/api/admin/agents/${encodeURIComponent(code)}/jobs`, {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
-      body: { input, expectJson: opts?.expectJson ?? true, clientId: opts?.clientId, projectId: opts?.projectId },
+      body: { input, expectJson: opts?.expectJson ?? true, clientId: opts?.clientId, projectId: opts?.projectId, toolName: opts?.toolName, toolArgs: opts?.toolArgs },
     }),
   decideAgentJob: (id: string, decision: 'APPROVE' | 'REJECT', note?: string) =>
     fetchJson<{ ok?: boolean; job?: { id: string; status: string; approvalState: string } }>(`/api/admin/agents/jobs/${encodeURIComponent(id)}/decision`, {

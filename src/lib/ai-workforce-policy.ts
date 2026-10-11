@@ -158,6 +158,13 @@ export function authorizeAgentTool(
  * records. Cross-client reach requires an explicit company-wide scope, which
  * only executive/governance agents carry (`read:all`).
  */
+export function agentHasPermission(
+  agent: { permissions?: string | string[] | null },
+  permission: string,
+): boolean {
+  return toList(agent.permissions).includes(permission)
+}
+
 export function agentMayAccessClient(
   agent: { permissions?: string | string[] | null },
   actingForClientId: string | null,

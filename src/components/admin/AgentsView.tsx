@@ -31,6 +31,7 @@ import {
   type AgentsResponse,
   type DepartmentRow,
   type ExecutionRecord,
+  type ProjectSummary,
 } from '@/lib/admin-client'
 import { EmptyState, KpiCard, PageHeader } from './shared/cards'
 import { JsonView } from './shared/JsonView'
@@ -381,8 +382,8 @@ function AgentJobsPanel() {
     <section aria-label="Durable AgentJob history" className={cn(CARD, 'mt-5')}>
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
         <div>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200"><ClipboardList className="size-4 text-[#009FE3]" aria-hidden="true" /> Durable inference jobs</h2>
-          <p className="mt-0.5 text-xs text-slate-500">MySQL-persisted queue, approval state, retries, and worker outcomes. Completion means inference completed—not that a customer deliverable or external action occurred.</p>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200"><ClipboardList className="size-4 text-[#009FE3]" aria-hidden="true" /> Durable AgentJobs</h2>
+          <p className="mt-0.5 text-xs text-slate-500">MySQL-persisted queue, approval state, retries, lease recovery, inference outcomes, and allowlisted internal task tools. Inference completion is not customer delivery or acceptance.</p>
         </div>
         <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="border-slate-800 bg-transparent text-slate-300">
           <RefreshCw className={loading ? 'size-3.5 animate-spin' : 'size-3.5'} aria-hidden="true" /> Refresh
@@ -390,7 +391,7 @@ function AgentJobsPanel() {
       </header>
       {error ? <p role="alert" className="p-4 text-xs text-red-400">Could not load AgentJob history: {error}</p> : null}
       {loading && jobs.length === 0 ? <div className="space-y-2 p-4"><Skeleton className="h-14 w-full bg-slate-800/50" /><Skeleton className="h-14 w-full bg-slate-800/50" /></div> : null}
-      {!loading && jobs.length === 0 ? <div className="p-3"><EmptyState icon={ClipboardList} title="No durable jobs yet" description="Queue an inference job from an agent profile. Jobs that require approval stay blocked until a Super Admin decides." /></div> : null}
+      {!loading && jobs.length === 0 ? <div className="p-3"><EmptyState icon={ClipboardList} title="No durable jobs yet" description="Queue inference or an explicitly supported internal tool from an authorized agent profile. Jobs requiring approval stay blocked until a Super Admin decides." /></div> : null}
       {jobs.length > 0 ? (
         <ul className="divide-y divide-slate-800/70">
           {jobs.map((job) => (
@@ -402,9 +403,9 @@ function AgentJobsPanel() {
                 <span className="text-[10px] text-slate-600">attempt {num(job.attempts)}/{num(job.maxAttempts)}</span>
                 <span className="ml-auto text-[10px] text-slate-600">{fmtDate(job.createdAt)}</span>
               </div>
-              <p className="text-xs text-slate-400">{job.client?.clientId ? `${job.client.clientId} · ${job.client.name ?? 'Client'} · ` : ''}{job.project?.code ? `${job.project.code} · ` : ''}{job.workflow ?? 'Inference'}</p>
+              <p className="text-xs text-slate-400">{job.client?.clientId ? `${job.client.clientId} · ${job.client.name ?? 'Client'} · ` : ''}{job.project?.code ? `${job.project.code} · ` : ''}{job.workflow ?? 'MANUAL'} · {job.taskType === 'TOOL_CALL' ? `tool ${job.toolName ?? 'unknown'}` : 'inference'}</p>
               {job.lastError ? <p className="rounded border border-red-500/20 bg-red-500/5 px-2 py-1.5 text-[11px] text-red-300">{job.lastError}</p> : null}
-              {job.output ? <details className="rounded border border-slate-800 bg-slate-950/40 p-2"><summary className="cursor-pointer text-[10px] text-slate-500">View persisted inference output</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[11px] text-slate-300">{job.output}</pre></details> : null}
+              {job.output ? <details className="rounded border border-slate-800 bg-slate-950/40 p-2"><summary className="cursor-pointer text-[10px] text-slate-500">View persisted job result</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[11px] text-slate-300">{job.output}</pre></details> : null}
               {job.status === 'AWAITING_APPROVAL' ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] text-amber-300">Approval required; worker will not claim this job.</span>
@@ -457,13 +458,21 @@ function AgentRowItem({ agent, onClick }: { agent: AgentRow; onClick: () => void
 
 function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => void }) {
   const { data, loading, error } = useApi<AgentDetailResponse>(`/api/admin/agents/${encodeURIComponent(code)}`)
+  const { data: projectData, loading: projectsLoading, error: projectsError } = useApi<{ projects?: ProjectSummary[] }>('/api/admin/projects')
   const agent: AgentFull | undefined = data?.agent
   const executions = data?.executions ?? []
+  const eligibleToolProjects = (projectData?.projects ?? []).filter((project) => !['COMPLETED', 'CANCELLED', 'ON_HOLD'].includes((project.status ?? '').toUpperCase()))
   const [input, setInput] = useState('')
   const [running, setRunning] = useState(false)
   const [queueBusy, setQueueBusy] = useState(false)
   const [queuedJob, setQueuedJob] = useState<{ id: string; status: string; approvalState?: string | null } | null>(null)
   const [pendingQueueKey, setPendingQueueKey] = useState<{ payload: string; key: string } | null>(null)
+  const [taskToolProjectId, setTaskToolProjectId] = useState('')
+  const [taskToolTitle, setTaskToolTitle] = useState('')
+  const [taskToolDescription, setTaskToolDescription] = useState('')
+  const [taskToolBusy, setTaskToolBusy] = useState(false)
+  const [pendingTaskToolKey, setPendingTaskToolKey] = useState<{ signature: string; key: string } | null>(null)
+  const [queuedTaskToolJob, setQueuedTaskToolJob] = useState<{ id: string; status: string; approvalState?: string | null } | null>(null)
   const [runResult, setRunResult] = useState<{
     ok?: boolean
     status?: string | null
@@ -515,6 +524,42 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
       toast.error(err instanceof Error ? err.message : 'Could not queue the durable inference job.')
     } finally {
       setQueueBusy(false)
+    }
+  }
+
+  async function queueHumanTaskTool() {
+    if (taskToolBusy) return
+    if (!taskToolProjectId || taskToolTitle.trim().length < 3) {
+      toast.error('Choose a project and provide a task title of at least 3 characters.')
+      return
+    }
+    const payload = {
+      projectId: taskToolProjectId,
+      title: taskToolTitle.trim(),
+      description: taskToolDescription.trim(),
+    }
+    const signature = JSON.stringify(payload)
+    const idempotencyKey = pendingTaskToolKey?.signature === signature
+      ? pendingTaskToolKey.key
+      : `task-create-${code}-${crypto.randomUUID()}`
+    setPendingTaskToolKey({ signature, key: idempotencyKey })
+    setTaskToolBusy(true)
+    try {
+      const res = await api.queueAgentJob(code, 'Create one human-owned internal project task. Do not claim the work is complete.', idempotencyKey, {
+        expectJson: false,
+        projectId: payload.projectId,
+        toolName: 'task.create',
+        toolArgs: { title: payload.title, description: payload.description, priority: 'MEDIUM' },
+      })
+      if (!res.job) throw new Error(res.message ?? 'The server did not return a persisted tool job.')
+      setQueuedTaskToolJob({ id: res.job.id, status: res.job.status, approvalState: res.job.approvalState })
+      toast.success(res.job.status === 'AWAITING_APPROVAL'
+        ? 'Tool job persisted and is awaiting Super Admin approval.'
+        : 'Tool job persisted; the worker may create one human-owned TODO task.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not queue the allowlisted task tool.')
+    } finally {
+      setTaskToolBusy(false)
     }
   }
 
@@ -633,6 +678,57 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
                 </div>
               ) : null}
             </div>
+
+            {chipList(agent.tools).includes('task.create') && chipList(agent.permissions).includes('write:tasks') ? (
+              <div className="space-y-3 rounded-md border border-emerald-500/20 bg-emerald-500/5 p-3">
+                <div>
+                  <p className="text-xs font-semibold text-emerald-300">Allowlisted internal tool: task.create</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-slate-500">Queues one idempotent tool job for an existing project. The worker creates a human-owned TODO task only; it does not mark work complete or contact the client.</p>
+                </div>
+                {projectsLoading ? <p className="text-xs text-slate-500">Loading projects…</p> : projectsError ? <p role="alert" className="text-xs text-red-400">Could not load projects: {projectsError}</p> : (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="agent-task-project" className="text-xs text-slate-400">Project</Label>
+                    <select
+                      id="agent-task-project"
+                      value={taskToolProjectId}
+                      onChange={(event) => setTaskToolProjectId(event.target.value)}
+                      className="h-9 w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 text-xs text-slate-200"
+                    >
+                      <option value="">Select a non-completed project…</option>
+                      {eligibleToolProjects.map((project) => {
+                        const clientLabel = typeof project.client === 'object' && project.client
+                          ? ` · ${project.client.clientId ?? project.client.name ?? 'Client'}`
+                          : ''
+                        return <option key={project.id} value={project.id}>{project.code ?? project.name} — {project.name}{clientLabel}</option>
+                      })}
+                    </select>
+                    {eligibleToolProjects.length === 0 ? <p className="text-[10px] text-amber-300">No eligible projects are currently available.</p> : null}
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="agent-task-title" className="text-xs text-slate-400">Human task title</Label>
+                  <Input id="agent-task-title" value={taskToolTitle} onChange={(event) => setTaskToolTitle(event.target.value)} maxLength={160} placeholder="e.g. Review the uploaded delivery artifact" className="border-slate-800 bg-slate-950/60 text-sm text-slate-200" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="agent-task-description" className="text-xs text-slate-400">Description (optional)</Label>
+                  <Textarea id="agent-task-description" value={taskToolDescription} onChange={(event) => setTaskToolDescription(event.target.value)} maxLength={2000} rows={2} placeholder="Instructions for the assigned human reviewer…" className="border-slate-800 bg-slate-950/60 text-sm text-slate-200" />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-600">Server rechecks the project/client relationship and agent grants.</span>
+                  <Button size="sm" onClick={queueHumanTaskTool} disabled={taskToolBusy || projectsLoading || Boolean(projectsError) || !taskToolProjectId || !taskToolTitle.trim()} className="bg-emerald-700 text-white hover:bg-emerald-600">
+                    {taskToolBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <ClipboardList className="size-3.5" aria-hidden="true" />}
+                    Queue task tool
+                  </Button>
+                </div>
+                {queuedTaskToolJob ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2">
+                    <StatusBadge status={queuedTaskToolJob.status} />
+                    <span className="font-mono text-[10px] text-slate-500">job: {queuedTaskToolJob.id}</span>
+                    {queuedTaskToolJob.approvalState === 'PENDING' ? <span className="text-[10px] text-amber-300">Awaiting Super Admin approval</span> : <span className="text-[10px] text-slate-500">A queued job is not proof the task was created; inspect its persisted outcome.</span>}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* executions */}
             <div>

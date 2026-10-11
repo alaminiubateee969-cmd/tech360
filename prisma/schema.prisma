@@ -169,6 +169,8 @@ model ProjectTask {
   id          String   @id @default(cuid())
   projectId   String
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agentJobId  String?  @unique
+  agentJob    AgentJob? @relation(fields: [agentJobId], references: [id], onDelete: SetNull)
   title       String
   description String? @db.Text
   status      String   @default("TODO") // TODO | IN_PROGRESS | REVIEW | DONE | BLOCKED
@@ -566,13 +568,15 @@ model AiAgentExecution {
   @@index([startedAt])
 }
 
-// Durable inference queue. This records a specific model-inference request,
-// not proof that a business artifact or external side effect was completed.
+// Durable inference and explicitly allowlisted internal tool queue. A completed
+// inference or task-creation tool is not proof of QA, external delivery, or acceptance.
 model AgentJob {
   id             String   @id @default(cuid())
   idempotencyKey String   @unique
   payloadHash    String   @db.Char(64)
-  taskType       String   @default("INFERENCE") // INFERENCE; external actions require separately authorized tools
+  taskType       String   @default("INFERENCE") // INFERENCE | TOOL_CALL; only the explicit executor allowlist can run a tool
+  toolName       String?  @db.VarChar(80)
+  toolArgs       String? @db.LongText // JSON arguments for an allowlisted internal tool; never provider credentials
   agentCode      String
   agent          AiAgent  @relation(fields: [agentCode], references: [code], onDelete: Restrict)
   clientId       String?
@@ -602,6 +606,7 @@ model AgentJob {
   updatedAt      DateTime @updatedAt
   startedAt      DateTime?
   completedAt    DateTime?
+  createdTask    ProjectTask?
 
   @@index([status, availableAt, createdAt])
   @@index([status, leaseUntil])

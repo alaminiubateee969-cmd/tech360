@@ -10,7 +10,7 @@ import { evaluateStripePayment } from '../src/lib/commerce-policy'
 import { activateProject, closeProject, confirmDelivery, prepareHandover, releaseHandover } from '../src/lib/journey'
 import { scanDocumentBytes, serializeScanResult } from '../src/lib/files'
 import { getAgentDefinition } from '../src/lib/agents/bootstrap'
-import { AgentJobDecisionConflict, AgentJobIdempotencyConflict, claimNextAgentJob, decideAgentJob, enqueueAgentJob } from '../src/lib/agents/jobs'
+import { AgentJobDecisionConflict, AgentJobIdempotencyConflict, claimNextAgentJob, decideAgentJob, enqueueAgentJob, processAgentJobBatch } from '../src/lib/agents/jobs'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent, linkVerifiedIdentityToClient, resolveOrCreateVerifiedClient, VerifiedIdentityConflictError } from '../src/lib/identity-resolver'
 import { hashNormalizedIdentity, normalizeIdentity, type VerifiedIdentityProof } from '../src/lib/identity-policy'
 
@@ -233,6 +233,193 @@ describe('durable AgentJob idempotency and worker claims', () => {
         await db.auditLog.deleteMany({ where: { entityType: 'AgentJob', entityId: { in: jobs.map((job) => job.id) } } })
         await db.agentJob.deleteMany({ where: { id: { in: jobs.map((job) => job.id) } } })
       }
+      await db.aiAgent.deleteMany({ where: { code: agentCode } })
+    }
+  })
+
+  it('executes only an allowlisted task.create tool and atomically records one human task', async () => {
+    const agentCode = 'PRJ-018'
+    const definition = getAgentDefinition(agentCode)
+    assert.ok(definition)
+    const idempotencyKey = `${run}-task-tool`
+    const project = await db.project.create({
+      data: { code: `${run}-TOOL-PROJECT`, clientId: alphaId, name: 'Tool execution isolation test', status: 'ACTIVE' },
+    })
+    const existingDepartment = await db.department.findUnique({ where: { code: definition.dept }, select: { id: true } })
+    const department = await db.department.upsert({
+      where: { code: definition.dept },
+      update: {},
+      create: { code: definition.dept, name: 'Test delivery department', category: 'DELIVERY' },
+      select: { id: true },
+    })
+    await db.aiAgent.create({
+      data: {
+        code: definition.code,
+        name: definition.name,
+        title: definition.title,
+        purpose: definition.purpose,
+        systemPrompt: definition.systemPrompt,
+        tools: JSON.stringify(definition.tools),
+        permissions: JSON.stringify(definition.permissions),
+        requiresApproval: false,
+        departmentId: department.id,
+      },
+    })
+
+    try {
+      const request = {
+        agentCode,
+        idempotencyKey,
+        input: 'Create an internal human-owned task as explicitly requested by the Super Admin.',
+        projectId: project.id,
+        requestedBy: 'database-workflows-test',
+        toolName: 'task.create',
+        toolArgs: { title: 'Review staged delivery artifact', description: 'A human QA reviewer must inspect the uploaded artifact.', priority: 'HIGH' },
+      }
+      const queued = await enqueueAgentJob(request)
+      assert.equal(queued.created, true)
+      assert.equal(queued.job.taskType, 'TOOL_CALL')
+      assert.equal(queued.job.toolName, 'task.create')
+      assert.equal(queued.job.status, 'QUEUED')
+      await assert.rejects(
+        () => enqueueAgentJob({ ...request, idempotencyKey: `${idempotencyKey}-unsupported`, toolName: 'handover.release' }),
+        /not executable by durable AgentJobs/i,
+      )
+
+      const batch = await processAgentJobBatch(1)
+      assert.equal(batch.processed.length, 1)
+      assert.equal(batch.processed[0]?.id, queued.job.id)
+      assert.equal(batch.processed[0]?.status, 'COMPLETED')
+      assert.equal(batch.processed[0]?.toolName, 'task.create')
+
+      const [persistedJob, task] = await Promise.all([
+        db.agentJob.findUniqueOrThrow({ where: { id: queued.job.id } }),
+        db.projectTask.findUniqueOrThrow({ where: { agentJobId: queued.job.id } }),
+      ])
+      assert.equal(persistedJob.status, 'COMPLETED')
+      assert.equal(persistedJob.attempts, 1)
+      assert.equal(task.projectId, project.id)
+      assert.equal(task.title, 'Review staged delivery artifact')
+      assert.equal(task.description, 'A human QA reviewer must inspect the uploaded artifact.')
+      assert.equal(task.status, 'TODO')
+      assert.equal(task.assigneeType, 'HUMAN')
+      assert.equal(task.priority, 'HIGH')
+      assert.deepEqual(JSON.parse(persistedJob.output ?? '{}'), {
+        tool: 'task.create', taskId: task.id, projectId: project.id, taskStatus: 'TODO', assignedTo: 'HUMAN',
+      })
+      assert.ok(await db.auditLog.findFirst({ where: { entityType: 'AgentJob', entityId: queued.job.id, action: 'AGENT_JOB_TOOL_EXECUTED' } }))
+
+      await processAgentJobBatch(1)
+      assert.equal(await db.projectTask.count({ where: { projectId: project.id, agentJobId: queued.job.id } }), 1)
+      const retriedRequest = await enqueueAgentJob(request)
+      assert.equal(retriedRequest.created, false)
+      assert.equal(retriedRequest.job.id, queued.job.id)
+    } finally {
+      const jobs = await db.agentJob.findMany({ where: { idempotencyKey: { startsWith: idempotencyKey } }, select: { id: true } })
+      if (jobs.length) {
+        await db.auditLog.deleteMany({ where: { entityType: 'AgentJob', entityId: { in: jobs.map((job) => job.id) } } })
+        await db.agentJob.deleteMany({ where: { id: { in: jobs.map((job) => job.id) } } })
+      }
+      await db.projectTask.deleteMany({ where: { projectId: project.id } })
+      await db.project.deleteMany({ where: { id: project.id } })
+      await db.aiAgent.deleteMany({ where: { code: agentCode } })
+      if (!existingDepartment) await db.department.deleteMany({ where: { code: definition.dept } })
+    }
+  })
+
+  it('recovers expired worker leases and retries transient inference failures with persisted attempts', async () => {
+    const agentCode = 'CEO-001'
+    const definition = getAgentDefinition(agentCode)
+    assert.ok(definition)
+    const idempotencyKey = `${run}-worker-recovery`
+    await db.aiAgent.create({
+      data: {
+        code: definition.code,
+        name: definition.name,
+        title: definition.title,
+        purpose: definition.purpose,
+        systemPrompt: definition.systemPrompt,
+        tools: JSON.stringify(definition.tools),
+        permissions: JSON.stringify(definition.permissions),
+        requiresApproval: false,
+      },
+    })
+    const now = new Date()
+    const job = await db.agentJob.create({
+      data: {
+        idempotencyKey,
+        payloadHash: createHash('sha256').update(idempotencyKey).digest('hex'),
+        taskType: 'INFERENCE',
+        agentCode,
+        clientId: alphaId,
+        correlationId: `${run}-worker-recovery-correlation`,
+        workflow: 'MYSQL_WORKER_RECOVERY_TEST',
+        input: 'Test durable recovery with an injected provider result.',
+        status: 'RUNNING',
+        approvalState: 'NOT_REQUIRED',
+        attempts: 1,
+        maxAttempts: 3,
+        claimedBy: 'crashed-test-worker',
+        leaseUntil: new Date(now.getTime() - 1000),
+        availableAt: new Date(now.getTime() - 60_000),
+      },
+    })
+
+    try {
+      const recoveredBatch = await processAgentJobBatch(1, {
+        runInference: async () => { throw new Error('unexpected inference call during lease recovery') },
+      })
+      assert.equal(recoveredBatch.recovered, 1)
+      assert.equal(recoveredBatch.processed.length, 0)
+      let persisted = await db.agentJob.findUniqueOrThrow({ where: { id: job.id } })
+      assert.equal(persisted.status, 'RETRYING')
+      assert.equal(persisted.attempts, 1)
+      assert.equal(persisted.claimedBy, null)
+      assert.equal(persisted.leaseUntil, null)
+      assert.ok((persisted.availableAt?.getTime() ?? 0) > Date.now())
+      assert.ok(await db.auditLog.findFirst({ where: { entityType: 'AgentJob', entityId: job.id, action: 'AGENT_JOB_RECOVERED' } }))
+
+      await db.agentJob.update({ where: { id: job.id }, data: { availableAt: new Date(Date.now() - 1000) } })
+      const failedAttempt = await processAgentJobBatch(1, {
+        runInference: async (code, input) => ({
+          ok: false,
+          agentCode: code,
+          executionId: `${run}-transient-execution`,
+          correlationId: input.correlationId ?? job.correlationId,
+          output: '',
+          json: null,
+          error: 'PROVIDER_ERROR: ZAI provider returned HTTP 503: temporary test response',
+          status: 'FAILED',
+        }),
+      })
+      assert.equal(failedAttempt.processed[0]?.status, 'RETRYING')
+      persisted = await db.agentJob.findUniqueOrThrow({ where: { id: job.id } })
+      assert.equal(persisted.attempts, 2)
+      assert.equal(persisted.status, 'RETRYING')
+      assert.match(persisted.lastError ?? '', /HTTP 503/)
+      assert.ok((persisted.availableAt?.getTime() ?? 0) > Date.now())
+
+      await db.agentJob.update({ where: { id: job.id }, data: { availableAt: new Date(Date.now() - 1000) } })
+      const successfulAttempt = await processAgentJobBatch(1, {
+        runInference: async (code, input) => ({
+          ok: true,
+          agentCode: code,
+          executionId: `${run}-successful-execution`,
+          correlationId: input.correlationId ?? job.correlationId,
+          output: 'test provider double returned a successful inference result',
+          json: null,
+          status: 'SUCCESS',
+        }),
+      })
+      assert.equal(successfulAttempt.processed[0]?.status, 'COMPLETED')
+      persisted = await db.agentJob.findUniqueOrThrow({ where: { id: job.id } })
+      assert.equal(persisted.attempts, 3)
+      assert.equal(persisted.status, 'COMPLETED')
+      assert.match(persisted.output ?? '', /test provider double/)
+      assert.ok(await db.auditLog.findFirst({ where: { entityType: 'AgentJob', entityId: job.id, action: 'AGENT_JOB_COMPLETED' } }))
+    } finally {
+      await db.auditLog.deleteMany({ where: { entityType: 'AgentJob', entityId: job.id } })
+      await db.agentJob.deleteMany({ where: { id: job.id } })
       await db.aiAgent.deleteMany({ where: { code: agentCode } })
     }
   })

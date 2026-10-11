@@ -4,6 +4,8 @@ import { db } from '@/lib/db'
 import { newCorrelationId } from '@/lib/security'
 import { getAgentDefinition } from '@/lib/agents/bootstrap'
 import { runAgent } from '@/lib/agents/engine'
+import { agentHasPermission, authorizeAgentTool, PRIVILEGED_AGENT_TOOLS, type AgentTool } from '@/lib/ai-workforce-policy'
+import { AgentJobToolInputError, executeAgentJobTool, normalizeAgentJobToolCall } from '@/lib/agents/tool-executor'
 import { resolveAgentTimeoutMs } from '@/lib/agents/resilience'
 import {
   AGENT_JOB_DEFAULT_MAX_ATTEMPTS,
@@ -48,10 +50,12 @@ export type EnqueueAgentJobInput = {
   projectId?: string | null
   workflow?: string | null
   requestedBy?: string | null
+  toolName?: string | null
+  toolArgs?: unknown
 }
 
 function payloadHash(input: Omit<EnqueueAgentJobInput, 'idempotencyKey' | 'requestedBy'>): string {
-  const canonical = JSON.stringify({
+  const canonicalPayload: Record<string, unknown> = {
     agentCode: input.agentCode.toUpperCase(),
     input: input.input,
     contextNote: input.contextNote ?? '',
@@ -59,8 +63,15 @@ function payloadHash(input: Omit<EnqueueAgentJobInput, 'idempotencyKey' | 'reque
     clientId: input.clientId ?? null,
     projectId: input.projectId ?? null,
     workflow: input.workflow ?? null,
-  })
-  return createHash('sha256').update(canonical).digest('hex')
+  }
+  // Keep the original inference hash format stable for idempotent retries from
+  // clients running before tool-call jobs were introduced.
+  if (input.toolName) {
+    canonicalPayload.taskType = 'TOOL_CALL'
+    canonicalPayload.toolName = input.toolName
+    canonicalPayload.toolArgs = input.toolArgs ?? null
+  }
+  return createHash('sha256').update(JSON.stringify(canonicalPayload)).digest('hex')
 }
 
 function safeCheckpoint(value: string | null | undefined): Record<string, unknown> {
@@ -94,21 +105,44 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
   const definition = getAgentDefinition(agentCode)
   if (!definition) throw new AgentJobInputError(`Agent ${agentCode} is not in the executable registry`)
 
+  const requestedToolName = input.toolName?.trim() || null
+  let toolCall: ReturnType<typeof normalizeAgentJobToolCall> | null = null
+  if (requestedToolName) {
+    try {
+      toolCall = normalizeAgentJobToolCall(requestedToolName, input.toolArgs)
+    } catch (error) {
+      throw new AgentJobInputError(error instanceof Error ? error.message : 'Invalid durable tool call')
+    }
+  } else if (input.toolArgs !== undefined) {
+    throw new AgentJobInputError('Tool arguments require a tool name')
+  }
+
   const agent = await db.aiAgent.findUnique({
     where: { code: agentCode },
-    select: { code: true, status: true, requiresApproval: true },
+    select: { code: true, status: true, requiresApproval: true, tools: true, permissions: true, department: { select: { code: true } } },
   })
   if (!agent) throw new AgentJobInputError(`Agent ${agentCode} is not registered in the database`)
   if (agent.status !== 'ACTIVE') throw new AgentJobInputError(`Agent ${agentCode} is ${agent.status}`)
+  if (toolCall && agent.department?.code !== definition.dept) throw new AgentJobInputError(`Agent ${agentCode} department mapping is invalid`)
+  if (toolCall) {
+    if (!definition.tools.includes(toolCall.toolName)) throw new AgentJobInputError(`Agent ${agentCode} is not authorized for tool '${toolCall.toolName}' by the canonical registry`)
+    const toolDecision = authorizeAgentTool(agent, toolCall.toolName as AgentTool)
+    if (!toolDecision.allowed) throw new AgentJobInputError(`Tool '${toolCall.toolName}' is not granted (${toolDecision.code})`)
+    if (!agentHasPermission(agent, 'write:tasks') || !definition.permissions.includes('write:tasks')) {
+      throw new AgentJobInputError(`Agent ${agentCode} does not have the required write:tasks permission`)
+    }
+  }
 
   let clientId = input.clientId?.trim() || null
   let projectId = input.projectId?.trim() || null
   if (projectId) {
-    const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true, clientId: true, deletedAt: true } })
+    const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true, clientId: true, deletedAt: true, status: true } })
     if (!project || project.deletedAt) throw new AgentJobInputError('Project not found or deleted')
+    if (toolCall && ['COMPLETED', 'CANCELLED', 'ON_HOLD'].includes(project.status)) throw new AgentJobInputError('Tool calls require an active, non-completed project')
     if (clientId && project.clientId !== clientId) throw new AgentJobInputError('Project does not belong to the specified client')
     clientId = project.clientId
   }
+  if (toolCall && !projectId) throw new AgentJobInputError("Tool 'task.create' requires a project ID")
   if (clientId) {
     const client = await db.client.findFirst({ where: { id: clientId, deletedAt: null }, select: { id: true } })
     if (!client) throw new AgentJobInputError('Client not found or deleted')
@@ -122,6 +156,7 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
     clientId,
     projectId,
     workflow: input.workflow?.trim().slice(0, 191) || null,
+    ...(toolCall ? { toolName: toolCall.toolName, toolArgs: toolCall.args } : {}),
   }
   const hash = payloadHash(normalized)
   const existing = await db.agentJob.findUnique({ where: { idempotencyKey } })
@@ -131,7 +166,9 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
   }
 
   // Fail safe when registry metadata and persisted agent configuration drift.
-  const requiresApproval = agent.requiresApproval || definition.requiresApproval === true
+  const requiresApproval = agent.requiresApproval
+    || definition.requiresApproval === true
+    || Boolean(toolCall && PRIVILEGED_AGENT_TOOLS.includes(toolCall.toolName as AgentTool))
   const correlationId = newCorrelationId()
   try {
     const job = await db.$transaction(async (tx) => {
@@ -139,7 +176,9 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
         data: {
           idempotencyKey,
           payloadHash: hash,
-          taskType: 'INFERENCE',
+          taskType: toolCall ? 'TOOL_CALL' : 'INFERENCE',
+          toolName: toolCall?.toolName ?? null,
+          toolArgs: toolCall?.serializedArgs ?? null,
           agentCode,
           clientId,
           projectId,
@@ -327,9 +366,10 @@ async function finishClaimedJob(
   const retry = !result.ok && isRetryableAgentJobFailure(result.status, error, job.attempts, job.maxAttempts)
   const nextStatus = result.ok ? 'COMPLETED' : retry ? 'RETRYING' : agentJobTerminalState(result.status, job.attempts, job.maxAttempts)
   const availableAt = retry ? new Date(now.getTime() + agentJobRetryDelayMs(job.attempts)) : now
+  const phase = job.taskType === 'TOOL_CALL' ? 'TOOL' : 'INFERENCE'
   const checkpoint = {
     ...safeCheckpoint(job.checkpoint),
-    phase: result.ok ? 'INFERENCE_COMPLETED' : retry ? 'INFERENCE_RETRY_SCHEDULED' : 'INFERENCE_FAILED',
+    phase: result.ok ? `${phase}_COMPLETED` : retry ? `${phase}_RETRY_SCHEDULED` : `${phase}_FAILED`,
     executionId: result.executionId || null,
     executionCorrelationId: result.correlationId,
     attempt: job.attempts,
@@ -367,39 +407,83 @@ async function finishClaimedJob(
   return saved ? nextStatus : 'LEASE_LOST'
 }
 
+const TRANSIENT_TOOL_DATABASE_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017', 'P2024', 'P2034'])
+
+function safeToolExecutionError(error: unknown): string {
+  if (error instanceof AgentJobToolInputError) return error.message.slice(0, 2000)
+  const code = prismaCode(error)
+  if (code && TRANSIENT_TOOL_DATABASE_CODES.has(code)) return `TOOL_TEMPORARY_FAILURE: database operation failed (${code})`
+  return `TOOL_EXECUTION_FAILED${code ? ` (${code})` : ''}`
+}
+
 /**
- * Process a bounded batch of persisted inference jobs. Only a database lease
- * winner can call runAgent; retries/recovery preserve state across restarts.
+ * Process a bounded batch of persisted inference or explicitly allowlisted tool
+ * jobs. Only the database lease winner can call the model or tool executor;
+ * retries and expired-lease recovery preserve state across process restarts.
+ * `runInference` is a narrow test seam; production callers use runAgent.
  */
-export async function processAgentJobBatch(limit = 1): Promise<{
+export async function processAgentJobBatch(
+  limit = 1,
+  options: { runInference?: typeof runAgent } = {},
+): Promise<{
   recovered: number
-  processed: Array<{ id: string; status: string; executionId?: string }>
+  processed: Array<{ id: string; status: string; executionId?: string; toolName?: string }>
 }> {
   const now = new Date()
   const recovered = await recoverExpiredAgentJobs(now)
   const safeLimit = Math.max(1, Math.min(MAX_JOBS_PER_BATCH, Math.floor(limit)))
-  const processed: Array<{ id: string; status: string; executionId?: string }> = []
+  const processed: Array<{ id: string; status: string; executionId?: string; toolName?: string }> = []
+  const runInference = options.runInference ?? runAgent
 
   for (let i = 0; i < safeLimit; i += 1) {
     const workerId = randomUUID()
     const job = await claimNextAgentJob(workerId, new Date())
     if (!job) break
 
-    let result: Awaited<ReturnType<typeof runAgent>>
-    try {
-      result = await runAgent(job.agentCode, {
-        input: job.input,
-        contextNote: job.contextNote ?? undefined,
-        clientId: job.clientId ?? undefined,
-        projectId: job.projectId ?? undefined,
-        workflow: job.workflow ?? 'DURABLE_AGENT_JOB',
-        expectJson: job.expectJson,
-        actingForClientId: job.clientId,
+    if (job.taskType === 'TOOL_CALL') {
+      let toolResult: Awaited<ReturnType<typeof executeAgentJobTool>>
+      try {
+        toolResult = await executeAgentJobTool({ jobId: job.id, workerId })
+      } catch (error) {
+        toolResult = { ok: false, status: 'FAILED', output: '', error: safeToolExecutionError(error) }
+      }
+      if (toolResult.ok || toolResult.status === 'LEASE_LOST') {
+        processed.push({ id: job.id, status: toolResult.status, toolName: job.toolName ?? undefined })
+        continue
+      }
+      const failure = {
+        ok: false,
+        agentCode: job.agentCode,
+        executionId: '',
         correlationId: job.correlationId,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unexpected worker failure'
-      result = { ok: false, agentCode: job.agentCode, executionId: '', correlationId: job.correlationId, output: '', json: null, error: message, status: 'FAILED' }
+        output: '',
+        error: toolResult.error,
+        status: 'FAILED',
+      }
+      const status = await finishClaimedJob(job, workerId, failure, new Date())
+      processed.push({ id: job.id, status, toolName: job.toolName ?? undefined })
+      continue
+    }
+
+    let result: Awaited<ReturnType<typeof runAgent>>
+    if (job.taskType !== 'INFERENCE') {
+      result = { ok: false, agentCode: job.agentCode, executionId: '', correlationId: job.correlationId, output: '', json: null, error: 'Unsupported AgentJob task type', status: 'FAILED' }
+    } else {
+      try {
+        result = await runInference(job.agentCode, {
+          input: job.input,
+          contextNote: job.contextNote ?? undefined,
+          clientId: job.clientId ?? undefined,
+          projectId: job.projectId ?? undefined,
+          workflow: job.workflow ?? 'DURABLE_AGENT_JOB',
+          expectJson: job.expectJson,
+          actingForClientId: job.clientId,
+          correlationId: job.correlationId,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unexpected worker failure'
+        result = { ok: false, agentCode: job.agentCode, executionId: '', correlationId: job.correlationId, output: '', json: null, error: message, status: 'FAILED' }
+      }
     }
     const status = await finishClaimedJob(job, workerId, result, new Date())
     processed.push({ id: job.id, status, ...(result.executionId ? { executionId: result.executionId } : {}) })
