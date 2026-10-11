@@ -2,9 +2,11 @@
 
 **Snapshot:** 2026-10-11 (Asia/Dhaka)
 **Working branch:** `arena/5d9c5644-tech360`
-**Base inspected:** `origin/main` at `76d60e5` (`Merge pull request #22…`)
-**Reported commit:** `9584ef0` is absent from the local object database and GitHub's commit API returned “No commit found”; branch head before this turn was `7f02d82`.
-**Release state:** **NOT READY — no migration, production deployment, live verification, or release ZIP is evidenced by this inventory.**
+**PR:** [#23](https://github.com/alaminiubateee969-cmd/tech360/pull/23), open and not merged.
+**Base inspected:** `origin/main` at `76d60e5` (`Merge pull request #22…`).
+**PR head inspected:** `19ef67452bdd633681d8706492b9c51a432a2194`; its latest CI run at this snapshot failed the MySQL schema-drift check.
+**Reported commit:** `9584ef0` is absent from the local object database and GitHub's commit API returned “No commit found”; earlier PR history is present on #23.
+**Release state:** **NOT READY — the current PR CI is failing schema drift; no production migration, deployment, live verification, or release ZIP is evidenced.**
 
 ## Status legend
 
@@ -20,7 +22,7 @@ The current changes add a database-backed **AgentJob inference queue**, approval
 
 Client identity support is fail-closed: verified values are normalized and indexed with keyed HMAC digests, WhatsApp identity proof is accepted only after the raw-body provider signature passes, and duplicate inbound message IDs are guarded by token-fenced database receipts. Existing email/phone fields are not silently merged. The Super Admin preview is read-only, and manual identity linking is an explicit audited attestation; conflicts are not merged automatically. `IDENTITY_HASH_SECRET` must be a stable random value of at least 32 bytes whenever the WhatsApp integration is configured; do not rotate it without a planned identity-index migration.
 
-These are implementation changes, not production evidence. Database migrations, Prisma generation/validation, the durable worker against MySQL, real provider inference, Hostinger deployment, rollback, and live production checks remain unverified here.
+These are implementation changes, not production evidence. On PR head `19ef674`, remote CI validated/generated Prisma and applied migrations to disposable MySQL, but its zero-drift check failed. The local DB integration suite, durable worker against MySQL, real provider inference, Hostinger deployment, rollback, and live production checks remain unverified.
 
 ## Implemented in source
 
@@ -54,16 +56,20 @@ These are implementation changes, not production evidence. Database migrations, 
 
 | Check | Status | Evidence / limitation |
 |---|---|---|
-| Branch and latest base inspection | **PASS** | Work remains on `arena/5d9c5644-tech360`; fetched `origin/main` is `76d60e5`. |
-| `npm run lint` | **PASS** | Local ESLint completed with exit code 0 after the current source edits. |
-| `npm run schema:check` | **PASS** | MySQL conversion check reports schema in sync (86 native type annotations). This is not Prisma engine validation. |
+| Branch / latest main / PR #23 | **PASS** | Work remains on `arena/5d9c5644-tech360`; fetched `origin/main` is `76d60e5`; PR #23 is open, head `19ef67452bdd633681d8706492b9c51a432a2194`. |
+| `npm ci --no-audit --no-fund` | **PASS** | Local install completed (850 packages). This did not generate the project Prisma client. |
+| `npm run lint` | **PASS** | Local ESLint completed with exit code 0 on the current PR source. |
+| `npm run schema:check` | **PASS** | MySQL conversion check reports schema in sync (86 native type annotations). This is not Prisma migration drift validation. |
 | Focused AgentJob/identity/production-env tests | **PASS** | `npx tsx --test tests/agent-job-policy.test.ts tests/identity-resolver.test.ts tests/production-env.test.ts`: 13 passed, 0 failed. |
-| Full `npm test` suite | **FAIL / BLOCKED** | 292 passed, 1 failed. `tests/database-workflows.test.ts` cannot initialize because local `@prisma/client` is ungenerated (`Please run "prisma generate"`). The DB-backed test body did not run. |
-| `npm run typecheck` | **BLOCKED** | The local Prisma package is an uninitialized generated-client stub; TypeScript reports missing generated Prisma exports (`Session`, `ChatConversation`, `ChatMessage`) and an untyped Prisma call. This is not a green TypeScript result. |
-| Prisma validate/generate | **BLOCKED** | The local Prisma engine/client prerequisite is unavailable in this workspace. No generated-client substitute was used. Remote CI must validate/generate against the actual schema. |
-| MySQL migrations / drift / DB workflows | **NOT TESTED** | Migrations 6 and 7 were not applied to any database in this workspace. No production DB was contacted. |
-| AgentJob worker / live AI provider inference | **NOT TESTED** | No scheduled Ops cycle or `processAgentJobBatch` execution was observed; no live provider request was made. |
-| WhatsApp webhook end-to-end | **NOT TESTED** | Signature, receipt, identity lookup, and CRM flow were not exercised against Meta or MySQL. |
+| Full `npm test` suite | **FAIL / BLOCKED** | 292 passed, 1 failed. `tests/database-workflows.test.ts` cannot initialize because local `@prisma/client` is ungenerated (`Please run "prisma generate"`). The MySQL-backed body did not run. |
+| Local `npm run typecheck` | **BLOCKED** | Local Prisma generated client is stale/uninitialized; errors are missing generated exports (`Session`, `ChatConversation`, `ChatMessage`) and an untyped Prisma call. This is not a green TypeScript result. |
+| Remote Prisma validate + client generate | **PASS** | PR CI run [38128616274](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128616274), exact head `19ef674`: both Prisma schema validation and client generation passed. |
+| Disposable MySQL migration deploy | **PASS** | The same CI run applied the migration baseline to its disposable MySQL service successfully. This did not touch production. |
+| MySQL schema drift comparison | **FAIL** | The same latest CI run failed “Baseline must leave zero schema drift” after applying migrations; lint, typecheck, integration tests, and build were skipped. The mapped-table index names have been normalized in the working tree; the next CI run must confirm whether this resolves drift. The Actions log download itself was unavailable in this environment, so the failing step is known but its SQL diff was not directly retrieved. |
+| Current PR CI overall | **FAIL** | [Run 38128616274](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128616274) failed at schema drift. Earlier green runs were on older PR heads and do not establish this head as green. |
+| Prisma validate/generate locally | **NOT TESTED** | Local native Prisma engine is unavailable. No generated-client substitute was used; remote CI evidence above is separate. |
+| AgentJob database tests / worker execution | **NOT TESTED** | No successful local MySQL integration run and no scheduled `processAgentJobBatch` execution or real provider inference was observed. |
+| WhatsApp end-to-end | **NOT TESTED** | Signature, receipt, identity lookup, and CRM flow were not exercised against Meta or MySQL. |
 | Hostinger environment, deployment, rollback, live smoke checks | **NOT TESTED** | No Hostinger account or production configuration/deployment was accessed. No credentials were requested or exposed. |
 | Branch protection | **BLOCKED** | A prior GitHub API attempt was denied with 403; repository admin action is required. No protection settings were changed. |
 | Release ZIP and checksum | **NOT PRODUCED** | Packaging is intentionally deferred until green CI, approved merge, deployment, and live verification. |

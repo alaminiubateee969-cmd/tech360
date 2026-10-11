@@ -12,7 +12,7 @@ CREATE TABLE `client_identities` (
     `updatedAt` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `ClientIdentity_identityType_normalizedHash_key`(`identityType`, `normalizedHash`),
-    INDEX `ClientIdentity_clientId_idx`(`clientId`),
+    INDEX `client_identities_clientId_idx`(`clientId`),
     PRIMARY KEY (`id`),
     CONSTRAINT `client_identities_clientId_fkey` FOREIGN KEY (`clientId`) REFERENCES `Client`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -33,8 +33,8 @@ CREATE TABLE `inbound_webhook_receipts` (
     `processedAt` DATETIME(3) NULL,
 
     UNIQUE INDEX `InboundWebhookReceipt_provider_eventIdHash_key`(`provider`, `eventIdHash`),
-    INDEX `InboundWebhookReceipt_status_leaseExpiresAt_idx`(`status`, `leaseExpiresAt`),
-    INDEX `InboundWebhookReceipt_clientId_createdAt_idx`(`clientId`, `createdAt`),
+    INDEX `inbound_webhook_receipts_status_leaseExpiresAt_idx`(`status`, `leaseExpiresAt`),
+    INDEX `inbound_webhook_receipts_clientId_createdAt_idx`(`clientId`, `createdAt`),
     PRIMARY KEY (`id`),
     CONSTRAINT `inbound_webhook_receipts_clientId_fkey` FOREIGN KEY (`clientId`) REFERENCES `Client`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
