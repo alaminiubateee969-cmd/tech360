@@ -52,12 +52,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return Response.json({ error: `Status transition from ${cur} to ${nxt} requires higher role. STAFF may move forward one stage at a time.` }, { status: 403 })
   }
 
-  const fresh = await db.project.findUnique({ where: { id: project.id }, select: { status: true } })
-  if ((fresh?.status ?? '').toUpperCase() !== cur) {
-    return Response.json({ error: `Conflict: status changed to ${fresh?.status} by another user. Please refresh.` }, { status: 409 })
+  // Atomic compare-and-set: avoid the read-then-write race when two board
+  // clients move this project at the same time.
+  const transition = await db.project.updateMany({ where: { id: project.id, status: project.status }, data: { status: nxt } })
+  if (transition.count !== 1) {
+    const fresh = await db.project.findUnique({ where: { id: project.id }, select: { status: true } })
+    if (!fresh) return Response.json({ error: 'Project not found' }, { status: 404 })
+    return Response.json({ error: `Conflict: status changed to ${fresh.status} by another user. Please refresh.` }, { status: 409 })
   }
 
-  const updated = await db.project.update({ where: { id: project.id }, data: { status: nxt } })
+  const updated = await db.project.findUniqueOrThrow({ where: { id: project.id }, select: { code: true, status: true } })
 
   await db.auditLog.create({ data: { actor: g.user.email, userId: g.user.id, action: 'PROJECT_STATUS_MOVED', entityType: 'Project', entityId: project.id, details: JSON.stringify({ from: cur, to: nxt, via: 'kanban' }) } }).catch(()=>null)
   await db.automationLog.create({ data: { workflow: 'PROJECT_KANBAN_MOVE', trigger: 'KANBAN', correlationId: `project-kanban-${project.id}-${Date.now()}`, input: JSON.stringify({ from: cur, to: nxt }), output: JSON.stringify({ ok: true }), status: 'SUCCESS', steps: JSON.stringify([{ step: 'status_moved', detail: { from: cur, to: nxt }, at: new Date().toISOString() }]), finishedAt: new Date() } }).catch(()=>null)

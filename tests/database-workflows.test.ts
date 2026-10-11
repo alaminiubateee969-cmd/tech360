@@ -59,6 +59,23 @@ describe('database-backed tenant isolation', () => {
   })
 })
 
+describe('atomic CRM stage transitions', () => {
+  it('allows only one concurrent update to claim the same observed pipeline stage', async () => {
+    const client = await db.client.create({
+      data: { clientId: `${run}-RACE`, name: 'Transition Race', source: 'TEST', pipelineStage: 'NEW' },
+    })
+
+    const outcomes = await Promise.all([
+      db.client.updateMany({ where: { id: client.id, pipelineStage: 'NEW' }, data: { pipelineStage: 'CONTACTED' } }),
+      db.client.updateMany({ where: { id: client.id, pipelineStage: 'NEW' }, data: { pipelineStage: 'BUSINESS_IDENTIFIED' } }),
+    ])
+
+    assert.equal(outcomes.reduce((count, outcome) => count + outcome.count, 0), 1)
+    const persisted = await db.client.findUniqueOrThrow({ where: { id: client.id }, select: { pipelineStage: true } })
+    assert.ok(['CONTACTED', 'BUSINESS_IDENTIFIED'].includes(persisted.pipelineStage))
+  })
+})
+
 describe('proposal versioning and approval persistence', () => {
   it('keeps generated scope as a draft and preserves immutable version rows', async () => {
     const v1 = await db.scopeOfWork.create({ data: { clientId: alphaId, version: 1, status: 'DRAFT', content: JSON.stringify({ deliverables: ['CRM'] }), generatedBy: 'TST-001' } })

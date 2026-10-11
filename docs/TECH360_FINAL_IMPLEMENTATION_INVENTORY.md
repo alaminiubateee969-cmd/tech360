@@ -4,7 +4,7 @@
 **Repository:** `alaminiubateee969-cmd/tech360`  
 **Current GitHub `main`:** `76d60e503642795f321f036655921859fab061c6`  
 **Merged PR #22:** merge commit `76d60e503642795f321f036655921859fab061c6`  
-**Inspected checkout:** `arena/5d9c5644-tech360`, initially at the same SHA; corrective changes in this workspace are uncommitted.  
+**Inspected checkout:** `arena/5d9c5644-tech360`. Corrective commit `ec98e3cfb506350fd288052efb096ddef3628dd8` is pushed and open as draft [PR #23](https://github.com/alaminiubateee969-cmd/tech360/pull/23); one additional typecheck repair described below is local and not yet pushed.
 **Purpose:** evidence-based status report, not a production-readiness certificate.
 
 ## Status meanings
@@ -36,12 +36,13 @@ Source presence alone is not treated as PASS.
 
 ## 2. Current corrective changes in this workspace
 
-These changes are local to `arena/5d9c5644-tech360`; they have not yet been submitted to GitHub.
+The first group is committed as `ec98e3c` and pushed in draft PR #23. The GitHub run exposed one additional Prisma type error in the stage-transition query; the correction is presently local and awaits push/re-run.
 
 - **Client 360 communications:** moved `ClientCommsInbox` to module scope, typed it with `CommunicationRecord`, passed the internal database client row ID, and filtered rows to that exact ID. This both fixes the reported undefined-component lint error and adds defense in depth against a mismatched API payload.
 - **Regression coverage:** added `tests/client-comms-inbox.test.ts`; server-render tests show a client sees its own messages and neither sees nor receives another client’s message. Targeted result: **2/2 pass**.
 - **Media Studio:** closed the missing root JSX `<div>`, return expression, and component function.
 - **Type repairs:** `SectionCard` now supports the existing `id` prop used by Factory; Knowledge’s size-derived display handles `null`/`undefined`; the `ClientCommsInbox` table uses the real row type; `auth.ts` imports Prisma `Session` as a type.
+- **Stage-transition queries/concurrency (new local fixes):** PR CI found `select` incorrectly nested inside Prisma’s `where` in `src/app/api/admin/clients/[id]/stage/route.ts`; it is now top-level. Client and project status handlers now use atomic `updateMany` compare-and-set predicates so concurrent board moves cannot both overwrite the same observed stage. Added a disposable-MySQL race regression test. These changes have not yet been pushed or verified by CI.
 - **AI verification harness:** fixed a false-positive in its no-fabrication source scan: the phrase “nothing is simulated” was already an explicit prohibition but the scanner did not recognize “nothing”. The rejection check remains enabled.
 - **Hostinger documentation:** updated the deployment evidence to distinguish the supplied older successful build from current `main` and to record the current failed CI gate.
 
@@ -56,7 +57,7 @@ These changes are local to `arena/5d9c5644-tech360`; they have not yet been subm
 | `node scripts/convert-schema-to-mysql.mjs --check` | **PASS** | Output: `schema in sync — provider=mysql, 86 native type annotations`. No schema/migration edits were made in this pass. |
 | ClientCommsInbox rendering/isolation tests | **PASS** | `npx tsx --test tests/client-comms-inbox.test.ts`; 2 tests passed. |
 | `npm test` | **BLOCKED** | 282 total: 281 passed, 1 failed before the DB-dependent suite could initialize. Exact failure: `@prisma/client did not initialize yet. Please run "prisma generate"`. Prisma client generation is blocked by the engine-host issue below. |
-| `npm run typecheck` | **BLOCKED** | The generated Prisma client is absent. Errors are missing generated `Session`, `ChatConversation`, and `ChatMessage` exports, plus an untyped Prisma query in `src/app/api/admin/newsletter/route.ts`; no unrelated source errors remained after the local repairs. This is not recorded as a successful typecheck. |
+| `npm run typecheck` | **FAIL on remote PR run; local run BLOCKED** | Local typecheck cannot resolve generated `Session`, `ChatConversation`, and `ChatMessage` exports and reports one untyped Prisma query in `src/app/api/admin/newsletter/route.ts`. PR #23 CI generated Prisma successfully and found a real error in `src/app/api/admin/clients/[id]/stage/route.ts` (`select` nested inside `where`); that query was corrected locally after the run. A passing typecheck is not yet established; wait for the follow-up CI result. |
 | `npx prisma validate` / `node scripts/prisma.mjs generate` | **BLOCKED BY EXTERNAL SERVICE** | Both attempt to retrieve Prisma’s schema engine/checksum from `https://binaries.prisma.sh/all_commits/c2990dca591cba766e3b7ef5d9e8a84796e47ab7/debian-openssl-3.0.x/schema-engine...`; the TLS connection is disconnected in this sandbox. This is an environment/network blocker, not proof of a schema defect. No stub Prisma client was used as build or production evidence. |
 | `npm run build` | **NOT TESTED** | The build starts with Prisma generation/migration; generation is blocked before Next.js build. |
 | Full local MySQL integration | **BLOCKED BY EXTERNAL SERVICE** | No local MySQL server/container or production DB connection is available. No production database credentials were guessed or used. |
@@ -66,6 +67,7 @@ These changes are local to `arena/5d9c5644-tech360`; they have not yet been subm
 
 - Latest main workflow is [run #102](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38120229896), at `76d60e503642795f321f036655921859fab061c6`: **FAIL** at Lint, with annotation `'ClientCommsInbox' is not defined` in `src/components/admin/ClientDetailView.tsx:635`. The Typecheck, tests, build, and smoke-test steps were skipped. The source repair described above fixes this local lint failure; GitHub has not yet run CI on that repair.
 - In the same run, the earlier gates did execute successfully: dependency install/audit, provider/schema checks, Prisma validation/client generation, migration application to disposable MySQL, and migration/schema zero-drift check. This verifies the unmodified PR #22 schema/migration set on GitHub’s disposable MySQL, **not** the later missing AgentJob migration and **not** the skipped business tests/build.
+- **Draft PR #23 run #23** is [run 38123640171](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38123640171), commit `ec98e3cfb506350fd288052efb096ddef3628dd8`: Prisma validation/generation, simulated Hostinger engine-permission repair, disposable-MySQL migrations/zero drift, and **Lint passed**. **Typecheck failed** on the misplaced `select` in `src/app/api/admin/clients/[id]/stage/route.ts`; business/MySQL tests, seed, integrity, build and smoke were skipped. The source fix is in the local working tree only; this run does not verify it.
 - `mysql-baseline.yml` is a manual/schema-change artifact workflow, not production deployment.
 - No GitHub Actions CD workflow exists. No branch rules currently require CI or approval.
 
@@ -95,14 +97,14 @@ These changes are local to `arena/5d9c5644-tech360`; they have not yet been subm
 | Unified inbox / telephony | **Partially implemented** | Communications bubbles and client-linked messages are present; telephony uses honest device/SIP/provider states. Real provider connectivity, multi-channel delivery, and office-hours/consent policy are **not configured or verified**. |
 | Content calendar, publishing, SEO | **Partially implemented** | Calendar/queue UI, content generation/review, SEO checks and feed modules exist. Publishing integrations and real social account connections are not configured/verified. |
 | Database/migrations | **Implemented and verified for PR #22 schema only** | Local MySQL type-map parity passes; current-main GitHub CI applied the six checked-in migration directories to disposable MySQL and reported zero drift before the Lint failure. No AgentJob/identity migration exists; production DB endpoint, current production migration state, backup, restore and representative-data compatibility are not verified. |
-| GitHub CI | **Implemented but broken on current main** | CI has a disposable MySQL service and required validation/test/build steps, but run #102 fails at Lint and later gates are skipped. Local lint now passes; a remote run on the correction has not occurred. |
+| GitHub CI | **Implemented but currently failing** | Current-main run #102 fails at Lint. Draft PR #23 CI passes Lint and migration/drift checks but fails Typecheck on the stage-query defect; its local repair awaits a rerun. Tests/build/smoke remain unverified until a full PR run passes. |
 | GitHub deployment gating | **Missing / not configured** | No CD workflow; `main` has no branch protection/ruleset. The Hostinger native deployment behavior is external and not proven to wait for green CI or approval. |
 | Hostinger deployment | **Partially implemented / current release not verified** | Operator-supplied log verifies publish/restart for old `286c433`; current `main` `76d60e5` is 25 commits ahead. hPanel configuration, exact database account, backup, worker/cron support, and live current SHA are not verified. |
 | Release ZIP | **Not generated** | Acceptance gates are incomplete; no ZIP or checksum is claimed. |
 
 ## 5. Current release blockers and safe next steps
 
-1. Push the local corrective changes on the session branch and run GitHub CI there; do not treat local lint alone as a green release.
+1. Push the stage-query correction and rerun CI on draft PR #23; do not treat local lint or the failed first remote typecheck as a green release.
 2. Obtain a successful Prisma engine download in the sandbox or rely on GitHub CI for Prisma validation/generation, typecheck, MySQL tests, build, and production smoke. The sandbox cannot reach `binaries.prisma.sh`; do not use a fake/stub Prisma client.
 3. Implement and review the missing durable AgentJob schema/migration/worker and identity resolver as separate tested changes. Before production, confirm migration compatibility/backfill against a recoverable Hostinger database backup; never reset production.
 4. Configure branch protection/status requirements and verify Hostinger native deployment does not deploy unapproved/unverified commits. This requires GitHub/Hostinger settings access; no deployment credentials were copied into the repository.
