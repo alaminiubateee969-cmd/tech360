@@ -4,9 +4,9 @@
 **Working branch:** `arena/5d9c5644-tech360`
 **PR:** [#23](https://github.com/alaminiubateee969-cmd/tech360/pull/23), open and not merged.
 **Base inspected:** `origin/main` at `76d60e5` (`Merge pull request #22…`).
-**PR head inspected:** `19ef67452bdd633681d8706492b9c51a432a2194`; its latest CI run at this snapshot failed the MySQL schema-drift check.
+**PR head inspected:** `343b0bf96efe1226e156e895e4af4d4050e63f7d`; current PR CI run [38131853173](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38131853173) passed the complete MySQL-backed CI workflow, including zero drift, lint, typecheck, tests, production build, and standalone smoke test.
 **Reported commit:** `9584ef0` is absent from the local object database and GitHub's commit API returned “No commit found”; earlier PR history is present on #23.
-**Release state:** **NOT READY — the current PR CI is failing schema drift; no production migration, deployment, live verification, or release ZIP is evidenced.**
+**Release state:** **NOT READY — CI is green on the current open PR head, but it is not approved or merged; no production migration, Hostinger deployment, live verification, rollback rehearsal, or release ZIP is evidenced.**
 
 ## Status legend
 
@@ -22,7 +22,7 @@ The current changes add a database-backed **AgentJob inference queue**, approval
 
 Client identity support is fail-closed: verified values are normalized and indexed with keyed HMAC digests, WhatsApp identity proof is accepted only after the raw-body provider signature passes, and duplicate inbound message IDs are guarded by token-fenced database receipts. Existing email/phone fields are not silently merged. The Super Admin preview is read-only, and manual identity linking is an explicit audited attestation; conflicts are not merged automatically. `IDENTITY_HASH_SECRET` must be a stable random value of at least 32 bytes whenever the WhatsApp integration is configured; do not rotate it without a planned identity-index migration.
 
-These are implementation changes, not production evidence. On PR head `19ef674`, remote CI validated/generated Prisma and applied migrations to disposable MySQL, but its zero-drift check failed. The local DB integration suite, durable worker against MySQL, real provider inference, Hostinger deployment, rollback, and live production checks remain unverified.
+These are implementation changes, not production evidence. On current PR head `343b0bf`, remote CI run [38131853173](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38131853173) passed Prisma validation/generation, migration deployment and zero-drift comparison on disposable MySQL, lint, TypeScript, the MySQL-backed test suite, seed safety, read-only database integrity, production build, standalone asset validation, and production-server smoke checks. The earlier drift failure on `19ef674` was followed by the mapped-table index-name correction and a clean run on the new head. CI did not touch production. Actual Hostinger deployment, production database migration, rollback, live checks, and real provider inference remain unverified.
 
 ## Implemented in source
 
@@ -56,19 +56,19 @@ These are implementation changes, not production evidence. On PR head `19ef674`,
 
 | Check | Status | Evidence / limitation |
 |---|---|---|
-| Branch / latest main / PR #23 | **PASS** | Work remains on `arena/5d9c5644-tech360`; fetched `origin/main` is `76d60e5`; PR #23 is open, head `19ef67452bdd633681d8706492b9c51a432a2194`. |
+| Branch / latest main / PR #23 | **PASS** | Work remains on `arena/5d9c5644-tech360`; fetched `origin/main` is `76d60e5`; PR #23 is open, head `343b0bf96efe1226e156e895e4af4d4050e63f7d`. No review has been recorded; PR is unmerged. |
 | `npm ci --no-audit --no-fund` | **PASS** | Local install completed (850 packages). This did not generate the project Prisma client. |
 | `npm run lint` | **PASS** | Local ESLint completed with exit code 0 on the current PR source. |
 | `npm run schema:check` | **PASS** | MySQL conversion check reports schema in sync (86 native type annotations). This is not Prisma migration drift validation. |
 | Focused AgentJob/identity/production-env tests | **PASS** | `npx tsx --test tests/agent-job-policy.test.ts tests/identity-resolver.test.ts tests/production-env.test.ts`: 13 passed, 0 failed. |
-| Full `npm test` suite | **FAIL / BLOCKED** | 292 passed, 1 failed. `tests/database-workflows.test.ts` cannot initialize because local `@prisma/client` is ungenerated (`Please run "prisma generate"`). The MySQL-backed body did not run. |
-| Local `npm run typecheck` | **BLOCKED** | Local Prisma generated client is stale/uninitialized; errors are missing generated exports (`Session`, `ChatConversation`, `ChatMessage`) and an untyped Prisma call. This is not a green TypeScript result. |
-| Remote Prisma validate + client generate | **PASS** | PR CI run [38128616274](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128616274), exact head `19ef674`: both Prisma schema validation and client generation passed. |
-| Disposable MySQL migration deploy | **PASS** | The same CI run applied the migration baseline to its disposable MySQL service successfully. This did not touch production. |
-| MySQL schema drift comparison | **FAIL** | The same latest CI run failed “Baseline must leave zero schema drift” after applying migrations; lint, typecheck, integration tests, and build were skipped. The mapped-table index names have been normalized in the working tree; the next CI run must confirm whether this resolves drift. The Actions log download itself was unavailable in this environment, so the failing step is known but its SQL diff was not directly retrieved. |
-| Current PR CI overall | **FAIL** | [Run 38128616274](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128616274) failed at schema drift. Earlier green runs were on older PR heads and do not establish this head as green. |
+| Local full `npm test` suite | **BLOCKED** | 292 passed, 1 failed because local `@prisma/client` is ungenerated (`Please run "prisma generate"`); the local MySQL-backed body did not run. The full `npm test` step passed against disposable MySQL in current CI run [38131853173](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38131853173). |
+| TypeScript typecheck | **CI PASS / local BLOCKED** | Current CI run [38131853173](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38131853173) passed `npm run typecheck`. Local typecheck still cannot be treated as evidence because the generated Prisma client is stale/uninitialized (missing generated exports and an untyped Prisma call). |
+| Remote Prisma validate + client generate | **PASS** | Current PR CI run [38131853173](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38131853173), exact head `343b0bf`: Prisma schema validation and client generation passed. |
+| Disposable MySQL migration deploy | **PASS** | Current CI run [38131853173](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38131853173) successfully applied the migration baseline to disposable MySQL. This did not touch production. |
+| MySQL schema drift comparison | **PASS** | Current CI run [38131853173](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38131853173) passed “Baseline must leave zero schema drift” after applying migrations to disposable MySQL. Earlier run [38128616274](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128616274) failed this check on the prior head; the mapped-table index-name correction was validated by the fresh green run. |
+| Current PR CI overall | **PASS** | [Run 38131853173](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38131853173) passed on exact head `343b0bf96efe1226e156e895e4af4d4050e63f7d`. Steps included secret scan, schema/provider checks, Prisma validate/generate, disposable-MySQL migration and zero drift, lint, typecheck, the MySQL test suite, seed safety, database integrity, production build, standalone artifact checks, and production server smoke. |
 | Prisma validate/generate locally | **NOT TESTED** | Local native Prisma engine is unavailable. No generated-client substitute was used; remote CI evidence above is separate. |
-| AgentJob database tests / worker execution | **NOT TESTED** | No successful local MySQL integration run and no scheduled `processAgentJobBatch` execution or real provider inference was observed. |
+| AgentJob database tests / worker execution | **PARTIAL** | The full MySQL-backed `npm test` suite, including `tests/database-workflows.test.ts`, passed in current CI against disposable MySQL. No scheduled `processAgentJobBatch` execution or real provider inference was observed. |
 | WhatsApp end-to-end | **NOT TESTED** | Signature, receipt, identity lookup, and CRM flow were not exercised against Meta or MySQL. |
 | Hostinger environment, deployment, rollback, live smoke checks | **NOT TESTED** | No Hostinger account or production configuration/deployment was accessed. No credentials were requested or exposed. |
 | Branch protection | **BLOCKED** | A prior GitHub API attempt was denied with 403; repository admin action is required. No protection settings were changed. |
@@ -79,7 +79,7 @@ These are implementation changes, not production evidence. On PR head `19ef674`,
 1. **Durable workflow stages:** only inference jobs are persisted. There are no durable PM/Architect/Engineer/QA/Delivery stage jobs, verified artifact records, or final customer acceptance proof in this addition.
 2. **External actions:** no provider tool side effect is performed by an AgentJob. Sending messages, payments, publishing, delivery, and other external actions still require their separate authorization, consent, provider configuration, idempotency, and approvals.
 3. **Historical identity records:** the preview reports possible collisions and client references but writes nothing. Existing client rows are not automatically linked; conflicting records require human review, and there is no automatic merge operation.
-4. **Database evidence:** migration 6 and migration 7 must pass Prisma validation, disposable-MySQL migration deploy, zero-drift comparison, and the database integration suite before merge/deploy.
+4. **Production database evidence:** migrations 6 and 7, schema drift, and database integration tests passed in current PR CI against disposable MySQL; none of this validates or migrates Hostinger's production database. An authorized operator still needs to verify the exact production endpoint, backup, migration history, and deployment plan.
 5. **Provider evidence:** production AI and WhatsApp provider execution/configuration are unconfirmed; an inference result alone is not delivery evidence.
 6. **Deployment and protection:** Hostinger deployment, live health/data checks, rollback rehearsal, required CI/review branch protection, and administrator approval remain outstanding.
 7. **Release artifact:** do not create or describe a final release ZIP/checksum until all release gates above have passed.
@@ -87,9 +87,9 @@ These are implementation changes, not production evidence. On PR head `19ef674`,
 ## Required next sequence
 
 1. Complete source review and keep the session on the fixed Arena branch.
-2. Push this branch and obtain fresh PR CI on the exact head; resolve every failure without skipping checks.
-3. Verify Prisma generation/schema validation, MySQL migrations/drift, full TypeScript, all tests, DB integrity, and production build in CI.
+2. Fresh PR CI is green on exact head `343b0bf96efe1226e156e895e4af4d4050e63f7d` (run [38131853173](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38131853173)); if source changes, rerun the full workflow and resolve every failure without skipping checks.
+3. Obtain an authorized review/approval before merge; none is currently recorded. Do not merge until approval requirements are satisfied.
 4. Confirm the stable `IDENTITY_HASH_SECRET` and all production provider/database settings through Hostinger's secure configuration interface; do not place values in this repository.
-5. Obtain the required approval before merge. Do not force-push or rewrite merged history.
+5. After review and required checks, merge through the PR without force-pushing or rewriting merged history.
 6. Deploy using the approved Hostinger path; verify health, migration state, real provider behavior, logs, and rollback readiness.
 7. Only after successful live verification, produce a release ZIP and SHA-256 checksum and record their exact paths/values here.
