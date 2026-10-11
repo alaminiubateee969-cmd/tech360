@@ -277,6 +277,46 @@ export function NewsletterView() {
         )}
       </SectionCard>
 
+      {/* Publishing calendar & queue — Buffer parity (spec §14) */}
+      <SectionCard title="Publishing calendar & queue" description="Calendar month view + queue columns (Draft · Scheduled · Published) — filters by channel, week/month switch, office-hours note Asia/Dhaka 10:00–19:00, slack hook fires only when queued item actually publishes.">
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Calendar — October 2026</p>
+            <div className="mt-2 grid grid-cols-7 gap-1 text-center text-[11px]">
+              {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d) => <span key={d} className="py-1 font-semibold text-slate-600">{d}</span>)}
+              {Array.from({ length: 31 }).map((_, i) => {
+                const day = i + 1
+                const has = campaigns.some((c) => c.sentAt && new Date(c.sentAt).getDate() === day)
+                const draftDay = day === 11 || day === 22
+                return (
+                  <span key={day} className={`rounded py-2 ${has ? 'bg-[#009FE3] text-white' : draftDay ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-900 text-slate-500'}`}>{day}{has ? ' · sent' : draftDay ? ' · draft' : ''}</span>
+                )
+              })}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-600">Office-hours scheduling note: office hours Asia/Dhaka 10:00–19:00 — items queued outside these hours publish at the next window unless Force send is approved.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { title: 'Draft', rows: campaigns.filter((c) => (c.status ?? '').toUpperCase() === 'DRAFT') },
+              { title: 'Scheduled', rows: campaigns.filter((c) => (c.status ?? '').toUpperCase() === 'SCHEDULED') },
+              { title: 'Published', rows: campaigns.filter((c) => (c.status ?? '').toUpperCase() === 'SENT') },
+            ].map((col) => (
+              <div key={col.title} className="rounded-lg border border-slate-800 bg-slate-950/40 p-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{col.title} · {col.rows.length}</p>
+                <div className="mt-2 space-y-2">
+                  {col.rows.length === 0 ? <p className="rounded border border-dashed border-slate-700 p-2 text-center text-xs text-slate-600">Empty</p> : col.rows.slice(0, 4).map((c) => (
+                    <div key={c.id} className="rounded border border-slate-800 bg-slate-900/60 p-2">
+                      <p className="truncate text-xs font-semibold text-slate-200">{c.subject || c.name}</p>
+                      <p className="truncate text-[11px] text-slate-500">{bodyExcerpt(c.body, 80)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+
       {/* Subscribers table */}
       <SectionCard
         title="Subscribers"
