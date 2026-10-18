@@ -666,19 +666,40 @@ model AiMemory {
   id        String   @id @default(cuid())
   scope     String   // COMPANY | BRAND | SERVICES | PRICING | POLICIES | CLIENT | PROJECT | COMMUNICATION | WORKFLOW | KNOWLEDGE | AGENT | TASK | LESSON
   key       String
-  content   String @db.LongText
+  content   String   @db.LongText
   clientId  String?
   client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   projectId String?
   agentCode String?
   importance Int     @default(5)
   hits      Int      @default(0)
+  /// The memory TYPE: WORKING | EPISODIC | SEMANTIC | PROCEDURAL.
+  memoryType String  @default("SEMANTIC")
+  /// The access level that governs who may read this memory.
+  accessLevel String  @default("INTERNAL")
+  /// The enterprise scope that owns this memory.
+  departmentCode String?
+  /// The number of times this memory has been revised.
+  version   Int      @default(1)
+  /// True when the memory has been reviewed and confirmed.
+  validated Boolean  @default(false)
+  /// Where the memory came from: PLATFORM | AGENT | HUMAN | LEARNING_ENGINE.
+  source    String   @default("PLATFORM")
+  /// When the memory stops being valid.
+  expiresAt DateTime?
+  /// The run that produced it.
+  correlationId String?
+  /// The tags that make it retrievable.
+  tags      String?  @db.LongText
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @updated(now())
 
   @@index([scope])
   @@index([clientId])
   @@index([key])
+  @@index([scope, memoryType])
+  @@index([accessLevel])
+  @@index([departmentCode])
 }
 
 model KnowledgeDocument {
@@ -709,11 +730,30 @@ model PromptTemplate {
   agentCode  String?
   template   String @db.LongText
   variables  String @db.Text // JSON
+  // Retrieval metadata — the prompt library is 50,000+ slots, so the
+  // runtime MUST retrieve rather than load. These are the dimensions
+  // the retriever scores on.
+  stage      String   @default("TASK_EXECUTION") // INITIALIZATION | TASK_INTAKE | TASK_EXECUTION | DECISION_SUPPORT | RESEARCH | TOOL_USAGE | QUALITY_REVIEW | ESCALATION | REPORTING | COLLABORATION | KNOWLEDGE_SHARING | ERROR_RECOVERY | REFLECTION | LEARNING | PERFORMANCE_REVIEW | EMERGENCY_RESPONSE
+  priority   Int      @default(5)
+  quality    Float    @default(0.5)
+  language   String   @default("en")
+  version    String   @default("1.0.0")
+  role       String?
+  departmentCode String?
+  skillCode  String?
+  sopKey     String?
+  tags       String?  @db.Text // JSON array
+  status     String   @default("ACTIVE") // DRAFT | ACTIVE | RETIRED
+  usageCount Int      @default(0)
+  successCount Int    @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@index([category])
-  @@index([agentCode])
+  @@index([category, status])
+  @@index([agentCode, stage])
+  @@index([departmentCode, stage])
+  @@index([skillCode])
+  @@index([sopKey])
 }
 
 // ---------------- CONTENT / VIDEO AI ----------------
@@ -1247,6 +1287,7 @@ model Skill {
   runs     SkillRun[]
 
   @@index([status, category])
+  @@index([departmentCode])
   @@index([handler])
 }
 
@@ -1302,6 +1343,7 @@ model KnowledgeChunk {
   createdAt   DateTime @default(now())
 
   @@unique([documentId, chunkIndex])
+  @@index([accessLevel])
   @@index([documentId])
 }
 
@@ -1382,13 +1424,140 @@ model WorkflowDefinition {
 // declares its trigger, preconditions, ordered steps, decision points,
 // validation rules, failure path and escalation. The runtime walks the
 // steps; it does not merely display them.
+model Sop {
+  id             String   @id @default(cuid())
+  key            String   @unique
+  name           String
+  category       String   @default("OPERATIONS")
+  departmentCode String?
+  version        String   @default("1.0.0")
+  status         String   @default("ACTIVE") // DRAFT | ACTIVE | RETIRED
+  owner          String   @default("tech360")
+  level          Int      @default(3) // 1 executive .. 5 worker
+  description    String   @db.Text
+  trigger        String   @db.Text
+  inputs         String   @db.LongText // JSON array of input descriptors
+  preconditions  String   @db.LongText // JSON array of precondition descriptors
+  steps          String   @db.LongText // JSON array of ordered step descriptors
+  decisionPoints String   @db.LongText // JSON array of decision points
+  tools          String   @db.LongText // JSON array of tool names
+  validation     String   @db.LongText // JSON array of validation rules
+  output         String   @db.Text
+  failurePath    String   @db.Text
+  escalation     String   @db.Text
+  requiresApproval Boolean @default(false)
+  auditRequired  Boolean   @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  runs SopRun[]
+
+  @@index([category, status])
+  @@index([departmentCode])
+  @@index([level])
+}
+
 // One execution of an SOP.
+model SopRun {
+  id            String   @id @default(cuid())
+  sopKey        String
+  sop           Sop      @relation(fields: [sopKey], references: [key], onDelete: Cascade)
+  correlationId String
+  status        String   @default("RUNNING") // RUNNING | SUCCESS | FAILED | ESCALATED | AWAITING_APPROVAL
+  stepIndex     Int      @default(0)
+  totalSteps    Int      @default(0)
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  input         String?  @db.LongText
+  output        String?  @db.LongText
+  error         String?  @db.Text
+  steps         String?  @db.LongText // JSON transcript of the executed steps
+  createdAt     DateTime @default(now())
+
+  @@index([sopKey, createdAt])
+  @@index([status])
+}
+
 // An agent-to-agent delegation. Every delegation carries its full
 // contract: who asked, who was asked, the objective, the context, the
 // permissions, the deadline and the expected output.
+model AgentDelegation {
+  id               String   @id @default(cuid())
+  requestingAgent  String
+  targetAgent      String
+  kind             String   @default("DELEGATE") // DELEGATE | CONSULT | REVIEW | EXPERTISE | ESCALATE | HANDOFF
+  task             String   @db.Text
+  objective        String   @db.Text
+  context          String?  @db.LongText
+  priority         String   @default("NORMAL") // LOW | NORMAL | HIGH | CRITICAL
+  deadline         DateTime?
+  permissions      String   @db.LongText // JSON array of capabilities delegated
+  expectedOutput   String   @db.Text
+  status           String   @default("PENDING") // PENDING | ACCEPTED | COMPLETED | FAILED | DECLINED | ESCALATED
+  result           String?  @db.LongText
+  correlationId    String
+  createdAt        DateTime @default(now())
+  completedAt      DateTime?
+
+  @@index([requestingAgent, status])
+  @@index([targetAgent, status])
+}
+
 // The event bus. Agents subscribe to the events they care about; a
 // single event never wakes the whole workforce.
+model AgentEvent {
+  id           String   @id @default(cuid())
+  type         String
+  source       String
+  payload      String   @db.LongText // JSON
+  correlationId String?
+  severity     String   @default("INFO") // INFO | WARNING | CRITICAL
+  subscribers  String?  @db.LongText // JSON array of agent codes that were notified
+  createdAt    DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([source, createdAt])
+}
+
 // A knowledge-graph entity. The graph is the relational layer of the
 // knowledge system: RAG retrieves documents, the graph retrieves
 // entities, relationships, dependencies, provenance and confidence.
+model KnowledgeEntity {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  type        String   @default("CONCEPT") // PERSON | ORGANISATION | SERVICE | POLICY | CLIENT | PROJECT | CONCEPT | DOCUMENT
+  description String?  @db.Text
+  accessLevel String   @default("INTERNAL")
+  confidence  Float    @default(0.5)
+  properties  String?  @db.LongText // JSON
+  source      String   @default("PLATFORM")
+  version     Int      @default(1)
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  outgoing KnowledgeRelation[] @relation("RelationFrom")
+  incoming KnowledgeRelation[] @relation("RelationTo")
+
+  @@index([type, accessLevel])
+}
+
 // A knowledge-graph relationship between two entities.
+model KnowledgeRelation {
+  id           String   @id @default(cuid())
+  fromKey      String
+  from         KnowledgeEntity @relation("RelationFrom", fields: [fromKey], references: [key], onDelete: Cascade)
+  toKey        String
+  to           KnowledgeEntity @relation("RelationTo", fields: [toKey], references: [key], onDelete: Cascade)
+  type         String   @default("RELATED_TO")
+  weight       Float    @default(0.5)
+  confidence   Float    @default(0.5)
+  provenance   String?  @db.Text
+  accessLevel  String   @default("INTERNAL")
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  @@unique([fromKey, toKey, type])
+  @@index([toKey, type])
+}
