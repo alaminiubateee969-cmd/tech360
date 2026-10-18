@@ -24,6 +24,7 @@
     "eval:generate": "node scripts/eval/generate-dataset.mjs",
     "eval:run": "node scripts/eval/run-eval.mjs",
     "bench:models": "node scripts/benchmark-local-models.mjs",
+    "bench:workforce": "tsx scripts/benchmark/workforce.ts --json docs/testing/workforce-benchmark.json",
     "models:verify": "node scripts/verify-local-models.mjs"
   },
   "dependencies": {
