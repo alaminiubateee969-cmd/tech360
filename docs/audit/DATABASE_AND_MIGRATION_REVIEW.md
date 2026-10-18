@@ -172,13 +172,38 @@ writes them; until it does, the console shows the model as `UNVERIFIED` and it i
 | Locking impact? | `CREATE TABLE` and one `MODIFY COLUMN` on a hot table. The `MODIFY` is a metadata-only change in MySQL 8 when the column type is unchanged. |
 | Reversible? | Yes — `DROP TABLE` the seven new tables and restore `AgentJob.agentCode` to `NOT NULL` after backfilling from `AiAgent`. The rollback guide carries the exact statements. |
 
-## 6. Verification status
+## 6. The native-type map is now complete
+
+`scripts/mysql-schema-map.json` is the contract against MySQL's silent
+`VARCHAR(191)` truncation: Prisma maps every `String` to `VARCHAR(191)`
+on MySQL, so a field that can exceed 191 characters **must** carry an
+explicit `@db.Text` / `@db.LongText` / `@db.LongBlob` annotation, and the
+map is the list of those fields.
+
+The map held **86** entries while the schema carried **154** natively
+annotated fields. The 68 that were missing from the map were annotated
+in the schema but undocumented in the contract — 23 pre-existing and
+**45 added by the AI-EOS work** (the skill registry, the SOP library,
+the knowledge graph, the model hub, the workflow definitions and the
+delegation model). They were safe in practice because the annotation
+was already in the schema, but the contract no longer described the
+schema.
+
+The map now lists **all 154** annotated fields, and
+`tests/schema-ddl-parity.test.ts` fails the build if the two ever
+diverge again — in either direction.
+
+---
+
+## 7. Verification status
 
 | Check | Where it runs | Status here |
 | --- | --- | --- |
 | `prisma validate` | CI | **Not run here** — `prisma generate` is blocked in this sandbox. |
 | `prisma migrate diff` drift check | CI | Not run here. |
 | `tests/migration-parity.test.ts` | `npm test` | **PASSES here** — it compares the schema and the hand-written SQL statically, with no database. |
+| `tests/schema-ddl-parity.test.ts` | `npm test` | **PASSES here** — it compares **every** model and **every** column of the schema against **every** committed migration, and it fails on a missing table, a missing column, a wrong MySQL type, a wider DDL column, a DDL column the schema does not declare, a natively-annotated field missing from `scripts/mysql-schema-map.json`, or a schema that has drifted from that map. This is the same contract CI proves with `prisma migrate diff`, but it needs no database. |
+| `scripts/convert-schema-to-mysql.mjs --check` | `npm test` and CI | **PASSES here** — the schema is in sync with the native-type map (154 annotations). |
 | Migration applied to a live MySQL | CI (MySQL service) | Not run here. |
 | Application against a live MySQL | CI | Not run here; `tests/database-workflows.test.ts` is the one failing test locally for this reason. |
 
