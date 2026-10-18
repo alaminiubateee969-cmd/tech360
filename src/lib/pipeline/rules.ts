@@ -90,6 +90,113 @@ export type AdminApprovalCategory = (typeof ADMIN_APPROVAL_CATEGORIES)[number]
 
 export type MessageGate = 'AUTO_SEND' | 'ADMIN_APPROVAL_REQUIRED'
 
+// ------------------------------------------------------------
+// The content classifier
+// ------------------------------------------------------------
+
+/**
+ * The approval categories that can be detected from the message body.
+ *
+ * The markers are deliberately HIGH PRECISION. The pipeline copy uses
+ * "source code", "admin access", "handover", "payment policy" and
+ * "non-refundable" as POLICY STATEMENTS inside messages that are
+ * allowed to auto-send, so a loose keyword scan would wrongly gate
+ * five of the auto-send stages. Only markers that appear in NONE of
+ * the auto-send copy are used here.
+ */
+const CONTENT_MARKERS: Array<{ category: AdminApprovalCategory; pattern: RegExp }> = [
+  // An invoice is never auto-sent. ("invoice" appears in no auto-send body.)
+  { category: 'INVOICE', pattern: /\binvoices?\b|\bINV-\d{4}-\d{4}\b/i },
+  // A legal response. ("legal" appears in no auto-send body.)
+  { category: 'LEGAL_RESPONSE', pattern: /\b(legal|liabilit\w*|indemnit\w*|attorney|lawyer|arbitration|breach of contract|force majeure)\b/i },
+  // A refund response — but NOT the policy statement "non-refundable".
+  { category: 'REFUND_RESPONSE', pattern: /(?<!non-)\brefund\w*/i },
+  // A dispute response.
+  { category: 'DISPUTE_RESPONSE', pattern: /\bdisput\w*/i },
+]
+
+/**
+ * A URL that points at a delivered file package.
+ *
+ * The meeting link ("/#contact") and the HTML preview link
+ * ("/api/preview/<token>") are auto-send; a handover or download link
+ * is not. "preview" is therefore deliberately absent from the list.
+ */
+const DELIVERY_LINK = /\/(?:download|handover|archive|package|source-?code|files?)\b/i
+
+/** A payment word — used only together with a real amount. */
+const PAYMENT_WORD = /\b(payment|paid|pay|invoice|due|balance|milestone|advance|transaction reference|installment)\b/i
+
+/**
+ * The approval categories detected in a message body.
+ *
+ * This is the content-level half of the policy: it makes the seven
+ * gated categories detectable from the message itself, so a message
+ * cannot slip past the gate by being filed under an auto-send stage.
+ */
+export function classifyContentCategory(body: string): AdminApprovalCategory[] {
+  if (!body) return []
+  const found = new Set<AdminApprovalCategory>()
+  const masked = maskIdentifiers(body)
+
+  for (const marker of CONTENT_MARKERS) {
+    marker.pattern.lastIndex = 0
+    if (marker.pattern.test(masked)) found.add(marker.category)
+  }
+
+  // A money amount together with a payment word is a payment instruction.
+  if (containsAmount(body) && PAYMENT_WORD.test(masked)) found.add('PAYMENT_INSTRUCTION')
+
+  // A link to a delivered package is a source-code handover or a
+  // delivery-file-links message. The link scan runs on the ORIGINAL
+  // text, because masking replaces the URL characters.
+  for (const match of body.matchAll(/https?:\/\/[^\s<>"']+/g)) {
+    if (DELIVERY_LINK.test(match[0])) {
+      found.add('DELIVERY_FILE_LINKS')
+      found.add('SOURCE_CODE_HANDOVER')
+    }
+  }
+
+  return [...found]
+}
+
+/**
+ * The effective gate of a concrete message.
+ *
+ * A stage that is normally auto-sent still requires an approval when
+ * its body carries an amount — that is the "payment instruction with
+ * amount" rule, enforced on the CONTENT, not only on the stage label.
+ * The same is true of the other six gated categories: if the body
+ * reads as an invoice, a legal or refund response, a dispute response,
+ * a source-code handover or a delivery-file-links message, it is gated
+ * whatever the stage is called.
+ */
+export function effectiveGate(stage: string, body: string, category?: string): MessageGate {
+  if (category && gateForCategory(category) === 'ADMIN_APPROVAL_REQUIRED') return 'ADMIN_APPROVAL_REQUIRED'
+  if (gateForStage(stage) === 'ADMIN_APPROVAL_REQUIRED') return 'ADMIN_APPROVAL_REQUIRED'
+  if (containsAmount(body)) return 'ADMIN_APPROVAL_REQUIRED'
+  if (classifyContentCategory(body).length > 0) return 'ADMIN_APPROVAL_REQUIRED'
+  return 'AUTO_SEND'
+}
+
+/** Why a message was gated — shown to the operator in the console. */
+export function gateReason(stage: string, body: string, category?: string): string {
+  if (category && gateForCategory(category) === 'ADMIN_APPROVAL_REQUIRED') {
+    return `the ${category} category requires an admin approval`
+  }
+  if (gateForStage(stage) === 'ADMIN_APPROVAL_REQUIRED') {
+    return `the ${stage} stage requires an admin approval`
+  }
+  if (containsAmount(body)) {
+    return 'the message carries a monetary amount'
+  }
+  const detected = classifyContentCategory(body)
+  if (detected.length > 0) {
+    return `the message reads as ${detected.join(' / ')}`
+  }
+  return 'the message is on the auto-send list'
+}
+
 /** The gate for a pipeline stage. Unknown stages fail closed. */
 export function gateForStage(stage: string): MessageGate {
   if ((ADMIN_APPROVAL_STAGES as readonly string[]).includes(stage)) return 'ADMIN_APPROVAL_REQUIRED'
@@ -108,37 +215,60 @@ export function gateForCategory(category: string): MessageGate {
 // Amount detection — a message that carries money is gated
 // ------------------------------------------------------------
 
-const CURRENCY_WORDS = /\b(?:USD|EUR|GBP|BDT|INR|PKR|AED|tk|টাকা)\b/i
-const CURRENCY_SYMBOLS = /[$€£¥৳]/
+/**
+ * A monetary amount, precisely.
+ *
+ * The pipeline copy contains percentages ("Advance 40%") and currency
+ * names in *policy statements* ("payment is non-refundable unless
+ * …"), so a loose test would gate messages that the policy allows.
+ * These three patterns are the only shapes that really carry money:
+ *
+ *   $1,500        1,500 USD        USD 1,500
+ *
+ * A percentage is never an amount, and a bare four-digit number is
+ * only an amount when it is not a year.
+ */
+const AMOUNT_PATTERNS: RegExp[] = [
+  /[$€£¥৳]\s?\d[\d,]*(?:\.\d+)?/g,
+  /\b\d[\d,]*(?:\.\d+)?\s?(?:USD|EUR|GBP|BDT|INR|PKR|AED)\b/gi,
+  /\b(?:USD|EUR|GBP|BDT|INR|PKR|AED)\s?\d[\d,]*(?:\.\d+)?/gi,
+]
+
+/** A bare number that is money rather than a year or a list index. */
+const BARE_AMOUNT = /\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b/g
 
 /**
  * True when the text carries a monetary amount.
  *
  * The specification gates a "payment instruction WITH AMOUNT".
- * The check is deliberately conservative: any currency word or
- * symbol next to a number counts.
+ * The check is deliberately precise: any currency symbol or currency
+ * code next to a number counts, and a bare four-digit number counts
+ * when it is not a year and not a percentage.
  */
 export function containsAmount(text: string): boolean {
-  if (CURRENCY_SYMBOLS.test(text)) return true
-  if (CURRENCY_WORDS.test(text) && /\d/.test(text)) return true
+  if (!text) return false
+  // Only the IDENTIFIERS are masked here: a currency amount is exactly
+  // what this function is looking for.
+  const masked = maskIdentifiers(text)
+  for (const pattern of AMOUNT_PATTERNS) {
+    pattern.lastIndex = 0
+    if (pattern.test(masked)) return true
+  }
+  for (const match of masked.matchAll(BARE_AMOUNT)) {
+    // 1,500 / 1,500.00 — a thousands separator is always money.
+    if (match[0].includes(',')) return true
+  }
+  for (const match of masked.matchAll(/\b(\d{4,})\b/g)) {
+    const value = Number(match[1])
+    if (!Number.isFinite(value)) continue
+    // A year is not money.
+    if (value >= 1900 && value <= 2100) continue
+    // A percentage is not money.
+    const after = masked.slice((match.index ?? 0) + match[1].length, (match.index ?? 0) + match[1].length + 1)
+    if (after === '%') continue
+    return true
+  }
   return false
-}
-
-/**
- * The effective gate of a concrete message.
- *
- * A stage that is normally auto-sent still requires an approval
- * when its body carries an amount — that is the "payment
- * instruction with amount" rule, and it is enforced on the CONTENT,
- * not only on the stage label. This is the second half of the
- * specification's final rules: "no payment-specific message
- * without admin approval".
- */
-export function effectiveGate(stage: string, body: string, category?: string): MessageGate {
-  if (category && gateForCategory(category) === 'ADMIN_APPROVAL_REQUIRED') return 'ADMIN_APPROVAL_REQUIRED'
-  if (gateForStage(stage) === 'ADMIN_APPROVAL_REQUIRED') return 'ADMIN_APPROVAL_REQUIRED'
-  if (containsAmount(body)) return 'ADMIN_APPROVAL_REQUIRED'
-  return 'AUTO_SEND'
 }
 
 // ------------------------------------------------------------
@@ -152,7 +282,7 @@ export function effectiveGate(stage: string, body: string, category?: string): M
  * the phone scan runs, so a Client ID such as TECH-2026-000001 is
  * never mistaken for a number.
  */
-const SAFE_PATTERNS: RegExp[] = [
+const IDENTIFIER_PATTERNS: RegExp[] = [
   // Client ID — TECH-2026-000001
   /\bTECH-\d{4}-\d{6}\b/gi,
   // URLs
@@ -161,13 +291,18 @@ const SAFE_PATTERNS: RegExp[] = [
   /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g,
   // ISO dates
   /\b\d{4}-\d{2}-\d{2}\b/g,
-  // Currency amounts, symbol first …
-  /[$€£¥৳]\s?\d[\d,.]*(?:\s?(?:USD|EUR|GBP|BDT|INR|PKR|AED|tk))?/gi,
-  // … and currency first
-  /\b\d[\d,.]*\s?(?:USD|EUR|GBP|BDT|INR|PKR|AED|tk)\b/gi,
-  // Invoice / project / order numbers
-  /\b(?:INV|PRJ|REF|ORD|SOW)[-\s]?\d{2,10}\b/gi,
+  // Invoice / project / order numbers, including a second segment
+  // (INV-2026-0001, SOW-2026-0002)
+  /\b(?:INV|PRJ|REF|ORD|SOW)[-\s]?\d{2,6}(?:[-\s]\d{2,6})?\b/gi,
 ]
+
+/**
+ * A currency amount, symbol first. It is NOT an identifier, so the
+ * amount detector must be able to see it — but the phone scanner must
+ * not, because "$1234567" is seven digits and would look like a
+ * number.
+ */
+const CURRENCY_AMOUNT = /[$€£¥৳]\s?\d[\d,.]*(?:\s?(?:USD|EUR|GBP|BDT|INR|PKR|AED|tk))?/gi
 
 /**
  * A phone-number candidate: an optional leading +, then a run of
@@ -179,16 +314,26 @@ const PHONE_CANDIDATE = /(?:\+?\d[\d\s().-]{4,}\d)/g
 const MASKED_PHONE = /(?:\+?\d[\s().-]{0,4})?X{3,}[\dX\s().-]{2,}/gi
 
 /**
- * Blank out the safe patterns, keeping the string length identical
- * so that the offsets of a phone candidate still point at the same
- * characters in the original text.
+ * Blank out the identifier patterns, keeping the string length
+ * identical so that the offsets of a phone candidate still point at
+ * the same characters in the original text.
  */
-function maskSafePatterns(text: string): string {
+function maskIdentifiers(text: string): string {
   let masked = text
-  for (const pattern of SAFE_PATTERNS) {
+  for (const pattern of IDENTIFIER_PATTERNS) {
     masked = masked.replace(pattern, (match) => match.replace(/[^\s]/g, 'x'))
   }
   return masked
+}
+
+/**
+ * Blank out the identifiers AND the currency amounts.
+ *
+ * Used by the phone scanner, where "$1234567" must not be read as a
+ * phone number.
+ */
+function maskSafePatterns(text: string): string {
+  return maskIdentifiers(text).replace(CURRENCY_AMOUNT, (match) => match.replace(/[^\s]/g, 'x'))
 }
 
 type PhoneRange = { start: number; end: number; text: string }

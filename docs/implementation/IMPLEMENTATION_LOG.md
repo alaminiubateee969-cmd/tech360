@@ -264,8 +264,8 @@ and one approval path.
 | the payment instruction was sent straight to the client with **no admin approval** | `requestPayment()` now composes the message, raises a `PAYMENT_INSTRUCTION` approval and sends nothing; the approval execution path sends it for real |
 | an SMS lead was never answered — `selectWelcomeChannel()` recognised only WhatsApp and email, so the pipeline's SMS entry point was dead | SMS is now a first-class reply channel; a `Phone` **preference** still returns `null` (a call is a human's job), so the existing consent policy is unchanged |
 
-**Tests.** `tests/communication-pipeline.test.ts` — **54 tests, 54
-pass**. The whole suite is now **614 tests, 613 pass, 1 environmental
+**Tests.** `tests/communication-pipeline.test.ts` — **61 tests, 61
+pass**. The whole suite is now **621 tests, 620 pass, 1 environmental
 failure** (`tests/database-workflows.test.ts`, which needs a generated
 Prisma client and a live MySQL).
 

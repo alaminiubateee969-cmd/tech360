@@ -20,8 +20,8 @@
 | Node | v22.22.3 |
 | Platform | Linux x64, 2 vCPU, 3.8 GB RAM |
 | Test files | **36** |
-| Tests | **614** |
-| Passed | **613** |
+| Tests | **621** |
+| Passed | **620** |
 | Failed | **1** |
 | Skipped / todo | 0 |
 
@@ -55,7 +55,7 @@ there. Every other suite passes.
 | `business-policies.test.ts` | 17 | 17 | 0 |
 | `chat-triage.test.ts` | 6 | 6 | 0 |
 | `client-comms-inbox.test.ts` | 2 | 2 | 0 |
-| `communication-pipeline.test.ts` | 54 | 54 | 0 |
+| `communication-pipeline.test.ts` | 61 | 61 | 0 |
 | `contact-policy.test.ts` | 2 | 2 | 0 |
 | `database-workflows.test.ts` | 1 | 0 | **1** (environmental) |
 | `eval-harness.test.ts` | 25 | 25 | 0 |
@@ -80,7 +80,7 @@ there. Every other suite passes.
 | `skills-registry.test.ts` | 38 | 38 | 0 |
 | `telephony.test.ts` | 16 | 16 | 0 |
 | `webhook-auth.test.ts` | 20 | 20 | 0 |
-| **Total** | **614** | **613** | **1** |
+| **Total** | **621** | **620** | **1** |
 
 ---
 
@@ -112,7 +112,7 @@ were fixed in production code, not in the test:
 | `validateLogicalAgentCatalogue()` matched a skill's capability by its last two underscore-separated segments, so a three-word capability slug was reported as unknown | the suffix is now matched against the known capability list |
 | the role archetypes did not cover every capability | the 91 capabilities are dealt out round-robin across the 20 archetypes, so every capability is owned by at least one role |
 
-### 3.2 `communication-pipeline.test.ts` — the client journey (54 tests)
+### 3.2 `communication-pipeline.test.ts` — the client journey (61 tests)
 
 The suite for the AI Agent communication pipeline. It proves the
 **exact** copy, the **gates**, the **no phone number** rule and the
@@ -129,6 +129,7 @@ templates and rules are pure modules by design.
 | the CRM save contract | 3 | the seven required fields, the action → records map for 19 journey actions, and the payment / delivery / review histories |
 | identifiers and channels | 5 | the `TECH-YYYY-NNNNNN` format, SMS as a reply channel, a `Phone` **preference** still returns `null`, and the website consent must be the exact boolean `true` |
 | channel selection | 4 | the channels a client may receive, the requested-channel filter, the empty case, and the agent that owns each channel |
+| the stated policy, item by item | 7 | each of the nine auto-send items auto-sends on its real copy; each of the seven approval items is gated; a body carrying an amount gates **every** stage; eight real policy statements from the auto-send copy still auto-send; the gate explains itself; the categories are detected |
 
 **This suite found two real defects** during the work, both fixed in
 production code:

@@ -18,7 +18,7 @@ The platform is **built, tested and coherent**. It is **not released**.
 
 | | |
 |---|---|
-| Tests | **614**, of which **613 pass**. The one failure needs a real MySQL and a generated Prisma client — both environmental |
+| Tests | **621**, of which **620 pass**. The one failure needs a real MySQL and a generated Prisma client — both environmental |
 | Type check | 4 errors, all environmental, all pre-existing |
 | Lint | clean |
 | The AI workforce | **2,201 employees**, 110 departments, 8 divisions, 9 levels — every one validated |
@@ -28,7 +28,7 @@ The platform is **built, tested and coherent**. It is **not released**.
 | The governed tools | **47**, with full metadata, 0 consistency issues |
 | The event types | 51 |
 | The console | 45 views; the AI Employees workspace has 9 real panels; the Communication Pipeline panel has 4 |
-| The client journey | 11 communication-pipeline stages, the exact copy, and the admin-approval gates — 54 tests |
+| The client journey | 11 communication-pipeline stages, the exact copy, and the admin-approval gates — 61 tests |
 | **The release gate** | **NOT MET** — no verified backup, no proven isolated restore |
 | **The release decision** | **staging only** |
 
@@ -162,7 +162,7 @@ instruction was being sent to the client with no approval at all, and
 an SMS lead was never answered because the channel policy did not
 recognise SMS.
 
-**54 tests, 54 pass.** Full record:
+**61 tests, 61 pass.** Full record:
 `docs/implementation/COMMUNICATION_PIPELINE.md`.
 
 ---
@@ -283,9 +283,11 @@ archetypes now own **every** capability rather than 20 of 91.
 | Governance with layered rules and human control | the new specification | the RBAC guard | `src/lib/governance/rules.ts` | `22a4b34` | 94/94 | **WORKING** | not deployed | — |
 | All the panels must be real | the new specification | 37 views | 8 APIs + `WorkforceView.tsx` | `e9b8abc` | 559/560 | **WORKING** | not deployed | the Backup & Recovery panel is honest about the missing artefact |
 | Mobile applications use the same backend | the new specification | — | the backend surface is in place | `e9b8abc` | — | **PARTIAL** | — | the mobile apps themselves are a separate deliverable |
-| The eleven-stage client journey with the exact WhatsApp/SMS and email copy | the communication-pipeline specification | `src/lib/journey.ts` (the engine, with generic copy and no payment gate) | `src/lib/pipeline/**`, `src/app/api/admin/pipeline/**`, `src/components/admin/PipelineView.tsx` | (this commit) | 54/54 | **WORKING** | not deployed | the end-to-end run against a live MySQL and live providers is not proven here |
-| The admin-approval gates for the final SOW, the payment instruction, the invoice, the legal/refund response, the source-code handover, the delivery file links and the dispute response | the communication-pipeline specification | none — the payment instruction was sent with no approval | `src/lib/pipeline/rules.ts`, `src/lib/journey.ts`, `src/app/api/admin/approvals/[id]/decision/route.ts` | (this commit) | 54/54 | **WORKING** | not deployed | — |
-| No phone number in AI content | the communication-pipeline specification | none | `src/lib/pipeline/rules.ts` | (this commit) | 54/54 | **WORKING** | not deployed | — |
+| The eleven-stage client journey with the exact WhatsApp/SMS and email copy | the communication-pipeline specification | `src/lib/journey.ts` (the engine, with generic copy and no payment gate) | `src/lib/pipeline/**`, `src/app/api/admin/pipeline/**`, `src/components/admin/PipelineView.tsx` | (this commit) | 61/61 | **WORKING** | not deployed | the end-to-end run against a live MySQL and live providers is not proven here |
+| The admin-approval gates for the final SOW, the payment instruction, the invoice, the legal/refund response, the source-code handover, the delivery file links and the dispute response | the communication-pipeline specification | none — the payment instruction was sent with no approval | `src/lib/pipeline/rules.ts`, `src/lib/journey.ts`, `src/app/api/admin/approvals/[id]/decision/route.ts` | (this commit) | 61/61 | **WORKING** | not deployed | — |
+| No phone number in AI content | the communication-pipeline specification | none | `src/lib/pipeline/rules.ts` | (this commit) | 61/61 | **WORKING** | not deployed | — |
+| A body carrying an amount is gated whatever its stage label, and the other six gated categories are detectable from the body | the communication-pipeline specification | none | `src/lib/pipeline/rules.ts` | (this commit) | 61/61 | **WORKING** | not deployed | — |
+| The same gate on the manual admin send path | the communication-pipeline specification | a manager could send an invoice or a legal response with no approval | `src/app/api/admin/communications/send/route.ts` | (this commit) | 61/61 | **WORKING** | not deployed | — |
 | A usable backup and a proven isolated restore | the task's release gate | `src/app/api/admin/backup/route.ts` | — | — | — | **NOT MET** | **blocked** | the procedure to close it is written out |
 | No copy from `tech360-bd/alolabs_AI` | the task's rule | — | — | — | — | **WORKING** | — | it has no LICENSE file; it was read for architecture only |
 

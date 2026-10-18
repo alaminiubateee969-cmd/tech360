@@ -115,6 +115,59 @@ audits it, and returns `AWAITING_APPROVAL` with **no** delivery
 attempt. The approval execution path then re-sends it with
 `approved: true`.
 
+### 3.1 The content gate — the amount rule, and the six siblings
+
+The stage label is not the only gate. A message is also gated by what
+it **says**, so a message cannot slip past by being filed under an
+auto-send stage:
+
+| Content | Result |
+|---|---|
+| a monetary amount | `ADMIN_APPROVAL_REQUIRED` — whatever the stage |
+| an invoice (`invoice`, `INV-2026-0001`) | `ADMIN_APPROVAL_REQUIRED` |
+| a legal response (`legal`, `liability`, `indemnity`, `attorney`, …) | `ADMIN_APPROVAL_REQUIRED` |
+| a refund response (`refund`, but **not** `non-refundable`) | `ADMIN_APPROVAL_REQUIRED` |
+| a dispute response (`dispute`) | `ADMIN_APPROVAL_REQUIRED` |
+| a link to a delivered package (`/download`, `/handover`, `/package`, …) | `ADMIN_APPROVAL_REQUIRED` — a source-code handover **and** a delivery-file-links message |
+
+`gateReason()` returns the human-readable reason, and it is written
+into the `ApprovalRequest` description and the audit entry, so the
+operator sees *why* a message was held.
+
+**Why the markers are so narrow.** The auto-send copy legitimately
+contains the phrases "source code", "admin access", "handover",
+"payment policy", "payment gateway" and "non-refundable" — as
+**policy statements** ("the final source code is provided after full
+payment"). A loose keyword scan would have wrongly gated five of the
+nine auto-send items. So the markers use only words that appear in
+**none** of the auto-send copy, and the amount test distinguishes
+`$1,500` and `1,500 USD` (money) from `40%` and `2026` (not money).
+
+The regression test for this is explicit: it feeds eight real policy
+statements from the auto-send copy into the gate and asserts that
+**every one of them is still `AUTO_SEND`**.
+
+### 3.2 The same gate on the manual admin path
+
+A human composing a message in the console could otherwise have sent
+an invoice, a legal response or a payment instruction with a manager's
+authority alone. `POST /api/admin/communications/send` now applies the
+same content classifier:
+
+- a **MANAGER** whose body falls into a gated category is **refused**
+  with `403`, the reason is audited, and **nothing is sent**;
+- a **SUPER_ADMIN** sending it *is* the admin approval the policy
+  requires, so it goes out.
+
+### 3.3 The two policies, in code
+
+`assertDeliveryRules({ paymentConfirmed, sourceCodeRelease, adminApproved })`
+is called on the handover release path, so *Source Code After Full
+Payment* and the admin approval for every handover are both enforced
+before a single byte is released. The HTML preview is generated and
+sent **before** any payment is requested — *HTML Preview Before
+Payment* — and the preview link never contains a file.
+
 ---
 
 ## 4. No phone number in AI content
@@ -220,13 +273,13 @@ policies, the communications saved per channel) and **Client profile**
 | File | Lines | What it is |
 |---|---:|---|
 | `src/lib/pipeline/templates.ts` | 858 | the exact copy for all thirteen message stages + the plain-text → HTML renderer |
-| `src/lib/pipeline/rules.ts` | 412 | the gates, the phone-number scanner, the delivery rules, the always-save map, the eleven-stage table |
-| `src/lib/pipeline/send.ts` | 317 | the sender: the gate, the redaction, the CRM write, the approval request |
+| `src/lib/pipeline/rules.ts` | 557 | the gates, the phone-number scanner, the delivery rules, the always-save map, the eleven-stage table |
+| `src/lib/pipeline/send.ts` | 330 | the sender: the gate, the redaction, the CRM write, the approval request |
 | `src/lib/pipeline/profile.ts` | 240 | the client profile view |
 | `src/app/api/admin/pipeline/route.ts` | 90 | the pipeline API |
 | `src/app/api/admin/pipeline/profile/[id]/route.ts` | 32 | the client profile API |
 | `src/components/admin/PipelineView.tsx` | 369 | the console panel |
-| `tests/communication-pipeline.test.ts` | 565 | 54 tests |
+| `tests/communication-pipeline.test.ts` | 683 | 61 tests |
 
 Changed, not rewritten: `src/lib/journey.ts` (the stage copy and the
 gates), `src/lib/comms.ts` (a `metadata` field), `src/lib/contact-policy.ts`
@@ -241,7 +294,7 @@ gates), `src/lib/comms.ts` (a `metadata` field), `src/lib/contact-policy.ts`
 
 ## 9. The tests
 
-`tests/communication-pipeline.test.ts` — **54 tests, 54 pass**.
+`tests/communication-pipeline.test.ts` — **61 tests, 61 pass**.
 
 | Group | Tests | What it proves |
 |---|---:|---|
@@ -253,6 +306,7 @@ gates), `src/lib/comms.ts` (a `metadata` field), `src/lib/contact-policy.ts`
 | the CRM save contract | 3 | the seven required fields, the action → records map, and the payment/delivery/review histories |
 | identifiers and channels | 5 | the `TECH-YYYY-NNNNNN` format, SMS as a reply channel, a phone preference is **not** silently turned into an SMS, the exact website consent boolean |
 | channel selection | 4 | the channels a client may receive, the requested-channel filter, the empty case, and the agent that owns each channel |
+| **the stated policy, item by item** | 7 | each of the nine auto-send items auto-sends on its real copy; each of the seven approval items is gated; an amount gates **every** stage; eight real policy statements from the auto-send copy still auto-send; the gate explains itself; the categories are detected |
 
 ---
 
@@ -265,7 +319,7 @@ gates), `src/lib/comms.ts` (a `metadata` field), `src/lib/contact-policy.ts`
   starts MySQL; the provider paths are exercised by the existing
   outbox-retry suite with a fake provider.
 - The **exact copy is fixed** in the template module. When the business
-  changes a sentence, the template changes and the 54 tests must be
+  changes a sentence, the template changes and the 61 tests must be
   updated with it — that is deliberate, so the wording cannot drift
   silently.
 - The AI's own scope questions (the `SCP-006` agent) are **kept for

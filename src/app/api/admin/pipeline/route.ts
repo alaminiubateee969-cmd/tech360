@@ -2,7 +2,14 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { CLIENT_JOURNEY_STAGES } from '@/lib/pipeline/rules'
-import { ADMIN_APPROVAL_CATEGORIES, ADMIN_APPROVAL_STAGES, AUTO_SEND_STAGES } from '@/lib/pipeline/rules'
+import {
+  ADMIN_APPROVAL_CATEGORIES,
+  ADMIN_APPROVAL_STAGES,
+  AUTO_SEND_STAGES,
+  classifyContentCategory,
+  effectiveGate,
+  gateReason,
+} from '@/lib/pipeline/rules'
 import { PIPELINE_MESSAGE_STAGES, pipelineMessage, type PipelineVariables } from '@/lib/pipeline/templates'
 import { PIPELINE_LABELS, PIPELINE_STAGES } from '@/lib/constants'
 
@@ -61,6 +68,9 @@ export async function GET(req: NextRequest) {
       whatsapp: messages.whatsapp.body,
       emailSubject: messages.email.subject ?? null,
       email: messages.email.body,
+      gate: effectiveGate(stage, messages.whatsapp.body),
+      gateReason: gateReason(stage, messages.whatsapp.body),
+      detectedCategories: classifyContentCategory(messages.whatsapp.body),
     }
   })
 

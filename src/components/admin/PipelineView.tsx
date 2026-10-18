@@ -31,7 +31,15 @@ interface PipelineResponse {
     savedPipelineMessages: number
     channelCounts: Record<string, number>
   }
-  copy: Array<{ stage: string; whatsapp: string; emailSubject: string | null; email: string }>
+  copy: Array<{
+    stage: string
+    whatsapp: string
+    emailSubject: string | null
+    email: string
+    gate: 'AUTO_SEND' | 'ADMIN_APPROVAL_REQUIRED'
+    gateReason: string
+    detectedCategories: string[]
+  }>
 }
 
 interface ProfileResponse {
@@ -175,9 +183,14 @@ export function PipelineView() {
               {(data?.copy ?? []).map((entry) => (
                 <details key={entry.stage} className={CARD}>
                   <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-slate-200">
+                    <span className="mr-2 inline-flex align-middle"><GateBadge gate={entry.gate} /></span>
                     {entry.stage}
                     {entry.emailSubject ? <span className="ml-2 text-xs font-normal text-slate-500">— {entry.emailSubject}</span> : null}
                   </summary>
+                  <p className="border-t border-slate-800 px-3 py-2 text-xs text-slate-500">
+                    Gate: {entry.gateReason}
+                    {entry.detectedCategories.length > 0 ? ` · detected: ${entry.detectedCategories.join(', ')}` : ''}
+                  </p>
                   <div className="grid gap-3 border-t border-slate-800 p-3 lg:grid-cols-2">
                     <div>
                       <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">WhatsApp / SMS</p>

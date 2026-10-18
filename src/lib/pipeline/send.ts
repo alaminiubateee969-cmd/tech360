@@ -23,7 +23,9 @@ import { audit, logError } from '@/lib/security'
 import { pipelineMessage, renderEmailBody, type PipelineMessage, type PipelineMessageStage, type PipelineVariables } from './templates'
 import {
   assertNoSensitiveFilesInPublicContent,
+  classifyContentCategory,
   effectiveGate,
+  gateReason,
   screenAiContent,
   type AdminApprovalCategory,
   type MessageGate,
@@ -58,6 +60,8 @@ export type PipelineDelivery = {
 export type PipelineSendResult = {
   status: 'SENT' | 'PARTIAL' | 'AWAITING_APPROVAL' | 'NO_CHANNEL'
   gate: MessageGate
+  /** Why the message was gated (or why it may be sent). */
+  gateReason: string
   approvalId: string | null
   deliveries: PipelineDelivery[]
   messages: { whatsapp: PipelineMessage; email: PipelineMessage }
@@ -163,13 +167,14 @@ export async function sendPipelineMessage(request: PipelineSendRequest): Promise
 
   // ---- RULE 1 — the gate ----
   const gate = effectiveGate(request.stage, messages.whatsapp.body, request.category)
+  const reason = gateReason(request.stage, messages.whatsapp.body, request.category)
   if (gate === 'ADMIN_APPROVAL_REQUIRED' && !request.approved) {
     const approval = await db.approvalRequest.create({
       data: {
         type: 'PIPELINE_MESSAGE',
         title: `Approve ${request.stage} message for ${client.clientId} (${client.name})`,
         description:
-          'The AI prepared a client message that the communication policy requires an admin to approve before it is sent.',
+          `The AI prepared a client message that the communication policy requires an admin to approve before it is sent. Reason: ${reason}.`,
         clientId: client.id,
         agentCode: request.agentCode ?? null,
         payload: JSON.stringify({
@@ -179,6 +184,8 @@ export async function sendPipelineMessage(request: PipelineSendRequest): Promise
           channels: request.channels ?? null,
           agentCode: request.agentCode ?? null,
           category: request.category ?? null,
+          gateReason: reason,
+          detectedCategories: classifyContentCategory(messages.whatsapp.body),
           bodyPreview: messages.whatsapp.body.slice(0, 2000),
         }),
         risk: 'MEDIUM',
@@ -203,6 +210,7 @@ export async function sendPipelineMessage(request: PipelineSendRequest): Promise
     return {
       status: 'AWAITING_APPROVAL',
       gate,
+      gateReason: reason,
       approvalId: approval.id,
       deliveries: [],
       messages,
@@ -239,7 +247,7 @@ export async function sendPipelineMessage(request: PipelineSendRequest): Promise
       },
     })
     deliveries.push({ channel: 'WEB', status: 'NOT_CONFIGURED', ok: false, communicationId: comm.id, redacted: redactedAll })
-    return { status: 'NO_CHANNEL', gate, approvalId: null, deliveries, messages, clientId: client.clientId }
+    return { status: 'NO_CHANNEL', gate, gateReason: reason, approvalId: null, deliveries, messages, clientId: client.clientId }
   }
 
   for (const channel of channels) {
@@ -282,7 +290,7 @@ export async function sendPipelineMessage(request: PipelineSendRequest): Promise
 
   const accepted = deliveries.filter((d) => d.ok).length
   const status = accepted === 0 ? 'NO_CHANNEL' : accepted === deliveries.length ? 'SENT' : 'PARTIAL'
-  return { status, gate, approvalId: null, deliveries, messages, clientId: client.clientId }
+  return { status, gate, gateReason: reason, approvalId: null, deliveries, messages, clientId: client.clientId }
 }
 
 // ------------------------------------------------------------

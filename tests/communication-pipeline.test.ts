@@ -35,6 +35,7 @@ import {
   assertDeliveryRules,
   assertNoPhoneNumber,
   assertNoSensitiveFilesInPublicContent,
+  classifyContentCategory,
   containsAmount,
   containsPhoneNumber,
   effectiveGate,
@@ -43,6 +44,7 @@ import {
   gateForCategory,
   gateForStage,
   gatePartitionIsComplete,
+  gateReason,
   redactPhoneNumbers,
   screenAiContent,
 } from '../src/lib/pipeline/rules'
@@ -341,7 +343,9 @@ describe('communication pipeline — the message gates', () => {
   it('gates any message that carries a monetary amount, whatever its stage', () => {
     assert.equal(effectiveGate('PAYMENT_RECEIVED', 'We received your $1,500 payment'), 'ADMIN_APPROVAL_REQUIRED')
     assert.equal(effectiveGate('FIRST_MESSAGE', 'We received your 1500 USD payment'), 'ADMIN_APPROVAL_REQUIRED')
-    assert.equal(effectiveGate('FIRST_MESSAGE', 'Your invoice INV-2026-0001 is ready'), 'AUTO_SEND')
+    // An invoice is one of the seven gated categories, so it is gated
+    // even on a stage that is otherwise auto-sent.
+    assert.equal(effectiveGate('FIRST_MESSAGE', 'Your invoice INV-2026-0001 is ready'), 'ADMIN_APPROVAL_REQUIRED')
   })
 
   it('detects a monetary amount', () => {
@@ -561,5 +565,119 @@ describe('communication pipeline — channel selection', () => {
     assert.equal(PIPELINE_AGENT_BY_CHANNEL.WHATSAPP, 'WAP-011')
     assert.equal(PIPELINE_AGENT_BY_CHANNEL.SMS, 'SMS-013')
     assert.equal(PIPELINE_AGENT_BY_CHANNEL.EMAIL, 'EML-012')
+  })
+})
+
+// ============================================================
+// 9 — the stated communication policy, item by item
+// ============================================================
+
+describe('communication pipeline — the stated policy', () => {
+  // "AI CAN AUTO SEND: first reply, business-type request, recommended
+  // plan, scope questions, meeting link, HTML-preview notification,
+  // revision acknowledgement, payment-received acknowledgement, review
+  // request."
+  const AUTO_SEND_ITEMS: Array<{ label: string; stage: PipelineMessageStage }> = [
+    { label: 'first reply', stage: 'FIRST_MESSAGE' },
+    { label: 'business-type request', stage: 'BUSINESS_TYPE_RECEIVED' },
+    { label: 'recommended plan', stage: 'BUSINESS_TYPE_RECEIVED' },
+    { label: 'scope questions', stage: 'BUSINESS_TYPE_RECEIVED' },
+    { label: 'meeting link', stage: 'MEETING_REQUESTED' },
+    { label: 'HTML-preview notification', stage: 'HTML_PREVIEW_SENT' },
+    { label: 'revision acknowledgement', stage: 'REVISION_REQUESTED' },
+    { label: 'payment-received acknowledgement', stage: 'PAYMENT_RECEIVED' },
+    { label: 'review request', stage: 'PROJECT_CLOSED' },
+  ]
+
+  // "AI MUST WAIT FOR ADMIN APPROVAL BEFORE SENDING: final Scope of
+  // Work, payment instruction with amount, invoice, legal/refund
+  // response, source-code handover, final delivery file links, dispute
+  // response."
+  const APPROVAL_ITEMS: Array<{ label: string; stage: PipelineMessageStage; body: string; category?: string }> = [
+    { label: 'final Scope of Work', stage: 'FINAL_SCOPE_APPROVED', body: 'Your final Scope of Work is ready. I approve the Scope of Work.', category: 'FINAL_SCOPE' },
+    { label: 'payment instruction with an amount', stage: 'PAYMENT_RECEIVED', body: 'Your payment of $1,500 is due. Please send the transaction reference.' },
+    { label: 'invoice', stage: 'PAYMENT_RECEIVED', body: 'Invoice INV-2026-0001 is ready for your project.', category: 'INVOICE' },
+    { label: 'legal response', stage: 'SCOPE_APPROVED', body: 'This is our legal position on the liability for the delivered system.', category: 'LEGAL_RESPONSE' },
+    { label: 'refund response', stage: 'SCOPE_APPROVED', body: 'We have processed your refund request for the advance.', category: 'REFUND_RESPONSE' },
+    { label: 'source-code handover', stage: 'FINAL_DELIVERY_READY', body: 'Your source code handover package is ready: https://bdtech360.com/api/handover/abc123/download', category: 'SOURCE_CODE_HANDOVER' },
+    { label: 'final delivery file links', stage: 'FINAL_DELIVERY_READY', body: 'Download the project files here: https://bdtech360.com/api/handover/abc123/download', category: 'DELIVERY_FILE_LINKS' },
+    { label: 'dispute response', stage: 'SCOPE_APPROVED', body: 'We are replying to the dispute you raised about the delivery.', category: 'DISPUTE_RESPONSE' },
+  ]
+
+  it('auto-sends every item on the stated auto-send list', () => {
+    for (const item of AUTO_SEND_ITEMS) {
+      const { whatsapp, email } = pipelineMessage(item.stage, V)
+      assert.equal(gateForStage(item.stage), 'AUTO_SEND', `${item.label}: the stage must be auto-send`)
+      assert.equal(effectiveGate(item.stage, whatsapp.body), 'AUTO_SEND', `${item.label}: the WhatsApp copy must be auto-sent`)
+      assert.equal(effectiveGate(item.stage, email.body), 'AUTO_SEND', `${item.label}: the email copy must be auto-sent`)
+    }
+  })
+
+  it('requires an admin approval for every item on the stated approval list', () => {
+    for (const item of APPROVAL_ITEMS) {
+      assert.equal(
+        effectiveGate(item.stage, item.body, item.category),
+        'ADMIN_APPROVAL_REQUIRED',
+        `${item.label}: must wait for an admin approval`,
+      )
+    }
+  })
+
+  it('gates a body carrying an amount whatever its stage label', () => {
+    for (const stage of PIPELINE_MESSAGE_STAGES) {
+      assert.equal(
+        effectiveGate(stage, 'Your payment of $1,500 is due.'),
+        'ADMIN_APPROVAL_REQUIRED',
+        `${stage}: an amount must gate the message`,
+      )
+      assert.equal(
+        effectiveGate(stage, 'Please settle 12,000 USD before we start.'),
+        'ADMIN_APPROVAL_REQUIRED',
+        `${stage}: an amount must gate the message`,
+      )
+    }
+  })
+
+  it('does NOT gate a policy statement that merely names the handover rules', () => {
+    // The auto-send copy legitimately mentions "source code", "admin
+    // access", "handover" and "payment policy". Those are POLICY
+    // statements, not a handover, and the gate must not fire on them.
+    const policyStatements: Array<[PipelineMessageStage, string]> = [
+      ['SCOPE_DETAILS_RECEIVED', 'Payment policy: Advance 40% · Source code, files, admin access and deployment handover follow full payment.'],
+      ['MEETING_REQUESTED', 'We can explain the payment policy, the HTML preview process and the final source-code handover.'],
+      ['SCOPE_APPROVED', 'Final source code, full files, admin access and deployment handover are provided after full payment.'],
+      ['HTML_PREVIEW_SENT', 'After HTML/demo approval and final delivery/source-code handover, payment is non-refundable unless Tech360 cannot deliver the approved scope.'],
+      ['FINAL_DELIVERY_READY', 'Delivery may include the final files, the source code, the admin access and the deployment support.'],
+      ['FINAL_DELIVERY_COMPLETED', 'Please confirm you received the source code, the admin access and the deployment.'],
+      ['BUSINESS_TYPE_RECEIVED', 'Do you need payment gateway integration?'],
+      ['PAYMENT_RECEIVED', 'Your payment confirmation has been received.'],
+    ]
+    for (const [stage, body] of policyStatements) {
+      assert.equal(effectiveGate(stage, body), 'AUTO_SEND', `a policy statement must not gate the ${stage} message`)
+    }
+  })
+
+  it('gates the real copy of the stages that the policy gates', () => {
+    const { whatsapp, email } = pipelineMessage('FINAL_SCOPE_APPROVED', V)
+    assert.equal(effectiveGate('FINAL_SCOPE_APPROVED', whatsapp.body), 'ADMIN_APPROVAL_REQUIRED')
+    assert.equal(effectiveGate('FINAL_SCOPE_APPROVED', email.body), 'ADMIN_APPROVAL_REQUIRED')
+  })
+
+  it('explains why a message was gated', () => {
+    assert.match(gateReason('FINAL_SCOPE_APPROVED', 'x'), /stage requires an admin approval/)
+    assert.match(gateReason('FIRST_MESSAGE', 'Your payment of $1,500 is due.'), /monetary amount/)
+    assert.match(gateReason('FIRST_MESSAGE', 'Invoice INV-2026-0001 is ready.'), /INVOICE/)
+    assert.match(gateReason('FIRST_MESSAGE', 'We reply to your dispute.'), /DISPUTE_RESPONSE/)
+    assert.match(gateReason('FIRST_MESSAGE', 'Hello, how can we help?'), /auto-send list/)
+  })
+
+  it('detects the gated categories in a body', () => {
+    assert.deepEqual(classifyContentCategory('Your invoice INV-2026-0001 is ready.'), ['INVOICE'])
+    assert.ok(classifyContentCategory('This is our legal position.').includes('LEGAL_RESPONSE'))
+    assert.ok(classifyContentCategory('We processed your refund.').includes('REFUND_RESPONSE'))
+    assert.ok(classifyContentCategory('Regarding your dispute.').includes('DISPUTE_RESPONSE'))
+    assert.ok(classifyContentCategory('Download: https://x.test/api/handover/tok/download').includes('DELIVERY_FILE_LINKS'))
+    assert.ok(classifyContentCategory('Pay $500 now.').includes('PAYMENT_INSTRUCTION'))
+    assert.deepEqual(classifyContentCategory('Thanks for reaching out to Tech360.'), [])
   })
 })
