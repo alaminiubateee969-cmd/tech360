@@ -1,4 +1,5 @@
 export { constantTimeEquals } from '@/lib/constant-time'
+export { newCorrelationId } from '@/lib/correlation'
 import { db } from '@/lib/db'
 import { randomBytes } from 'crypto'
 
@@ -58,10 +59,6 @@ export function isSafeJson(str: string): boolean {
   } catch {
     return false
   }
-}
-
-export function newCorrelationId(): string {
-  return randomBytes(12).toString('hex')
 }
 
 // ------------------------------------------------------------

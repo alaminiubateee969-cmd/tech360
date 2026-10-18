@@ -20,7 +20,11 @@
     "schema:mysql": "node scripts/convert-schema-to-mysql.mjs",
     "schema:check": "node scripts/convert-schema-to-mysql.mjs --check",
     "start:bun": "NODE_ENV=production bun .next/standalone/server.js",
-    "hostinger:build": "npm run build"
+    "hostinger:build": "npm run build",
+    "eval:generate": "node scripts/eval/generate-dataset.mjs",
+    "eval:run": "node scripts/eval/run-eval.mjs",
+    "bench:models": "node scripts/benchmark-local-models.mjs",
+    "models:verify": "node scripts/verify-local-models.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

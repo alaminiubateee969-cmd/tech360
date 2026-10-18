@@ -26,6 +26,10 @@ import {
   Sparkles,
   Star,
   Terminal,
+  Cpu,
+  ListChecks,
+  Plug,
+  DatabaseBackup,
   UserPlus,
   Users,
   Wallet,
@@ -44,6 +48,13 @@ import { LoginScreen } from './LoginScreen'
 import { NotificationCenter } from './NotificationCenter'
 import { TwoFactorDialog } from './TwoFactorDialog'
 import { AgentsView } from './AgentsView'
+import ModelsView from './ModelsView'
+import SkillsView from './SkillsView'
+import DepartmentsView from './DepartmentsView'
+import TaskQueueView from './TaskQueueView'
+import WorkflowBuilderView from './WorkflowBuilderView'
+import IntegrationsView from './IntegrationsView'
+import BackupRecoveryView from './BackupRecoveryView'
 import { AnalyticsView } from './AnalyticsView'
 import { ApprovalsView } from './ApprovalsView'
 import { BlogStudioView } from './BlogStudioView'
@@ -92,6 +103,7 @@ type ViewId =
   | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
   | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts'
+  | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup'
 
 // Minimum console role required to see (and use) each view. Mirrors the
 // server-side minRole on the backing API routes — the nav never advertises
@@ -127,6 +139,13 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   media: 'STAFF',
   feeds: 'STAFF',
   telephony: 'STAFF',
+  models: 'SUPER_ADMIN',
+  skills: 'SUPER_ADMIN',
+  departments: 'SUPER_ADMIN',
+  tasks: 'SUPER_ADMIN',
+  workflows: 'SUPER_ADMIN',
+  integrations: 'SUPER_ADMIN',
+  backup: 'SUPER_ADMIN',
 }
 
 interface NavItem {
@@ -185,6 +204,11 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     items: [
       { id: 'agents', label: 'AI Workforce', icon: Bot },
       { id: 'command', label: 'Command Center', icon: Terminal },
+      { id: 'models', label: 'Model Management', icon: Cpu },
+      { id: 'skills', label: 'Skill Registry', icon: Boxes },
+      { id: 'departments', label: 'Departments', icon: Building2 },
+      { id: 'tasks', label: 'Task Queue', icon: ListChecks },
+      { id: 'workflows', label: 'Workflow Builder', icon: Workflow },
       { id: 'memory', label: 'AI Memory', icon: BookOpen },
       { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
       { id: 'content', label: 'Content Studio', icon: Clapperboard },
@@ -198,6 +222,8 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'n8n', label: 'n8n Workflows', icon: Workflow },
       { id: 'reports', label: 'Reports', icon: FileBarChart },
       { id: 'team', label: 'Team', icon: Users },
+      { id: 'integrations', label: 'CRM Integrations', icon: Plug },
+      { id: 'backup', label: 'Backup & Recovery', icon: DatabaseBackup },
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -222,6 +248,13 @@ const VIEW_TITLES: Record<ViewId, string> = {
   marketing: 'Marketing Kit',
   prompts: 'Prompt Library',
   knowledge: 'Knowledge Base',
+  models: 'AI Model Management',
+  skills: 'Skill Registry',
+  departments: 'Department Registry',
+  tasks: 'Task Queue',
+  workflows: 'Workflow Builder',
+  integrations: 'CRM Integrations',
+  backup: 'Backup & Recovery',
   content: 'Content Studio',
   blog: 'Blog Studio',
   analytics: 'Analytics',
@@ -580,6 +613,20 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <ReviewsView />
               ) : view === 'agents' ? (
                 <AgentsView />
+              ) : view === 'models' ? (
+                <ModelsView />
+              ) : view === 'skills' ? (
+                <SkillsView />
+              ) : view === 'departments' ? (
+                <DepartmentsView />
+              ) : view === 'tasks' ? (
+                <TaskQueueView />
+              ) : view === 'workflows' ? (
+                <WorkflowBuilderView />
+              ) : view === 'integrations' ? (
+                <IntegrationsView />
+              ) : view === 'backup' ? (
+                <BackupRecoveryView />
               ) : view === 'command' ? (
                 <CommandCenterView />
               ) : view === 'memory' ? (

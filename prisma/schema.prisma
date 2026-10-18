@@ -572,9 +572,11 @@ model AgentJob {
   id             String   @id @default(cuid())
   idempotencyKey String   @unique
   payloadHash    String   @db.Char(64)
-  taskType       String   @default("INFERENCE") // INFERENCE; external actions require separately authorized tools
-  agentCode      String
-  agent          AiAgent  @relation(fields: [agentCode], references: [code], onDelete: Restrict)
+  taskType       String   @default("INFERENCE") // INFERENCE | SKILL | WORKFLOW | DOCUMENT; external actions require separately authorized tools
+  // Nullable so the SAME durable queue can carry skill and workflow tasks
+  // that are not owned by an LLM agent. LLM inference jobs always set it.
+  agentCode      String?
+  agent          AiAgent? @relation(fields: [agentCode], references: [code], onDelete: Restrict)
   clientId       String?
   client         Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   projectId      String?
@@ -711,6 +713,7 @@ model PromptTemplate {
   updatedAt  DateTime @updatedAt
 
   @@index([category])
+  @@index([agentCode])
 }
 
 // ---------------- CONTENT / VIDEO AI ----------------
@@ -1206,3 +1209,186 @@ model CallLog {
   @@index([clientId])
   @@index([status])
 }
+
+// ============================================================
+// PRIVATE AI PLATFORM — skills registry, vector knowledge index,
+// and local model deployment records.
+//
+// Every table here is additive. No existing customer, execution or
+// communication data is modified or deleted by this migration.
+// ============================================================
+
+// A skill is a reusable, versioned capability with declared inputs,
+// outputs and permissions. The registry row is the *catalogue* entry;
+// an ACTIVE row whose implementation handler is missing is NOT
+// operational and the API reports it as such.
+model Skill {
+  id            String   @id @default(cuid())
+  slug          String   @unique // student_document_classifier
+  name          String
+  category      String   @default("tech360")
+  departmentCode String? // owning department (D001…)
+  description   String   @db.Text
+  version       String   @default("1.0.0")
+  status        String   @default("ACTIVE") // ACTIVE | SUSPENDED | DEPRECATED | ROLLED_BACK | DRAFT
+  owner         String
+  handler       String   // key in the executable skill handler registry
+  configuration String?  @db.Text // JSON: the skill's specialisation
+  inputSchema   String   @db.Text // JSON Schema
+  outputSchema  String   @db.Text // JSON Schema
+  permissions   String   @db.Text // JSON array of permission strings
+  requiresApproval Boolean @default(false)
+  riskLevel     String   @default("LOW") // LOW | MEDIUM | HIGH
+  testRefs      String   @db.Text // JSON array of test identifiers
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+
+  versions SkillVersion[]
+  runs     SkillRun[]
+
+  @@index([status, category])
+  @@index([handler])
+}
+
+model SkillVersion {
+  id        String   @id @default(cuid())
+  skillId   String
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  version   String
+  changelog String   @db.Text
+  schemaHash String  @db.Char(64)
+  status    String   @default("ACTIVE") // ACTIVE | DEPRECATED | ROLLED_BACK
+  createdAt DateTime @default(now())
+
+  @@unique([skillId, version])
+  @@index([skillId, status])
+}
+
+model SkillRun {
+  id            String   @id @default(cuid())
+  skillId       String
+  skill         Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  skillSlug     String
+  version       String
+  status        String   @default("RUNNING") // RUNNING | SUCCESS | FAILED | TIMED_OUT | REJECTED
+  input         String   @db.LongText
+  output        String?  @db.LongText
+  error         String?  @db.Text
+  correlationId String
+  durationMs    Int?
+  requestedBy   String?
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+
+  @@index([skillSlug, createdAt])
+  @@index([status, createdAt])
+  @@index([correlationId])
+}
+
+// Retrieval chunk for the private knowledge index. The embedding is
+// stored as a JSON array in a LONGTEXT column because MySQL has no
+// native vector type; the index is scanned in bounded batches and the
+// cosine similarity is computed in the application.
+model KnowledgeChunk {
+  id          String   @id @default(cuid())
+  documentId  String
+  chunkIndex  Int
+  content     String   @db.LongText
+  embedding   String?  @db.LongText // JSON array of floats, L2-normalised
+  dimensions  Int      @default(0)
+  model       String?  // embedding model that produced the vector
+  accessLevel String   @default("INTERNAL") // PUBLIC | INTERNAL | CONFIDENTIAL | RESTRICTED
+  checksum    String   @db.Char(64)
+  createdAt   DateTime @default(now())
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
+}
+
+// Provenance for every ingested document. The specification requires
+// source, owner, collection date, last verification date, access level,
+// version, retention policy and permission scope to be recorded.
+model KnowledgeIngestRecord {
+  id             String   @id @default(cuid())
+  documentId     String   @unique
+  source         String
+  owner          String
+  collectedAt    DateTime @default(now())
+  lastVerifiedAt DateTime @default(now())
+  accessLevel    String   @default("INTERNAL")
+  version        String   @default("1.0.0")
+  retentionPolicy String  @default("REVIEW_ANNUALLY")
+  permissionScope String  @default("TECH360_STAFF")
+  contentHash    String   @db.Char(64)
+  chunkCount     Int      @default(0)
+  embeddingModel String?
+  status         String   @default("INDEXED") // PENDING | INDEXED | FAILED | QUARANTINED
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
+
+  @@index([accessLevel, status])
+  @@index([owner])
+}
+
+// Record of a local model that was actually pulled and checksummed on
+// this host. A row here is the evidence that the weight snapshot is
+// pinned; without it the model may not be promoted to a default profile.
+model ModelDeployment {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  upstreamModel String
+  provider      String
+  revision      String
+  weightChecksum String  @db.Char(64)
+  quantization  String?
+  ramFootprintMb Int
+  license       String
+  verifiedAt    DateTime @default(now())
+  verifiedBy    String   @default("verify-local-models.mjs")
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+
+  @@index([provider])
+}
+
+// A workflow diagram. The definition is stored as JSON so a diagram can
+// be edited, persisted and reloaded without a schema migration. The
+// published flag marks a version that is eligible to run; a draft is
+// never executed.
+model WorkflowDefinition {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?  @db.Text
+  version     Int      @default(1)
+  status      String   @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  nodes       String   @db.LongText // JSON array of workflow nodes
+  edges       String   @db.LongText // JSON array of workflow edges
+  createdBy   String?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  @@index([status, updatedAt])
+}
+
+// ============================================================
+// AI-EOS — the unified workforce substrate
+// ============================================================
+
+// A Standard Operating Procedure. An SOP is EXECUTABLE, not text: it
+// declares its trigger, preconditions, ordered steps, decision points,
+// validation rules, failure path and escalation. The runtime walks the
+// steps; it does not merely display them.
+// One execution of an SOP.
+// An agent-to-agent delegation. Every delegation carries its full
+// contract: who asked, who was asked, the objective, the context, the
+// permissions, the deadline and the expected output.
+// The event bus. Agents subscribe to the events they care about; a
+// single event never wakes the whole workforce.
+// A knowledge-graph entity. The graph is the relational layer of the
+// knowledge system: RAG retrieves documents, the graph retrieves
+// entities, relationships, dependencies, provenance and confidence.
+// A knowledge-graph relationship between two entities.
