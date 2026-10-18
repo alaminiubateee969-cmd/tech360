@@ -6,7 +6,7 @@ import { parseHandoverManifest } from '@/lib/handover-artifacts'
 import {
   detectBusiness, recommendPlan, askScopeQuestions, submitScope, generatePreview,
   requestPayment, recordPayment, verifyPayment, activateProject, prepareHandover,
-  closeProject, clientScopeDecision, requestReviewAndReferral,
+  closeProject, clientScopeDecision, requestReviewAndReferral, recordPreviewDecision,
 } from '@/lib/journey'
 
 export const dynamic = 'force-dynamic'
@@ -69,11 +69,21 @@ export async function POST(req: NextRequest) {
             : `Preview generated but not sent. Channel status: ${delivery}. Share only through an authorized channel. Link: ${r6.link}`
         break
       }
-      case 'REQUEST_PAYMENT':
+      case 'REQUEST_PAYMENT': {
         const r7 = await requestPayment(client.id, g.user.email)
         result = r7 as unknown as Record<string, unknown>
-        message = `Payment requested. Delivery: ${(r7.results ?? []).join(', ')}`
+        message = 'Payment instructions prepared and queued for Super Admin approval. Nothing was sent to the client yet — approve the PAYMENT_INSTRUCTION request in the Approvals view to send it.'
         break
+      }
+      case 'PREVIEW_DECISION': {
+        const decision = sanitizeText(payload.decision, 40).toUpperCase() === 'REVISION_REQUESTED' ? 'REVISION_REQUESTED' : 'APPROVED'
+        const r7b = await recordPreviewDecision(client.id, decision, sanitizeText(payload.notes, 4000))
+        result = r7b as unknown as Record<string, unknown>
+        message = decision === 'APPROVED'
+          ? `Preview approval recorded. ${r7b.sent.status === 'AWAITING_APPROVAL' ? 'The payment step is queued for admin approval.' : 'Acknowledgement sent.'}`
+          : 'Preview revision recorded. The acknowledgement was sent, the admin was notified and a task was created.'
+        break
+      }
       case 'RECORD_PAYMENT': {
         const amount = Number(payload.amount)
         if (!Number.isFinite(amount) || amount <= 0) return Response.json({ error: 'Valid amount required' }, { status: 400 })

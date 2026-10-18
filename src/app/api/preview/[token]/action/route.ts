@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { sanitizeText, readJson, rateLimit, clientIp, audit, logError } from '@/lib/security'
+import { recordPreviewDecision } from '@/lib/journey'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,8 +40,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       })
       await db.client.update({ where: { id: preview.clientId }, data: { pipelineStage: 'CLIENT_APPROVAL' } })
       await db.trackingEvent.create({ data: { name: 'approval', clientId: preview.clientId, consent: true, meta: '{"what":"preview"}' } }).catch(() => null)
+      // STAGE 7B — the acknowledgement is prepared, and the payment step
+      // waits for an admin approval before it reaches the client.
+      const outcome = await recordPreviewDecision(preview.clientId, 'APPROVED')
       await audit({ actor: `client:${preview.client.clientId}`, action: 'PREVIEW_APPROVED', clientId: preview.clientId, ip: clientIp(req) })
-      return Response.json({ ok: true, message: 'Approval recorded. Team Tech360 will continue with payment instructions.' })
+      return Response.json({
+        ok: true,
+        message: outcome.sent.status === 'AWAITING_APPROVAL'
+          ? 'Approval recorded. Team Tech360 will continue with payment instructions.'
+          : 'Approval recorded. Team Tech360 will continue with payment instructions.',
+        paymentInstruction: outcome.sent.status,
+      })
     } else {
       if (notes.length < 5) return Response.json({ error: 'Please describe your change requests' }, { status: 400 })
       await db.preview.update({ where: { id: preview.id }, data: { status: 'REVISION_REQUESTED', revisionNotes: notes } })
@@ -48,6 +58,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       await db.communication.create({
         data: { clientId: preview.clientId, channel: 'PORTAL', direction: 'IN', sender: preview.client.name, body: `Preview revision requested: ${notes}`, status: 'RECEIVED' },
       })
+      // STAGE 7A — the revision acknowledgement is auto-sent, the admin is
+      // notified and a task is created.
+      await recordPreviewDecision(preview.clientId, 'REVISION_REQUESTED', notes)
       await audit({ actor: `client:${preview.client.clientId}`, action: 'PREVIEW_REVISION_REQUESTED', clientId: preview.clientId, details: { notes: notes.slice(0, 300) }, ip: clientIp(req) })
       return Response.json({ ok: true, message: 'Change request recorded. Team Tech360 will review and update the preview.' })
     }

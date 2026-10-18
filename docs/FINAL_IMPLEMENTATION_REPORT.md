@@ -18,7 +18,7 @@ The platform is **built, tested and coherent**. It is **not released**.
 
 | | |
 |---|---|
-| Tests | **560**, of which **559 pass**. The one failure needs a real MySQL and a generated Prisma client — both environmental |
+| Tests | **614**, of which **613 pass**. The one failure needs a real MySQL and a generated Prisma client — both environmental |
 | Type check | 4 errors, all environmental, all pre-existing |
 | Lint | clean |
 | The AI workforce | **2,201 employees**, 110 departments, 8 divisions, 9 levels — every one validated |
@@ -27,7 +27,8 @@ The platform is **built, tested and coherent**. It is **not released**.
 | The prompt library | **70,400 slots**, retrieved, never bulk-loaded |
 | The governed tools | **47**, with full metadata, 0 consistency issues |
 | The event types | 51 |
-| The console | 44 views; the AI Employees workspace has 9 real panels |
+| The console | 45 views; the AI Employees workspace has 9 real panels; the Communication Pipeline panel has 4 |
+| The client journey | 11 communication-pipeline stages, the exact copy, and the admin-approval gates — 54 tests |
 | **The release gate** | **NOT MET** — no verified backup, no proven isolated restore |
 | **The release decision** | **staging only** |
 
@@ -126,6 +127,44 @@ Event Bus, Memory, Model Hub and Collaboration.
 Every number on every panel is read from an API. **An empty table means
 the record is empty.**
 
+### 3.5 The AI Agent communication pipeline (PR 5)
+
+The eleven-stage client journey — the first SMS to the final project
+delivery — with the exact WhatsApp/SMS reply text, the exact email
+subjects and bodies, and the gates that decide what the AI may send on
+its own.
+
+The journey engine **already existed** (`src/lib/journey.ts`, the stage
+machine, the `JOURNEY_ACTIONS` list, the `TECH-2026-000001` Client ID
+generator). It was **extended, never duplicated**: there is still one
+journey engine, one message dispatcher and one approval path.
+
+| What | Where |
+|---|---|
+| the exact copy — 13 message stages × (WhatsApp/SMS body + email subject + email body) | `src/lib/pipeline/templates.ts` |
+| the gates, the phone-number scanner, the delivery rules, the always-save map | `src/lib/pipeline/rules.ts` |
+| the sender — the gate, the redaction, the CRM write, the approval request | `src/lib/pipeline/send.ts` |
+| the client profile — the 14 fields and the six histories | `src/lib/pipeline/profile.ts` |
+| two APIs and a four-tab console panel | `/api/admin/pipeline`, `/api/admin/pipeline/profile/{id}` |
+
+**The gates, enforced in code:** the AI may auto-send the first reply,
+the business-type request, the recommended plan, the scope questions,
+the meeting link, the HTML-preview notification, the revision
+acknowledgement, the payment-received acknowledgement and the review
+request. It must **wait for an admin approval** for the final Scope of
+Work, a payment instruction with an amount, an invoice, a legal/refund
+response, a source-code handover, the final delivery file links and a
+dispute response. An unknown stage or category **fails closed**, and a
+message whose body carries an amount is gated whatever its stage.
+
+**Two production defects were found and fixed:** the payment
+instruction was being sent to the client with no approval at all, and
+an SMS lead was never answered because the channel policy did not
+recognise SMS.
+
+**54 tests, 54 pass.** Full record:
+`docs/implementation/COMMUNICATION_PIPELINE.md`.
+
 ---
 
 ## 4. The scale, counted
@@ -150,10 +189,10 @@ the record is empty.**
 | Model catalogue entries | **6** | `MODEL_CATALOG.length` |
 | Prisma models | **69** | `prisma/schema.prisma` |
 | Migrations | **9** | `prisma/migrations/` |
-| API routes | **162** | `src/app/api/**/route.ts` |
-| Console views | **44** | `src/components/admin/*.tsx` |
-| Source files | **403** (74,430 lines) | filesystem |
-| Test files | **35** | `tests/*.test.ts` |
+| API routes | **164** | `src/app/api/**/route.ts` |
+| Console views | **45** | `src/components/admin/*.tsx` |
+| Source files | **410** (77,095 lines) | filesystem |
+| Test files | **36** | `tests/*.test.ts` |
 
 **These are not projections.** Each one is a count in a test assertion
 or in a console panel that reads the live value.
@@ -244,6 +283,9 @@ archetypes now own **every** capability rather than 20 of 91.
 | Governance with layered rules and human control | the new specification | the RBAC guard | `src/lib/governance/rules.ts` | `22a4b34` | 94/94 | **WORKING** | not deployed | — |
 | All the panels must be real | the new specification | 37 views | 8 APIs + `WorkforceView.tsx` | `e9b8abc` | 559/560 | **WORKING** | not deployed | the Backup & Recovery panel is honest about the missing artefact |
 | Mobile applications use the same backend | the new specification | — | the backend surface is in place | `e9b8abc` | — | **PARTIAL** | — | the mobile apps themselves are a separate deliverable |
+| The eleven-stage client journey with the exact WhatsApp/SMS and email copy | the communication-pipeline specification | `src/lib/journey.ts` (the engine, with generic copy and no payment gate) | `src/lib/pipeline/**`, `src/app/api/admin/pipeline/**`, `src/components/admin/PipelineView.tsx` | (this commit) | 54/54 | **WORKING** | not deployed | the end-to-end run against a live MySQL and live providers is not proven here |
+| The admin-approval gates for the final SOW, the payment instruction, the invoice, the legal/refund response, the source-code handover, the delivery file links and the dispute response | the communication-pipeline specification | none — the payment instruction was sent with no approval | `src/lib/pipeline/rules.ts`, `src/lib/journey.ts`, `src/app/api/admin/approvals/[id]/decision/route.ts` | (this commit) | 54/54 | **WORKING** | not deployed | — |
+| No phone number in AI content | the communication-pipeline specification | none | `src/lib/pipeline/rules.ts` | (this commit) | 54/54 | **WORKING** | not deployed | — |
 | A usable backup and a proven isolated restore | the task's release gate | `src/app/api/admin/backup/route.ts` | — | — | — | **NOT MET** | **blocked** | the procedure to close it is written out |
 | No copy from `tech360-bd/alolabs_AI` | the task's rule | — | — | — | — | **WORKING** | — | it has no LICENSE file; it was read for architecture only |
 
@@ -291,6 +333,7 @@ in the chain, and it is unconfigured here.
 | `docs/implementation/AGENT_REGISTRY_STATUS.md` | the five counts for the agents |
 | `docs/implementation/SKILL_REGISTRY_STATUS.md` | the five counts for the skills |
 | `docs/implementation/INTEGRATION_STATUS.md` | every integration, classified |
+| `docs/implementation/COMMUNICATION_PIPELINE.md` | the eleven-stage client journey: the exact copy, the gates, the always-save contract |
 | `docs/testing/TEST_RESULTS.md` | the per-file results and the defects found |
 | `docs/testing/PERFORMANCE_RESULTS.md` | the measured hot paths |
 | `docs/testing/SECURITY_RESULTS.md` | each control and its proof |

@@ -249,6 +249,30 @@ async function main() {
     const existing = await db.aiMemory.findFirst({ where: { scope: m.scope, key: m.key } })
     if (!existing) await db.aiMemory.create({ data: m })
   }
+  // The communication pipeline policy is upserted, so an existing
+  // installation receives the current wording on the next seed.
+  const pipelineMemories: Array<{ scope: string; key: string; content: string; importance: number }> = [
+    {
+      scope: 'WORKFLOW',
+      key: 'communication-pipeline',
+      content: 'Communication pipeline (11 stages): 1 first message received (save Client ID + message) → 2 business type received (detect industry, recommend plan, ask the eight scope questions, send WhatsApp + email) → 3 scope details received (save scope, draft SOW, ADMIN REVIEW REQUIRED before the final scope is sent) → 4 final scope approved (send final SOW + HTML-preview policy + payment policy, ask the client to review, offer a meeting link) → 5A meeting needed (send meeting link, save request, create task) / 5B scope approved (save approval, send confirmation, prepare HTML preview) → 6 preview sent (send preview link, ask Approved / Need revision / Need meeting) → 7A revision (save revision, notify admin, create task) / 7B preview approved (save approval, payment instruction only after admin approval) → 8 payment received (save payment, notify admin and team, unlock delivery) → 9 delivery ready (send notice; source code NOT released unless payment confirmed; admin approval required for the file links) → 10 delivery completed (save delivery, ask password-change confirmation, ask the client to confirm) → 11 client confirms (close project, request review, request optional recommendation).',
+      importance: 10,
+    },
+    {
+      scope: 'POLICIES',
+      key: 'communication-policy',
+      content: 'Communication policy. AI CAN AUTO SEND: first reply, business-type request, recommended plan, scope questions, meeting link, HTML-preview notification, revision acknowledgement, payment-received acknowledgement, review request. AI MUST WAIT FOR ADMIN APPROVAL BEFORE SENDING: final Scope of Work, payment instruction with amount, invoice, legal/refund response, source-code handover, final delivery file links, dispute response. AI MUST ALWAYS SAVE: incoming message, outgoing message, email body, WhatsApp body, SMS body, client ID, status change, timestamp, admin approval, payment proof, delivery proof. FINAL RULES: no source code before payment confirmation; no final legal message without admin approval; no payment-specific message without admin approval; no sensitive files in public AI content; HTML Preview Before Payment; Source Code After Full Payment. The AI agent must NEVER mention a phone number in website-facing content. Client IDs use the format TECH-2026-000001.',
+      importance: 10,
+    },
+  ]
+  for (const m of pipelineMemories) {
+    const existing = await db.aiMemory.findFirst({ where: { scope: m.scope, key: m.key } })
+    if (existing) {
+      await db.aiMemory.update({ where: { id: existing.id }, data: { content: m.content, importance: m.importance } })
+    } else {
+      await db.aiMemory.create({ data: m })
+    }
+  }
   console.log(`  ✓ company memory`)
 
   // 7) Blog posts

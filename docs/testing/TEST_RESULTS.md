@@ -19,9 +19,9 @@
 | Command | `npm test` → `tsx --test --experimental-test-module-mocks tests/**/*.test.ts` |
 | Node | v22.22.3 |
 | Platform | Linux x64, 2 vCPU, 3.8 GB RAM |
-| Test files | **35** |
-| Tests | **560** |
-| Passed | **559** |
+| Test files | **36** |
+| Tests | **614** |
+| Passed | **613** |
 | Failed | **1** |
 | Skipped / todo | 0 |
 
@@ -55,6 +55,7 @@ there. Every other suite passes.
 | `business-policies.test.ts` | 17 | 17 | 0 |
 | `chat-triage.test.ts` | 6 | 6 | 0 |
 | `client-comms-inbox.test.ts` | 2 | 2 | 0 |
+| `communication-pipeline.test.ts` | 54 | 54 | 0 |
 | `contact-policy.test.ts` | 2 | 2 | 0 |
 | `database-workflows.test.ts` | 1 | 0 | **1** (environmental) |
 | `eval-harness.test.ts` | 25 | 25 | 0 |
@@ -79,7 +80,7 @@ there. Every other suite passes.
 | `skills-registry.test.ts` | 38 | 38 | 0 |
 | `telephony.test.ts` | 16 | 16 | 0 |
 | `webhook-auth.test.ts` | 20 | 20 | 0 |
-| **Total** | **560** | **559** | **1** |
+| **Total** | **614** | **613** | **1** |
 
 ---
 
@@ -111,7 +112,33 @@ were fixed in production code, not in the test:
 | `validateLogicalAgentCatalogue()` matched a skill's capability by its last two underscore-separated segments, so a three-word capability slug was reported as unknown | the suffix is now matched against the known capability list |
 | the role archetypes did not cover every capability | the 91 capabilities are dealt out round-robin across the 20 archetypes, so every capability is owned by at least one role |
 
-### 3.2 `ai-eos.test.ts` — the workforce (94 tests)
+### 3.2 `communication-pipeline.test.ts` — the client journey (54 tests)
+
+The suite for the AI Agent communication pipeline. It proves the
+**exact** copy, the **gates**, the **no phone number** rule and the
+**always save** contract without a database, because the pipeline
+templates and rules are pure modules by design.
+
+| Group | Tests | What it proves |
+|---|---:|---|
+| the exact client copy | 15 | every stage's WhatsApp/SMS body, email subject and email body match the specified wording — the Client ID is in the first reply, the six intake questions are in order, the eight scope questions are in order, the approval phrase and the password-change confirmation phrase are present, every stage has both a WhatsApp body and an email subject |
+| the email HTML renderer | 5 | a client name can never inject markup, a markdown link becomes an anchor, a `javascript:` URL stays plain text, bold and lists render, the paragraph structure is preserved |
+| the message gates | 7 | the auto-send list, the admin-approval list, the eight named approval categories, an unknown stage fails closed, a body with an amount is gated whatever its stage, and the amount detector does not fire on a Client ID |
+| no phone number in AI content | 6 | a local, an international and a masked number are found; a Client ID, a URL, an email, a date, an amount, an invoice number, a numbered list and `24/7` are **not**; the redaction keeps the Client ID; the screening reports what it removed; the assertion throws; a file link in public content is refused |
+| the delivery rules | 4 | source code is refused before payment, refused without an admin approval, allowed with both; the two policy names are the specified ones |
+| the CRM save contract | 3 | the seven required fields, the action → records map for 19 journey actions, and the payment / delivery / review histories |
+| identifiers and channels | 5 | the `TECH-YYYY-NNNNNN` format, SMS as a reply channel, a `Phone` **preference** still returns `null`, and the website consent must be the exact boolean `true` |
+| channel selection | 4 | the channels a client may receive, the requested-channel filter, the empty case, and the agent that owns each channel |
+
+**This suite found two real defects** during the work, both fixed in
+production code:
+
+| Defect | Fix |
+|---|---|
+| the payment instruction was sent straight to the client with **no admin approval** — the "payment instruction with amount" gate did not exist | `requestPayment()` now raises a `PAYMENT_INSTRUCTION` approval and sends nothing; the approval execution path sends it for real |
+| an SMS lead was never answered — `selectWelcomeChannel()` recognised only WhatsApp and email, so the pipeline's SMS entry point was dead | SMS is now a first-class reply channel, while a `Phone` preference still returns `null` (a call is a human's job) |
+
+### 3.3 `ai-eos.test.ts` — the workforce (94 tests)
 
 The new suite for the AI-EOS work. It covers:
 
@@ -144,7 +171,7 @@ The new suite for the AI-EOS work. It covers:
 | the self-healing loop did not set `escalatedToHuman` when the `ESCALATE_HUMAN` action ran inside the plan | the flag is set on that action |
 | the tool registry treated `capability:all` as an invokable tool | it is a capability marker and is excluded; `REGISTRY_TOOL_IDS` is the real tool list |
 
-### 3.3 `api-contracts.test.ts` — the sixteen specified contracts (44 tests)
+### 3.4 `api-contracts.test.ts` — the sixteen specified contracts (44 tests)
 
 Every path from the specification's contract list is exercised through
 the **real** route handlers: `/api/ai/chat`, `/api/command`,
@@ -157,7 +184,7 @@ the **real** route handlers: `/api/ai/chat`, `/api/command`,
 The suite asserts the response shape, the status code and the
 machine-readable error code of each failure mode.
 
-### 3.4 `model-service.test.ts` — the private model service (32 tests)
+### 3.5 `model-service.test.ts` — the private model service (32 tests)
 
 A **fake Ollama server** drives the **real** gateway routes, so the
 gateway, the rate limiter, the constant-time key check, the provider
@@ -172,20 +199,20 @@ production code:
 | the router masked the real provider failure behind a generic "no provider" error | the chain-exhaustion error now carries the **last** provider's real `errorCode` |
 | the gateway accepted a short key | the key must be at least 32 characters, and it is compared in constant time |
 
-### 3.5 `rag-pipeline.test.ts` — the private RAG (25 tests)
+### 3.6 `rag-pipeline.test.ts` — the private RAG (25 tests)
 
 Covers chunking, the lexical and neural embedders, the vector store, the
 ingest path, retrieval, provenance and the grounded answer — including
 the abstention case and the **access re-check in the application** that
 was found and fixed during the work.
 
-### 3.6 `eval-harness.test.ts` — the benchmark (25 tests)
+### 3.7 `eval-harness.test.ts` — the benchmark (25 tests)
 
 The harness scores the 266-question evaluation set and separates the
 English and Bangla slices. The question set itself is
 `evals/tech360-eval-v1.json`.
 
-### 3.7 `migration-parity.test.ts` and `outbox-migration-parity.test.ts` (27 tests)
+### 3.8 `migration-parity.test.ts` and `outbox-migration-parity.test.ts` (27 tests)
 
 Every model in `prisma/schema.prisma` must have matching hand-written
 DDL in the migration history, and the outbox tables must match their

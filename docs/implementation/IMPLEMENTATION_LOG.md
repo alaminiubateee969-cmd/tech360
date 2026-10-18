@@ -230,7 +230,59 @@ REFERENCE 18, ADAPT 15, DEFER 5.
 
 ---
 
-## 8. Commit history of this work
+## 8. The AI Agent communication pipeline (the eleven client stages)
+
+**Requirement.** The client journey from the first SMS to the final
+project delivery, with the exact WhatsApp/SMS reply text, the exact
+email subjects and bodies, the CRM-save rules, the Client ID format
+`TECH-2026-000001`, the admin-approval gates, *HTML Preview Before
+Payment*, *Source Code After Full Payment*, and the rule that the AI
+agent never mentions a phone number in website-facing content.
+
+**What already existed.** `src/lib/journey.ts` already implemented the
+real first-message → final-delivery engine, the `PIPELINE_STAGES`
+machine, the `JOURNEY_ACTIONS` list, the `TECH-YYYY-NNNNNN` Client ID
+generator and the approval execution path. **It was extended, never
+duplicated.** There is still one journey engine, one message dispatcher
+and one approval path.
+
+**What was missing, and was written.**
+
+| Gap | Files written | Result |
+|---|---|---|
+| the exact copy | `src/lib/pipeline/templates.ts` (858 lines) | 13 message stages × (WhatsApp/SMS body + email subject + email body), all exact |
+| the auto-send / admin-approval gate | `src/lib/pipeline/rules.ts` (412) | the gate, the content-level amount check, the fail-closed default, the delivery rules |
+| the "no phone number in AI content" rule | `src/lib/pipeline/rules.ts` | a scanner that blanks the safe patterns (Client ID, URL, email, date, amount, document number) and then finds any 7+ digit run; redaction, screening and a throwing assertion |
+| the "always save" contract | `src/lib/pipeline/send.ts` (299), `rules.ts` | one sender that writes the `Communication` row before it dispatches, records the stage change with its timestamp, and raises the `ApprovalRequest` instead of sending a gated message |
+| the client profile | `src/lib/pipeline/profile.ts` (240) | the 14 required fields and the six histories, read from the records the journey already writes |
+| the API + the console | `src/app/api/admin/pipeline/**`, `src/components/admin/PipelineView.tsx` | `/api/admin/pipeline`, `/api/admin/pipeline/profile/{id}` and a four-tab console panel with the live stage counts |
+
+**Two production defects were found and fixed while doing it.**
+
+| Defect | Fix |
+|---|---|
+| the payment instruction was sent straight to the client with **no admin approval** | `requestPayment()` now composes the message, raises a `PAYMENT_INSTRUCTION` approval and sends nothing; the approval execution path sends it for real |
+| an SMS lead was never answered — `selectWelcomeChannel()` recognised only WhatsApp and email, so the pipeline's SMS entry point was dead | SMS is now a first-class reply channel; a `Phone` **preference** still returns `null` (a call is a human's job), so the existing consent policy is unchanged |
+
+**Tests.** `tests/communication-pipeline.test.ts` — **54 tests, 54
+pass**. The whole suite is now **614 tests, 613 pass, 1 environmental
+failure** (`tests/database-workflows.test.ts`, which needs a generated
+Prisma client and a live MySQL).
+
+**Deployment status.** Not deployed from this environment — no
+deployment target is reachable here. The release gate in §6 is
+unchanged: **the backup and restore evidence is still the blocker.**
+
+**Remaining limitation.** The end-to-end run against a live MySQL, a
+live WhatsApp provider and a live SMTP server is not proven here; CI
+generates the Prisma client and starts MySQL, and the outbox-retry
+suite exercises the provider paths with a fake provider.
+
+**Full record:** `docs/implementation/COMMUNICATION_PIPELINE.md`.
+
+---
+
+## 9. Commit history of this work
 
 | Commit | Title | Tests at the time |
 |---|---|---|
@@ -238,3 +290,4 @@ REFERENCE 18, ADAPT 15, DEFER 5.
 | `58498a2` | feat(ai): skills engine, API contracts, private RAG, console pages and evaluation | 466 tests, 465 pass, 1 environmental failure |
 | `22a4b34` | feat(ai-eos): unify the platform into one AI workforce | 560 tests, 559 pass, 1 environmental failure |
 | `e9b8abc` | feat(console): real AI Employees workspace with nine governed panels | 560 tests, 559 pass, 1 environmental failure |
+| `1ac8092` | docs: the twenty-five mandatory deliverables and the workforce benchmark | 560 tests, 559 pass, 1 environmental failure |

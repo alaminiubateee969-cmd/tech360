@@ -57,6 +57,7 @@ import WorkflowBuilderView from './WorkflowBuilderView'
 import IntegrationsView from './IntegrationsView'
 import BackupRecoveryView from './BackupRecoveryView'
 import WorkforceView from './WorkforceView'
+import { PipelineView } from './PipelineView'
 import { AnalyticsView } from './AnalyticsView'
 import { ApprovalsView } from './ApprovalsView'
 import { BlogStudioView } from './BlogStudioView'
@@ -106,7 +107,7 @@ type ViewId =
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
   | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts'
   | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup'
-  | 'workforce'
+  | 'workforce' | 'pipeline'
 
 // Minimum console role required to see (and use) each view. Mirrors the
 // server-side minRole on the backing API routes — the nav never advertises
@@ -150,6 +151,7 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   integrations: 'SUPER_ADMIN',
   backup: 'SUPER_ADMIN',
   workforce: 'SUPER_ADMIN',
+  pipeline: 'MANAGER',
 }
 
 interface NavItem {
@@ -175,6 +177,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'communications', label: 'Communications', icon: MessageSquare },
       { id: 'chat', label: 'Live Chat', icon: MessagesSquare },
       { id: 'telephony', label: 'Calls & SMS', icon: PhoneCall },
+      { id: 'pipeline', label: 'Communication Pipeline', icon: MessagesSquare },
     ],
   },
   {
@@ -260,6 +263,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   workflows: 'Workflow Builder',
   integrations: 'CRM Integrations',
   workforce: 'AI Employees',
+  pipeline: 'Communication Pipeline',
   backup: 'Backup & Recovery',
   content: 'Content Studio',
   blog: 'Blog Studio',
@@ -635,6 +639,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <BackupRecoveryView />
               ) : view === 'workforce' ? (
                 <WorkforceView />
+              ) : view === 'pipeline' ? (
+                <PipelineView />
               ) : view === 'command' ? (
                 <CommandCenterView />
               ) : view === 'memory' ? (
