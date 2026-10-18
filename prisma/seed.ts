@@ -167,6 +167,65 @@ async function main() {
   }
   console.log(`  ✓ ${PROMPT_TEMPLATES.length} prompt templates`)
 
+  // 3b) The AI-EOS workforce prompts.
+  //
+  // The live prompt library is 70,400 slots and is MATERIALISED on
+  // demand by the retriever, not stored. What is persisted here is a
+  // representative, real binding for every department and every role
+  // archetype, with the retrieval metadata the retriever scores on.
+  // The panel shows the live library index next to these rows.
+  const { buildPromptsForBinding } = await import('../src/lib/prompts/library')
+  const { ROLE_ARCHETYPES } = await import('../src/lib/agents/catalogue')
+  const { DEPARTMENTS } = await import('../src/lib/agents/registry')
+  const STORED_STAGES = ['TASK_EXECUTION'] as const
+  let promptCount = 0
+  for (const department of DEPARTMENTS) {
+    for (const role of ROLE_ARCHETYPES) {
+      const records = buildPromptsForBinding({
+        departmentCode: department.code,
+        roleSlug: role.slug,
+        roleTitle: role.title,
+      })
+      for (const record of records) {
+        if (!STORED_STAGES.includes(record.stage as (typeof STORED_STAGES)[number])) continue
+        if (record.language !== 'en') continue
+        await db.promptTemplate.upsert({
+          where: { code: record.code },
+          update: {},
+          create: {
+            code: record.code,
+            name: record.name,
+            category: department.category,
+            agentCode: null,
+            template: record.template,
+            variables: JSON.stringify(record.variables),
+            stage: record.stage,
+            priority: record.priority,
+            quality: record.quality,
+            language: record.language,
+            version: record.version,
+            role: role.slug,
+            departmentCode: department.code,
+            status: 'ACTIVE',
+          },
+        })
+        promptCount += 1
+      }
+    }
+  }
+  console.log(`  ✓ ${promptCount} workforce prompt bindings`)
+
+  // 3c) The structural knowledge graph.
+  //
+  // The organisation, the procedures and the tools are true by
+  // construction, so their edges are asserted with confidence 1 and
+  // marked verified. Nothing is fabricated: the graph is derived from
+  // the live registries.
+  const { buildStructuralGraph, graphStats } = await import('../src/lib/knowledge/graph')
+  const graph = await buildStructuralGraph({ assertedBy: 'prisma/seed.ts' })
+  const graphState = await graphStats()
+  console.log(`  ✓ knowledge graph: ${graph.entities} entities, ${graph.relations} relations (${graphState.entities} total)`)
+
   // 5) n8n workflow registry
   for (const w of N8N_WORKFLOWS) {
     await db.n8nWorkflow.upsert({

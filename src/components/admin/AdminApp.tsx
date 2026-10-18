@@ -18,6 +18,7 @@ import {
   Menu,
   MessageSquare,
   Newspaper,
+  Network,
   Radar,
   ScrollText,
   Search,
@@ -55,6 +56,7 @@ import TaskQueueView from './TaskQueueView'
 import WorkflowBuilderView from './WorkflowBuilderView'
 import IntegrationsView from './IntegrationsView'
 import BackupRecoveryView from './BackupRecoveryView'
+import WorkforceView from './WorkforceView'
 import { AnalyticsView } from './AnalyticsView'
 import { ApprovalsView } from './ApprovalsView'
 import { BlogStudioView } from './BlogStudioView'
@@ -104,6 +106,7 @@ type ViewId =
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
   | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts'
   | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup'
+  | 'workforce'
 
 // Minimum console role required to see (and use) each view. Mirrors the
 // server-side minRole on the backing API routes — the nav never advertises
@@ -146,6 +149,7 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   workflows: 'SUPER_ADMIN',
   integrations: 'SUPER_ADMIN',
   backup: 'SUPER_ADMIN',
+  workforce: 'SUPER_ADMIN',
 }
 
 interface NavItem {
@@ -202,7 +206,8 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
   {
     section: 'Intelligence',
     items: [
-      { id: 'agents', label: 'AI Workforce', icon: Bot },
+      { id: 'agents', label: 'Core Agents', icon: Bot },
+      { id: 'workforce', label: 'AI Employees', icon: Network },
       { id: 'command', label: 'Command Center', icon: Terminal },
       { id: 'models', label: 'Model Management', icon: Cpu },
       { id: 'skills', label: 'Skill Registry', icon: Boxes },
@@ -254,6 +259,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   tasks: 'Task Queue',
   workflows: 'Workflow Builder',
   integrations: 'CRM Integrations',
+  workforce: 'AI Employees',
   backup: 'Backup & Recovery',
   content: 'Content Studio',
   blog: 'Blog Studio',
@@ -627,6 +633,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <IntegrationsView />
               ) : view === 'backup' ? (
                 <BackupRecoveryView />
+              ) : view === 'workforce' ? (
+                <WorkforceView />
               ) : view === 'command' ? (
                 <CommandCenterView />
               ) : view === 'memory' ? (
