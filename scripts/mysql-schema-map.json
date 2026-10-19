@@ -28,6 +28,7 @@
     "ScopeOfWork.content",
     "PromptTemplate.template",
     "AiAgent.systemPrompt",
+    "AgentJob.toolArgs",
     "ErrorLog.stack",
     "Setting.value",
     "AiMemory.content",

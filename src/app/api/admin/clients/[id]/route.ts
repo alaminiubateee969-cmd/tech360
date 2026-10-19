@@ -41,7 +41,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where: { clientId: client.id },
       orderBy: { createdAt: 'desc' },
       take: 100,
-      select: { id: true, agentCode: true, correlationId: true, workflow: true, status: true, approvalState: true, attempts: true, maxAttempts: true, createdAt: true, startedAt: true, completedAt: true, lastError: true, output: true },
+      select: { id: true, agentCode: true, correlationId: true, workflow: true, taskType: true, toolName: true, status: true, approvalState: true, attempts: true, maxAttempts: true, createdAt: true, startedAt: true, completedAt: true, lastError: true, output: true },
     })
     : null
   const verifiedIdentities = g.user.role === 'SUPER_ADMIN'
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   client.approvals.forEach((a) => tl.push({ at: a.createdAt, type: 'APPROVAL', text: `Approval [${a.type}] ${a.status}: ${a.title}` }))
   client.memories.forEach((m) => tl.push({ at: m.createdAt, type: 'MEMORY', text: `Memory [${m.scope}] ${m.key}` }))
   client.automationLogs.forEach((l) => tl.push({ at: l.startedAt, type: 'AUTOMATION', text: `${l.workflow} ${l.status}` }))
-  agentJobs?.forEach((job) => tl.push({ at: job.completedAt ?? job.startedAt ?? job.createdAt, type: 'AGENT_JOB', text: `${job.agentCode} inference job ${job.status} (attempt ${job.attempts}/${job.maxAttempts})${job.approvalState === 'PENDING' ? ' · approval required' : ''}` }))
+  agentJobs?.forEach((job) => tl.push({ at: job.completedAt ?? job.startedAt ?? job.createdAt, type: 'AGENT_JOB', text: `${job.agentCode} ${job.taskType === 'TOOL_CALL' ? `tool ${job.toolName ?? 'unknown'}` : 'inference'} job ${job.status} (attempt ${job.attempts}/${job.maxAttempts})${job.approvalState === 'PENDING' ? ' · approval required' : ''}` }))
   verifiedIdentities?.forEach((identity) => tl.push({ at: identity.verifiedAt, type: 'IDENTITY_VERIFIED', text: `${identity.identityType} identity verified via ${identity.verificationSource}` }))
   agentJobAudits.forEach((entry) => tl.push({ at: entry.createdAt, type: 'AGENT_JOB_AUDIT', text: `${entry.action} by ${entry.actor}` }))
   client.files.forEach((f) => tl.push({

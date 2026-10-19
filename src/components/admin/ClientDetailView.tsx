@@ -837,9 +837,9 @@ export function ClientDetailView({
         </TabsContent>
 
         <TabsContent value="agentJobs" className="mt-3">
-          <SectionCard title="Durable AgentJob history" description="Super Admin-only inference ledger for this canonical client. A completed inference does not imply an external action or delivered artifact.">
+          <SectionCard title="Durable AgentJob history" description="Super Admin-only inference and allowlisted internal tool ledger for this canonical client. A completed inference or task.create call does not prove QA, external delivery, or customer acceptance.">
             {(data?.agentJobs ?? []).length === 0 ? (
-              <EmptyState title="No durable agent jobs" description="Queued inference requests linked to this client will appear here with approval, retry, and terminal status." />
+              <EmptyState title="No durable agent jobs" description="Queued inference and supported internal tool jobs linked to this client appear here with approval, retries, and terminal outcomes." />
             ) : (
               <ol className="space-y-2">
                 {(data?.agentJobs ?? []).map((job) => (
@@ -850,9 +850,9 @@ export function ClientDetailView({
                       <span className="text-[10px] text-slate-500">attempt {num(job.attempts)}/{num(job.maxAttempts)}</span>
                       <span className="ml-auto text-[10px] text-slate-600">{fmtDate(job.completedAt ?? job.startedAt ?? job.createdAt)}</span>
                     </div>
-                    <p className="mt-1 font-mono text-[10px] text-slate-600">{job.correlationId}{job.workflow ? ` · ${job.workflow}` : ''} · {job.approvalState}</p>
+                    <p className="mt-1 font-mono text-[10px] text-slate-600">{job.correlationId}{job.workflow ? ` · ${job.workflow}` : ''} · {job.taskType === 'TOOL_CALL' ? `tool ${job.toolName ?? 'unknown'}` : 'inference'} · {job.approvalState}</p>
                     {job.lastError ? <p className="mt-2 text-xs text-red-400">{job.lastError}</p> : null}
-                    {job.output ? <details className="mt-2 rounded border border-slate-800 p-2"><summary className="cursor-pointer text-[10px] text-slate-500">View persisted inference output</summary><div className="mt-2"><Markdownish text={job.output} /></div></details> : null}
+                    {job.output ? <details className="mt-2 rounded border border-slate-800 p-2"><summary className="cursor-pointer text-[10px] text-slate-500">View persisted job result</summary><div className="mt-2"><Markdownish text={job.output} /></div></details> : null}
                   </li>
                 ))}
               </ol>

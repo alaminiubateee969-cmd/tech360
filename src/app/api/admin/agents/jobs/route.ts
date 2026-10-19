@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
       projectId: true,
       workflow: true,
       taskType: true,
+      toolName: true,
       status: true,
       approvalState: true,
       requestedBy: true,
