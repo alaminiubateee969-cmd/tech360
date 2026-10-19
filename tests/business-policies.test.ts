@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createHmac } from 'node:crypto'
 import { describe, it } from 'node:test'
 
-import { canDecideApproval, hasRole, isSuperAdmin } from '../src/lib/access-policy'
+import { canDecideApproval, canViewFinancialDashboard, hasRole, isSuperAdmin } from '../src/lib/access-policy'
 import { evaluateHandoverGate, evaluateStripePayment, verifyStripeSignature } from '../src/lib/commerce-policy'
 import { normalizeUploadName, resolveExt, scanDocumentBytes } from '../src/lib/files'
 import { evaluateDeliveryAcceptance, evaluateProjectClosure } from '../src/lib/lifecycle-policy'
@@ -20,6 +20,14 @@ describe('authentication and RBAC policy', () => {
     assert.equal(hasRole(user('ADMIN'), 'ADMIN'), true)
     assert.equal(hasRole(user('SUPER_ADMIN'), 'ADMIN'), true)
     assert.equal(hasRole(user('ADMIN'), 'SUPER_ADMIN'), false)
+  })
+
+  it('restricts dashboard financial aggregates to Manager and higher', () => {
+    assert.equal(canViewFinancialDashboard(null), false)
+    assert.equal(canViewFinancialDashboard(user('STAFF')), false)
+    assert.equal(canViewFinancialDashboard(user('MANAGER')), true)
+    assert.equal(canViewFinancialDashboard(user('ADMIN')), true)
+    assert.equal(canViewFinancialDashboard(user('SUPER_ADMIN')), true)
   })
 
   it('reserves pending approval decisions for super administrators', () => {

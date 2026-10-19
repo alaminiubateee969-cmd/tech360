@@ -17,6 +17,7 @@ import {
   DollarSign,
   FileBarChart,
   FileClock,
+  FileText,
   FolderKanban,
   ListTodo,
   LucideIcon,
@@ -297,6 +298,11 @@ export function DashboardView({ onOpenClient, onNavigate }: { onOpenClient: (id:
   const revenue = (data?.revenueByMonth ?? []).map((r) => ({ month: r.month, paid: num(r.paid) }))
   const recentLeads = data?.recentLeads ?? []
   const activity = data?.recentActivity ?? []
+  const financialValue = (value: unknown, currency = false): string | number => {
+    if (!data) return '—'
+    if (!data.financialDataAvailable) return 'Restricted'
+    return currency ? fmtMoney(num(value)) : num(value)
+  }
 
   const leadColumns: Column<RecentLead>[] = [
     { key: 'clientId', header: 'Client ID', cell: (r) => <span className="font-mono text-xs text-[#009FE3]">{r.clientId}</span> },
@@ -312,16 +318,23 @@ export function DashboardView({ onOpenClient, onNavigate }: { onOpenClient: (id:
         title="Command Dashboard"
         description="Live operational snapshot — every number below is queried from the platform database."
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refresh}
-            disabled={loading}
-            className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
-            aria-label="Refresh dashboard"
-          >
-            <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {data?.financialDataAvailable ? (
+              <Button onClick={() => onNavigate('payments')} className="gap-2 font-semibold" style={{ background: '#009FE3' }} aria-label="Create invoice draft">
+                <FileText className="size-4" aria-hidden="true" /> Create Invoice / ইনভয়েস তৈরি করুন
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refresh}
+              disabled={loading}
+              className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
+              aria-label="Refresh dashboard"
+            >
+              <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
+            </Button>
+          </div>
         }
       />
 
@@ -332,22 +345,32 @@ export function DashboardView({ onOpenClient, onNavigate }: { onOpenClient: (id:
         </div>
       ) : null}
 
-      {/* 14 KPI cards */}
+      {/* Database-backed CRM and operations indicators */}
       <section aria-label="Key performance indicators" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <KpiCard label="Total Leads" value={num(stats?.totalLeads)} icon={Users} tone="accent" loading={loading} sub="All inquiries captured" />
-        <KpiCard label="New Leads" value={num(stats?.newLeads)} icon={UserPlus} tone="green" loading={loading} sub="Awaiting first contact" />
+        <KpiCard label="New Leads" value={num(stats?.newLeads)} icon={UserPlus} tone="green" loading={loading} sub="Created in the last 24 hours" />
         <KpiCard label="Qualified Leads" value={num(stats?.qualifiedLeads)} icon={BadgeCheck} tone="green" loading={loading} sub="Intent confirmed" />
         <KpiCard label="Clients" value={num(stats?.clients)} icon={Building2} tone="accent" loading={loading} sub="With Client ID" />
-        <KpiCard label="Active Projects" value={num(stats?.activeProjects)} icon={Rocket} tone="accent" loading={loading} sub={`${num(stats?.projectsAwaitingApproval)} awaiting approval`} />
-        <KpiCard label="Payment Pending" value={num(stats?.paymentPending)} icon={CreditCard} tone="amber" loading={loading} sub="Payments to verify" />
-        <KpiCard label="Paid Projects" value={num(stats?.paidProjects)} icon={CheckCircle2} tone="green" loading={loading} sub="Fully settled" />
-        <KpiCard label="Outstanding" value={fmtMoney(num(stats?.outstandingReceivables))} icon={DollarSign} tone="red" loading={loading} sub="Receivables" />
+        <KpiCard label="Active Projects" value={num(stats?.activeProjects)} icon={Rocket} tone="accent" loading={loading} sub="Development through handover" />
+        <KpiCard label="Payment Pending" value={num(stats?.paymentPending)} icon={CreditCard} tone="amber" loading={loading} sub="Clients at payment-pending pipeline stage" />
+        <KpiCard label="Paid Projects" value={financialValue(stats?.paidProjects)} icon={CheckCircle2} tone="green" loading={loading} sub="Finance view: Manager+" />
+        <KpiCard label="Outstanding" value={financialValue(stats?.outstandingReceivables, true)} icon={DollarSign} tone="red" loading={loading} sub="Finance view: Manager+" />
         <KpiCard label="Completed" value={num(stats?.completedProjects)} icon={CheckCircle2} tone="green" loading={loading} sub="Projects delivered" />
         <KpiCard label="Open Tasks" value={num(stats?.openTasks)} icon={ListTodo} tone="slate" loading={loading} sub="Across projects" />
-        <KpiCard label="Unread Comms" value={num(stats?.unreadCommunications)} icon={MessageSquare} tone="accent" loading={loading} sub="Inbound messages" />
+        <KpiCard label="Inbound Messages" value={num(stats?.unreadCommunications)} icon={MessageSquare} tone="accent" loading={loading} sub="Received inbound communications" />
         <KpiCard label="Failed Automations" value={num(stats?.failedAutomations)} icon={AlertOctagon} tone="red" loading={loading} sub="Need attention" />
-        <KpiCard label="Pending Approvals" value={num(stats?.pendingAdminApprovals)} icon={FileClock} tone="amber" loading={loading} sub="Super Admin queue" />
-        <KpiCard label="Projects / Approval" value={num(stats?.projectsAwaitingApproval)} icon={Clock} tone="amber" loading={loading} sub="Client-side stage" />
+        <KpiCard label="Pending Approvals" value={num(stats?.pendingAdminApprovals)} icon={FileClock} tone="amber" loading={loading} sub="Pending admin approval records" />
+        <KpiCard label="Payment Verification" value={financialValue(stats?.pendingPaymentVerifications)} icon={CreditCard} tone="amber" loading={loading} sub="Payment records in PENDING state" />
+        <KpiCard label="Overdue Tasks" value={num(stats?.overdueTasks)} icon={AlertOctagon} tone="red" loading={loading} sub="Open tasks past due date" />
+        <KpiCard label="Deadlines (7 days)" value={num(stats?.upcomingDeadlines)} icon={Clock} tone="amber" loading={loading} sub="Open tasks due this week" />
+        <KpiCard label="Refunds Pending" value={financialValue(stats?.pendingRefunds)} icon={Wallet} tone="amber" loading={loading} sub="Awaiting authorized decision" />
+        <KpiCard label="Refunds Approved" value={financialValue(stats?.approvedRefunds)} icon={BadgeCheck} tone="slate" loading={loading} sub="Approval records; not proof of processing" />
+        <KpiCard label="Email Queue" value={num(stats?.emailQueued)} icon={Mail} tone="accent" loading={loading} sub="Awaiting send processing" />
+        <KpiCard label="Emails Sent" value={num(stats?.emailSent)} icon={Mail} tone="green" loading={loading} sub="Recorded SENT state; not delivery confirmation" />
+        <KpiCard label="Email Failures" value={num(stats?.emailFailed)} icon={AlertOctagon} tone="red" loading={loading} sub="Failed or dead-letter records" />
+        <KpiCard label="Verified Emails" value={num(stats?.verifiedEmailIdentities)} icon={ShieldCheck} tone="green" loading={loading} sub="Verified email identity records" />
+        <KpiCard label="Handovers: Payment" value={num(stats?.handoversAwaitingPayment)} icon={FolderKanban} tone="amber" loading={loading} sub="Waiting payment verification" />
+        <KpiCard label="Handovers: Confirm" value={num(stats?.handoversAwaitingConfirmation)} icon={CheckCircle2} tone="amber" loading={loading} sub="Released/downloaded; awaiting confirmation" />
       </section>
 
       {/* LIVE AI operations evidence strip */}
@@ -429,6 +452,8 @@ export function DashboardView({ onOpenClient, onNavigate }: { onOpenClient: (id:
           <SectionCard title="Revenue by Month" description="Verified payments, month by month" contentClassName="p-2 sm:p-4">
             {loading ? (
               <Skeleton className="h-[220px] w-full bg-slate-800/50" />
+            ) : data?.financialDataAvailable === false ? (
+              <EmptyState title="Restricted" description="Finance metrics require Manager or higher access in the current role model." />
             ) : revenue.length === 0 ? (
               <EmptyState title="No payments yet" description="Revenue appears here once payments are recorded and verified." />
             ) : (
