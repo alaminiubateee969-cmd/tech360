@@ -585,20 +585,20 @@ model AgentJob {
   project        Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   correlationId  String   @unique
   workflow       String?
-  input          String   @db.LongText
-  contextNote    String?  @db.LongText
+  input          String @db.LongText
+  contextNote    String? @db.LongText
   expectJson     Boolean  @default(false)
   status         String   @default("QUEUED") // QUEUED | RUNNING | RETRYING | AWAITING_APPROVAL | COMPLETED | FAILED | TIMED_OUT | CANCELLED
   approvalState  String   @default("NOT_REQUIRED") // NOT_REQUIRED | PENDING | APPROVED | REJECTED
   requestedBy    String?
   approvedBy     String?
   approvedAt     DateTime?
-  approvalNote   String?  @db.Text
+  approvalNote   String? @db.Text
   attempts       Int      @default(0)
   maxAttempts    Int      @default(3)
-  checkpoint     String?  @db.LongText // JSON: phase, executionId, safe worker metadata
-  output         String?  @db.LongText
-  lastError      String?  @db.Text
+  checkpoint     String? @db.LongText // JSON: phase, executionId, safe worker metadata
+  output         String? @db.LongText
+  lastError      String? @db.Text
   availableAt    DateTime @default(now())
   claimedBy      String?
   leaseUntil     DateTime?
@@ -645,7 +645,7 @@ model InboundWebhookReceipt {
   attempts        Int      @default(1)
   claimToken      String?  @db.VarChar(36)
   leaseExpiresAt  DateTime?
-  lastError       String?  @db.Text
+  lastError       String? @db.Text
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   processedAt     DateTime?
@@ -676,12 +676,33 @@ model AiMemory {
   agentCode String?
   importance Int     @default(5)
   hits      Int      @default(0)
+  /// The memory TYPE: WORKING | EPISODIC | SEMANTIC | PROCEDURAL.
+  memoryType String  @default("SEMANTIC")
+  /// The access level that governs who may read this memory.
+  accessLevel String  @default("INTERNAL")
+  /// The enterprise scope that owns this memory.
+  departmentCode String?
+  /// The number of times this memory has been revised.
+  version   Int      @default(1)
+  /// True when the memory has been reviewed and confirmed.
+  validated Boolean  @default(false)
+  /// Where the memory came from: PLATFORM | AGENT | HUMAN | LEARNING_ENGINE.
+  source    String   @default("PLATFORM")
+  /// When the memory stops being valid.
+  expiresAt DateTime?
+  /// The run that produced it.
+  correlationId String?
+  /// The tags that make it retrievable.
+  tags      String? @db.LongText
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([scope])
   @@index([clientId])
   @@index([key])
+  @@index([scope, memoryType])
+  @@index([accessLevel])
+  @@index([departmentCode])
 }
 
 model KnowledgeDocument {
@@ -712,10 +733,30 @@ model PromptTemplate {
   agentCode  String?
   template   String @db.LongText
   variables  String @db.Text // JSON
+  // Retrieval metadata — the prompt library is 50,000+ slots, so the
+  // runtime MUST retrieve rather than load. These are the dimensions
+  // the retriever scores on.
+  stage      String   @default("TASK_EXECUTION") // INITIALIZATION | TASK_INTAKE | TASK_EXECUTION | DECISION_SUPPORT | RESEARCH | TOOL_USAGE | QUALITY_REVIEW | ESCALATION | REPORTING | COLLABORATION | KNOWLEDGE_SHARING | ERROR_RECOVERY | REFLECTION | LEARNING | PERFORMANCE_REVIEW | EMERGENCY_RESPONSE
+  priority   Int      @default(5)
+  quality    Float    @default(0.5)
+  language   String   @default("en")
+  version    String   @default("1.0.0")
+  role       String?
+  departmentCode String?
+  skillCode  String?
+  sopKey     String?
+  tags       String? @db.Text // JSON array
+  status     String   @default("ACTIVE") // DRAFT | ACTIVE | RETIRED
+  usageCount Int      @default(0)
+  successCount Int    @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@index([category])
+  @@index([category, status])
+  @@index([agentCode, stage])
+  @@index([departmentCode, stage])
+  @@index([skillCode])
+  @@index([sopKey])
 }
 
 // ---------------- CONTENT / VIDEO AI ----------------
@@ -1063,8 +1104,8 @@ model GeneratedApp {
   clientId    String?
   projectId   String?
   vertical    String   @default("crm") // crm | marketing | education | ecommerce | booking | realestate | support
-  brief       String   @db.LongText // JSON: the owner/client form
-  plan        String   @db.LongText // JSON: blueprint (pages, models, agents, automations)
+  brief       String @db.LongText // JSON: the owner/client form
+  plan        String @db.LongText // JSON: blueprint (pages, models, agents, automations)
   status      String   @default("DRAFT") // DRAFT | PLANNED | BUILT | PREVIEW | APPROVED | DELIVERED | FAILED
   stage       String   @default("BRIEF") // BRIEF | PLAN | SCAFFOLD | PREVIEW | DELIVERY | HANDOVER
   fileCount   Int      @default(0)
@@ -1085,7 +1126,7 @@ model GeneratedAppFile {
   path      String
   language  String   @default("text")
   bytes     Int      @default(0)
-  content   String   @db.LongText
+  content   String @db.LongText
   createdAt DateTime @default(now())
 
   @@unique([appId, path])
@@ -1097,7 +1138,7 @@ model GeneratedAppEvent {
   appId     String
   stage     String
   status    String
-  note      String?  @db.Text
+  note      String? @db.Text
   actor     String?
   createdAt DateTime @default(now())
 
@@ -1116,9 +1157,9 @@ model MediaJob {
   language    String   @default("EN")
   aspect      String   @default("16:9")
   durationSec Int      @default(60)
-  script      String   @db.LongText
-  plan        String   @db.LongText // JSON: shots + composition spec
-  captions    String   @db.LongText // SRT
+  script      String @db.LongText
+  plan        String @db.LongText // JSON: shots + composition spec
+  captions    String @db.LongText // SRT
   status      String   @default("DRAFT") // DRAFT | PLANNED | VOICE_READY | CAPTIONS_READY | RENDER_QUEUED | RENDERED | FAILED
   renderState String   @default("RENDER_NOT_CONFIGURED")
   voiceState  String   @default("NOT_CONFIGURED")
@@ -1141,8 +1182,8 @@ model MediaShot {
   startSec  Int
   endSec    Int
   kind      String   @default("B_ROLL") // HOOK | TALKING_HEAD | B_ROLL | TEXT_CARD | CTA
-  visual    String   @db.Text
-  narration String   @db.Text
+  visual    String @db.Text
+  narration String @db.Text
   overlay   String?
   createdAt DateTime @default(now())
 
@@ -1161,7 +1202,7 @@ model FeedSource {
   category      String   @default("INDUSTRY")
   status        String   @default("IDLE") // IDLE | OK | ERROR
   lastFetchedAt DateTime?
-  lastError     String?  @db.Text
+  lastError     String? @db.Text
   itemCount     Int      @default(0)
   autoIdea      Boolean  @default(true)
   createdAt     DateTime @default(now())
@@ -1176,9 +1217,9 @@ model FeedItem {
   guid        String
   title       String
   link        String
-  summary     String?  @db.LongText
+  summary     String? @db.LongText
   publishedAt DateTime?
-  tags        String   @db.Text
+  tags        String @db.Text
   ideaAssetId String?
   createdAt   DateTime @default(now())
 
@@ -1200,7 +1241,7 @@ model CallLog {
   provider     String?
   status       String   @default("LOGGED") // LOGGED | CONNECTED | COMPLETED | MISSED | FAILED | NOT_CONFIGURED
   outcome      String?
-  notes        String?  @db.Text
+  notes        String? @db.Text
   durationSec  Int      @default(0)
   startedAt    DateTime @default(now())
   endedAt      DateTime?
@@ -1210,4 +1251,316 @@ model CallLog {
 
   @@index([clientId])
   @@index([status])
+}
+
+// ============================================================
+// PRIVATE AI PLATFORM — skills registry, vector knowledge index,
+// and local model deployment records.
+//
+// Every table here is additive. No existing customer, execution or
+// communication data is modified or deleted by this migration.
+// ============================================================
+
+// A skill is a reusable, versioned capability with declared inputs,
+// outputs and permissions. The registry row is the *catalogue* entry;
+// an ACTIVE row whose implementation handler is missing is NOT
+// operational and the API reports it as such.
+model Skill {
+  id            String   @id @default(cuid())
+  slug          String   @unique // student_document_classifier
+  name          String
+  category      String   @default("tech360")
+  departmentCode String? // owning department (D001…)
+  description   String @db.Text
+  version       String   @default("1.0.0")
+  status        String   @default("ACTIVE") // ACTIVE | SUSPENDED | DEPRECATED | ROLLED_BACK | DRAFT
+  owner         String
+  handler       String   // key in the executable skill handler registry
+  configuration String? @db.Text // JSON: the skill's specialisation
+  inputSchema   String @db.Text // JSON Schema
+  outputSchema  String @db.Text // JSON Schema
+  permissions   String @db.Text // JSON array of permission strings
+  requiresApproval Boolean @default(false)
+  riskLevel     String   @default("LOW") // LOW | MEDIUM | HIGH
+  testRefs      String @db.Text // JSON array of test identifiers
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+
+  versions SkillVersion[]
+  runs     SkillRun[]
+
+  @@index([status, category])
+  @@index([departmentCode])
+  @@index([handler])
+}
+
+model SkillVersion {
+  id        String   @id @default(cuid())
+  skillId   String
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  version   String
+  changelog String @db.Text
+  schemaHash String  @db.Char(64)
+  status    String   @default("ACTIVE") // ACTIVE | DEPRECATED | ROLLED_BACK
+  createdAt DateTime @default(now())
+
+  @@unique([skillId, version])
+  @@index([skillId, status])
+}
+
+model SkillRun {
+  id            String   @id @default(cuid())
+  skillId       String
+  skill         Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  skillSlug     String
+  version       String
+  status        String   @default("RUNNING") // RUNNING | SUCCESS | FAILED | TIMED_OUT | REJECTED
+  input         String @db.LongText
+  output        String? @db.LongText
+  error         String? @db.Text
+  correlationId String
+  durationMs    Int?
+  requestedBy   String?
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+
+  @@index([skillSlug, createdAt])
+  @@index([status, createdAt])
+  @@index([correlationId])
+}
+
+// Retrieval chunk for the private knowledge index. The embedding is
+// stored as a JSON array in a LONGTEXT column because MySQL has no
+// native vector type; the index is scanned in bounded batches and the
+// cosine similarity is computed in the application.
+model KnowledgeChunk {
+  id          String   @id @default(cuid())
+  documentId  String
+  chunkIndex  Int
+  content     String @db.LongText
+  embedding   String? @db.LongText // JSON array of floats, L2-normalised
+  dimensions  Int      @default(0)
+  model       String?  // embedding model that produced the vector
+  accessLevel String   @default("INTERNAL") // PUBLIC | INTERNAL | CONFIDENTIAL | RESTRICTED
+  checksum    String   @db.Char(64)
+  createdAt   DateTime @default(now())
+
+  @@unique([documentId, chunkIndex])
+  @@index([accessLevel])
+  @@index([documentId])
+}
+
+// Provenance for every ingested document. The specification requires
+// source, owner, collection date, last verification date, access level,
+// version, retention policy and permission scope to be recorded.
+model KnowledgeIngestRecord {
+  id             String   @id @default(cuid())
+  documentId     String   @unique
+  source         String
+  owner          String
+  collectedAt    DateTime @default(now())
+  lastVerifiedAt DateTime @default(now())
+  accessLevel    String   @default("INTERNAL")
+  version        String   @default("1.0.0")
+  retentionPolicy String  @default("REVIEW_ANNUALLY")
+  permissionScope String  @default("TECH360_STAFF")
+  contentHash    String   @db.Char(64)
+  chunkCount     Int      @default(0)
+  embeddingModel String?
+  status         String   @default("INDEXED") // PENDING | INDEXED | FAILED | QUARANTINED
+  notes          String? @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
+
+  @@index([accessLevel, status])
+  @@index([owner])
+}
+
+// Record of a local model that was actually pulled and checksummed on
+// this host. A row here is the evidence that the weight snapshot is
+// pinned; without it the model may not be promoted to a default profile.
+model ModelDeployment {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  upstreamModel String
+  provider      String
+  revision      String
+  weightChecksum String  @db.Char(64)
+  quantization  String?
+  ramFootprintMb Int
+  license       String
+  verifiedAt    DateTime @default(now())
+  verifiedBy    String   @default("verify-local-models.mjs")
+  notes         String? @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+
+  @@index([provider])
+}
+
+// A workflow diagram. The definition is stored as JSON so a diagram can
+// be edited, persisted and reloaded without a schema migration. The
+// published flag marks a version that is eligible to run; a draft is
+// never executed.
+model WorkflowDefinition {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String? @db.Text
+  version     Int      @default(1)
+  status      String   @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  nodes       String @db.LongText // JSON array of workflow nodes
+  edges       String @db.LongText // JSON array of workflow edges
+  createdBy   String?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  @@index([status, updatedAt])
+}
+
+// ============================================================
+// AI-EOS — the unified workforce substrate
+// ============================================================
+
+// A Standard Operating Procedure. An SOP is EXECUTABLE, not text: it
+// declares its trigger, preconditions, ordered steps, decision points,
+// validation rules, failure path and escalation. The runtime walks the
+// steps; it does not merely display them.
+model Sop {
+  id             String   @id @default(cuid())
+  key            String   @unique
+  name           String
+  category       String   @default("OPERATIONS")
+  departmentCode String?
+  version        String   @default("1.0.0")
+  status         String   @default("ACTIVE") // DRAFT | ACTIVE | RETIRED
+  owner          String   @default("tech360")
+  level          Int      @default(3) // 1 executive .. 5 worker
+  description    String @db.Text
+  trigger        String @db.Text
+  inputs         String @db.LongText // JSON array of input descriptors
+  preconditions  String @db.LongText // JSON array of precondition descriptors
+  steps          String @db.LongText // JSON array of ordered step descriptors
+  decisionPoints String @db.LongText // JSON array of decision points
+  tools          String @db.LongText // JSON array of tool names
+  validation     String @db.LongText // JSON array of validation rules
+  output         String @db.Text
+  failurePath    String @db.Text
+  escalation     String @db.Text
+  requiresApproval Boolean @default(false)
+  auditRequired  Boolean   @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  runs SopRun[]
+
+  @@index([category, status])
+  @@index([departmentCode])
+  @@index([level])
+}
+
+// One execution of an SOP.
+model SopRun {
+  id            String   @id @default(cuid())
+  sopKey        String
+  sop           Sop      @relation(fields: [sopKey], references: [key], onDelete: Cascade)
+  correlationId String
+  status        String   @default("RUNNING") // RUNNING | SUCCESS | FAILED | ESCALATED | AWAITING_APPROVAL
+  stepIndex     Int      @default(0)
+  totalSteps    Int      @default(0)
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  input         String? @db.LongText
+  output        String? @db.LongText
+  error         String? @db.Text
+  steps         String? @db.LongText // JSON transcript of the executed steps
+  createdAt     DateTime @default(now())
+
+  @@index([sopKey, createdAt])
+  @@index([status])
+}
+
+// An agent-to-agent delegation. Every delegation carries its full
+// contract: who asked, who was asked, the objective, the context, the
+// permissions, the deadline and the expected output.
+model AgentDelegation {
+  id               String   @id @default(cuid())
+  requestingAgent  String
+  targetAgent      String
+  kind             String   @default("DELEGATE") // DELEGATE | CONSULT | REVIEW | EXPERTISE | ESCALATE | HANDOFF
+  task             String @db.Text
+  objective        String @db.Text
+  context          String? @db.LongText
+  priority         String   @default("NORMAL") // LOW | NORMAL | HIGH | CRITICAL
+  deadline         DateTime?
+  permissions      String @db.LongText // JSON array of capabilities delegated
+  expectedOutput   String @db.Text
+  status           String   @default("PENDING") // PENDING | ACCEPTED | COMPLETED | FAILED | DECLINED | ESCALATED
+  result           String? @db.LongText
+  correlationId    String
+  createdAt        DateTime @default(now())
+  completedAt      DateTime?
+
+  @@index([requestingAgent, status])
+  @@index([targetAgent, status])
+}
+
+// The event bus. Agents subscribe to the events they care about; a
+// single event never wakes the whole workforce.
+model AgentEvent {
+  id           String   @id @default(cuid())
+  type         String
+  source       String
+  payload      String @db.LongText // JSON
+  correlationId String?
+  severity     String   @default("INFO") // INFO | WARNING | CRITICAL
+  subscribers  String? @db.LongText // JSON array of agent codes that were notified
+  createdAt    DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([source, createdAt])
+}
+
+// A knowledge-graph entity. The graph is the relational layer of the
+// knowledge system: RAG retrieves documents, the graph retrieves
+// entities, relationships, dependencies, provenance and confidence.
+model KnowledgeEntity {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  type        String   @default("CONCEPT") // PERSON | ORGANISATION | SERVICE | POLICY | CLIENT | PROJECT | CONCEPT | DOCUMENT
+  description String? @db.Text
+  accessLevel String   @default("INTERNAL")
+  confidence  Float    @default(0.5)
+  properties  String? @db.LongText // JSON
+  source      String   @default("PLATFORM")
+  version     Int      @default(1)
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  outgoing KnowledgeRelation[] @relation("RelationFrom")
+  incoming KnowledgeRelation[] @relation("RelationTo")
+
+  @@index([type, accessLevel])
+}
+
+// A knowledge-graph relationship between two entities.
+model KnowledgeRelation {
+  id           String   @id @default(cuid())
+  fromKey      String
+  from         KnowledgeEntity @relation("RelationFrom", fields: [fromKey], references: [key], onDelete: Cascade)
+  toKey        String
+  to           KnowledgeEntity @relation("RelationTo", fields: [toKey], references: [key], onDelete: Cascade)
+  type         String   @default("RELATED_TO")
+  weight       Float    @default(0.5)
+  confidence   Float    @default(0.5)
+  provenance   String? @db.Text
+  accessLevel  String   @default("INTERNAL")
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  @@unique([fromKey, toKey, type])
+  @@index([toKey, type])
 }

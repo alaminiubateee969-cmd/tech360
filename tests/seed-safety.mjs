@@ -148,8 +148,13 @@ async function main() {
     }
 
     console.log('[seed-safety] production bootstrap is idempotent and preserves existing records')
-  } catch {
-    fail('production bootstrap or non-destructive idempotency check failed')
+  } catch (error) {
+    // The reason is printed, not swallowed: a failing seed check that
+    // hides why it failed is nearly useless to whoever has to fix it.
+    const detail = error instanceof Error ? error.message : String(error)
+    console.error(`[seed-safety] reason: ${detail}`)
+    if (error instanceof Error && error.stack) console.error(error.stack)
+    fail(`production bootstrap or non-destructive idempotency check failed: ${detail}`)
   } finally {
     await db.$disconnect()
   }

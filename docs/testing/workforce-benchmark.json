@@ -1,0 +1,82 @@
+{
+  "measuredAt": "2026-10-18T22:12:25.113Z",
+  "environment": {
+    "node": "v22.22.3",
+    "platform": "linux x64",
+    "cpus": 2,
+    "totalMemoryMb": 3940,
+    "note": "Sandbox: 2 vCPU, 3.8 GB RAM. These numbers are NOT a production claim."
+  },
+  "shape": {
+    "employees": 2201,
+    "skills": 10010,
+    "capabilityTemplates": 91,
+    "procedures": 550,
+    "tools": 47
+  },
+  "results": [
+    {
+      "label": "workforce.validateWorkforce",
+      "iterations": 50,
+      "totalMs": 70.357,
+      "perCallMs": 1.407,
+      "opsPerSecond": 710.7
+    },
+    {
+      "label": "workforce.workforceStats",
+      "iterations": 200,
+      "totalMs": 30.914,
+      "perCallMs": 0.155,
+      "opsPerSecond": 6469.7
+    },
+    {
+      "label": "skills.validateRegistry",
+      "iterations": 20,
+      "totalMs": 0.125,
+      "perCallMs": 0.006,
+      "opsPerSecond": 160262.8
+    },
+    {
+      "label": "tools.validateToolRegistry",
+      "iterations": 200,
+      "totalMs": 1.399,
+      "perCallMs": 0.007,
+      "opsPerSecond": 142955
+    },
+    {
+      "label": "prompts.libraryIndex",
+      "iterations": 50,
+      "totalMs": 0.033,
+      "perCallMs": 0.001,
+      "opsPerSecond": 1519479.7
+    },
+    {
+      "label": "prompts.materialiseBinding",
+      "iterations": 200,
+      "totalMs": 16.988,
+      "perCallMs": 0.085,
+      "opsPerSecond": 11773
+    },
+    {
+      "label": "prompts.retrieve(limit 12)",
+      "iterations": 200,
+      "totalMs": 21.531,
+      "perCallMs": 0.108,
+      "opsPerSecond": 9288.9
+    },
+    {
+      "label": "sop.execute(D010-INTAKE, no gateway)",
+      "iterations": 50,
+      "totalMs": 2.995,
+      "perCallMs": 0.06,
+      "opsPerSecond": 16696.7
+    },
+    {
+      "label": "skill.execute(classify_intent)",
+      "iterations": 200,
+      "totalMs": 4.462,
+      "perCallMs": 0.022,
+      "opsPerSecond": 44823.2
+    }
+  ]
+}

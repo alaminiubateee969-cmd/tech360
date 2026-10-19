@@ -2,7 +2,10 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText, audit, logError } from '@/lib/security'
-import { finalizeScopeAndSend, releaseHandover } from '@/lib/journey'
+import { finalizeScopeAndSend, releaseHandover, sendApprovedPaymentInstruction } from '@/lib/journey'
+import { sendPipelineMessage, type PipelineChannel } from '@/lib/pipeline/send'
+import type { PipelineMessageStage, PipelineVariables } from '@/lib/pipeline/templates'
+import type { AdminApprovalCategory } from '@/lib/pipeline/rules'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,6 +64,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         result = await releaseHandover(handoverId, g.user.id, approval.id)
         const handoverResult = result as { link?: string; artifactCount?: number; notificationStatus?: string }
         message = `Approved source package released with ${handoverResult.artifactCount ?? 0} pinned artifact(s); the secure ZIP is assembled when downloaded. Client notification status: ${handoverResult.notificationStatus ?? 'UNKNOWN'}. Portal/download link: ${handoverResult.link ?? 'available in client portal'}`
+        break
+      }
+      case 'PIPELINE_MESSAGE': {
+        // A communication-pipeline message that the policy required an
+        // admin to approve. The approval IS the gate, so it is sent now.
+        const stage = String(payload.stage ?? '')
+        const clientRowId = String(payload.clientRowId ?? '')
+        if (!stage || !clientRowId) throw new Error('The pipeline approval payload is incomplete.')
+        const sent = await sendPipelineMessage({
+          clientRowId,
+          stage: stage as PipelineMessageStage,
+          variables: payload.variables as PipelineVariables,
+          channels: Array.isArray(payload.channels) ? (payload.channels as PipelineChannel[]) : undefined,
+          agentCode: typeof payload.agentCode === 'string' ? payload.agentCode : undefined,
+          category: typeof payload.category === 'string' ? (payload.category as AdminApprovalCategory) : undefined,
+          approvalId: approval.id,
+          approved: true,
+        })
+        result = sent as unknown as Record<string, unknown>
+        message = `Approved ${stage} message sent. Channels: ${sent.deliveries.map((d) => `${d.channel}:${d.status}`).join(', ') || 'none available'}.`
+        break
+      }
+      case 'PAYMENT_INSTRUCTION': {
+        const clientRowId = String(payload.clientRowId ?? '')
+        const messageText = String(payload.message ?? '')
+        const instructions = String(payload.instructions ?? '')
+        if (!clientRowId || !messageText) throw new Error('The payment instruction payload is incomplete.')
+        const sent = await sendApprovedPaymentInstruction({ clientRowId, message: messageText, instructions }, approval.id, g.user.id)
+        result = sent as unknown as Record<string, unknown>
+        message = `Approved payment instructions sent. Channels: ${sent.results.join(', ') || 'none available'}.`
         break
       }
       default: {

@@ -85,6 +85,9 @@ export const SENSITIVE_APPROVAL_TYPES = [
   'LEGAL_COMM',
   'SENSITIVE_COMM',
   'AGENT_CREATE',
+  // A communication-pipeline message the policy requires an admin to
+  // approve before it reaches the client.
+  'PIPELINE_MESSAGE',
 ] as const
 
 export const ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'] as const

@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { db } from '@/lib/db'
 import { newCorrelationId } from '@/lib/security'
 import { getAgentDefinition } from '@/lib/agents/bootstrap'
+import type { AgentSeed } from '@/lib/agents/registry'
 import { runAgent } from '@/lib/agents/engine'
 import { agentHasPermission, authorizeAgentTool, PRIVILEGED_AGENT_TOOLS, type AgentTool } from '@/lib/ai-workforce-policy'
 import { AgentJobToolInputError, executeAgentJobTool, normalizeAgentJobToolCall } from '@/lib/agents/tool-executor'
@@ -41,7 +42,7 @@ export class AgentJobDecisionConflict extends Error {
 }
 
 export type EnqueueAgentJobInput = {
-  agentCode: string
+  agentCode: string | null
   idempotencyKey: string
   input: string
   contextNote?: string
@@ -95,15 +96,14 @@ function prismaCode(error: unknown): string | null {
  * concurrency authority; a repeated key with different content is rejected.
  */
 export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ job: Awaited<ReturnType<typeof db.agentJob.findUniqueOrThrow>>; created: boolean }> {
-  const agentCode = input.agentCode.trim().toUpperCase()
+  const taskType = input.taskType ?? 'INFERENCE'
+  const agentCode = input.agentCode ? input.agentCode.trim().toUpperCase() : null
   const idempotencyKey = input.idempotencyKey.trim()
   const jobInput = input.input.trim()
   const contextNote = input.contextNote?.trim().slice(0, MAX_JOB_CONTEXT) || null
 
   if (!idempotencyKey || idempotencyKey.length > 191) throw new AgentJobInputError('A valid Idempotency-Key of at most 191 characters is required')
   if (!jobInput || jobInput.length > MAX_JOB_INPUT) throw new AgentJobInputError(`Input must contain 1–${MAX_JOB_INPUT} characters`)
-  const definition = getAgentDefinition(agentCode)
-  if (!definition) throw new AgentJobInputError(`Agent ${agentCode} is not in the executable registry`)
 
   const requestedToolName = input.toolName?.trim() || null
   let toolCall: ReturnType<typeof normalizeAgentJobToolCall> | null = null
@@ -150,6 +150,7 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
 
   const normalized: Omit<EnqueueAgentJobInput, 'idempotencyKey' | 'requestedBy'> = {
     agentCode,
+    taskType,
     input: jobInput,
     contextNote: contextNote ?? undefined,
     expectJson: input.expectJson === true,
@@ -309,12 +310,17 @@ async function recoverExpiredAgentJobs(now: Date): Promise<number> {
   return recovered
 }
 
-export async function claimNextAgentJob(workerId: string, now = new Date()): Promise<Awaited<ReturnType<typeof db.agentJob.findUniqueOrThrow>> | null> {
+export async function claimNextAgentJob(
+  workerId: string,
+  now = new Date(),
+  taskType = 'INFERENCE',
+): Promise<Awaited<ReturnType<typeof db.agentJob.findUniqueOrThrow>> | null> {
   const candidate = await db.agentJob.findFirst({
     where: {
       status: { in: ['QUEUED', 'RETRYING'] },
       approvalState: { in: ['NOT_REQUIRED', 'APPROVED'] },
       availableAt: { lte: now },
+      taskType,
     },
     orderBy: [{ availableAt: 'asc' }, { createdAt: 'asc' }],
   })
@@ -356,7 +362,7 @@ export async function claimNextAgentJob(workerId: string, now = new Date()): Pro
   return claimed
 }
 
-async function finishClaimedJob(
+export async function finishClaimedJob(
   job: Awaited<ReturnType<typeof db.agentJob.findUniqueOrThrow>>,
   workerId: string,
   result: { ok: boolean; executionId: string; correlationId: string; output: string; error?: string; status: string },

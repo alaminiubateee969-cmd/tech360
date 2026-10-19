@@ -1,15 +1,43 @@
 import { db } from '@/lib/db'
 import { nextClientId, nextProjectCode, nextInvoiceNumber, publicToken } from '@/lib/ids'
-import { runAgent, rememberMemory, recallMemory } from '@/lib/agents/engine'
-import { sendCommunication, emailTemplate, wrapEmailHtml, escapeHtml } from '@/lib/comms'
+import { runAgent, rememberMemory } from '@/lib/agents/engine'
+import { sendCommunication, emailTemplate, escapeHtml } from '@/lib/comms'
 import { newCorrelationId, logError, audit, sanitizeText } from '@/lib/security'
-import { PIPELINE_STAGES } from '@/lib/constants'
+import { PIPELINE_STAGES, COMPANY } from '@/lib/constants'
 import { PAD_CSS, padHeader, padMeta, padFooter, padSignatures, docDate } from '@/lib/letterhead'
 import { evaluateDeliveryAcceptance, evaluateProjectClosure } from '@/lib/lifecycle-policy'
 import { hasExplicitContactConsent, selectWelcomeChannel } from '@/lib/contact-policy'
 import { hasAcceptedPreviewDelivery } from '@/lib/preview-policy'
 import { createHandoverManifest, parseHandoverManifest, verifyHandoverArtifacts } from '@/lib/handover-artifacts'
 import { normalizeIdentity, resolveOrCreateVerifiedClient, type VerifiedIdentityProof } from '@/lib/identity-resolver'
+import { sendPipelineMessage, recordStageChange, type PipelineChannel } from '@/lib/pipeline/send'
+import type { PipelineVariables } from '@/lib/pipeline/templates'
+import { assertDeliveryRules, screenAiContent } from '@/lib/pipeline/rules'
+
+// The booking link the client uses to take a scope-explaining call.
+const MEETING_BOOKING_URL = process.env.MEETING_BOOKING_URL ?? `${COMPANY.url}/#contact`
+
+/**
+ * The pipeline variables for a client.
+ *
+ * Every message in the pipeline is built from this one shape, so a
+ * message can never be composed with a missing client ID.
+ */
+function pipelineVars(client: {
+  clientId: string
+  name: string
+  businessType?: string | null
+  lead?: { interest?: string | null } | null
+}, extra: Partial<PipelineVariables> = {}): PipelineVariables {
+  return {
+    clientId: client.clientId,
+    clientName: client.name,
+    businessType: client.businessType ?? null,
+    recommendedPlan: client.lead?.interest ?? null,
+    meetingLink: MEETING_BOOKING_URL,
+    ...extra,
+  }
+}
 
 // Tokenized preview links expire after this many days (env-overridable).
 const PREVIEW_TTL_DAYS = Math.max(1, Number(process.env.PREVIEW_TTL_DAYS ?? 30) || 30)
@@ -36,6 +64,14 @@ async function setStage(clientId: string, stage: string, note: string) {
         status: stage === 'COMPLETED' || stage === 'CLOSED' ? 'CLOSED' : stageIndex(stage) >= 9 ? 'ACTIVE' : client.status === 'LEAD' && stageIndex(stage) >= 8 ? 'CLIENT' : client.status,
       },
     })
+    // The status change and its timestamp are always saved in the CRM.
+    await recordStageChange({
+      clientRowId: clientId,
+      clientId: client.clientId,
+      from: client.pipelineStage,
+      to: stage,
+      note,
+    }).catch(() => null)
     await db.automationLog.updateMany({ where: { clientId, status: 'RUNNING' }, data: { status: 'SUCCESS' } }).catch(() => null)
   }
 }
@@ -202,32 +238,32 @@ export async function intakeLead(input: {
       const hasContactPermission = createData.source !== 'WEBSITE' || hasExplicitContactConsent(input.contactConsent)
       const selectedChannel = hasContactPermission ? selectWelcomeChannel(createData.source, clientRow.preferredContact) : null
       let welcomeAccepted = false
-      if (selectedChannel === 'WHATSAPP' && clientRow.whatsapp) {
-        const r = await sendCommunication({
-          clientId: clientRow.id,
-          channel: 'WHATSAPP',
-          to: clientRow.whatsapp,
-          body: `Hi ${clientRow.name}, thank you for contacting Tech360. Your reference ID is ${clientRow.clientId}. Our team is reviewing your requirements and will reply shortly. — Team Tech360`,
-          agentCode: 'WAP-011',
+      if (!hasContactPermission) {
+        await stepLog(log.id, 'welcome_skipped', {
+          reason: 'explicit website contact consent was not recorded',
+        })
+      } else if (selectedChannel) {
+        // STAGE 1 — the first reply. The exact pipeline copy is sent on the
+        // client's own channel, with the generated Client ID inside it.
+        const welcome = await sendPipelineMessage({
+          clientRowId: clientRow.id,
+          stage: 'FIRST_MESSAGE',
+          variables: pipelineVars(clientRow),
+          channels: [selectedChannel as PipelineChannel],
+          agentCode: 'COM-010',
           workflowId: log.id,
         })
-        welcomeAccepted = r.result.ok && r.result.status === 'SENT'
-        await stepLog(log.id, 'welcome_whatsapp', { status: r.result.status, providerAccepted: welcomeAccepted })
-      } else if (selectedChannel === 'EMAIL' && clientRow.email) {
-        const r = await sendCommunication({
-          clientId: clientRow.id,
-          channel: 'EMAIL',
-          to: clientRow.email,
-          subject: 'Welcome to Tech360 — we received your request',
-          body: emailTemplate('WELCOME', { name: clientRow.name, extra: '' }).body.replace('{{clientId}}', clientRow.clientId),
-          agentCode: 'EML-012',
-          workflowId: log.id,
+        welcomeAccepted = welcome.deliveries.some((delivery) => delivery.ok)
+        await stepLog(log.id, 'welcome_sent', {
+          stage: 'FIRST_MESSAGE',
+          channel: selectedChannel,
+          status: welcome.status,
+          providerAccepted: welcomeAccepted,
+          deliveries: welcome.deliveries.map((delivery) => `${delivery.channel}:${delivery.status}`),
         })
-        welcomeAccepted = r.result.ok && r.result.status === 'SENT'
-        await stepLog(log.id, 'welcome_email', { status: r.result.status, providerAccepted: welcomeAccepted })
       } else {
         await stepLog(log.id, 'welcome_skipped', {
-          reason: !hasContactPermission ? 'explicit website contact consent was not recorded' : 'no usable selected contact channel',
+          reason: 'no usable selected contact channel',
         })
       }
 
@@ -237,7 +273,23 @@ export async function intakeLead(input: {
       const businessRun = await detectBusiness(clientRow.id, input.message, { advanceStage: welcomeAccepted })
       await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id, welcomeAccepted, businessDetectionOk: businessRun.ok })
     } else {
-      await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id, reusedVerifiedIdentity: true })
+      // A returning client. Their reply may now carry the business type,
+      // which unlocks STAGE 2 of the pipeline: the plan is recommended and
+      // the eight scope questions are sent on WhatsApp/SMS and email.
+      let stage2Sent = false
+      if (!clientRow.businessType) {
+        const businessRun = await detectBusiness(clientRow.id, input.message, { advanceStage: true })
+        if (businessRun.ok && businessRun.json) {
+          const scopeRun = await askScopeQuestions(clientRow.id)
+          stage2Sent = scopeRun.sent.status !== 'AWAITING_APPROVAL'
+          await stepLog(log.id, 'stage2_business_type', {
+            businessType: businessRun.json.businessType ?? null,
+            status: scopeRun.sent.status,
+            deliveries: scopeRun.delivery,
+          })
+        }
+      }
+      await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id, reusedVerifiedIdentity: true, stage2Sent })
     }
 
     if (input.formId) {
@@ -265,7 +317,10 @@ export async function detectBusiness(clientRowId: string, messageText?: string, 
     clientId: client.id, workflow: 'BUSINESS_DETECTION', expectJson: true,
   })
   if (run.ok && run.json) {
-    const businessType = sanitizeText(run.json.businessType, 80)
+    // The AI agent must not put a phone number into any client-facing
+    // content. The detected business type is shown to the client, so it
+    // is screened before it is stored.
+    const businessType = sanitizeText(screenAiContent(String(run.json.businessType ?? '')).text, 80)
     await db.client.update({ where: { id: client.id }, data: { businessType } })
     if (options.advanceStage !== false) await setStage(client.id, 'BUSINESS_IDENTIFIED', 'AI business detection')
     await rememberMemory({ scope: 'CLIENT', key: `business:${client.id}`, content: `Business type detected: ${businessType} (confidence ${run.json.confidence ?? 'n/a'})`, clientId: client.id, importance: 6, agentCode: 'BIZ-004' })
@@ -286,7 +341,9 @@ export async function recommendPlan(clientRowId: string) {
     clientId: client.id, workflow: 'PLAN_RECOMMENDATION', expectJson: true,
   })
   if (run.ok && run.json) {
-    const plan = sanitizeText(run.json.plan, 120)
+    // The recommended plan is shown to the client in the stage-2 message,
+    // so it is screened for phone numbers first.
+    const plan = sanitizeText(screenAiContent(String(run.json.plan ?? '')).text, 120)
     await db.client.update({ where: { id: client.id }, data: {} })
     await db.lead.update({ where: { clientId: client.id }, data: { interest: plan } }).catch(() => null)
     await setStage(client.id, 'PLAN_RECOMMENDED', 'AI plan recommendation')
@@ -297,6 +354,12 @@ export async function recommendPlan(clientRowId: string) {
 
 // ------------------------------------------------------------
 // STEP 4 — Scope discovery questions (AI) → sent via best channel
+//
+// STAGE 2 of the communication pipeline. The client receives the
+// exact pipeline copy: the recommended plan plus the eight scope
+// questions. The AI's own questions are produced by the SCP-006
+// agent and kept for the sales team (memory + automation log), but
+// the wording the client sees is the specified copy.
 // ------------------------------------------------------------
 export async function askScopeQuestions(clientRowId: string) {
   const client = await db.client.findUnique({ where: { id: clientRowId }, include: { lead: true } })
@@ -305,20 +368,35 @@ export async function askScopeQuestions(clientRowId: string) {
     input: `Business type: ${client.businessType ?? 'unknown'}\nPlan of interest: ${client.lead?.interest ?? 'unknown'}\nRequirements so far: ${client.lead?.requirements ?? ''}`,
     clientId: client.id, workflow: 'SCOPE_COLLECTION',
   })
-  let delivery: string[] = []
-  if (run.ok && run.output) {
-    await setStage(client.id, 'SCOPE_COLLECTION', 'Scope questions sent')
-    if (client.whatsapp) {
-      const r = await sendCommunication({ clientId: client.id, channel: 'WHATSAPP', to: client.whatsapp, body: run.output, agentCode: 'COM-010', workflowId: run.executionId })
-      delivery.push(`WHATSAPP:${r.result.status}`)
-    }
-    if (client.email) {
-      const r = await sendCommunication({ clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'A few questions about your project — Tech360', body: emailTemplate('SCOPE_QUESTIONS', { name: client.name, extra: `<div>${run.output.replace(/\n/g, '<br/>')}</div>` }).body, agentCode: 'EML-012', workflowId: run.executionId })
-      delivery.push(`EMAIL:${r.result.status}`)
-    }
-    if (delivery.length === 0) delivery = ['LOGGED_ONLY: no channel contact available']
+  // The recommended plan must exist before the stage-2 message goes out.
+  if (!client.lead?.interest) {
+    await recommendPlan(clientRowId)
   }
-  return { run, delivery }
+  // The AI's own questions are kept for the sales team. The wording the
+  // client receives is the specified copy.
+  await rememberMemory({
+    scope: 'CLIENT',
+    key: `scope-questions:${client.id}`,
+    content: `AI scope questions prepared for the client: ${sanitizeText(run.output ?? '', 2000) || 'no AI output'}`,
+    clientId: client.id,
+    importance: 5,
+    agentCode: 'SCP-006',
+  })
+
+  const fresh = await db.client.findUnique({ where: { id: client.id }, include: { lead: true } })
+  if (!fresh) throw new Error('Client not found')
+  await setStage(client.id, 'SCOPE_COLLECTION', 'Scope questions sent')
+
+  const sent = await sendPipelineMessage({
+    clientRowId: client.id,
+    stage: 'BUSINESS_TYPE_RECEIVED',
+    variables: pipelineVars(fresh),
+    agentCode: 'COM-010',
+    workflowId: run.executionId ?? undefined,
+  })
+  const delivery = sent.deliveries.map((entry) => `${entry.channel}:${entry.status}`)
+  if (delivery.length === 0) delivery.push('LOGGED_ONLY: no channel contact available')
+  return { run, delivery, sent }
 }
 
 // ------------------------------------------------------------
@@ -378,6 +456,17 @@ export async function submitScope(clientRowId: string, scopeText: string) {
     await db.notification.create({
       data: { type: 'APPROVAL', title: 'Scope awaiting admin approval', body: `${client.clientId} — ${client.name}`, severity: 'INFO' },
     }).catch(() => null)
+
+    // STAGE 3 — the client is told the requirements were received and
+    // that the draft is under internal review. The final Scope of Work
+    // itself is NOT sent here: it waits for the admin approval above.
+    await sendPipelineMessage({
+      clientRowId: client.id,
+      stage: 'SCOPE_DETAILS_RECEIVED',
+      variables: pipelineVars(client),
+      agentCode: 'SCP-008',
+      workflowId: log.id,
+    })
   }
   await finishLog(log.id, forge.ok ? 'SUCCESS' : 'FAILED', { scopeId })
   return { review, forge, scopeId }
@@ -401,18 +490,23 @@ export async function finalizeScopeAndSend(scopeId: string, adminUserId: string)
   const scopeText = formatScopeForClient(content, client.clientId)
   const results: string[] = []
 
-  if (client.whatsapp) {
-    const r = await sendCommunication({ clientId: client.id, channel: 'WHATSAPP', to: client.whatsapp, body: scopeText, agentCode: 'WAP-011', workflowId: log.id })
-    results.push(`WHATSAPP:${r.result.status}`)
-  }
-  if (client.email) {
-    const r = await sendCommunication({
-      clientId: client.id, channel: 'EMAIL', to: client.email, subject: `Your Final Scope of Work — ${client.clientId}`,
-      body: emailTemplate('FINAL_SCOPE', { name: client.name, extra: `<div>${escapeHtml(scopeText).replace(/\n/g, '<br/>')}</div>` }).body,
-      agentCode: 'EML-012', workflowId: log.id,
-    })
-    results.push(`EMAIL:${r.result.status}`)
-  }
+  // STAGE 4 — the final Scope of Work. This message is only ever sent
+  // from the admin approval execution path, so the gate is satisfied by
+  // the approval that has already been granted.
+  const sent = await sendPipelineMessage({
+    clientRowId: client.id,
+    stage: 'FINAL_SCOPE_APPROVED',
+    variables: pipelineVars(client, {
+      projectName: String(content.title ?? '') || null,
+      finalScope: scopeText,
+      paymentPolicy: `Advance ${String((content.paymentPolicy as Record<string, unknown> | undefined)?.advancePct ?? '—')}% · On milestone ${String((content.paymentPolicy as Record<string, unknown> | undefined)?.milestonePct ?? '—')}% · On final delivery ${String((content.paymentPolicy as Record<string, unknown> | undefined)?.finalPct ?? '—')}% · ${String((content.paymentPolicy as Record<string, unknown> | undefined)?.currency ?? 'USD')}`,
+    }),
+    agentCode: 'WAP-011',
+    workflowId: log.id,
+    approved: true,
+  })
+  results.push(...sent.deliveries.map((delivery) => `${delivery.channel}:${delivery.status}`))
+
   await rememberMemory({ scope: 'CLIENT', key: `finalscope:${client.id}`, content: `Final scope v${scope.version} approved by admin ${adminUserId} at ${new Date().toISOString()}. Delivered channels: ${results.join(', ')}`, clientId: client.id, importance: 8 })
   await finishLog(log.id, 'SUCCESS', { channels: results })
   await audit({ actor: 'system', action: 'FINAL_SCOPE_SENT', clientId: client.clientId, userId: adminUserId, details: { channels: results } })
@@ -450,8 +544,16 @@ export async function clientScopeDecision(clientRowId: string, decision: 'APPROV
 
   if (decision === 'APPROVED') {
     await setStage(client.id, 'CLIENT_APPROVAL', 'Client approved final scope')
-    await rememberMemory({ scope: 'CLIENT', key: `approval:${client.id}`, content: `Client approved final scope v${finalScope.version} at ${new Date().toISOString()}`, clientId: client.id, importance: 8 })
-    return { next: 'REQUEST_PREVIEW' }
+    // STAGE 5B — the scope is approved. The acknowledgement is auto-sent
+    // and the HTML preview is prepared next.
+    const sent = await sendPipelineMessage({
+      clientRowId: client.id,
+      stage: 'SCOPE_APPROVED',
+      variables: pipelineVars(client),
+      agentCode: 'COM-010',
+    })
+    await rememberMemory({ scope: 'CLIENT', key: `approval:${client.id}`, content: `Client approved final scope v${finalScope.version} at ${new Date().toISOString()}. Acknowledgement: ${sent.deliveries.map((d) => `${d.channel}:${d.status}`).join(', ') || 'no channel'}`, clientId: client.id, importance: 8 })
+    return { next: 'REQUEST_PREVIEW', sent }
   }
   if (decision === 'REVISION_REQUESTED') {
     await db.scopeOfWork.update({ where: { id: finalScope.id }, data: { status: 'SUPERSEDED' } })
@@ -479,18 +581,86 @@ export async function clientScopeDecision(clientRowId: string, decision: 'APPROV
       })
       await setStage(client.id, 'SCOPE_REVIEW', 'Revision generated, awaiting admin approval')
     }
-    return { next: 'ADMIN_APPROVAL', newScopeId }
+    // The revision acknowledgement is auto-sent; the revised scope still
+    // waits for the admin approval above.
+    const sent = await sendPipelineMessage({
+      clientRowId: client.id,
+      stage: 'REVISION_REQUESTED',
+      variables: pipelineVars(client),
+      agentCode: 'REV-032',
+    })
+    return { next: 'ADMIN_APPROVAL', newScopeId, sent }
   }
   // CLARIFICATION → meeting only when client asks
   const meeting = await db.meeting.create({
-    data: { clientId: client.id, reason: sanitizeText(notes, 1000) || 'Client requested clarification', status: 'REQUESTED' },
+    data: { clientId: client.id, reason: sanitizeText(notes, 1000) || 'Client requested clarification', status: 'REQUESTED', bookingLink: MEETING_BOOKING_URL },
   })
   await setStage(client.id, 'FINAL_SCOPE', 'Meeting requested by client')
   const run = await runAgent('MTG-015', { input: `Client ${client.name} (${client.clientId}) requests clarification about final scope. Timezone preference: ${client.country ?? 'Asia/Dhaka'}`, clientId: client.id, workflow: 'MEETING', expectJson: true })
   if (run.ok && run.json) {
     await db.meeting.update({ where: { id: meeting.id }, data: { status: 'SCHEDULED', notes: run.output.slice(0, 2000) } })
   }
-  return { next: 'MEETING', meetingId: meeting.id }
+
+  // STAGE 5A — the meeting link is auto-sent, the request is saved (the
+  // Meeting row above) and a task is created for the team.
+  const sent = await sendPipelineMessage({
+    clientRowId: client.id,
+    stage: 'MEETING_REQUESTED',
+    variables: pipelineVars(client),
+    agentCode: 'MTG-015',
+  })
+  await createHumanTask({
+    clientRowId: client.id,
+    title: `Scope clarification meeting — ${client.clientId}`,
+    description: `The client asked for an explanation of the approved scope. Meeting request ${meeting.id} was saved and the booking link was sent.`,
+    link: 'meetings',
+  })
+
+  return { next: 'MEETING', meetingId: meeting.id, sent }
+}
+
+/**
+ * Create a human task for the team.
+ *
+ * A `ProjectTask` is used when the client already has a project; before
+ * that a `Notification` carries the task, because a ProjectTask cannot
+ * exist without a project.
+ */
+async function createHumanTask(input: {
+  clientRowId: string
+  title: string
+  description: string
+  link?: string
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH'
+}): Promise<string | null> {
+  const project = await db.project.findFirst({
+    where: { clientId: input.clientRowId },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true },
+  })
+  if (project) {
+    const task = await db.projectTask.create({
+      data: {
+        projectId: project.id,
+        title: input.title,
+        description: input.description,
+        status: 'TODO',
+        priority: input.priority ?? 'HIGH',
+        assigneeType: 'HUMAN',
+      },
+    })
+    return task.id
+  }
+  await db.notification.create({
+    data: {
+      type: 'LEAD',
+      title: input.title,
+      body: input.description,
+      severity: 'WARNING',
+      link: input.link ?? 'clients',
+    },
+  })
+  return null
 }
 
 // ------------------------------------------------------------
@@ -539,26 +709,16 @@ export async function generatePreview(clientRowId: string) {
 
   const link = `${base}/api/preview/${token}`
   const attempts: Array<{ channel: string; status: string; ok: boolean }> = []
-  const channel = selectWelcomeChannel(client.source, client.preferredContact)
-  if (channel === 'WHATSAPP' && client.whatsapp) {
-    const result = await sendCommunication({
-      clientId: client.id,
-      channel,
-      to: client.whatsapp,
-      body: `Hi ${client.name}, your project preview is ready: ${link} — review before payment, then reply APPROVED or send change requests. — Team Tech360`,
-      agentCode: 'WAP-011',
-    })
-    attempts.push({ channel, status: result.result.status, ok: result.result.ok })
-  } else if (channel === 'EMAIL' && client.email) {
-    const result = await sendCommunication({
-      clientId: client.id,
-      channel,
-      to: client.email,
-      subject: 'Your project preview is ready',
-      body: emailTemplate('PREVIEW', { name: client.name, link }).body,
-      agentCode: 'EML-012',
-    })
-    attempts.push({ channel, status: result.result.status, ok: result.result.ok })
+  // STAGE 6 — the HTML preview notification. The preview is produced
+  // BEFORE any payment: HTML Preview Before Payment.
+  const sent = await sendPipelineMessage({
+    clientRowId: client.id,
+    stage: 'HTML_PREVIEW_SENT',
+    variables: pipelineVars(client, { htmlPreviewUrl: link }),
+    agentCode: 'WAP-011',
+  })
+  for (const delivery of sent.deliveries) {
+    attempts.push({ channel: delivery.channel, status: delivery.status, ok: delivery.ok })
   }
 
   const accepted = hasAcceptedPreviewDelivery(attempts)
@@ -623,6 +783,56 @@ ${padFooter("This scope preview is confidential and intended for the addressed r
 }
 
 // ------------------------------------------------------------
+// STAGE 7 — the client decides on the HTML preview
+// ------------------------------------------------------------
+export async function recordPreviewDecision(
+  clientRowId: string,
+  decision: 'APPROVED' | 'REVISION_REQUESTED',
+  notes?: string,
+) {
+  const client = await db.client.findUnique({ where: { id: clientRowId } })
+  if (!client) throw new Error('Client not found')
+
+  if (decision === 'REVISION_REQUESTED') {
+    // STAGE 7A — the revision acknowledgement is auto-sent, the admin is
+    // notified and a task is created.
+    const sent = await sendPipelineMessage({
+      clientRowId: client.id,
+      stage: 'REVISION_REQUESTED',
+      variables: pipelineVars(client),
+      agentCode: 'REV-032',
+    })
+    await db.notification.create({
+      data: {
+        type: 'LEAD',
+        title: 'HTML preview revision requested',
+        body: `${client.clientId} — ${client.name}: ${sanitizeText(notes ?? '', 500)}`,
+        severity: 'WARNING',
+        link: 'clients',
+      },
+    }).catch(() => null)
+    await createHumanTask({
+      clientRowId: client.id,
+      title: `Preview revision — ${client.clientId}`,
+      description: `The client requested a revision to the HTML preview. Notes: ${sanitizeText(notes ?? '', 2000) || 'none supplied'}`,
+      link: 'clients',
+    })
+    return { decision, sent, taskCreated: true }
+  }
+
+  // STAGE 7B — the client approved the preview. The next message is the
+  // payment step, which the policy requires an admin to approve, so the
+  // sender raises the approval instead of sending.
+  const sent = await sendPipelineMessage({
+    clientRowId: client.id,
+    stage: 'HTML_PREVIEW_APPROVED',
+    variables: pipelineVars(client),
+    agentCode: 'PAY-016',
+  })
+  return { decision, sent, taskCreated: false }
+}
+
+// ------------------------------------------------------------
 // STEP 9 — Payment request (approval-gated) + record + verify
 // ------------------------------------------------------------
 export async function requestPayment(clientRowId: string, actor: string) {
@@ -651,17 +861,72 @@ export async function requestPayment(clientRowId: string, actor: string) {
   }
   const message = `Payment instructions for your Tech360 project (${client.clientId}):\n${instructions}\n\nAfter payment, send us the transaction reference and we will confirm receipt. — Team Tech360`
   const results: string[] = []
+
+  // A payment instruction WITH an amount must not reach the client before
+  // an admin approves it. The message is composed and saved, and an
+  // approval request is raised for the Super Admin.
+  const approval = await db.approvalRequest.create({
+    data: {
+      type: 'PAYMENT_INSTRUCTION',
+      title: `Approve payment instructions for ${client.clientId} (${client.name})`,
+      description: 'The AI prepared the payment instructions (amounts included) for the approved scope. Approving sends them to the client on WhatsApp/SMS and email.',
+      clientId: client.id,
+      agentCode: 'PAY-016',
+      payload: JSON.stringify({
+        clientRowId: client.id,
+        clientId: client.clientId,
+        message,
+        instructions,
+      }),
+      risk: 'HIGH',
+      requestedBy: actor,
+    },
+  })
+  await db.notification.create({
+    data: {
+      type: 'APPROVAL',
+      title: 'Payment instructions awaiting admin approval',
+      body: `${client.clientId} — ${client.name}`,
+      severity: 'WARNING',
+      link: 'approvals',
+    },
+  }).catch(() => null)
+  await setStage(client.id, 'PAYMENT_PENDING', 'Payment instructions prepared, awaiting admin approval')
+  await audit({ actor, action: 'PAYMENT_INSTRUCTIONS_AWAITING_APPROVAL', clientId: client.clientId, entityId: approval.id, details: { instructions } })
+  return { instructions, results, approvalId: approval.id, status: 'AWAITING_APPROVAL' as const }
+}
+
+/**
+ * Execute an approved payment instruction.
+ *
+ * Called by the approval decision path only — the message never leaves
+ * the system without a Super Admin approval.
+ */
+export async function sendApprovedPaymentInstruction(payload: {
+  clientRowId: string
+  message: string
+  instructions: string
+}, approvalId: string, adminUserId: string) {
+  const client = await db.client.findUnique({ where: { id: payload.clientRowId } })
+  if (!client) throw new Error('Client not found')
+  const results: string[] = []
   if (client.whatsapp) {
-    const r = await sendCommunication({ clientId: client.id, channel: 'WHATSAPP', to: client.whatsapp, body: message, agentCode: 'PAY-016' })
+    const r = await sendCommunication({
+      clientId: client.id, channel: 'WHATSAPP', to: client.whatsapp, body: payload.message,
+      agentCode: 'PAY-016', approvalId,
+    })
     results.push(`WHATSAPP:${r.result.status}`)
   }
   if (client.email) {
-    const r = await sendCommunication({ clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'Payment instructions — Tech360', body: emailTemplate('PAYMENT', { name: client.name, extra: `<pre style="font-family:inherit;white-space:pre-wrap">${escapeHtml(instructions)}</pre>` }).body, agentCode: 'EML-012' })
+    const r = await sendCommunication({
+      clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'Payment instructions — Tech360',
+      body: emailTemplate('PAYMENT', { name: client.name, extra: `<pre style="font-family:inherit;white-space:pre-wrap">${escapeHtml(payload.instructions)}</pre>` }).body,
+      agentCode: 'EML-012', approvalId,
+    })
     results.push(`EMAIL:${r.result.status}`)
   }
-  await setStage(client.id, 'PAYMENT_PENDING', 'Payment requested')
-  await audit({ actor, action: 'PAYMENT_REQUESTED', clientId: client.clientId, details: { results } })
-  return { instructions, results }
+  await audit({ actor: `admin:${adminUserId}`, action: 'PAYMENT_INSTRUCTIONS_SENT', clientId: client.clientId, entityId: approvalId, details: { results } })
+  return { results }
 }
 
 export async function recordPayment(clientRowId: string, input: { amount: number; currency?: string; method?: string; transactionId?: string; milestone?: string; notes?: string; invoiceId?: string }) {
@@ -759,11 +1024,15 @@ export async function verifyPayment(paymentId: string, adminUserId: string) {
       if (row.invoiceId) await recalcInvoiceStatus(row.invoiceId).catch(() => null)
     }
   }
-  // confirmation email
-  if (!alreadyVerified && client?.email) {
-    await sendCommunication({
-      clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'Payment received — thank you',
-      body: emailTemplate('PAYMENT_CONFIRMED', { name: client.name, extra: `<p>Payment of <strong>${payment.amount} ${payment.currency}</strong> verified on ${new Date().toDateString()}.</p>` }).body, agentCode: 'EML-012',
+  // STAGE 8 — the payment-received acknowledgement. The message carries no
+  // amount (the verified amount lives on the Payment record and in the
+  // audit trail), so it stays on the auto-send list.
+  if (!alreadyVerified && client) {
+    await sendPipelineMessage({
+      clientRowId: client.id,
+      stage: 'PAYMENT_RECEIVED',
+      variables: pipelineVars(client),
+      agentCode: 'PAY-016',
     })
   }
   await audit({ actor: `admin:${adminUserId}`, action: alreadyVerified ? 'PAYMENT_VERIFICATION_RECONCILED' : 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null } })
@@ -906,7 +1175,18 @@ export async function prepareHandover(clientRowId: string, projectId: string, ac
       return { blocked: true, reason: 'A legacy handover record has no verifiable artifact list. It requires operator review; no new release approval was created.' }
     }
     const expired = existing.status !== 'CONFIRMED' && (existing.status === 'EXPIRED' || Boolean(existing.expiryAt && existing.expiryAt <= new Date()))
-    if (!expired) return { blocked: false, handover: existing, reused: true }
+    if (!expired) {
+      // STAGE 9 — the delivery-ready notice is auto-sent; the FILE LINKS
+      // are not included here. They are only released by the pending
+      // Super Admin source-handover approval.
+      await sendPipelineMessage({
+        clientRowId: project.clientId,
+        stage: 'FINAL_DELIVERY_READY',
+        variables: pipelineVars(project.client),
+        agentCode: 'HND-030',
+      })
+      return { blocked: false, handover: existing, reused: true }
+    }
     // Create a new token + approval for an expired package. The old token stays
     // expired, and the new approval is bound to the current exact manifest.
   }
@@ -937,6 +1217,14 @@ export async function prepareHandover(clientRowId: string, projectId: string, ac
     },
   })
   await setStage(project.clientId, 'HANDOVER', 'Verified artifact manifest pending Super Admin approval')
+  // STAGE 9 — the delivery-ready notice. The notice carries NO file link;
+  // the links are released only through the approved handover.
+  await sendPipelineMessage({
+    clientRowId: project.clientId,
+    stage: 'FINAL_DELIVERY_READY',
+    variables: pipelineVars(project.client),
+    agentCode: 'HND-030',
+  })
   return { blocked: false, handover }
 }
 
@@ -966,6 +1254,9 @@ export async function releaseHandover(handoverId: string, adminUserId: string, a
   if (!project) throw new Error('Project not found')
   const paid = project.payments.filter((payment) => payment.status === 'PAID').reduce((total, payment) => total + payment.amount, 0)
   const fullPayment = project.totalAmount > 0 ? paid >= project.totalAmount : paid > 0
+  // The two non-negotiable rules, enforced in code: Source Code After
+  // Full Payment, and an admin approval for every handover release.
+  assertDeliveryRules({ paymentConfirmed: fullPayment, sourceCodeRelease: true, adminApproved: true })
   if (!fullPayment) throw new Error('BLOCKED: full payment verification required before releasing source code.')
   if (project.tasks.length === 0 || project.tasks.some((task) => task.status !== 'DONE')) {
     throw new Error('BLOCKED: every project task must be completed before releasing source code.')
@@ -1054,6 +1345,17 @@ export async function releaseHandover(handoverId: string, adminUserId: string, a
     entityId: handover.id,
     details: { artifactCount: manifest.files.length, notificationStatus },
   })
+
+  // STAGE 10 — the delivery is complete. The client is asked to confirm
+  // receipt, function and the password change.
+  await sendPipelineMessage({
+    clientRowId: project.clientId,
+    stage: 'FINAL_DELIVERY_COMPLETED',
+    variables: pipelineVars(project.client),
+    agentCode: 'HND-030',
+    approvalId: approvalRequestId,
+  })
+
   return { link, artifactCount: manifest.files.length, notificationStatus, status: 'RELEASED' as const }
 }
 
@@ -1168,15 +1470,17 @@ export async function requestReviewAndReferral(clientRowId: string) {
     : await db.referral.create({ data: { clientId: client.id, status: 'REQUESTED', notes: 'Requested after delivery confirmation' } })
 
   await setStage(client.id, 'REVIEW_REQUESTED', 'Review requested (optional)')
-  if (client.email) {
-    await sendCommunication({ clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'How was your experience with Tech360?', body: emailTemplate('REVIEW_REQUEST', { name: client.name }).body, agentCode: 'RSK-036' })
-  }
+  // STAGE 11 — the project is closed. The review request and the optional
+  // recommendation request are on the auto-send list.
+  const sent = await sendPipelineMessage({
+    clientRowId: client.id,
+    stage: 'PROJECT_CLOSED',
+    variables: pipelineVars(client),
+    agentCode: 'RSK-036',
+  })
   await setStage(client.id, 'REFERRAL_REQUESTED', 'Referral requested (optional)')
-  if (client.email) {
-    await sendCommunication({ clientId: client.id, channel: 'EMAIL', to: client.email, subject: 'Know a business that needs software?', body: emailTemplate('REFERRAL_REQUEST', { name: client.name }).body, agentCode: 'RSK-036' })
-  }
   await rememberMemory({ scope: 'CLIENT', key: `review-request:${client.id}`, content: `Review + referral requested after delivery. Review slot ${review.id} (PENDING), referral record ${referral.id} (REQUESTED). Client submits via portal.`, clientId: client.id, importance: 6 })
-  return { ok: true, reviewId: review.id, referralId: referral.id, projectId }
+  return { ok: true, reviewId: review.id, referralId: referral.id, projectId, sent }
 }
 
 export async function closeProject(projectId: string, actor: string) {
