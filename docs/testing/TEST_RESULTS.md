@@ -20,8 +20,8 @@
 | Node | v22.22.3 |
 | Platform | Linux x64, 2 vCPU, 3.8 GB RAM |
 | Test files | **37** |
-| Tests | **627** |
-| Passed | **626** |
+| Tests | **629** |
+| Passed | **628** |
 | Failed | **1** |
 | Skipped / todo | 0 |
 
@@ -56,7 +56,7 @@ there. Every other suite passes.
 | `chat-triage.test.ts` | 6 | 6 | 0 |
 | `client-comms-inbox.test.ts` | 2 | 2 | 0 |
 | `communication-pipeline.test.ts` | 61 | 61 | 0 |
-| `schema-ddl-parity.test.ts` | 6 | 6 | 0 |
+| `schema-ddl-parity.test.ts` | 8 | 8 | 0 |
 | `contact-policy.test.ts` | 2 | 2 | 0 |
 | `database-workflows.test.ts` | 1 | 0 | **1** (environmental) |
 | `eval-harness.test.ts` | 25 | 25 | 0 |
@@ -81,7 +81,7 @@ there. Every other suite passes.
 | `skills-registry.test.ts` | 38 | 38 | 0 |
 | `telephony.test.ts` | 16 | 16 | 0 |
 | `webhook-auth.test.ts` | 20 | 20 | 0 |
-| **Total** | **627** | **626** | **1** |
+| **Total** | **629** | **628** | **1** |
 
 ---
 

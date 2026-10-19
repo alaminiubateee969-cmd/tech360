@@ -692,7 +692,7 @@ model AiMemory {
   /// The tags that make it retrievable.
   tags      String? @db.LongText
   createdAt DateTime @default(now())
-  updatedAt DateTime @updated(now())
+  updatedAt DateTime @updatedAt
 
   @@index([scope])
   @@index([clientId])

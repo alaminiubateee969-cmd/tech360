@@ -227,3 +227,51 @@ describe('the MySQL native-type map is the complete source of truth', () => {
     assert.match(output, /schema in sync/)
   })
 })
+
+describe('the schema uses only the attributes this codebase uses', () => {
+  /**
+   * `prisma validate` is the authority on the schema, but it needs the
+   * Prisma engine binary, which is not downloadable in every environment.
+   * This is the local half of that guard: it catches a mistyped or
+   * unexpected attribute before CI does.
+   *
+   * It earned its place: `@updated(now())` on a single `AiMemory.updatedAt`
+   * — one model out of thirty-four — was enough to fail `prisma validate`
+   * in CI and to mask every later step in the job.
+   */
+  const ALLOWED = new Set(['id', 'unique', 'default', 'relation', 'updatedAt', 'map', 'db', 'ignore', 'index'])
+
+  it('uses no attribute outside the allowed set', () => {
+    const used = new Set<string>()
+    for (const raw of schemaSrc.split('\n')) {
+      const line = raw.trim()
+      if (!line || line.startsWith('//')) continue
+      // `@@index` and `@id` are the same attribute name with a different
+      // scope, so the leading '@' is stripped before the comparison.
+      for (const attribute of line.match(/@@?[a-zA-Z]+/g) ?? []) used.add(attribute.replace(/^@+/, ''))
+    }
+    const unexpected = [...used].filter((attribute) => !ALLOWED.has(attribute)).sort()
+    assert.deepEqual(
+      unexpected,
+      [],
+      `unexpected schema attribute(s): ${unexpected.map((a) => `@${a}`).join(', ')} — check the spelling and the Prisma version`,
+    )
+  })
+
+  it('gives every updatedAt field a known timestamp attribute', () => {
+    const deviations: string[] = []
+    for (const model of models) {
+      const body = schemaSrc.split(`model ${model.name} {`)[1]?.split('\n}')[0] ?? ''
+      const match = /^\s*updatedAt\s+DateTime\??\s*(.*)$/m.exec(body)
+      if (!match) continue
+      const attrs = match[1].trim()
+      const known = /@updatedAt\b/.test(attrs) || /@default\(now\(\)\)/.test(attrs)
+      if (!known) deviations.push(`${model.name}.updatedAt — ${attrs || 'no attribute'}`)
+    }
+    assert.deepEqual(
+      deviations,
+      [],
+      `updatedAt fields that do not use @updatedAt or @default(now()):\n  ${deviations.join('\n  ')}`,
+    )
+  })
+})
