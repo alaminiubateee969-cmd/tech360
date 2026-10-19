@@ -126,10 +126,16 @@ export async function executeAgentJobTool(input: {
 }): Promise<AgentJobToolExecutionResult> {
   const job = await db.agentJob.findUnique({ where: { id: input.jobId } })
   if (!job) return { ok: false, status: 'FAILED', output: '', error: 'AGENT_JOB_NOT_FOUND' }
-  if (job.taskType !== 'TOOL_CALL' || !job.toolName) {
+  // A tool call is always agent-owned. `agentCode` is nullable at the column
+  // level only because the same queue carries skill and workflow tasks, so a
+  // TOOL_CALL job without one is refused instead of executed.
+  if (job.taskType !== 'TOOL_CALL' || !job.toolName || !job.agentCode) {
     return { ok: false, status: 'FAILED', output: '', error: 'AGENT_JOB_TOOL_ENVELOPE_INVALID' }
   }
 
+  // Captured after the guard above so every later use — including the ones
+  // inside the side-effect transaction — is provably non-null.
+  const agentCode = job.agentCode
   let invocation: NormalizedAgentJobToolCall
   try {
     invocation = normalizeAgentJobToolCall(job.toolName, parseToolArgs(job.toolArgs))
@@ -139,7 +145,7 @@ export async function executeAgentJobTool(input: {
 
   const [agent, project] = await Promise.all([
     db.aiAgent.findUnique({
-      where: { code: job.agentCode },
+      where: { code: agentCode },
       select: { code: true, status: true, requiresApproval: true, tools: true, permissions: true, department: { select: { code: true } } },
     }),
     job.projectId
@@ -149,7 +155,7 @@ export async function executeAgentJobTool(input: {
         })
       : Promise.resolve(null),
   ])
-  const definition = getAgentDefinition(job.agentCode)
+  const definition = getAgentDefinition(agentCode)
   if (!agent || !definition || agent.status !== 'ACTIVE') {
     return { ok: false, status: 'FAILED', output: '', error: 'AGENT_INACTIVE_OR_UNREGISTERED' }
   }
@@ -199,7 +205,7 @@ export async function executeAgentJobTool(input: {
       // the side effect, so a changed grant/project cannot be trusted from the
       // earlier preflight snapshot.
       const currentAgent = await tx.aiAgent.findUnique({
-        where: { code: job.agentCode },
+        where: { code: agentCode },
         select: { code: true, status: true, requiresApproval: true, tools: true, permissions: true, department: { select: { code: true } } },
       })
       const currentProject = job.projectId

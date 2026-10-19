@@ -44,7 +44,7 @@ type OpsCycle = {
 
 type OpsAgentJob = {
   id: string
-  agentCode: string
+  agentCode: string | null
   clientId: string | null
   workflow: string | null
   taskType: string
@@ -248,7 +248,7 @@ export function OpsView() {
               {ops.agentJobs.recent.map((job) => (
                 <li key={job.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
                   <StatusBadge status={job.status} />
-                  <span className="font-mono text-[10px] text-slate-400">{job.agentCode}</span>
+                  <span className="font-mono text-[10px] text-slate-400">{job.agentCode ?? '—'}</span>
                   {job.clientId ? <span className="text-[10px] text-slate-500">client row {job.clientId}</span> : null}
                   <span className="text-[10px] text-slate-600">{job.workflow ?? 'MANUAL'} · {job.taskType === 'TOOL_CALL' ? `tool ${job.toolName ?? 'unknown'}` : 'inference'} · attempt {job.attempts}/{job.maxAttempts}</span>
                   <span className="ml-auto text-[10px] text-slate-600">{fmtTime(job.createdAt)}</span>

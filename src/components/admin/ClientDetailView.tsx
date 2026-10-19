@@ -846,7 +846,7 @@ export function ClientDetailView({
                   <li key={job.id} className="rounded-md border border-slate-800 bg-slate-950/50 p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={job.status} />
-                      <span className="font-mono text-xs text-slate-300">{job.agentCode}</span>
+                      <span className="font-mono text-xs text-slate-300">{job.agentCode ?? '—'}</span>
                       <span className="text-[10px] text-slate-500">attempt {num(job.attempts)}/{num(job.maxAttempts)}</span>
                       <span className="ml-auto text-[10px] text-slate-600">{fmtDate(job.completedAt ?? job.startedAt ?? job.createdAt)}</span>
                     </div>

@@ -398,7 +398,7 @@ function AgentJobsPanel() {
             <li key={job.id} className="space-y-2 px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={job.status} />
-                <span className="font-mono text-[11px] text-slate-400">{job.agentCode}</span>
+                <span className="font-mono text-[11px] text-slate-400">{job.agentCode ?? '—'}</span>
                 <span className="text-xs font-medium text-slate-200">{job.agent?.name ?? 'Agent'}</span>
                 <span className="text-[10px] text-slate-600">attempt {num(job.attempts)}/{num(job.maxAttempts)}</span>
                 <span className="ml-auto text-[10px] text-slate-600">{fmtDate(job.createdAt)}</span>
