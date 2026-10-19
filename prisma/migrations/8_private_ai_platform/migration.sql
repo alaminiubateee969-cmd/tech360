@@ -29,7 +29,7 @@ CREATE TABLE `Skill` (
     `riskLevel` VARCHAR(191) NOT NULL DEFAULT 'LOW',
     `testRefs` TEXT NOT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
+    `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `Skill_slug_key`(`slug`),
     INDEX `Skill_status_category_idx`(`status`, `category`),
@@ -110,7 +110,7 @@ CREATE TABLE `KnowledgeIngestRecord` (
     `status` VARCHAR(191) NOT NULL DEFAULT 'INDEXED',
     `notes` TEXT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
+    `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `KnowledgeIngestRecord_documentId_key`(`documentId`),
     INDEX `KnowledgeIngestRecord_accessLevel_status_idx`(`accessLevel`, `status`),
@@ -132,7 +132,7 @@ CREATE TABLE `ModelDeployment` (
     `verifiedBy` VARCHAR(191) NOT NULL DEFAULT 'verify-local-models.mjs',
     `notes` TEXT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
+    `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `ModelDeployment_slug_key`(`slug`),
     INDEX `ModelDeployment_provider_idx`(`provider`),
@@ -151,7 +151,7 @@ CREATE TABLE `WorkflowDefinition` (
     `createdBy` VARCHAR(191) NULL,
     `publishedAt` DATETIME(3) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
+    `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `WorkflowDefinition_key_key`(`key`),
     INDEX `WorkflowDefinition_status_updatedAt_idx`(`status`, `updatedAt`),
@@ -178,6 +178,12 @@ ALTER TABLE `PromptTemplate` ADD COLUMN `stage` VARCHAR(191) NOT NULL DEFAULT 'T
   ADD COLUMN `usageCount` INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN `successCount` INTEGER NOT NULL DEFAULT 0;
 
+-- The single-column index on `category` is replaced by this composite
+-- index, whose leading column is still `category`, so no query loses
+-- its index. The old index is dropped so the applied schema matches
+-- prisma/schema.prisma exactly and `prisma migrate diff` reports
+-- zero drift.
+DROP INDEX `PromptTemplate_category_idx` ON `PromptTemplate`;
 CREATE INDEX `PromptTemplate_category_status_idx` ON `PromptTemplate`(`category`, `status`);
 CREATE INDEX `PromptTemplate_agentCode_stage_idx` ON `PromptTemplate`(`agentCode`, `stage`);
 CREATE INDEX `PromptTemplate_departmentCode_stage_idx` ON `PromptTemplate`(`departmentCode`, `stage`);

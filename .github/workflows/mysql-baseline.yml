@@ -68,6 +68,9 @@ jobs:
       - name: Schema is in sync with the MySQL type map
         run: node scripts/convert-schema-to-mysql.mjs --check
 
+      - name: Committed migrations reproduce the schema (no drift)
+        run: node scripts/check-schema-drift.mjs
+
       - name: Validate schema
         run: npx prisma validate
 

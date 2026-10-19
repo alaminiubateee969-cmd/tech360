@@ -228,6 +228,30 @@ describe('the MySQL native-type map is the complete source of truth', () => {
   })
 })
 
+describe('the migrations reproduce the schema (the local drift gate)', () => {
+  it('reports no drift between prisma/schema.prisma and the committed migrations', () => {
+    // CI proves this with `prisma migrate diff` against a live MySQL.
+    // This is the same contract, checkable without a database: the script
+    // applies the same rules (tables, columns, types, nullability,
+    // defaults, indexes) statically.
+    let output = ''
+    let failed = false
+    try {
+      output = execFileSync('node', ['scripts/check-schema-drift.mjs'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+    } catch (error) {
+      failed = true
+      const e = error as { stdout?: string; stderr?: string }
+      output = `${e.stdout ?? ''}${e.stderr ?? ''}`
+    }
+    assert.equal(failed, false, `schema drift detected:\n${output}`)
+    assert.match(output, /no schema drift/)
+  })
+})
+
 describe('the schema uses only the attributes this codebase uses', () => {
   /**
    * `prisma validate` is the authority on the schema, but it needs the

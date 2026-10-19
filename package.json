@@ -19,6 +19,7 @@
     "db:deploy": "node scripts/prisma.mjs migrate deploy",
     "schema:mysql": "node scripts/convert-schema-to-mysql.mjs",
     "schema:check": "node scripts/convert-schema-to-mysql.mjs --check",
+    "schema:drift": "node scripts/check-schema-drift.mjs",
     "start:bun": "NODE_ENV=production bun .next/standalone/server.js",
     "hostinger:build": "npm run build",
     "eval:generate": "node scripts/eval/generate-dataset.mjs",

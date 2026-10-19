@@ -152,6 +152,13 @@ jobs:
       - name: Prisma schema is in sync with the MySQL type map
         run: node scripts/convert-schema-to-mysql.mjs --check
 
+      # The database-free half of the drift gate. It applies the same rules
+      # as `prisma migrate diff` (tables, columns, types, nullability,
+      # defaults, indexes) statically, so a drift is reported here with a
+      # precise message instead of only after a MySQL container has run.
+      - name: Committed migrations reproduce the schema (no drift)
+        run: node scripts/check-schema-drift.mjs
+
       - name: Prisma provider matches DATABASE_URL scheme
         run: |
           PROVIDER="$(sed -n 's/^[[:space:]]*provider[[:space:]]*=[[:space:]]*"\([a-z]*\)".*/\1/p' prisma/schema.prisma | head -1)"
