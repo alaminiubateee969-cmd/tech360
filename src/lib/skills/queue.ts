@@ -163,7 +163,11 @@ export async function processSkillTaskBatch(
         correlationId: job.correlationId,
         output: result.output ? JSON.stringify(result.output) : '',
         ...(result.error ? { error: result.error } : {}),
-        status: result.ok ? 'SUCCESS' : 'FAILED',
+        // AgentJob states are QUEUED|RUNNING|RETRYING|AWAITING_APPROVAL|
+        // COMPLETED|FAILED|TIMED_OUT|CANCELLED. 'SUCCESS' is the SkillRun
+        // vocabulary (written by the executor); a successful skill job must
+        // report COMPLETED here or the queue would treat it as a failure.
+        status: result.ok ? 'COMPLETED' : 'FAILED',
       },
       new Date(),
     )

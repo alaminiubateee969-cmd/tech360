@@ -574,11 +574,15 @@ model AgentJob {
   id             String   @id @default(cuid())
   idempotencyKey String   @unique
   payloadHash    String   @db.Char(64)
-  taskType       String   @default("INFERENCE") // INFERENCE | TOOL_CALL; only the explicit executor allowlist can run a tool
+  taskType       String   @default("INFERENCE") // INFERENCE | TOOL_CALL | SKILL | WORKFLOW | DOCUMENT; only the explicit executor allowlist can run a tool
   toolName       String?  @db.VarChar(80)
   toolArgs       String? @db.LongText // JSON arguments for an allowlisted internal tool; never provider credentials
-  agentCode      String
-  agent          AiAgent  @relation(fields: [agentCode], references: [code], onDelete: Restrict)
+  // Nullable so the SAME durable queue can carry skill and workflow tasks
+  // that are not owned by an LLM agent (migration 8_private_ai_platform).
+  // INFERENCE and TOOL_CALL jobs always set it; the worker refuses to run a
+  // job whose task type needs an agent but has none.
+  agentCode      String?
+  agent          AiAgent? @relation(fields: [agentCode], references: [code], onDelete: Restrict)
   clientId       String?
   client         Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   projectId      String?

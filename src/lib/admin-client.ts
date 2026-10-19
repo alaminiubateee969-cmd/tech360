@@ -552,7 +552,8 @@ export interface TimelineEvent {
 }
 export interface ClientAgentJobRecord {
   id: string
-  agentCode: string
+  /** NULL for skill/workflow jobs that no LLM agent owns. */
+  agentCode: string | null
   correlationId: string
   workflow?: string | null
   taskType?: string | null
@@ -703,7 +704,8 @@ export interface ExecutionRecord {
 }
 export interface AgentJobRow {
   id: string
-  agentCode: string
+  /** NULL for skill/workflow jobs that no LLM agent owns. */
+  agentCode: string | null
   correlationId: string
   clientId?: string | null
   projectId?: string | null

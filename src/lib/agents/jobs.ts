@@ -42,6 +42,11 @@ export class AgentJobDecisionConflict extends Error {
 }
 
 export type EnqueueAgentJobInput = {
+  /**
+   * Required for the task types an LLM agent owns (INFERENCE, TOOL_CALL) and
+   * NULL for the platform task types that are not agent-owned (SKILL,
+   * WORKFLOW, DOCUMENT) — the queue is shared, the column is nullable.
+   */
   agentCode: string | null
   idempotencyKey: string
   input: string
@@ -53,11 +58,19 @@ export type EnqueueAgentJobInput = {
   requestedBy?: string | null
   toolName?: string | null
   toolArgs?: unknown
+  /**
+   * INFERENCE  — an LLM agent run (requires agentCode)
+   * TOOL_CALL  — an explicitly allowlisted internal tool (requires agentCode)
+   * SKILL      — a deterministic skill execution (no LLM agent required)
+   * WORKFLOW   — a multi-step workflow run
+   * DOCUMENT   — a document processing run
+   */
+  taskType?: 'INFERENCE' | 'TOOL_CALL' | 'SKILL' | 'WORKFLOW' | 'DOCUMENT'
 }
 
 function payloadHash(input: Omit<EnqueueAgentJobInput, 'idempotencyKey' | 'requestedBy'>): string {
   const canonicalPayload: Record<string, unknown> = {
-    agentCode: input.agentCode.toUpperCase(),
+    agentCode: input.agentCode ? input.agentCode.toUpperCase() : null,
     input: input.input,
     contextNote: input.contextNote ?? '',
     expectJson: input.expectJson === true,
@@ -66,7 +79,9 @@ function payloadHash(input: Omit<EnqueueAgentJobInput, 'idempotencyKey' | 'reque
     workflow: input.workflow ?? null,
   }
   // Keep the original inference hash format stable for idempotent retries from
-  // clients running before tool-call jobs were introduced.
+  // clients running before tool-call jobs were introduced: an INFERENCE job
+  // without a tool is hashed exactly as it always has been.
+  if (input.taskType && input.taskType !== 'INFERENCE') canonicalPayload.taskType = input.taskType
   if (input.toolName) {
     canonicalPayload.taskType = 'TOOL_CALL'
     canonicalPayload.toolName = input.toolName
@@ -92,11 +107,13 @@ function prismaCode(error: unknown): string | null {
 }
 
 /**
- * Persist one idempotent inference request. The unique database key is the
+ * Persist one idempotent durable job: an LLM inference run, an explicitly
+ * allowlisted internal tool call, or a platform task type (SKILL, WORKFLOW,
+ * DOCUMENT) that no LLM agent owns. The unique database key is the
  * concurrency authority; a repeated key with different content is rejected.
  */
 export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ job: Awaited<ReturnType<typeof db.agentJob.findUniqueOrThrow>>; created: boolean }> {
-  const taskType = input.taskType ?? 'INFERENCE'
+  const requestedTaskType = input.taskType ?? 'INFERENCE'
   const agentCode = input.agentCode ? input.agentCode.trim().toUpperCase() : null
   const idempotencyKey = input.idempotencyKey.trim()
   const jobInput = input.input.trim()
@@ -116,20 +133,47 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
   } else if (input.toolArgs !== undefined) {
     throw new AgentJobInputError('Tool arguments require a tool name')
   }
+  // A tool envelope can never ride along on a platform task type. Omitting
+  // taskType is fine: the validated tool call below derives TOOL_CALL.
+  if (toolCall && input.taskType !== undefined && input.taskType !== 'TOOL_CALL') {
+    throw new AgentJobInputError(`A durable tool call must be queued as a TOOL_CALL task, not '${input.taskType}'`)
+  }
 
-  const agent = await db.aiAgent.findUnique({
-    where: { code: agentCode },
-    select: { code: true, status: true, requiresApproval: true, tools: true, permissions: true, department: { select: { code: true } } },
-  })
-  if (!agent) throw new AgentJobInputError(`Agent ${agentCode} is not registered in the database`)
-  if (agent.status !== 'ACTIVE') throw new AgentJobInputError(`Agent ${agentCode} is ${agent.status}`)
-  if (toolCall && agent.department?.code !== definition.dept) throw new AgentJobInputError(`Agent ${agentCode} department mapping is invalid`)
-  if (toolCall) {
-    if (!definition.tools.includes(toolCall.toolName)) throw new AgentJobInputError(`Agent ${agentCode} is not authorized for tool '${toolCall.toolName}' by the canonical registry`)
-    const toolDecision = authorizeAgentTool(agent, toolCall.toolName as AgentTool)
-    if (!toolDecision.allowed) throw new AgentJobInputError(`Tool '${toolCall.toolName}' is not granted (${toolDecision.code})`)
-    if (!agentHasPermission(agent, 'write:tasks') || !definition.permissions.includes('write:tasks')) {
-      throw new AgentJobInputError(`Agent ${agentCode} does not have the required write:tasks permission`)
+  // A tool call is always agent-owned, so the task type is derived from the
+  // validated tool envelope rather than trusted from the request.
+  const taskType: NonNullable<EnqueueAgentJobInput['taskType']> = toolCall ? 'TOOL_CALL' : requestedTaskType
+  // Only the agent-owned task types resolve an agent; SKILL, WORKFLOW and
+  // DOCUMENT jobs are queued with agentCode NULL because no LLM agent runs
+  // them, and their own workers claim them by task type.
+  const agentOwned = taskType === 'INFERENCE' || taskType === 'TOOL_CALL'
+
+  let definition: AgentSeed | null = null
+  let agent: {
+    code: string
+    status: string
+    requiresApproval: boolean
+    tools: string
+    permissions: string
+    department: { code: string } | null
+  } | null = null
+  if (agentOwned) {
+    if (!agentCode) throw new AgentJobInputError(`A ${taskType} task requires an agent code`)
+    definition = getAgentDefinition(agentCode)
+    if (!definition) throw new AgentJobInputError(`Agent ${agentCode} is not in the executable registry`)
+    agent = await db.aiAgent.findUnique({
+      where: { code: agentCode },
+      select: { code: true, status: true, requiresApproval: true, tools: true, permissions: true, department: { select: { code: true } } },
+    })
+    if (!agent) throw new AgentJobInputError(`Agent ${agentCode} is not registered in the database`)
+    if (agent.status !== 'ACTIVE') throw new AgentJobInputError(`Agent ${agentCode} is ${agent.status}`)
+    if (toolCall) {
+      if (agent.department?.code !== definition.dept) throw new AgentJobInputError(`Agent ${agentCode} department mapping is invalid`)
+      if (!definition.tools.includes(toolCall.toolName)) throw new AgentJobInputError(`Agent ${agentCode} is not authorized for tool '${toolCall.toolName}' by the canonical registry`)
+      const toolDecision = authorizeAgentTool(agent, toolCall.toolName as AgentTool)
+      if (!toolDecision.allowed) throw new AgentJobInputError(`Tool '${toolCall.toolName}' is not granted (${toolDecision.code})`)
+      if (!agentHasPermission(agent, 'write:tasks') || !definition.permissions.includes('write:tasks')) {
+        throw new AgentJobInputError(`Agent ${agentCode} does not have the required write:tasks permission`)
+      }
     }
   }
 
@@ -167,8 +211,10 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
   }
 
   // Fail safe when registry metadata and persisted agent configuration drift.
-  const requiresApproval = agent.requiresApproval
-    || definition.requiresApproval === true
+  // Platform task types (SKILL, WORKFLOW, DOCUMENT) have no agent, so nothing
+  // here can require an agent approval for them.
+  const requiresApproval = agent?.requiresApproval === true
+    || definition?.requiresApproval === true
     || Boolean(toolCall && PRIVILEGED_AGENT_TOOLS.includes(toolCall.toolName as AgentTool))
   const correlationId = newCorrelationId()
   try {
@@ -177,7 +223,7 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
         data: {
           idempotencyKey,
           payloadHash: hash,
-          taskType: toolCall ? 'TOOL_CALL' : 'INFERENCE',
+          taskType,
           toolName: toolCall?.toolName ?? null,
           toolArgs: toolCall?.serializedArgs ?? null,
           agentCode,
@@ -310,17 +356,25 @@ async function recoverExpiredAgentJobs(now: Date): Promise<number> {
   return recovered
 }
 
+/**
+ * Lease the next runnable job of the requested task type(s).
+ *
+ * One queue, several workers: the agent worker claims the agent-owned types
+ * (INFERENCE and TOOL_CALL), the skill worker claims SKILL. A worker never
+ * leases a task type it cannot execute, so a claim is always progress.
+ */
 export async function claimNextAgentJob(
   workerId: string,
   now = new Date(),
-  taskType = 'INFERENCE',
+  taskTypes: string | string[] = 'INFERENCE',
 ): Promise<Awaited<ReturnType<typeof db.agentJob.findUniqueOrThrow>> | null> {
+  const claimedTypes = Array.isArray(taskTypes) ? taskTypes : [taskTypes]
   const candidate = await db.agentJob.findFirst({
     where: {
       status: { in: ['QUEUED', 'RETRYING'] },
       approvalState: { in: ['NOT_REQUIRED', 'APPROVED'] },
       availableAt: { lte: now },
-      taskType,
+      taskType: { in: claimedTypes },
     },
     orderBy: [{ availableAt: 'asc' }, { createdAt: 'asc' }],
   })
@@ -443,8 +497,15 @@ export async function processAgentJobBatch(
 
   for (let i = 0; i < safeLimit; i += 1) {
     const workerId = randomUUID()
-    const job = await claimNextAgentJob(workerId, new Date())
+    // This worker executes both agent-owned task types, so it leases both.
+    // SKILL, WORKFLOW and DOCUMENT jobs belong to their own workers.
+    const job = await claimNextAgentJob(workerId, new Date(), ['INFERENCE', 'TOOL_CALL'])
     if (!job) break
+
+    // `agentCode` is nullable because the same queue carries skill and
+    // workflow tasks that no LLM agent owns. Capture the narrowed value so a
+    // failure can still be reported without a null.
+    const agentCode = job.agentCode ?? ''
 
     if (job.taskType === 'TOOL_CALL') {
       let toolResult: Awaited<ReturnType<typeof executeAgentJobTool>>
@@ -459,7 +520,7 @@ export async function processAgentJobBatch(
       }
       const failure = {
         ok: false,
-        agentCode: job.agentCode,
+        agentCode,
         executionId: '',
         correlationId: job.correlationId,
         output: '',
@@ -473,7 +534,9 @@ export async function processAgentJobBatch(
 
     let result: Awaited<ReturnType<typeof runAgent>>
     if (job.taskType !== 'INFERENCE') {
-      result = { ok: false, agentCode: job.agentCode, executionId: '', correlationId: job.correlationId, output: '', json: null, error: 'Unsupported AgentJob task type', status: 'FAILED' }
+      result = { ok: false, agentCode, executionId: '', correlationId: job.correlationId, output: '', json: null, error: `Unsupported AgentJob task type '${job.taskType}'`, status: 'FAILED' }
+    } else if (!job.agentCode) {
+      result = { ok: false, agentCode, executionId: '', correlationId: job.correlationId, output: '', json: null, error: 'INFERENCE job has no agent code — the registry and the queue have drifted', status: 'FAILED' }
     } else {
       try {
         result = await runInference(job.agentCode, {
