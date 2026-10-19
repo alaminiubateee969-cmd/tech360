@@ -175,13 +175,25 @@ export interface DashboardStats {
   activeProjects: number
   projectsAwaitingApproval: number
   paymentPending: number
-  paidProjects: number
-  outstandingReceivables: number
+  paidProjects: number | null
+  outstandingReceivables: number | null
+  totalPaidRevenue?: number | null
   completedProjects: number
   openTasks: number
   unreadCommunications: number
   failedAutomations: number
   pendingAdminApprovals: number
+  pendingPaymentVerifications?: number | null
+  overdueTasks?: number
+  upcomingDeadlines?: number
+  pendingRefunds?: number | null
+  approvedRefunds?: number | null
+  emailQueued?: number
+  emailSent?: number
+  emailFailed?: number
+  verifiedEmailIdentities?: number
+  handoversAwaitingPayment?: number
+  handoversAwaitingConfirmation?: number
 }
 export interface StageCount { stage: string; count: number }
 export interface MonthRevenue { month: string; paid: number }
@@ -204,6 +216,7 @@ export interface RecentActivity {
   clientId?: string | null
 }
 export interface DashboardResponse {
+  financialDataAvailable: boolean
   stats: DashboardStats
   pipeline: StageCount[]
   revenueByMonth: MonthRevenue[]
@@ -897,6 +910,17 @@ export const api = {
     }),
   sendCommunication: (body: { clientId: string; channel: string; subject?: string; body: string }) =>
     fetchJson<CommSendResponse>('/api/admin/communications/send', { method: 'POST', body }),
+  createInvoiceDraft: (body: {
+    clientId: string
+    projectId?: string
+    description: string
+    amount: string
+    currency: string
+    dueAt?: string
+  }) => fetchJson<{ ok?: boolean; message?: string; invoice?: InvoiceRecord; error?: string }>(
+    '/api/admin/invoices',
+    { method: 'POST', body },
+  ),
   recordPayment: (body: {
     clientId: string
     amount: number

@@ -53,11 +53,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ numb
   // says so honestly instead of listing methods. ----
   const paymentsOn = await featureEnabled('payments')
   const methodsPhrase = paymentsOn ? await acceptedMethodsPhrase() : ''
-  const payNoteHtml = !paymentsOn
-    ? `<div class="pay-note"><strong>Payment:</strong> Online payment intake is temporarily disabled by the platform administrator. Our finance automation (PAY-016) will contact you directly to settle invoice <b>${escapeHtml(invoice.number)}</b>.</div>`
+  const payNoteHtml = invoice.status === 'DRAFT'
+    ? `<div class="pay-note"><strong>Draft — not issued.</strong> This document is for internal review only. It is not a payment request, and no payment has been received or verified.</div>`
+    : !paymentsOn
+      ? `<div class="pay-note"><strong>Payment:</strong> Online payment intake is temporarily disabled by the platform administrator. No payment instructions are configured for this invoice.</div>`
     : methodsPhrase
-      ? `<div class="pay-note"><strong>Payment:</strong> Accepted methods: <b>${escapeHtml(methodsPhrase)}</b>. Account details are shared with payment instructions by our finance automation (PAY-016). Quote invoice <b>${escapeHtml(invoice.number)}</b> and your Client ID <b>${escapeHtml(invoice.client.clientId)}</b> as the transaction reference. A receipt is issued after verification.</div>`
-      : `<div class="pay-note"><strong>Payment:</strong> All payment methods are currently disabled by the platform administrator. Our finance automation (PAY-016) will contact you to arrange settlement of invoice <b>${escapeHtml(invoice.number)}</b>.</div>`
+      ? `<div class="pay-note"><strong>Payment:</strong> Accepted methods: <b>${escapeHtml(methodsPhrase)}</b>. Payment instructions, if available, are sent separately by an authorized team member. Quote invoice <b>${escapeHtml(invoice.number)}</b> and your Client ID <b>${escapeHtml(invoice.client.clientId)}</b> as the transaction reference. An official receipt is issued only after receipt of funds is verified.</div>`
+      : `<div class="pay-note"><strong>Payment:</strong> No payment methods are currently configured. This invoice cannot be paid through the platform at this time. Contact ${PAD.email} for an update.</div>`
 
   const content = `
 <!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex,nofollow"/><title>${escapeHtml(invoice.number)} — Tech360 Invoice</title><style>${PAD_CSS}
@@ -118,7 +120,7 @@ ${padMeta([
   <b style="white-space:nowrap">${money(invoice.amount, invoice.currency)}</b>
 </div>
 ${invoice.status === 'PAID'
-  ? `<div class="pay-note"><strong>Payment received — thank you.</strong> This invoice is settled in full and serves as your receipt. Payment verified by the Tech360 finance automation with your Client ID ${escapeHtml(invoice.client.clientId)} quoted as reference.</div>`
+  ? `<div class="pay-note"><strong>Payment verified — thank you.</strong> This invoice is settled in full. This invoice document is not itself an official payment receipt; any receipt is issued as a separate verified record.</div>`
   : payNoteHtml}
 <p style="font-size:11.5px;color:#7C8DA0;line-height:1.7">Thank you for your business. This invoice was generated electronically by the Tech360 client platform and is valid without a manual signature. Questions: ${PAD.email} · AI assistant chat at www.${PAD.domain}.</p>
 </main>

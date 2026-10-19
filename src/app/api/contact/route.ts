@@ -12,14 +12,14 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest) {
   // feature-gate: support/contact switch + maintenance mode (Super Admin)
   if (!(await featureEnabled('support'))) {
-    return Response.json({ error: 'Contact form intake is currently disabled. Please try again later or email hello@bdtech360.com.' }, { status: 503 })
+    return Response.json({ error: 'Contact form intake is currently disabled. Please try again later or email info@bdtech360.com.' }, { status: 503 })
   }
   if (await featureEnabled('maintenance_mode')) {
     return Response.json({ error: 'We are performing scheduled maintenance. Please try again shortly.' }, { status: 503 })
   }
   const ip = clientIp(req)
   const rl = rateLimit(`contact:${ip}`, 5, 10 * 60_000)
-  if (!rl.ok) return Response.json({ error: 'Too many submissions. Please try again later or message us on WhatsApp.' }, { status: 429 })
+  if (!rl.ok) return Response.json({ error: 'Too many submissions. Please try again later or email info@bdtech360.com.' }, { status: 429 })
 
   const raw = await readJson(req)
   if (!hasExplicitContactConsent(raw.consent)) {
@@ -99,6 +99,6 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error'
     await logError({ source: 'API', code: 'CONTACT_FAILED', message: msg, workflow: 'CONTACT' })
-    return Response.json({ error: 'We could not process your submission right now. Please message us directly on WhatsApp.' }, { status: 500 })
+    return Response.json({ error: 'We could not process your submission right now. Please email info@bdtech360.com.' }, { status: 500 })
   }
 }
