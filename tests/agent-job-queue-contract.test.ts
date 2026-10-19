@@ -124,6 +124,29 @@ describe('the shared AgentJob queue contract', () => {
     assert.match(jobs, /if \(agentOwned\) \{[\s\S]*?db\.aiAgent\.findUnique/, 'the agent lookup must stay inside the agent-owned branch')
   })
 
+  it('leases every task type its worker can actually execute', () => {
+    const jobs = readFileSync(join(ROOT, 'src/lib/agents/jobs.ts'), 'utf8')
+    // The merged regression this pins: the claim was filtered to INFERENCE
+    // only (the skill worker's need), so a queued TOOL_CALL job could never be
+    // leased and the allowlisted tool never ran.
+    assert.match(
+      jobs,
+      /claimNextAgentJob\(workerId, new Date\(\), \['INFERENCE', 'TOOL_CALL'\]\)/,
+      'processAgentJobBatch must lease both agent-owned task types',
+    )
+    assert.match(
+      jobs,
+      /taskTypes: string \| string\[\] = 'INFERENCE'/,
+      'claimNextAgentJob must keep its single-type default for existing callers',
+    )
+    const queue = readFileSync(join(ROOT, 'src/lib/skills/queue.ts'), 'utf8')
+    assert.match(
+      queue,
+      /claimNextAgentJob\(workerId, new Date\(\), SKILL_TASK_TYPE\)/,
+      'the skill worker must claim only SKILL jobs',
+    )
+  })
+
   it('reports only real AgentJob states from every queue writer', () => {
     const known = new Set<string>(AGENT_JOB_STATES)
     const writers: Array<[string, string[]]> = [

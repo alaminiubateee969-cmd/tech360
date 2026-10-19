@@ -356,17 +356,25 @@ async function recoverExpiredAgentJobs(now: Date): Promise<number> {
   return recovered
 }
 
+/**
+ * Lease the next runnable job of the requested task type(s).
+ *
+ * One queue, several workers: the agent worker claims the agent-owned types
+ * (INFERENCE and TOOL_CALL), the skill worker claims SKILL. A worker never
+ * leases a task type it cannot execute, so a claim is always progress.
+ */
 export async function claimNextAgentJob(
   workerId: string,
   now = new Date(),
-  taskType = 'INFERENCE',
+  taskTypes: string | string[] = 'INFERENCE',
 ): Promise<Awaited<ReturnType<typeof db.agentJob.findUniqueOrThrow>> | null> {
+  const claimedTypes = Array.isArray(taskTypes) ? taskTypes : [taskTypes]
   const candidate = await db.agentJob.findFirst({
     where: {
       status: { in: ['QUEUED', 'RETRYING'] },
       approvalState: { in: ['NOT_REQUIRED', 'APPROVED'] },
       availableAt: { lte: now },
-      taskType,
+      taskType: { in: claimedTypes },
     },
     orderBy: [{ availableAt: 'asc' }, { createdAt: 'asc' }],
   })
@@ -489,7 +497,9 @@ export async function processAgentJobBatch(
 
   for (let i = 0; i < safeLimit; i += 1) {
     const workerId = randomUUID()
-    const job = await claimNextAgentJob(workerId, new Date())
+    // This worker executes both agent-owned task types, so it leases both.
+    // SKILL, WORKFLOW and DOCUMENT jobs belong to their own workers.
+    const job = await claimNextAgentJob(workerId, new Date(), ['INFERENCE', 'TOOL_CALL'])
     if (!job) break
 
     // `agentCode` is nullable because the same queue carries skill and
