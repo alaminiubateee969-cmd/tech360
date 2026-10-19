@@ -18,7 +18,7 @@ The platform is **built, tested and coherent**. It is **not released**.
 
 | | |
 |---|---|
-| Tests | **630**, of which **629 pass**. The one failure needs a real MySQL and a generated Prisma client — both environmental |
+| Tests | **632**, of which **631 pass**. The one failure needs a real MySQL and a generated Prisma client — both environmental |
 | Type check | 4 errors, all environmental, all pre-existing |
 | Lint | clean |
 | The AI workforce | **2,201 employees**, 110 departments, 8 divisions, 9 levels — every one validated |
@@ -192,7 +192,7 @@ recognise SMS.
 | API routes | **164** | `src/app/api/**/route.ts` |
 | Console views | **45** | `src/components/admin/*.tsx` |
 | Source files | **410** (77,095 lines) | filesystem |
-| Test files | **37** | `tests/*.test.ts` |
+| Test files | **38** | `tests/*.test.ts` |
 
 **These are not projections.** Each one is a count in a test assertion
 or in a console panel that reads the live value.

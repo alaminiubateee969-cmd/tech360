@@ -120,7 +120,7 @@ export async function clientProfile(clientRef: string): Promise<ClientProfileDTO
 
   const scopeApprovals = await db.scopeApproval.findMany({
     where: { clientId: client.id },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { decidedAt: 'desc' },
   })
 
   const scopeHistory = client.scopes.map((scope) => {

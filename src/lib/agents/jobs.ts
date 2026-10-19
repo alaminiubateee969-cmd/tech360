@@ -407,6 +407,10 @@ export async function processAgentJobBatch(limit = 1): Promise<{
     if (!job) break
 
     let result: Awaited<ReturnType<typeof runAgent>>
+    // `agentCode` became nullable when the queue started carrying skill and
+    // workflow tasks that no LLM agent owns. Capture the narrowed value so
+    // the failure path below can report it without a null.
+    const agentCode = job.agentCode ?? ''
     try {
       if (!job.agentCode) {
         throw new Error('INFERENCE job has no agent code — the registry and the queue have drifted')
@@ -423,7 +427,7 @@ export async function processAgentJobBatch(limit = 1): Promise<{
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected worker failure'
-      result = { ok: false, agentCode: job.agentCode, executionId: '', correlationId: job.correlationId, output: '', json: null, error: message, status: 'FAILED' }
+      result = { ok: false, agentCode, executionId: '', correlationId: job.correlationId, output: '', json: null, error: message, status: 'FAILED' }
     }
     const status = await finishClaimedJob(job, workerId, result, new Date())
     processed.push({ id: job.id, status, ...(result.executionId ? { executionId: result.executionId } : {}) })

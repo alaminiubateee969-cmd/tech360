@@ -19,9 +19,9 @@
 | Command | `npm test` → `tsx --test --experimental-test-module-mocks tests/**/*.test.ts` |
 | Node | v22.22.3 |
 | Platform | Linux x64, 2 vCPU, 3.8 GB RAM |
-| Test files | **37** |
-| Tests | **630** |
-| Passed | **629** |
+| Test files | **38** |
+| Tests | **632** |
+| Passed | **631** |
 | Failed | **1** |
 | Skipped / todo | 0 |
 
@@ -57,6 +57,7 @@ there. Every other suite passes.
 | `client-comms-inbox.test.ts` | 2 | 2 | 0 |
 | `communication-pipeline.test.ts` | 61 | 61 | 0 |
 | `schema-ddl-parity.test.ts` | 9 | 9 | 0 |
+| `prisma-field-usage.test.ts` | 2 | 2 | 0 |
 | `contact-policy.test.ts` | 2 | 2 | 0 |
 | `database-workflows.test.ts` | 1 | 0 | **1** (environmental) |
 | `eval-harness.test.ts` | 25 | 25 | 0 |
@@ -81,7 +82,7 @@ there. Every other suite passes.
 | `skills-registry.test.ts` | 38 | 38 | 0 |
 | `telephony.test.ts` | 16 | 16 | 0 |
 | `webhook-auth.test.ts` | 20 | 20 | 0 |
-| **Total** | **630** | **629** | **1** |
+| **Total** | **632** | **631** | **1** |
 
 ---
 
