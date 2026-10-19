@@ -14,6 +14,8 @@
  * integration suite.
  */
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it } from 'node:test'
 
 import { DEPARTMENTS, CONSTITUTION } from '../src/lib/agents/registry'
@@ -907,6 +909,20 @@ describe('knowledge graph', () => {
 
   it('never lowers the confidence below the existing one', () => {
     assert.ok(combineConfidence(0.9, 0.1) >= 0.9)
+  })
+
+  it('writes the tool entities before the SOP→tool edges that reference them', () => {
+    // A relation row carries a real foreign key to KnowledgeEntity.key,
+    // so a `sop -> tool` edge cannot be written before the tool entity
+    // exists. The wrong order made the production seed fail with a
+    // foreign-key violation; the seed-safety check caught it.
+    const source = readFileSync(join(__dirname, '../src/lib/knowledge/graph.ts'), 'utf8')
+    const body = source.slice(source.indexOf('export async function buildStructuralGraph'))
+    const toolLoop = body.indexOf('for (const tool of TOOL_REGISTRY)')
+    const sopLoop = body.indexOf('for (const sop of SOP_LIBRARY)')
+    assert.ok(toolLoop > -1, 'the tool entity loop was not found')
+    assert.ok(sopLoop > -1, 'the SOP loop was not found')
+    assert.ok(toolLoop < sopLoop, 'the tool entities must be written before the SOP edges that reference them')
   })
 })
 

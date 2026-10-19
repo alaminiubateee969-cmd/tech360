@@ -393,6 +393,25 @@ export async function buildStructuralGraph(options: { assertedBy?: string }): Pr
     entities += 1
   }
 
+  // The TOOL entities are written FIRST: a relation row carries a real
+  // foreign key to KnowledgeEntity.key, so a `sop -> tool` edge cannot be
+  // written before the tool entity exists. (This ordering was wrong, and
+  // the seed's foreign-key violation caught it.)
+  for (const tool of TOOL_REGISTRY) {
+    await upsertEntity({
+      key: `tool:${tool.id}`,
+      name: tool.name,
+      type: 'TOOL',
+      description: tool.description,
+      accessLevel: 'INTERNAL',
+      confidence: 1,
+      source: 'PLATFORM_STRUCTURE',
+      verified: true,
+      properties: { riskLevel: tool.riskLevel, permission: tool.permission, requiresApproval: tool.requiresApproval },
+    })
+    entities += 1
+  }
+
   for (const sop of SOP_LIBRARY) {
     await upsertEntity({
       key: `sop:${sop.key}`,
@@ -427,21 +446,6 @@ export async function buildStructuralGraph(options: { assertedBy?: string }): Pr
       })
       relations += 1
     }
-  }
-
-  for (const tool of TOOL_REGISTRY) {
-    await upsertEntity({
-      key: `tool:${tool.id}`,
-      name: tool.name,
-      type: 'TOOL',
-      description: tool.description,
-      accessLevel: 'INTERNAL',
-      confidence: 1,
-      source: 'PLATFORM_STRUCTURE',
-      verified: true,
-      properties: { riskLevel: tool.riskLevel, permission: tool.permission, requiresApproval: tool.requiresApproval },
-    })
-    entities += 1
   }
 
   void buildOrgChart

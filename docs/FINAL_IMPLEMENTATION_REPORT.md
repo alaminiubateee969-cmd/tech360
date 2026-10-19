@@ -18,7 +18,7 @@ The platform is **built, tested and coherent**. It is **not released**.
 
 | | |
 |---|---|
-| Tests | **632**, of which **631 pass**. The one failure needs a real MySQL and a generated Prisma client — both environmental |
+| Tests | **633**, of which **632 pass**. The one failure needs a real MySQL and a generated Prisma client — both environmental |
 | Type check | 4 errors, all environmental, all pre-existing |
 | Lint | clean |
 | The AI workforce | **2,201 employees**, 110 departments, 8 divisions, 9 levels — every one validated |

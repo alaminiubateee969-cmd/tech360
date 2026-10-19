@@ -20,8 +20,8 @@
 | Node | v22.22.3 |
 | Platform | Linux x64, 2 vCPU, 3.8 GB RAM |
 | Test files | **38** |
-| Tests | **632** |
-| Passed | **631** |
+| Tests | **633** |
+| Passed | **632** |
 | Failed | **1** |
 | Skipped / todo | 0 |
 
@@ -45,7 +45,7 @@ there. Every other suite passes.
 | File | Tests | Pass | Fail |
 |---|---:|---:|---:|
 | `agent-job-policy.test.ts` | 3 | 3 | 0 |
-| `ai-eos.test.ts` | 94 | 94 | 0 |
+| `ai-eos.test.ts` | 95 | 95 | 0 |
 | `ai-health.test.ts` | 1 | 1 | 0 |
 | `ai-ops-resilience.test.ts` | 4 | 4 | 0 |
 | `ai-provider.test.ts` | 4 | 4 | 0 |
@@ -82,7 +82,7 @@ there. Every other suite passes.
 | `skills-registry.test.ts` | 38 | 38 | 0 |
 | `telephony.test.ts` | 16 | 16 | 0 |
 | `webhook-auth.test.ts` | 20 | 20 | 0 |
-| **Total** | **632** | **631** | **1** |
+| **Total** | **633** | **632** | **1** |
 
 ---
 
