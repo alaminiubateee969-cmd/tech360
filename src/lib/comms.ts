@@ -203,6 +203,8 @@ export async function sendCommunication(entry: {
   messageType?: string
   /** What to persist in the Communication log instead of `body` (e.g. OTP codes must never be stored). */
   storedBody?: string
+  /** Extra JSON stored on the Communication row (e.g. the plain-text copy of an HTML email body). */
+  metadata?: string
 }): Promise<{ communicationId: string; result: SendResult }> {
   const comm = await db.communication.create({
     data: {
@@ -217,6 +219,7 @@ export async function sendCommunication(entry: {
       approvalId: entry.approvalId ?? null,
       templateName: entry.templateName ?? null,
       messageType: entry.messageType ?? 'TEXT',
+      metadata: entry.metadata ?? null,
       status: 'QUEUED',
     },
   })
