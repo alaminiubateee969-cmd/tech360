@@ -20,6 +20,7 @@ import {
   checkGovernedAction,
   executeGoverned,
   ensureGovernedApproval,
+  findApprovedGovernedApproval,
   type GovernanceActor,
   GovernanceDeniedError,
 } from '@/lib/governance/enforce'
@@ -1122,13 +1123,16 @@ export async function verifyPayment(paymentId: string, actor: GovernanceActor, a
   if (!payment) throw new Error('Payment not found')
   if (['FAILED', 'REFUNDED', 'CANCELLED'].includes(payment.status)) throw new Error(`A ${payment.status.toLowerCase()} payment cannot be verified.`)
 
+  const resourceKey = `payment:${payment.id}`
+  const effectiveApprovalId =
+    approvalId ?? (actor.type === 'HUMAN' ? await findApprovedGovernedApproval('payment.verify', resourceKey) : null)
   const { alreadyVerified } = await executeGoverned(
     {
       action: 'payment.verify',
       actor,
-      resourceKey: `payment:${payment.id}`,
+      resourceKey,
       amountMinor: toMinorUnits(payment.amount),
-      approvalId: approvalId ?? null,
+      approvalId: effectiveApprovalId,
       clientId: payment.clientId,
       projectId: payment.projectId,
     },

@@ -3,7 +3,7 @@ import { after, before, describe, it } from 'node:test'
 import { PrismaClient } from '@prisma/client'
 
 import { markPaymentVerifiedInTx } from '../src/lib/journey'
-import { checkGovernedAction, executeGoverned, GovernanceDeniedError, type GovernedActionInput } from '../src/lib/governance/enforce'
+import { checkGovernedAction, executeGoverned, findApprovedGovernedApproval, GovernanceDeniedError, type GovernedActionInput } from '../src/lib/governance/enforce'
 
 // DB-backed governance tests. They run against the disposable MySQL in CI
 // (DATABASE_URL). They never call sendCommunication, the receipt builder or
@@ -118,6 +118,15 @@ describe('runtime governance (database): payment verification', () => {
     assert.equal((await db.approvalRequest.findUniqueOrThrow({ where: { id: approvalId } })).status, 'EXECUTED')
 
     assert.equal(await denialCode(verifyWith(payment.id, payment.amountMinor, approvalId)), 'APPROVAL_ALREADY_CONSUMED')
+  })
+
+  it('uses the approved decision for this resource when the repeated request presents no approval id', async () => {
+    const payment = await makePayment(275)
+    const approvalId = await makeApproval(payment.id, payment.amountMinor)
+    assert.equal(await findApprovedGovernedApproval('payment.verify', `payment:${payment.id}`, db), approvalId)
+    await verifyWith(payment.id, payment.amountMinor, approvalId)
+    assert.equal((await db.payment.findUniqueOrThrow({ where: { id: payment.id } })).status, 'PAID')
+    assert.equal(await findApprovedGovernedApproval('payment.verify', `payment:${payment.id}`, db), null, 'a consumed approval is not offered again')
   })
 
   it('lets exactly one of two concurrent requests consume a single approval', async () => {

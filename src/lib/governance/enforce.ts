@@ -393,6 +393,30 @@ export async function executeGoverned<T>(
 }
 
 /**
+ * The most recent APPROVED approval for this exact resource, or null.
+ * It lets a human's repeated request (the admin button sends no approval
+ * id) use the decision they already received. It grants nothing: the
+ * boundary still validates the approval in full.
+ */
+export async function findApprovedGovernedApproval(
+  action: GovernedAction,
+  resourceKey: string,
+  client: Pick<Prisma.TransactionClient, 'approvalRequest'> = db,
+): Promise<string | null> {
+  const spec = GOVERNED_ACTION_SPECS[action]
+  const rows = await client.approvalRequest.findMany({
+    where: { type: spec.approvalType, status: 'APPROVED' },
+    select: { id: true, payload: true },
+    orderBy: { updatedAt: 'desc' },
+    take: 50,
+  })
+  for (const row of rows) {
+    if (parsePayload(row.payload)?.resourceKey === resourceKey) return row.id
+  }
+  return null
+}
+
+/**
  * Create (or reuse) the PENDING approval a governed action needs. Reuse
  * prevents a retry loop from piling up duplicate approval requests for
  * the same resource.

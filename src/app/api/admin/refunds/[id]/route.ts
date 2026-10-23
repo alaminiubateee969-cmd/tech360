@@ -8,7 +8,7 @@ import {
   toMinorUnits,
 } from '@/lib/invoice-policy'
 import { audit, readJson, sanitizeText } from '@/lib/security'
-import { GovernanceDeniedError, ensureGovernedApproval, executeGoverned } from '@/lib/governance/enforce'
+import { GovernanceDeniedError, ensureGovernedApproval, executeGoverned, findApprovedGovernedApproval } from '@/lib/governance/enforce'
 
 export const dynamic = 'force-dynamic'
 
@@ -199,8 +199,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    const approvalId = sanitizeText(raw.approvalId, 40) || null
     const resourceKey = `refund:${existing.id}:${approvedAmountMinor}`
+    const approvalId = sanitizeText(raw.approvalId, 40) || (await findApprovedGovernedApproval('refund.settle', resourceKey))
     // The money-state change, the approval consumption and the audit share
     // one transaction. The conditional update below makes a second settle
     // of the same case fail, even when two requests race.
