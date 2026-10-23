@@ -2,6 +2,9 @@ import { db } from '@/lib/db'
 import { COMPANY } from '@/lib/constants'
 import { toE164 } from '@/lib/phone'
 import { DEAD_LETTER, backoffMs, decideRetry, scheduleAfterFailure } from '@/lib/outbox-retry'
+import { HOSTINGER_MAIL_ENV, readHostingerMailConfig } from '@/lib/mail/hostinger-config'
+import { createHostingerMailClient, sendHostingerEmail } from '@/lib/mail/hostinger-mail'
+import { outboundPlainText } from '@/lib/mail/hostinger-inbound-policy'
 
 // ============================================================
 // TECH360 COMMUNICATIONS — real adapters, honest statuses
@@ -27,7 +30,9 @@ export function channelConfigured(channel: string): boolean {
     case 'WHATSAPP':
       return Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID)
     case 'EMAIL':
-      return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM)
+      // Hostinger Mail API (when fully configured) or the legacy SMTP relay.
+      return readHostingerMailConfig().state === 'CONFIGURED' ||
+        Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM)
     case 'SMS':
       return httpSmsConfigured() || Boolean(process.env.SMS_API_URL && process.env.SMS_API_KEY)
     default:
@@ -103,6 +108,37 @@ async function sendEmail(to: string, subject: string, html: string): Promise<Sen
   }
 }
 
+/** True when the operator has switched email to the Hostinger Mail API. */
+export function isHostingerMailSelected(): boolean {
+  return (process.env[HOSTINGER_MAIL_ENV.enabled] ?? '').trim() === 'true'
+}
+
+/**
+ * Email through the Hostinger Mail API (official SDK, server-side only).
+ * The result is PROVIDER ACCEPTANCE (HTTP 204). Hostinger returns no message
+ * id and no delivery confirmation, so this function never reports delivery.
+ */
+async function sendEmailViaHostinger(to: string, subject: string, bodyHtml: string): Promise<SendResult> {
+  const status = readHostingerMailConfig()
+  if (status.state !== 'CONFIGURED') {
+    const reason = status.state === 'INVALID'
+      ? `Hostinger Mail API is enabled but not valid: ${status.problems.join('; ')}`
+      : 'Hostinger Mail API is not enabled'
+    return { ok: false, status: 'NOT_CONFIGURED', error: reason }
+  }
+  const html = wrapEmailHtml(subject, bodyHtml)
+  const text = `${subject}\n\n${outboundPlainText(bodyHtml)}\n\n${COMPANY.email}`
+  const result = await sendHostingerEmail(
+    { to, subject, html, text },
+    { client: createHostingerMailClient(status.config), displayName: 'Tech360' },
+  )
+  return {
+    ok: result.ok,
+    status: result.status,
+    ...(result.error ? { error: result.error } : {}),
+  }
+}
+
 // ------------------------------------------------------------
 // SMS via httpSMS — https://github.com/NdoleStudio/httpsms (AGPL-3.0, used purely
 // as an external HTTP service, so no licence obligation reaches this codebase).
@@ -168,8 +204,14 @@ export async function dispatchChannel(entry: { channel: string; to?: string; sub
   switch (entry.channel) {
     case 'WHATSAPP':
       return sendWhatsApp(entry.to ?? '', entry.body)
-    case 'EMAIL':
-      return sendEmail(entry.to ?? '', entry.subject ?? 'Tech360', wrapEmailHtml(entry.subject ?? 'Tech360', entry.body))
+    case 'EMAIL': {
+      const subject = entry.subject ?? 'Tech360'
+      // HOSTINGER_MAIL_ENABLED=true selects the Hostinger Mail API exclusively.
+      // An enabled but invalid configuration refuses the send; it never falls
+      // back silently to SMTP.
+      if (isHostingerMailSelected()) return sendEmailViaHostinger(entry.to ?? '', subject, entry.body)
+      return sendEmail(entry.to ?? '', subject, wrapEmailHtml(subject, entry.body))
+    }
     case 'SMS':
       return sendSms(entry.to ?? '', entry.body)
     default:
