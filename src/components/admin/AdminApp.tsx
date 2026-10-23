@@ -50,6 +50,7 @@ import { LoginScreen } from './LoginScreen'
 import { NotificationCenter } from './NotificationCenter'
 import { TwoFactorDialog } from './TwoFactorDialog'
 import { AgentsView } from './AgentsView'
+import { DepartmentCertificationView } from './DepartmentCertificationView'
 import ModelsView from './ModelsView'
 import SkillsView from './SkillsView'
 import DepartmentsView from './DepartmentsView'
@@ -107,7 +108,7 @@ type ViewId =
   | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
   | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts'
-  | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup'
+  | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
   | 'workforce' | 'pipeline'
 
 // Minimum console role required to see (and use) each view. Mirrors the
@@ -151,6 +152,7 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   workflows: 'SUPER_ADMIN',
   integrations: 'SUPER_ADMIN',
   backup: 'SUPER_ADMIN',
+  dcc: 'SUPER_ADMIN',
   workforce: 'SUPER_ADMIN',
   pipeline: 'MANAGER',
 }
@@ -211,7 +213,8 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     section: 'Intelligence',
     items: [
       { id: 'agents', label: 'Core Agents', icon: Bot },
-      { id: 'workforce', label: 'AI Employees', icon: Network },
+      { id: 'workforce', label: 'Configured Org Chart', icon: Network },
+      { id: 'dcc', label: 'DCC Certification', icon: ShieldCheck },
       { id: 'command', label: 'Command Center', icon: Terminal },
       { id: 'models', label: 'Model Management', icon: Cpu },
       { id: 'skills', label: 'Skill Registry', icon: Boxes },
@@ -263,9 +266,10 @@ const VIEW_TITLES: Record<ViewId, string> = {
   tasks: 'Task Queue',
   workflows: 'Workflow Builder',
   integrations: 'CRM Integrations',
-  workforce: 'AI Employees',
+  workforce: 'Configured Org Chart Profiles',
   pipeline: 'Communication Pipeline',
   backup: 'Backup & Recovery',
+  dcc: 'Department Capability Certification',
   content: 'Content Studio',
   blog: 'Blog Studio',
   analytics: 'Analytics',
@@ -662,6 +666,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <IntegrationsView />
               ) : view === 'backup' ? (
                 <BackupRecoveryView />
+              ) : view === 'dcc' ? (
+                <DepartmentCertificationView />
               ) : view === 'workforce' ? (
                 <WorkforceView />
               ) : view === 'pipeline' ? (

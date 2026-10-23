@@ -257,7 +257,7 @@ export async function sendCommunication(entry: {
     const { logError } = await import('@/lib/security')
     await logError({
       source: 'COMMS', code: `SEND_FAILED_${entry.channel}`,
-      message: `To ${entry.to ?? 'unknown'}: ${result.error ?? 'unknown error'}`,
+      message: `${entry.channel} delivery failed for Communication ${comm.id}; recipient and message body omitted from the error log.`,
       clientId: entry.clientId, workflow: entry.workflowId ?? undefined,
     })
   }

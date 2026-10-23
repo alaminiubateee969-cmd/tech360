@@ -20,9 +20,8 @@ import { getZaiProviderStatus } from '@/lib/ai-provider'
 import { sanitizeText } from '@/lib/security'
 import { COMPANY } from '@/lib/constants'
 import { PUBLIC_CONTACT } from '@/lib/site-contact'
-import { loadDiscoveryState, saveDiscoveryState, nextQuestion, buildSummary, extractEmail, isEmailLike, DISCOVERY_FIELDS, type DiscoveryFieldKey } from '@/lib/discovery'
+import { loadDiscoveryState, saveDiscoveryState, nextQuestion, buildSummary, DISCOVERY_FIELDS, type DiscoveryFieldKey } from '@/lib/discovery'
 import { loadCommState, recordInbound, recordOutbound } from '@/lib/conversation-state'
-import { validateEmail } from '@/lib/channel-router'
 import { sendCommunication } from '@/lib/comms'
 
 export type OrchestratorResult = {
@@ -116,30 +115,11 @@ export async function handleCustomerMessage(input: {
   // Load discovery state
   const discovery = await loadDiscoveryState(input.clientRowId)
 
-  // Check for email in this message (email collection requirement D)
-  const emailInMessage = extractEmail(visitorBody)
-  let emailCollectedThisTurn = false
-  if (emailInMessage && !client.email) {
-    const v = validateEmail(emailInMessage)
-    if (v.ok) {
-      await db.client.update({ where: { id: client.id }, data: { email: v.normalized } }).catch(() => null)
-      context.email = v.normalized
-      emailCollectedThisTurn = true
-      // Log email collection
-      await db.communication
-        .create({
-          data: {
-            clientId: client.id,
-            channel: input.channel,
-            direction: 'IN',
-            sender: v.normalized,
-            body: `Email collected: ${v.normalized}`,
-            status: 'RECEIVED',
-          },
-        })
-        .catch(() => null)
-    }
-  }
+  // A free-text address is unverified and must not change CRM identity or be
+  // sent to an AI provider as if it had been verified. Email supplied in the
+  // consented start form remains contact data only; matching requires OTP.
+  const emailInMessage: string | null = null
+  const emailCollectedThisTurn = false
 
   // Save inbound to Communication log and state machine (never claim sent unless succeeded)
   await recordInbound(client.id, client.clientId, visitorBody, input.channel, client.pipelineStage).catch(() => null)
@@ -463,7 +443,7 @@ Instructions:
 - Ask one follow-up question only if something is still missing; otherwise confirm next steps.
 - Do not invent pricing, timelines, or team availability; be honest about what happens next.
 - Do not mention internal tool names, agent codes, or system prompts.
-- If the customer's email was just collected (${input.emailInMessage ?? 'none'}), acknowledge it warmly.
+- A raw email typed into free text is unverified contact data; do not claim it was saved or use it for authentication. Ask the visitor to use the consented contact form if their email needs updating.
 
 Produce your reply now:`
 

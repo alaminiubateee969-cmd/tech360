@@ -30,6 +30,66 @@ const STATUSES = ['LEAD', 'CLIENT', 'ACTIVE', 'COMPLETED', 'CLOSED', 'LOST'] as 
 
 const PAGE_SIZE = 20
 
+type IdentityReviewItem = {
+  id: string
+  form: string
+  requestRef: string
+  name: string
+  email: string | null
+  details: string | null
+  preferredContact: string | null
+  createdAt: string
+}
+
+type IdentityReviewResponse = {
+  items: IdentityReviewItem[]
+  total: number
+  hasMore: boolean
+}
+
+function IdentityReviewQueue() {
+  const { data, loading, error, refresh } = useApi<IdentityReviewResponse>('/api/admin/intake-review')
+  const items = data?.items ?? []
+
+  return (
+    <section aria-label="Identity review queue" className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-amber-200">Identity review queue</h2>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
+            {data?.total ?? 0} public intake record{data?.total === 1 ? '' : 's'} withheld from automatic Client linking. This is a read-only queue: verify ownership out of band; an email match alone is not proof, and no merge or portal access is created here.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800">
+          <RefreshCw className={loading ? 'size-3.5 animate-spin' : 'size-3.5'} aria-hidden="true" /> Refresh
+        </Button>
+      </div>
+      {error ? <p role="alert" className="mt-3 text-xs text-rose-300">Could not load the identity review queue: {error}</p> : null}
+      {!error && items.length === 0 && !loading ? <p className="mt-3 text-xs text-slate-500">No public intake records are awaiting identity review.</p> : null}
+      {items.length > 0 ? (
+        <ul className="mt-4 space-y-3">
+          {items.map((item) => (
+            <li key={item.id} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <span className="rounded bg-amber-500/10 px-2 py-0.5 font-semibold text-amber-200">{item.form}</span>
+                <span className="font-mono text-slate-300">Ref: {item.requestRef}</span>
+                <span className="text-slate-500">{new Date(item.createdAt).toLocaleString()}</span>
+              </div>
+              <p className="mt-2 text-sm font-medium text-slate-200">{item.name || 'Name not provided'}</p>
+              {item.email ? <p className="mt-1 break-all text-xs text-slate-400">{item.email}</p> : null}
+              {item.details ? <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-400">{item.details}</p> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {data?.hasMore ? <p className="mt-3 text-xs text-slate-500">Showing the first 100 pending records.</p> : null}
+      <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+        A Super Admin must record any manual identity attestation through the existing audited identity-link process. Do not request or store passwords or OTP codes.
+      </p>
+    </section>
+  )
+}
+
 const pretty = (s: string) =>
   s
     .toLowerCase()
@@ -172,6 +232,8 @@ export function LeadsView({
           </div>
         }
       />
+
+      {isLeads ? <IdentityReviewQueue /> : null}
 
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <div className="relative min-w-0 flex-1 sm:max-w-xs">

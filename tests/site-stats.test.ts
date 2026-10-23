@@ -1,17 +1,13 @@
 /**
  * TECH360 — homepage stats truth pin.
  *
- * The public homepage "Company facts we can verify" band shows the number of
- * internal departments and automated workflow stages. Those figures must be
- * exactly what the platform ships — the department registry that seeds the
- * database and the pipeline constants that drive the CRM journey — never a
- * marketing guess. This suite fails CI if the marketing copy and the real
- * sources of truth ever drift apart.
+ * The public homepage may show source-definition counts only when clearly
+ * labeled as catalogue/code definitions. These figures do not prove that
+ * departments are deployed/staffed or workflow stages are automated in
+ * production. This suite pins the source counts and their caveats.
  *
- * (Regression origin: the owner audited the homepage and saw "0 internal
- * departments / 0 automated workflow stages" — the old count-up rendered 0
- * in server HTML. The SSR-first fix lives in StatChip.tsx; this test pins
- * the VALUES themselves.)
+ * The SSR-first stat rendering remains covered elsewhere; this suite also
+ * guards against presenting source definitions as production deployment facts.
  */
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
@@ -26,17 +22,22 @@ function stat(label: string): { value: string; note: string } {
   return found
 }
 
-describe('homepage stats are the real platform numbers', () => {
-  it('department count equals the seeded registry (110)', () => {
-    assert.equal(DEPARTMENTS.length, 110, 'the registry itself changed — update this test AND the marketing stat together')
-    const departments = stat('internal departments')
-    assert.equal(departments.value, String(DEPARTMENTS.length), 'homepage must display the exact registry department count')
+describe('homepage stats are accurate and distinguish source counts from live operation', () => {
+  it('department count is labeled as source definitions, not deployed teams', () => {
+    assert.equal(DEPARTMENTS.length, 110, 'the registry source changed — update this test AND the source-count stat together')
+    const departments = stat('department definitions')
+    assert.equal(departments.value, String(DEPARTMENTS.length), 'homepage must display the exact source registry count')
+    assert.match(departments.note, /catalogue count/i)
+    assert.match(departments.note, /not a claim that .* deployed or staffed/i)
   })
 
-  it('workflow stage count equals the CRM pipeline (20)', () => {
-    assert.equal(PIPELINE_STAGES.length, 20, 'the pipeline itself changed — update this test AND the marketing stat together')
-    const stages = stat('automated workflow stages')
-    assert.equal(stages.value, String(PIPELINE_STAGES.length), 'homepage must display the exact pipeline stage count')
+  it('workflow stage count is labeled as source definitions, not automated coverage', () => {
+    assert.equal(PIPELINE_STAGES.length, 20, 'the pipeline source changed — update this test AND the definition-count stat together')
+    const stages = stat('pipeline-stage definitions')
+    assert.equal(stages.value, String(PIPELINE_STAGES.length), 'homepage must display the exact source pipeline count')
+    assert.match(stages.note, /defined in source/i)
+    assert.match(stages.note, /Live usage, automation coverage,/i)
+    assert.match(stages.note, /not been verified/i)
   })
 
   it('never ships a zero or empty stat value', () => {

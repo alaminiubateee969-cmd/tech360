@@ -10,7 +10,6 @@
 // - Never silently ignore inbound message
 // ============================================================
 
-import { db } from '@/lib/db'
 import { sendCommunication, channelConfigured } from '@/lib/comms'
 import { PUBLIC_CONTACT } from '@/lib/site-contact'
 
@@ -85,58 +84,15 @@ export function validateEmail(email: string): { ok: boolean; normalized: string;
   return { ok: true, normalized: trimmed }
 }
 
-/** Collect email naturally: validate, save against Client ID, use as canonical. */
-export async function collectEmailForClient(clientRowId: string, rawEmail: string): Promise<{ ok: boolean; email?: string; error?: string }> {
+/**
+ * A well-formed address from public free text is not verified identity proof.
+ * Keep this legacy entry point fail-closed until an OTP flow supplies an
+ * EMAIL_OTP proof that can be attached through the verified identity resolver.
+ */
+export async function collectEmailForClient(_clientRowId: string, rawEmail: string): Promise<{ ok: boolean; email?: string; error?: string }> {
   const v = validateEmail(rawEmail)
   if (!v.ok) return { ok: false, error: v.error }
-  // Check for duplicate Client ID with same normalized email (prevent duplicate)
-  const existing = await db.client.findUnique({ where: { id: clientRowId } })
-  if (!existing) return { ok: false, error: 'Client not found' }
-
-  // Check if another client already holds this verified email as identity
-  // (we don't auto-merge; we just save and flag for review if collision)
-  const duplicate = await db.client.findFirst({
-    where: { email: v.normalized, id: { not: clientRowId }, deletedAt: null },
-    select: { clientId: true, id: true },
-  })
-  if (duplicate) {
-    // Still save, but audit the collision — no automatic merge (Requirement D)
-    await db.auditLog
-      .create({
-        data: {
-          actor: 'system:email-collect',
-          action: 'EMAIL_DUPLICATE_COLLISION',
-          entityType: 'Client',
-          entityId: clientRowId,
-          clientId: existing.clientId,
-          details: JSON.stringify({ suppliedEmail: v.normalized, existingClientId: duplicate.clientId }),
-        },
-      })
-      .catch(() => null)
-  }
-
-  await db.client.update({
-    where: { id: clientRowId },
-    data: { email: v.normalized },
-  })
-
-  // Persist a communication record of the email collection for audit
-  await db.communication
-    .create({
-      data: {
-        clientId: clientRowId,
-        channel: 'WEB',
-        direction: 'IN',
-        sender: v.normalized,
-        recipient: PUBLIC_CONTACT.email,
-        subject: 'Email collected via chat',
-        body: `Customer provided preferred email: ${v.normalized}`,
-        status: 'RECEIVED',
-      },
-    })
-    .catch(() => null)
-
-  return { ok: true, email: v.normalized }
+  return { ok: false, error: 'Email verification is required before this address can be linked to a Client ID.' }
 }
 
 /**

@@ -26,6 +26,7 @@
 // ============================================================
 
 import { escapeHtml } from '@/lib/comms'
+import { COMPANY } from '@/lib/constants'
 
 // ------------------------------------------------------------
 // The stage keys
@@ -68,6 +69,7 @@ export type PipelineVariables = {
   recommendedPlan?: string | null
   meetingLink?: string | null
   projectName?: string | null
+  inquirySummary?: string | null
   finalScope?: string | null
   paymentPolicy?: string | null
   htmlPreviewUrl?: string | null
@@ -115,32 +117,31 @@ After receiving this, our AI system will prepare your recommended plan.`,
 }
 
 export function firstMessageEmail(v: PipelineVariables): PipelineMessage {
-  const body = `Dear ${v.clientName},
+  const portalUrl = `${COMPANY.url}/#/portal`
+  const inquirySummary = v.inquirySummary?.trim().slice(0, 1200) || 'Your enquiry has been received. We will confirm any additional details with you.'
+  const greeting = ['UNKNOWN CONTACT', 'WEBSITE VISITOR'].includes(v.clientName.trim().toUpperCase())
+    ? 'Hello,'
+    : `Dear ${v.clientName},`
+  const body = `${greeting}
 
-Thank you for contacting Tech360.
+Welcome to TECH360. Your enquiry has been registered under Client ID ${v.clientId}.
 
-Your inquiry has been received and your Client ID is:
+Your enquiry summary:
+${inquirySummary}
 
-${v.clientId}
+We use the email address you provided to identify this enquiry and send service-related updates about your requested project. Marketing messages require a separate opt-in. This address is not marked verified until you complete an email one-time code during portal sign-in.
 
-Tech360 helps businesses build premium websites, CRM systems, eCommerce platforms, WhatsApp automation, n8n workflows, dashboards, AI systems, and business automation solutions.
+Next steps: our team will review the requirements, ask any necessary follow-up questions, and prepare a written scope for your review. No payment is due before the applicable preview approval under the standard Payment Policy.
 
-To prepare the right recommendation, please share:
+You can access the customer portal here: [Open the customer portal](${portalUrl}). Sign-in requires your Client ID and a one-time code sent to a contact on your record.
 
-1. Your business type
-2. Business name
-3. Main business problem
-4. Required system: website, CRM, eCommerce, automation, or full system
-5. Existing website/Facebook page link, if available
-6. Expected launch timeline
-
-Once we receive the information, our system will prepare your recommended digital plan.
+For your security, never email passwords, API keys, online banking credentials, or payment-card security codes.
 
 ${COMPANY_BLOCK}`
   return {
     stage: 'FIRST_MESSAGE',
     channel: 'EMAIL',
-    subject: `Tech360 Inquiry Received - Client ID ${v.clientId}`,
+    subject: `Welcome to TECH360 — Your Client ID and Next Steps`,
     body,
     html: renderEmailBody(body),
   }

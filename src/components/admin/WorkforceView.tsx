@@ -29,12 +29,14 @@ import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 
 // ============================================================
-// AI EMPLOYEES — the workforce.
+// CONFIGURED ORG CHART — generated role profiles, not deployed employees.
 //
-// Every panel in this view reads a REAL API. There is no sample data
-// and no placeholder figure: an empty table means the record is empty.
+// /api/admin/workforce is intentionally source-defined/in-memory. Its profile
+// and assignment counts must never be presented as persisted agents, employees,
+// or production staffing. DB-backed operational records are shown in Core Agents
+// and the DCC assessment surface.
 //
-//   Employees   → /api/admin/workforce
+//   Org-chart profiles → /api/admin/workforce
 //   Procedures  → /api/admin/sops
 //   Prompts     → /api/admin/prompts
 //   Governance  → /api/admin/governance
@@ -48,7 +50,7 @@ import { toast } from 'sonner'
 type Tab = 'employees' | 'procedures' | 'prompts' | 'governance' | 'graph' | 'events' | 'memory' | 'models' | 'collaboration'
 
 const TABS: Array<{ id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: 'employees', label: 'AI Employees', icon: Bot },
+  { id: 'employees', label: 'Org-chart profiles', icon: Bot },
   { id: 'procedures', label: 'Procedures', icon: Workflow },
   { id: 'prompts', label: 'Prompt Library', icon: Brain },
   { id: 'governance', label: 'Governance', icon: Scale },
@@ -156,25 +158,25 @@ function EmployeesTab() {
   return (
     <>
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="Employees" value={data?.stats.total ?? '—'} icon={Bot} loading={loading} sub="across every department" />
-        <KpiCard label="Departments" value={data?.stats.departments ?? '—'} icon={Layers} tone="slate" loading={loading} sub="owning departments" />
-        <KpiCard label="Divisions" value={data?.stats.divisionCount ?? '—'} icon={Network} tone="slate" loading={loading} sub="grouped divisions" />
-        <KpiCard label="Skills held" value={data?.stats.skillsAssigned ?? '—'} icon={Boxes} tone="green" loading={loading} sub="employee → skill bindings" />
-        <KpiCard label="Procedures" value={data?.stats.sopsAssigned ?? '—'} icon={Workflow} tone="green" loading={loading} sub="employee → procedure bindings" />
+        <KpiCard label="Generated profiles" value={data?.stats.total ?? '—'} icon={Bot} loading={loading} sub="source-defined org chart" />
+        <KpiCard label="Department definitions" value={data?.stats.departments ?? '—'} icon={Layers} tone="slate" loading={loading} sub="source catalogue" />
+        <KpiCard label="Division definitions" value={data?.stats.divisionCount ?? '—'} icon={Network} tone="slate" loading={loading} sub="generated groupings" />
+        <KpiCard label="Skill assignments" value={data?.stats.skillsAssigned ?? '—'} icon={Boxes} tone="green" loading={loading} sub="profile → skill bindings" />
+        <KpiCard label="SOP assignments" value={data?.stats.sopsAssigned ?? '—'} icon={Workflow} tone="green" loading={loading} sub="profile → procedure bindings" />
         <KpiCard
-          label="Registry check"
+          label="Profile validation"
           value={data ? (data.validation.valid ? 'consistent' : `${data.validation.issueCount} issues`) : '—'}
           icon={data?.validation.valid === false ? AlertTriangle : CheckCircle2}
           tone={data?.validation.valid === false ? 'amber' : 'green'}
           loading={loading}
-          sub="every attribute present"
+          sub="generated profile validation"
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
         <SectionCard
           title="Organisation"
-          description={data ? `${data.total.toLocaleString()} employee(s) match` : 'Loading the organisation…'}
+          description={data ? `${data.total.toLocaleString()} generated profile(s) match — not a database employee/agent count` : 'Loading generated org-chart profiles…'}
           actions={
             <div className="flex items-center gap-2">
               <Input
@@ -234,14 +236,14 @@ function EmployeesTab() {
               ))}
             </div>
           ) : data && data.employees.length === 0 ? (
-            <EmptyState icon={Search} title="No employee matches this filter" description="Try another level, division or department code." />
+            <EmptyState icon={Search} title="No generated profile matches this filter" description="Try another level, division or department code." />
           ) : (
             <>
               <div className={CARD + ' overflow-x-auto'}>
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-500">
                     <tr>
-                      <th className="px-3 py-2 font-semibold">Employee</th>
+                      <th className="px-3 py-2 font-semibold">Profile</th>
                       <th className="px-3 py-2 font-semibold">Level</th>
                       <th className="px-3 py-2 font-semibold">Department</th>
                       <th className="px-3 py-2 font-semibold">Reports to</th>
@@ -298,11 +300,11 @@ function EmployeesTab() {
         </SectionCard>
 
         <SectionCard
-          title="Employee profile"
+          title="Org-chart profile"
           description="The complete attribute set: identity, authority, decision rights, tools, skills, prompts, procedures, knowledge, memory, KPIs, escalation, collaboration, behaviour, security and learning."
         >
           {!selectedId ? (
-            <EmptyState icon={Bot} title="Select an employee" description="Choose an employee from the organisation to see their full profile." />
+            <EmptyState icon={Bot} title="Select a generated profile" description="Choose an org-chart profile to see its source-defined configuration." />
           ) : detail.loading && !detail.data ? (
             <div className="space-y-2" aria-busy="true">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -1479,8 +1481,8 @@ export default function WorkforceView() {
   return (
     <div>
       <PageHeader
-        title="AI Employees"
-        description="One workforce, not many chatbots. Every employee has an identity, an authority, a mission, tools, skills, prompts, procedures, knowledge access, memory, KPIs, escalation and collaboration rules — and every one of them runs on the same runtime, model hub, knowledge system, memory system, tool system, governance system, event bus and workflow engine."
+        title="Configured Org Chart Profiles"
+        description="This view is generated from source definitions in memory; it is not a persisted employee or deployed-agent roster. Profile assignments describe intended configuration, not verified live execution. Use Core Agents for persisted database rows and DCC Certification for evidence-gated department status."
         actions={
           <Button variant="outline" size="sm" onClick={refresh} aria-label="Reload the panel">
             <RefreshCw className="size-4" aria-hidden="true" />

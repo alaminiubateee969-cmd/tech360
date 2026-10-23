@@ -23,6 +23,7 @@ export const AI_WORKFORCE_API_PREFIXES = [
   '/api/admin/memory',    // agent / company / client memory
   '/api/admin/logs',      // audit, automation runs, agent failures
   '/api/admin/command',   // AI command center
+  '/api/admin/dcc',       // department capability certification
   '/api/admin/ops-status',// autonomous AI operations loop
   '/api/admin/knowledge', // private agent knowledge sources
   '/api/admin/n8n',       // agent workflow definitions
@@ -32,6 +33,7 @@ export const AI_WORKFORCE_API_PREFIXES = [
 export const AI_WORKFORCE_VIEWS = [
   'agents',
   'command',
+  'dcc',
   'memory',
   'logs',
   'knowledge',

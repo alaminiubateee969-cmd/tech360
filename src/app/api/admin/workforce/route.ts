@@ -12,9 +12,10 @@ export const dynamic = 'force-dynamic'
  * GET /api/admin/workforce?employeeId=EMP-D010-004 — one employee.
  * GET /api/admin/workforce?department=D010 — one department.
  *
- * Every number is COUNTED from the workforce, not asserted. The
- * response carries the validation result, so a panel can show that
- * the workforce is consistent rather than claiming it.
+ * The response is a generated source-defined org chart held in memory,
+ * not persisted employee rows or a deployed-agent count. Counts are
+ * validated against that profile generator only. Use /api/admin/agents
+ * for actual persisted AiAgent rows.
  */
 export async function GET(req: NextRequest) {
   const g = await guard(req, { minRole: 'SUPER_ADMIN' })
@@ -47,6 +48,10 @@ export async function GET(req: NextRequest) {
   const validation = validateWorkforce()
 
   return Response.json({
+    source: 'GENERATED_SOURCE_DEFINITIONS',
+    persistence: 'NOT_PERSISTED',
+    isDbBacked: false,
+    note: 'Generated org-chart profiles only; this response is not a live employee roster or deployed AI agent count.',
     stats: {
       ...stats,
       levels: ORG_LEVELS.map((entry) => ({
