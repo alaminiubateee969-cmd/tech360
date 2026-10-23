@@ -20,6 +20,11 @@ export const COMPANY = {
   publicWhatsApp: PUBLIC_CONTACT.whatsappE164,
   whatsappLink: PUBLIC_CONTACT.whatsappLink,
   founded: "2021",
+  // Canonical About-page facts — single source reused in AboutView (do not hardcode elsewhere).
+  bangladeshFoundedYear: "2021",
+  usRegistrationYear: "2025",
+  registrationJurisdiction: "Missouri, United States",
+  serviceCoverage: "Worldwide",
   tagline: "Strategy. Software. Automation. Growth.",
   subline:
     "Enterprise-grade websites, platforms and automation for ambitious businesses — engineered by a US-registered team delivering worldwide.",

@@ -86,7 +86,7 @@ export default function AboutView() {
       <PageHero
         eyebrow="About TECH360"
         title="Built in Bangladesh. Expanded to the United States. Delivering worldwide."
-        description="TECH360 is a software engineering and business automation company founded in Bangladesh in 2021. In 2025, the company expanded its international presence through the registration of TECH360 LLC in Missouri, United States."
+        description={`TECH360 is a software engineering and business automation company founded in Bangladesh in ${COMPANY.bangladeshFoundedYear}. In ${COMPANY.usRegistrationYear}, the company expanded its international presence through the registration of TECH360 LLC in ${COMPANY.registrationJurisdiction}.`}
         breadcrumb={[{ label: "About" }]}
       />
 
@@ -143,7 +143,7 @@ export default function AboutView() {
             <div className="overflow-hidden rounded-xl border border-[#E2E8F0]">
               <ImageView
                 src={imageFor("about")}
-                alt="TECH360 engineering team collaborating on client platform work"
+                alt="Illustrative image of professionals collaborating in a modern office — representative, not the actual TECH360 team"
                 aspect="4/3"
                 eager
               />
@@ -152,20 +152,20 @@ export default function AboutView() {
               <Card className="border-[#E2E8F0] bg-[#F8FCFF]">
                 <CardContent className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-[#526173]">Founded</p>
-                  <p className="mt-1 text-lg font-bold text-[#0B1F33]">Bangladesh · 2021</p>
+                  <p className="mt-1 text-lg font-bold text-[#0B1F33]">Bangladesh · {COMPANY.bangladeshFoundedYear}</p>
                 </CardContent>
               </Card>
               <Card className="border-[#E2E8F0] bg-[#F8FCFF]">
                 <CardContent className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-[#526173]">US entity</p>
-                  <p className="mt-1 text-lg font-bold text-[#0B1F33]">Missouri · 2025</p>
+                  <p className="mt-1 text-lg font-bold text-[#0B1F33]">Missouri · {COMPANY.usRegistrationYear}</p>
                   <p className="mt-0.5 text-xs text-[#526173]">{COMPANY.missouriLLC}</p>
                 </CardContent>
               </Card>
               <Card className="border-[#E2E8F0] bg-[#F8FCFF]">
                 <CardContent className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-[#526173]">Coverage</p>
-                  <p className="mt-1 text-lg font-bold text-[#0B1F33]">Worldwide</p>
+                  <p className="mt-1 text-lg font-bold text-[#0B1F33]">{COMPANY.serviceCoverage}</p>
                 </CardContent>
               </Card>
             </div>
@@ -264,7 +264,7 @@ export default function AboutView() {
               id="facts-heading"
               eyebrow="Company information"
               title="Our identity, on the record"
-              description="Everything below is public record or confirmable in writing at any point in an engagement."
+              description="Official US registration details are a matter of public record; company history and service coverage are published by TECH360, and engagement-specific terms are confirmed in writing."
               align="left"
             />
             <Reveal className="mt-8">
@@ -274,13 +274,13 @@ export default function AboutView() {
                     { term: "Brand", detail: COMPANY.brand },
                     { term: "Website", detail: COMPANY.domain, href: `https://${COMPANY.domain}` },
                     { term: "US legal entity", detail: COMPANY.legalName },
-                    { term: "US registration jurisdiction", detail: "Missouri, United States" },
+                    { term: "US registration jurisdiction", detail: COMPANY.registrationJurisdiction },
                     { term: "Missouri LLC number", detail: COMPANY.missouriLLC },
                     { term: "EIN", detail: COMPANY.ein },
                     { term: "Registered address", detail: COMPANY.address },
-                    { term: "Founded in Bangladesh", detail: "2021" },
-                    { term: "US LLC registration", detail: "2025" },
-                    { term: "Service coverage", detail: "Worldwide" },
+                    { term: "Founded in Bangladesh", detail: COMPANY.bangladeshFoundedYear },
+                    { term: "US LLC registration", detail: COMPANY.usRegistrationYear },
+                    { term: "Service coverage", detail: COMPANY.serviceCoverage },
                     { term: "Email", detail: COMPANY.email, href: `mailto:${COMPANY.email}` },
                   ] as const
                 ).map((row) => (
@@ -450,7 +450,7 @@ export default function AboutView() {
       {/* Closing identity line — as in the brief */}
       <div className="bg-[#0B1F33] px-4 py-4 text-center sm:px-6">
         <p className="text-xs font-medium tracking-wide text-white/60">
-          TECH360 — Founded in Bangladesh in 2021. Expanded to the United States in 2025. Delivering worldwide.
+          TECH360 — Founded in Bangladesh in {COMPANY.bangladeshFoundedYear}. Expanded to the United States in {COMPANY.usRegistrationYear}. Delivering {COMPANY.serviceCoverage.toLowerCase()}.
         </p>
       </div>
     </main>
