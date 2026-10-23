@@ -111,3 +111,27 @@ describe('Hostinger Mail webhook route', () => {
     assert.doesNotMatch(text, /sensitive-body-text/)
   })
 })
+
+describe('webhook body cap (regression)', () => {
+  it('stops reading a chunked body without Content-Length once the cap is exceeded', async () => {
+    process.env.HOSTINGER_MAIL_WEBHOOK_SECRET = SECRET
+    let pulled = 0
+    // 200 chunks of 64 KB (≈12.8 MB). A buffering implementation would pull all of them.
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (pulled >= 200) return controller.close()
+        pulled += 1
+        controller.enqueue(new Uint8Array(64 * 1024).fill(0x61))
+      },
+    })
+    const req = new Request('https://bdtech360.com/api/webhooks/hostinger-mail', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${SECRET}` },
+      body: stream,
+      duplex: 'half',
+    } as RequestInit & { duplex: 'half' })
+    const res = await POST(req)
+    assert.equal(res.status, 413)
+    assert.ok(pulled <= 4, `expected the read to stop early, but ${pulled} chunks were pulled`)
+  })
+})
