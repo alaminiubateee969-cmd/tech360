@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { COMPANY } from '@/lib/constants'
 import { toE164 } from '@/lib/phone'
 import { DEAD_LETTER, backoffMs, decideRetry, scheduleAfterFailure } from '@/lib/outbox-retry'
+import { classifyOutbound } from '@/lib/governance/outbound'
 import { HOSTINGER_MAIL_ENV, readHostingerMailConfig } from '@/lib/mail/hostinger-config'
 import { createHostingerMailClient, sendHostingerEmail } from '@/lib/mail/hostinger-mail'
 import { outboundPlainText } from '@/lib/mail/hostinger-inbound-policy'
@@ -338,6 +339,22 @@ export async function retryCommunicationOutbox(
   }
   if (comm.direction !== 'OUT') {
     return { ok: false, communicationId: comm.id, action: 'SKIPPED', attempts: comm.attempts, reason: 'Only outbound messages can be retried' }
+  }
+
+  // Consequential messages (amounts, payment, contract, handover, legal) are
+  // never re-dispatched, automatically or by an operator. A send that failed
+  // or timed out may still have been delivered, so repeating it could send a
+  // second payment instruction or contract. A new message needs a new,
+  // governed approval bound to its exact content.
+  if (comm.approvalId || classifyOutbound(comm.body, comm.subject).consequential) {
+    return {
+      ok: false,
+      communicationId: comm.id,
+      action: 'NOT_RETRYABLE',
+      attempts: comm.attempts,
+      reason: 'Consequential message: automatic and operator re-dispatch is refused. Request a new Super Admin approval to send it again.',
+      status: comm.status,
+    }
   }
 
   const now = new Date()

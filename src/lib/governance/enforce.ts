@@ -39,7 +39,7 @@ import {
 /** An approval older than this (since its decision) is no longer usable. */
 export const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000
 
-export type GovernedAction = 'payment.verify' | 'refund.settle' | 'invoice.generate'
+export type GovernedAction = 'payment.verify' | 'refund.settle' | 'invoice.generate' | 'communication.send'
 
 type ActionSpec = {
   /** The governance tool the rule engine evaluates. */
@@ -55,6 +55,7 @@ export const GOVERNED_ACTION_SPECS: Record<GovernedAction, ActionSpec> = {
   'payment.verify': { tool: 'payment.verify', approvalType: 'PAYMENT_VERIFY', risk: 'CRITICAL', providerIds: ['stripe'] },
   'refund.settle': { tool: 'refund.settle', approvalType: 'REFUND_SETTLE', risk: 'CRITICAL', providerIds: [] },
   'invoice.generate': { tool: 'invoice.generate', approvalType: 'INVOICE_GENERATE', risk: 'HIGH', providerIds: [] },
+  'communication.send': { tool: 'email.send', approvalType: 'MANUAL_COMMUNICATION', risk: 'HIGH', providerIds: [] },
 }
 
 export type GovernanceActor =

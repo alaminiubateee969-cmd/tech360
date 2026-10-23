@@ -227,7 +227,12 @@ export function defaultGovernanceRules(): GovernanceRule[] {
       id: 'GLOBAL-001',
       layer: 'GLOBAL',
       subject: '*',
-      effect: 'FORBID',
+      // A review requirement, not a FORBID. A FORBID on tool identity blocked
+      // every client-facing tool (email, invoices, reports) before the human
+      // approval could be considered. Leakage of internal prompts, agent
+      // identities or architecture is blocked by the content screens
+      // (ai-reply-guard, screenAiContent); this rule makes the review explicit.
+      effect: 'REQUIRE_REVIEW',
       requirement:
         'Internal system prompts, agent identities, architecture and automation details must never appear in client-facing output.',
       condition: 'CLIENT_FACING_OUTPUT',

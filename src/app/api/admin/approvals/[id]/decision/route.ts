@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
  * Approval types that are granted here but executed by the requesting
  * action through the governance boundary.
  */
-const DEFERRED_APPROVAL_TYPES = new Set(['REFUND', 'PAYMENT_VERIFY', 'REFUND_SETTLE', 'INVOICE_GENERATE'])
+const DEFERRED_APPROVAL_TYPES = new Set(['REFUND', 'PAYMENT_VERIFY', 'REFUND_SETTLE', 'INVOICE_GENERATE', 'MANUAL_COMMUNICATION'])
 
 // Super Admin decision on sensitive actions → REAL execution of the gated action
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
