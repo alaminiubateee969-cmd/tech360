@@ -157,6 +157,15 @@ describe('durable AgentJob idempotency and worker claims', () => {
     const definition = getAgentDefinition(agentCode)
     assert.ok(definition)
     const idempotencyKey = `${run}-agent-job`
+    // The enqueue path requires the agent's department to match the canonical registry
+    // (added in 0ac4698). Link the test agent to its real department, as production does.
+    const existingDepartment = await db.department.findUnique({ where: { code: definition.dept }, select: { id: true } })
+    const department = await db.department.upsert({
+      where: { code: definition.dept },
+      update: {},
+      create: { code: definition.dept, name: 'Test delivery department', category: 'DELIVERY' },
+      select: { id: true },
+    })
     await db.aiAgent.create({
       data: {
         code: definition.code,
@@ -167,6 +176,7 @@ describe('durable AgentJob idempotency and worker claims', () => {
         tools: JSON.stringify(definition.tools),
         permissions: JSON.stringify(definition.permissions),
         requiresApproval: false,
+        departmentId: department.id,
       },
     })
 
@@ -193,6 +203,7 @@ describe('durable AgentJob idempotency and worker claims', () => {
         await db.agentJob.deleteMany({ where: { id: { in: jobs.map((job) => job.id) } } })
       }
       await db.aiAgent.deleteMany({ where: { code: agentCode } })
+      if (!existingDepartment) await db.department.deleteMany({ where: { code: definition.dept } })
     }
   })
 
@@ -201,6 +212,15 @@ describe('durable AgentJob idempotency and worker claims', () => {
     const definition = getAgentDefinition(agentCode)
     assert.ok(definition)
     const idempotencyKey = `${run}-approval-job`
+    // The enqueue path requires the agent's department to match the canonical registry
+    // (added in 0ac4698). Link the test agent to its real department, as production does.
+    const existingDepartment = await db.department.findUnique({ where: { code: definition.dept }, select: { id: true } })
+    const department = await db.department.upsert({
+      where: { code: definition.dept },
+      update: {},
+      create: { code: definition.dept, name: 'Test delivery department', category: 'DELIVERY' },
+      select: { id: true },
+    })
     await db.aiAgent.create({
       data: {
         code: definition.code,
@@ -211,6 +231,7 @@ describe('durable AgentJob idempotency and worker claims', () => {
         tools: JSON.stringify(definition.tools),
         permissions: JSON.stringify(definition.permissions),
         requiresApproval: true,
+        departmentId: department.id,
       },
     })
 
@@ -234,6 +255,7 @@ describe('durable AgentJob idempotency and worker claims', () => {
         await db.agentJob.deleteMany({ where: { id: { in: jobs.map((job) => job.id) } } })
       }
       await db.aiAgent.deleteMany({ where: { code: agentCode } })
+      if (!existingDepartment) await db.department.deleteMany({ where: { code: definition.dept } })
     }
   })
 
