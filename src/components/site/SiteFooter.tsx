@@ -104,6 +104,16 @@ export default function SiteFooter() {
                 <Mail className="size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
                 {COMPANY.email}
               </a>
+              {/* Requirement H: approved public WhatsApp — single shared source */}
+              <a
+                href={COMPANY.whatsappLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center gap-2.5 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm"
+              >
+                <span className="flex size-4 shrink-0 items-center justify-center text-[#25D366]" aria-hidden="true">◉</span>
+                {COMPANY.publicWhatsApp}
+              </a>
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}

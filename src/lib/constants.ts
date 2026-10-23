@@ -2,17 +2,23 @@
 // TECH360 — Core constants & domain configuration
 // ============================================================
 
+import { PUBLIC_CONTACT } from '@/lib/site-contact'
+
 export const COMPANY = {
   legalName: 'TECH360 LLC',
   brand: 'Tech360',
   domain: 'bdtech360.com',
-  url: 'https://bdtech360.com',
+  url: PUBLIC_CONTACT.url,
   automationUrl: 'https://automation.bdtech360.com',
   missouriLLC: 'LC014737249',
   ein: '98-1940053',
   address: '117 S Lexington St Ste 100, Harrisonville, MO 64701, USA',
-  email: 'info@bdtech360.com',
+  email: PUBLIC_CONTACT.email,
   phone: '+1 (816) 380-8660',
+  /** Public contact — single source of truth (Requirement H). */
+  publicEmail: PUBLIC_CONTACT.email,
+  publicWhatsApp: PUBLIC_CONTACT.whatsappE164,
+  publicWhatsAppLink: PUBLIC_CONTACT.whatsappLink,
   founded: 2021,
 } as const
 

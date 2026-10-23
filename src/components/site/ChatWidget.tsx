@@ -126,6 +126,9 @@ export default function ChatWidget() {
   const [badgeCount, setBadgeCount] = useState(0)
   const [connIssue, setConnIssue] = useState(false)
   const [busy, setBusy] = useState(false) // sending a message / starting a chat
+  const [aiStatus, setAiStatus] = useState<'checking' | 'ready' | 'unavailable' | 'unknown'>('checking')
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [clientId, setClientId] = useState<string | null>(null)
 
   // first-contact form
   const [name, setName] = useState('')
@@ -340,6 +343,7 @@ export default function ChatWidget() {
     if (trimmedMsg.length < 1) return
     setBusy(true)
     setConnIssue(false)
+    setAiError(null)
     try {
       const res = await fetch('/api/chat/session', {
         method: 'POST',
@@ -349,27 +353,28 @@ export default function ChatWidget() {
           name: trimmedName,
           email: email.trim() || undefined,
           subject: subject.trim() || undefined,
+          message: trimmedMsg,
         }),
       })
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null
         throw new Error(data?.error ?? 'Could not start the chat.')
       }
-      const data = (await res.json()) as { conversation: { id: string; status: string } }
+      const data = (await res.json()) as { conversation: { id: string; status: string; clientId?: string | null }; ai?: { available: boolean; detail: string } }
       setConversation({ id: data.conversation.id, status: 'OPEN', visitorName: trimmedName })
-      setMessages([])
-      if (trimmedMsg) {
-        const mres = await fetch('/api/chat/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ anonId: anonIdRef.current, body: trimmedMsg }),
-        })
-        if (!mres.ok) throw new Error('Could not send the first message.')
-        const mdata = (await mres.json()) as { message: ChatMsg }
-        setMessages([mdata.message])
-        if (mdata.message.id) {
-          setSeenId(mdata.message.id)
-          writeSeenId(mdata.message.id)
+      if (data.conversation.clientId) setClientId(data.conversation.clientId)
+      if (data.ai) {
+        setAiStatus(data.ai.available ? 'ready' : 'unavailable')
+        if (!data.ai.available) setAiError(data.ai.detail)
+      }
+      // Session now handles initial message atomically — fetch thread to get AI reply
+      const thread = await fetchThread(null)
+      if (thread) {
+        setConversation(thread.conversation)
+        setMessages(thread.messages)
+        if (thread.latestId) {
+          setSeenId(thread.latestId)
+          writeSeenId(thread.latestId)
         }
       }
       setInitialMsg('')
@@ -388,6 +393,7 @@ export default function ChatWidget() {
     if (trimmed.length < 1 || trimmed.length > MAX_BODY) return
     setBusy(true)
     setConnIssue(false)
+    setAiError(null)
     try {
       const res = await fetch('/api/chat/message', {
         method: 'POST',
@@ -395,15 +401,28 @@ export default function ChatWidget() {
         body: JSON.stringify({ anonId: anonIdRef.current, body: trimmed }),
       })
       if (!res.ok) throw new Error('send failed')
-      const data = (await res.json()) as { message: ChatMsg }
-      const next = [...messagesRef.current, data.message]
-      setMessages(next)
+      const data = (await res.json()) as { message: ChatMsg; messages?: ChatMsg[]; reply?: { body: string; wasAiGenerated: boolean; escalated: boolean; error?: string | null }; error?: string; code?: string }
+      // Server now returns full thread after AI reply — use it when available
+      if (data.messages && data.messages.length > 0) {
+        setMessages(data.messages)
+        const last = data.messages[data.messages.length - 1]
+        if (last?.id) {
+          setSeenId(last.id)
+          writeSeenId(last.id)
+        }
+        if (data.reply?.error) setAiError(data.reply.error)
+        if (data.reply?.escalated) setAiStatus('unavailable')
+      } else {
+        const next = [...messagesRef.current, data.message]
+        setMessages(next)
+        if (data.message.id) {
+          setSeenId(data.message.id)
+          writeSeenId(data.message.id)
+        }
+        if (data.error) setAiError(data.error)
+      }
       setDraft('')
       if (composerRef.current) composerRef.current.style.height = 'auto'
-      if (data.message.id) {
-        setSeenId(data.message.id)
-        writeSeenId(data.message.id)
-      }
     } catch {
       setConnIssue(true)
     } finally {
@@ -493,7 +512,7 @@ export default function ChatWidget() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold leading-tight">TECH360 Support</p>
                 <p className="mt-0.5 text-[11px] leading-tight text-white/85">
-                  AI agents answer instantly — engineers step in when needed
+                  {aiStatus === 'checking' ? 'Checking assistant status…' : aiStatus === 'ready' ? 'AI assistant ready — reply within seconds' : aiStatus === 'unavailable' ? 'Team will reply within 1 business day' : 'Leave a message — we reply promptly'}
                 </p>
               </div>
               <button
@@ -624,9 +643,17 @@ export default function ChatWidget() {
                   aria-label="Chat messages"
                   className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4"
                 >
+                  {clientId && (
+                    <p className="text-center text-[11px] text-slate-400">Client ID: <span className="font-mono font-medium text-slate-600">{clientId}</span></p>
+                  )}
+                  {aiError && (
+                    <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      {aiError}
+                    </p>
+                  )}
                   {messages.length === 0 && (
                     <p className="py-8 text-center text-xs text-slate-400">
-                      Sending your message to the TECH360 team…
+                      Connecting you to TECH360 — please wait a moment…
                     </p>
                   )}
                   {messages.map((m) => {
@@ -661,6 +688,11 @@ export default function ChatWidget() {
                 {connIssue && (
                   <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-700">
                     Connection issue — retrying. Your last message may not have been sent.
+                  </p>
+                )}
+                {clientId && (
+                  <p className="border-t border-slate-100 bg-slate-50 px-4 py-1 text-center text-[10px] text-slate-400">
+                    Reference <span className="font-mono text-slate-500">{clientId}</span> · Replies may be assisted by AI — <a href="#/legal/privacy" className="underline">learn more</a>
                   </p>
                 )}
 

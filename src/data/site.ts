@@ -1,3 +1,5 @@
+import { PUBLIC_CONTACT } from "@/lib/site-contact";
+
 /**
  * Tech360 public website content.
  * Single source of truth for services, industries, case studies, technology,
@@ -14,7 +16,9 @@ export const COMPANY = {
   missouriLLC: "LC014737249",
   ein: "98-1940053",
   address: "117 S Lexington St Ste 100, Harrisonville, MO 64701, USA",
-  email: "info@bdtech360.com",
+  email: PUBLIC_CONTACT.email,
+  publicWhatsApp: PUBLIC_CONTACT.whatsappE164,
+  whatsappLink: PUBLIC_CONTACT.whatsappLink,
   founded: "2021",
   tagline: "Strategy. Software. Automation. Growth.",
   subline:

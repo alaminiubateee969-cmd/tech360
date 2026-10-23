@@ -241,7 +241,10 @@ export function GhostLink({
 
 /**
  * Click-to-chat button using the public wa.me deep link (free, no API).
- * Renders nothing unless a number is supplied, so the site never shows a dead button.
+ * Requirement H: when no number is passed, it falls back to the single
+ * shared PUBLIC_CONTACT.whatsappE164 so the site never shows a dead button
+ * and never uses a conflicting hardcoded number.
+ * Renders nothing only if the shared config is missing (should never happen).
  */
 export function WhatsAppLink({
   number,
@@ -254,7 +257,13 @@ export function WhatsAppLink({
   children?: React.ReactNode;
   className?: string;
 }) {
-  const digits = (number ?? "").replace(/[^\d]/g, "");
+  let digits = (number ?? "").replace(/[^\\d]/g, "");
+  if (digits.length < 8) {
+    try {
+      const { PUBLIC_CONTACT } = require('@/lib/site-contact');
+      digits = (PUBLIC_CONTACT?.whatsappE164 ?? '').replace(/[^\\d]/g, '');
+    } catch {}
+  }
   if (digits.length < 8) return null;
   return (
     <a
