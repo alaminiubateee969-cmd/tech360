@@ -8,6 +8,7 @@ import {
 } from '@/lib/mail/hostinger-inbound-policy'
 import { syncHostingerInbox } from '@/lib/mail/hostinger-inbound'
 import { HOSTINGER_MAIL_ENV } from '@/lib/mail/hostinger-config'
+import { readBoundedBody } from '@/lib/bounded-body'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,25 +29,6 @@ const PROVIDER = 'HOSTMAIL'
 
 function json(body: Record<string, unknown>, status = 200): Response {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } })
-}
-
-/** Reads the request body as UTF-8 text, stopping (and cancelling the stream) once `limit` bytes are exceeded. */
-export async function readBoundedBody(req: Request, limit: number): Promise<string | null> {
-  if (!req.body) return ''
-  const reader = req.body.getReader()
-  const chunks: Uint8Array[] = []
-  let total = 0
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    total += value.byteLength
-    if (total > limit) {
-      await reader.cancel().catch(() => undefined)
-      return null
-    }
-    chunks.push(value)
-  }
-  return Buffer.concat(chunks.map((c) => Buffer.from(c))).toString('utf8')
 }
 
 export async function POST(req: NextRequest) {
