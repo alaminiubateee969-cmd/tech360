@@ -2,6 +2,7 @@
 
 import { ArrowRight, Bot, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PUBLIC_CONTACT } from "@/lib/site-contact";
 
 /**
  * Anchor-based buttons (44px touch targets, focus rings, brand palette).
@@ -257,12 +258,9 @@ export function WhatsAppLink({
   children?: React.ReactNode;
   className?: string;
 }) {
-  let digits = (number ?? "").replace(/[^\\d]/g, "");
+  let digits = (number ?? "").replace(/[^\d]/g, "");
   if (digits.length < 8) {
-    try {
-      const { PUBLIC_CONTACT } = require('@/lib/site-contact');
-      digits = (PUBLIC_CONTACT?.whatsappE164 ?? '').replace(/[^\\d]/g, '');
-    } catch {}
+    digits = (PUBLIC_CONTACT.whatsappE164 ?? "").replace(/[^\d]/g, "");
   }
   if (digits.length < 8) return null;
   return (
