@@ -64,7 +64,10 @@
     "AgentDelegation.result",
     "AgentEvent.payload",
     "AgentEvent.subscribers",
-    "KnowledgeEntity.properties"
+    "KnowledgeEntity.properties",
+    "Invoice.lineItems",
+    "PaymentReceipt.snapshot",
+    "RefundCase.evidenceNotes"
   ],
   "Text": [
     "Session.userAgent",
@@ -165,7 +168,18 @@
     "AgentDelegation.objective",
     "AgentDelegation.expectedOutput",
     "KnowledgeEntity.description",
-    "KnowledgeRelation.provenance"
+    "KnowledgeRelation.provenance",
+    "Invoice.description",
+    "Invoice.discountReason",
+    "Invoice.billingAddress",
+    "Invoice.paymentTerms",
+    "Invoice.paymentMethodsSnapshot",
+    "Invoice.internalNotes",
+    "Invoice.customerNotes",
+    "Invoice.voidReason",
+    "RefundCase.reason",
+    "RefundCase.policyBasis",
+    "RefundCase.resolutionNotes"
   ],
   "LongBlob": [
     "FileRecord.content"

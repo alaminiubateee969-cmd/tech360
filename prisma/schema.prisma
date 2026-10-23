@@ -71,6 +71,7 @@ model Client {
   score         Int      @default(0)
   preferredContact String?
   notes         String? @db.Text
+  mergedIntoId  String?
   deletedAt     DateTime?
 
   createdAt DateTime @default(now())
@@ -81,6 +82,8 @@ model Client {
   communications  Communication[]
   invoices        Invoice[]
   payments        Payment[]
+  receipts        PaymentReceipt[]
+  refundCases     RefundCase[]
   meetings        Meeting[]
   scopes          ScopeOfWork[]
   previews        Preview[]
@@ -104,6 +107,7 @@ model Client {
   @@index([status])
   @@index([email])
   @@index([whatsapp])
+  @@index([mergedIntoId])
   @@index([deletedAt])
 }
 
@@ -151,6 +155,8 @@ model Project {
   tasks       ProjectTask[]
   invoices    Invoice[]
   payments    Payment[]
+  receipts    PaymentReceipt[]
+  refundCases RefundCase[]
   scopes      ScopeOfWork[]
   previews    Preview[]
   meetings    Meeting[]
@@ -270,24 +276,67 @@ model PreviewEvent {
 
 // ---------------- FINANCE ----------------
 
-model Invoice {
-  id        String   @id @default(cuid())
-  number    String   @unique // INV-YYYY-NNNN
-  clientId  String
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  currency  String   @default("USD")
-  amount    Float
-  status    String   @default("DRAFT") // DRAFT | SENT | PARTIAL | PAID | OVERDUE | CANCELLED
-  notes     String? @db.Text
-  issuedAt  DateTime @default(now())
-  dueAt     DateTime?
+model SequenceCounter {
+  id        String   @id
+  prefix    String
+  year      Int
+  lastValue Int      @default(0)
+  updatedAt DateTime @updatedAt
 
-  payments  Payment[]
+  @@unique([prefix, year])
+}
+
+model Invoice {
+  id                      String    @id @default(cuid())
+  number                  String    @unique // INV-YYYY-NNNN
+  clientId                String
+  client                  Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId               String?
+  project                 Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  scopeVersion            Int?
+  currency                String    @default("USD")
+  amount                  Float
+  subtotalMinor           Int       @default(0)
+  discountMinor           Int       @default(0)
+  discountReason          String? @db.Text
+  taxRateBps              Int       @default(0)
+  taxLabel                String?
+  taxMinor                Int       @default(0)
+  totalMinor              Int       @default(0)
+  description             String? @db.Text
+  lineItems               String? @db.LongText
+  billingName             String?
+  billingBusiness         String?
+  billingEmail            String?
+  billingAddress          String? @db.Text
+  billingCountry          String?
+  paymentTerms            String? @db.Text
+  paymentMethodsSnapshot  String? @db.Text
+  internalNotes           String? @db.Text
+  customerNotes           String? @db.Text
+  termsVersion            String?
+  revision                Int       @default(1)
+  supersedesInvoiceNumber String?
+  status                  String    @default("DRAFT") // DRAFT | AWAITING_APPROVAL | APPROVED | ISSUED | SENT | VIEWED | PARTIAL | PAID | OVERDUE | VOID | CANCELLED | REFUND_PENDING | PARTIALLY_REFUNDED | REFUNDED | DISPUTED
+  notes                   String? @db.Text
+  approvedBy              String?
+  approvedAt              DateTime?
+  issuedAt                DateTime  @default(now())
+  sentAt                  DateTime?
+  viewedAt                DateTime?
+  paidAt                  DateTime?
+  voidedAt                DateTime?
+  voidReason              String? @db.Text
+  dueAt                   DateTime?
+  updatedAt               DateTime  @default(now())
+
+  payments    Payment[]
+  receipts    PaymentReceipt[]
+  refundCases RefundCase[]
 
   @@index([clientId])
   @@index([status])
+  @@index([supersedesInvoiceNumber])
 }
 
 model Payment {
@@ -311,9 +360,75 @@ model Payment {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  receipt     PaymentReceipt?
+  refundCases RefundCase[]
+
   @@unique([transactionId])
   @@index([clientId])
   @@index([status])
+}
+
+model PaymentReceipt {
+  id            String   @id @default(cuid())
+  receiptNumber String   @unique
+  paymentId     String   @unique
+  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId     String?
+  project       Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  amountMinor   Int
+  currency      String   @default("USD")
+  method        String?
+  transactionId String?
+  verifiedBy    String
+  verifiedAt    DateTime
+  issuedAt      DateTime @default(now())
+  snapshot      String @db.LongText
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([clientId, issuedAt])
+  @@index([invoiceId])
+  @@index([projectId])
+}
+
+model RefundCase {
+  id                   String    @id @default(cuid())
+  caseNumber           String    @unique
+  clientId             String
+  client               Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId            String?
+  project              Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  invoiceId            String?
+  invoice              Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  paymentId            String?
+  payment              Payment?  @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  kind                 String    @default("REFUND") // REFUND | CANCELLATION | DISPUTE
+  status               String    @default("REQUESTED") // REQUESTED | UNDER_REVIEW | APPROVED | REJECTED | REFUND_PENDING | PARTIALLY_REFUNDED | REFUNDED | DISPUTE_OPEN | DISPUTE_RESOLVED | CLOSED
+  requestedAmountMinor Int       @default(0)
+  approvedAmountMinor  Int       @default(0)
+  currency             String    @default("USD")
+  reason               String @db.Text
+  policyBasis          String? @db.Text
+  evidenceNotes        String? @db.LongText
+  resolutionNotes      String? @db.Text
+  providerRefundRef    String?
+  requestedBy          String
+  reviewedBy           String?
+  reviewedAt           DateTime?
+  settledAt            DateTime?
+  revokeHandover       Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([clientId, createdAt])
+  @@index([projectId])
+  @@index([invoiceId])
+  @@index([paymentId])
+  @@index([status, kind])
 }
 
 // ---------------- COMMUNICATIONS ----------------
@@ -1012,6 +1127,7 @@ model Setting {
 model ChatConversation {
   id                 String   @id @default(cuid())
   anonId             String
+  clientId           String?
   status             String    @default("OPEN") // OPEN | CLOSED
   visitorName        String?
   visitorEmail       String?
@@ -1027,6 +1143,7 @@ model ChatConversation {
   messages ChatMessage[]
 
   @@index([anonId])
+  @@index([clientId])
   @@index([status, lastMessageAt])
 }
 

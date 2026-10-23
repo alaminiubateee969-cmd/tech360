@@ -50,6 +50,23 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    if (conversation.clientId) {
+      db.communication.create({
+        data: {
+          clientId: conversation.clientId,
+          channel: 'WEB',
+          direction: 'IN',
+          sender: email || conversation.visitorEmail || name || conversation.visitorName || anonId,
+          recipient: 'TECH360 Live Chat',
+          subject: conversation.subject,
+          body,
+          status: 'RECEIVED',
+          providerMessageId: `chatmsg:${message.id}`,
+          metadata: JSON.stringify({ conversationId: conversation.id, source: 'LIVE_CHAT' }),
+        },
+      }).catch(() => null)
+    }
+
     // first meaningful visitor message counts as a live-chat lead signal
     db.trackingEvent.create({
       data: {

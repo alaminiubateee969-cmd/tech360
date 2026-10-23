@@ -133,10 +133,12 @@ export type GatewayCode =
 
 export type GatewayMode = 'SANDBOX' | 'PRODUCTION'
 
+export type GatewaySettlement = 'PLATFORM_VERIFIED' | 'GATEWAY_CHECKOUT' | 'MANUAL_VERIFIED'
+
 export type GatewayDefinition = {
   code: GatewayCode
   name: string
-  settlement: 'PLATFORM_VERIFIED' | 'GATEWAY_CHECKOUT' | 'MANUAL_VERIFIED'
+  settlement: GatewaySettlement
   credentialEnvVars: string[]
   supportsWebhook: boolean
   supportsRefund: boolean
@@ -330,16 +332,80 @@ export async function saveGatewayOverrides(overrides: GatewayOverrides): Promise
   return getPaymentGateways(true)
 }
 
+export interface CustomerPaymentReadiness {
+  configured: boolean
+  status: 'ACTIVE' | 'NOT_CONFIGURED' | 'DISABLED'
+  message: string
+  activeMethods: Array<{ code: GatewayCode; name: string; settlement: GatewaySettlement; mode: GatewayMode }>
+  stripeReady: boolean
+}
+
+function isCustomerAdvertisableGateway(g: GatewayStatus): boolean {
+  if (!g.enabled || g.status !== 'ACTIVE') return false
+  if (g.code === 'MANUAL') {
+    return Boolean(process.env.MANUAL_PAYMENT_INSTRUCTIONS?.trim())
+  }
+  return true
+}
+
 /**
- * Human phrase of enabled acceptance methods for invoice pay-notes
- * and portal payment instructions. Empty string when payments are
- * globally disabled.
+ * Honest customer-facing payment readiness summary.
+ *
+ * Until real payment credentials or instructions are configured and active,
+ * returns `configured: false`, `status: 'NOT_CONFIGURED'`, and
+ * `'Not Configured — Payment setup required'` so invoices and the client
+ * portal never advertise fake or unconfigured payment channels.
+ */
+export async function getCustomerPaymentReadiness(): Promise<CustomerPaymentReadiness> {
+  const paymentsEnabled = await featureEnabled('payments')
+  if (!paymentsEnabled) {
+    return {
+      configured: false,
+      status: 'DISABLED',
+      message: 'Payment collection is currently disabled by Super Admin.',
+      activeMethods: [],
+      stripeReady: false,
+    }
+  }
+  const gateways = await getPaymentGateways()
+  const active = gateways.filter(isCustomerAdvertisableGateway)
+  const stripe = gateways.find((g) => g.code === 'STRIPE')
+  const stripeReady = Boolean(stripe && stripe.enabled && stripe.status === 'ACTIVE')
+
+  if (active.length === 0) {
+    return {
+      configured: false,
+      status: 'NOT_CONFIGURED',
+      message: 'Not Configured — Payment setup required before live payment collection.',
+      activeMethods: [],
+      stripeReady: false,
+    }
+  }
+
+  const labels = active.map((g) => (g.settlement === 'GATEWAY_CHECKOUT' ? `${g.name} (online checkout)` : g.name))
+  const phrase = labels.length === 1 ? labels[0] : `${labels.slice(0, -1).join(', ')} or ${labels[labels.length - 1]}`
+  return {
+    configured: true,
+    status: 'ACTIVE',
+    message: `Accepted payment methods: ${phrase}`,
+    activeMethods: active.map((g) => ({ code: g.code, name: g.name, settlement: g.settlement, mode: g.mode })),
+    stripeReady,
+  }
+}
+
+/**
+ * Human phrase of configured, active customer payment methods for invoice
+ * pay-notes and portal payment instructions. Never advertises unconfigured
+ * gateways; returns `'Not Configured — Payment setup required'` when no
+ * customer-facing payment method is configured.
  */
 export async function acceptedMethodsPhrase(): Promise<string> {
-  const gateways = await getPaymentGateways()
-  const usable = gateways.filter((g) => g.enabled && (g.settlement !== 'GATEWAY_CHECKOUT' || g.checkoutBuilt))
-  const labels = usable.map((g) => (g.settlement === 'GATEWAY_CHECKOUT' ? `${g.name} (online checkout)` : g.name))
-  if (labels.length === 0) return ''
+  const readiness = await getCustomerPaymentReadiness()
+  if (readiness.status === 'DISABLED') return ''
+  if (!readiness.configured) return 'Not Configured — Payment setup required'
+  const labels = readiness.activeMethods.map((g) =>
+    g.settlement === 'GATEWAY_CHECKOUT' ? `${g.name} (online checkout)` : g.name,
+  )
   if (labels.length === 1) return labels[0]
   return `${labels.slice(0, -1).join(', ')} or ${labels[labels.length - 1]}`
 }

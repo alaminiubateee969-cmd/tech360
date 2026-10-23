@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
+import { hasCapability } from '@/lib/access-policy'
 import { guard, isResponse } from '@/lib/api-guard'
+import { assertGatewayUsable, featureEnabled } from '@/lib/features'
 import { readJson, sanitizeText, audit } from '@/lib/security'
 import { parseHandoverManifest } from '@/lib/handover-artifacts'
 import {
@@ -70,12 +72,18 @@ export async function POST(req: NextRequest) {
         break
       }
       case 'REQUEST_PAYMENT': {
+        if (!hasCapability(g.user, 'finance.invoice.write')) {
+          return Response.json({ error: 'Forbidden — requires finance.invoice.write capability.' }, { status: 403 })
+        }
         const r7 = await requestPayment(client.id, g.user.email)
         result = r7 as unknown as Record<string, unknown>
         message = 'Payment instructions prepared and queued for Super Admin approval. Nothing was sent to the client yet — approve the PAYMENT_INSTRUCTION request in the Approvals view to send it.'
         break
       }
       case 'PREVIEW_DECISION': {
+        if (!hasCapability(g.user, 'preview.manage')) {
+          return Response.json({ error: 'Forbidden — requires preview.manage capability.' }, { status: 403 })
+        }
         const decision = sanitizeText(payload.decision, 40).toUpperCase() === 'REVISION_REQUESTED' ? 'REVISION_REQUESTED' : 'APPROVED'
         const r7b = await recordPreviewDecision(client.id, decision, sanitizeText(payload.notes, 4000))
         result = r7b as unknown as Record<string, unknown>
@@ -85,10 +93,21 @@ export async function POST(req: NextRequest) {
         break
       }
       case 'RECORD_PAYMENT': {
+        if (!hasCapability(g.user, 'finance.payment.record')) {
+          return Response.json({ error: 'Forbidden — requires finance.payment.record capability.' }, { status: 403 })
+        }
+        if (!(await featureEnabled('payments'))) {
+          return Response.json({ error: 'Payments are currently disabled by Super Admin.', code: 'FEATURE_DISABLED' }, { status: 503 })
+        }
         const amount = Number(payload.amount)
         if (!Number.isFinite(amount) || amount <= 0) return Response.json({ error: 'Valid amount required' }, { status: 400 })
+        const method = sanitizeText(payload.method, 40) || 'MANUAL'
+        const usable = await assertGatewayUsable(method)
+        if (!usable.ok) {
+          return Response.json({ error: usable.error, code: 'GATEWAY_UNAVAILABLE' }, { status: usable.status })
+        }
         const r8 = await recordPayment(client.id, {
-          amount, currency: sanitizeText(payload.currency, 8) || 'USD', method: sanitizeText(payload.method, 40),
+          amount, currency: sanitizeText(payload.currency, 8) || 'USD', method,
           transactionId: sanitizeText(payload.transactionId, 80), milestone: sanitizeText(payload.milestone, 60),
           notes: sanitizeText(payload.notes, 2000),
         })
@@ -97,8 +116,21 @@ export async function POST(req: NextRequest) {
         break
       }
       case 'VERIFY_PAYMENT': {
+        // Payment verification unlocks paidAmount and source-code handover gates:
+        // strictly restricted to SUPER_ADMIN (`finance.payment.verify`) and
+        // scoped to payments belonging to this client.
+        if (!hasCapability(g.user, 'finance.payment.verify')) {
+          return Response.json({ error: 'Forbidden — only SUPER_ADMIN can verify payments.' }, { status: 403 })
+        }
+        if (!(await featureEnabled('payments'))) {
+          return Response.json({ error: 'Payments are currently disabled by Super Admin.', code: 'FEATURE_DISABLED' }, { status: 503 })
+        }
         const paymentId = sanitizeText(payload.paymentId, 40)
         if (!paymentId) return Response.json({ error: 'paymentId required' }, { status: 400 })
+        const payment = await db.payment.findUnique({ where: { id: paymentId }, select: { id: true, clientId: true } })
+        if (!payment || payment.clientId !== client.id) {
+          return Response.json({ error: 'Payment not found for this client.' }, { status: 404 })
+        }
         const r9 = await verifyPayment(paymentId, g.user.id)
         result = r9 as unknown as Record<string, unknown>
         message = 'Payment verified. Project activated if this was the first verified payment.'

@@ -13,6 +13,7 @@ import { normalizeIdentity, resolveOrCreateVerifiedClient, type VerifiedIdentity
 import { sendPipelineMessage, recordStageChange, type PipelineChannel } from '@/lib/pipeline/send'
 import type { PipelineVariables } from '@/lib/pipeline/templates'
 import { assertDeliveryRules, screenAiContent } from '@/lib/pipeline/rules'
+import { nextScopeVersionNumber, normalizeTo21PointScope } from '@/lib/scope-validator'
 
 // The booking link the client uses to take a scope-explaining call.
 const MEETING_BOOKING_URL = process.env.MEETING_BOOKING_URL ?? `${COMPANY.url}/#contact`
@@ -420,55 +421,71 @@ export async function submitScope(clientRowId: string, scopeText: string) {
   })
   await stepLog(log.id, 'ai_review', { ok: review.ok })
 
-  // Draft SOW v1 (Forge) including AI recommended updates
+  // Draft SOW vN (Forge, with deterministic 21-section manual fallback when AI is unconfigured/offline)
   const forgeInput = `Business type: ${client.businessType}\nPlan: ${client.lead?.interest ?? 'unknown'}\nBudget: ${client.lead?.budgetRange ?? 'TBD'}\nClient scope:\n${scopeText}\n\nAI review notes: ${review.output}`
   const forge = await runAgent('SCP-008', { input: forgeInput, clientId: client.id, workflow: 'SCOPE_DRAFT', expectJson: true })
 
-  let scopeId: string | null = null
-  if (forge.ok && forge.json) {
-    const count = await db.scopeOfWork.count({ where: { clientId: client.id } })
-    const scope = await db.scopeOfWork.create({
-      data: {
-        clientId: client.id,
-        version: count + 1,
-        status: 'AWAITING_ADMIN_APPROVAL',
-        summary: sanitizeText(String(forge.json.summary ?? ''), 1000),
-        content: JSON.stringify(forge.json),
-        aiNotes: review.output.slice(0, 8000),
-        generatedBy: 'SCP-008',
-      },
-    })
-    scopeId = scope.id
-    await setStage(client.id, 'SCOPE_REVIEW', 'Draft SOW generated, awaiting admin approval')
-    // Queue admin approval (sensitive: final scope send comes later)
-    await db.approvalRequest.create({
-      data: {
-        type: 'FINAL_SCOPE_SEND',
-        title: `Approve Final Scope for ${client.clientId} (${client.name})`,
-        description: 'Review the AI-generated draft Scope of Work. Approving will finalize it and (after approval) send to client via WhatsApp + Email.',
-        clientId: client.id,
-        agentCode: 'SCP-008',
-        payload: JSON.stringify({ scopeId: scope.id, content: forge.json }),
-        risk: 'MEDIUM',
-        requestedBy: 'SCP-008',
-      },
-    })
-    await db.notification.create({
-      data: { type: 'APPROVAL', title: 'Scope awaiting admin approval', body: `${client.clientId} — ${client.name}`, severity: 'INFO' },
-    }).catch(() => null)
+  const priorScopes = await db.scopeOfWork.findMany({ where: { clientId: client.id }, select: { version: true } })
+  const version = nextScopeVersionNumber(priorScopes.map((s) => s.version))
+  const rawDraft: Record<string, unknown> =
+    forge.ok && forge.json
+      ? (forge.json as Record<string, unknown>)
+      : {
+          title: `${client.businessName || client.name} — Scope of Work`,
+          summary: sanitizeText(scopeText, 600),
+          includedFeatures: sanitizeText(scopeText, 4000),
+        }
+  const normalizedDraft = normalizeTo21PointScope(rawDraft, {
+    clientId: client.clientId,
+    clientName: client.name,
+    businessName: client.businessName,
+    businessType: client.businessType,
+    plan: client.lead?.interest,
+    budgetRange: client.lead?.budgetRange,
+  })
+  const generatedBy = forge.ok && forge.json ? 'SCP-008' : 'MANUAL_FALLBACK'
 
-    // STAGE 3 — the client is told the requirements were received and
-    // that the draft is under internal review. The final Scope of Work
-    // itself is NOT sent here: it waits for the admin approval above.
-    await sendPipelineMessage({
-      clientRowId: client.id,
-      stage: 'SCOPE_DETAILS_RECEIVED',
-      variables: pipelineVars(client),
-      agentCode: 'SCP-008',
-      workflowId: log.id,
-    })
-  }
-  await finishLog(log.id, forge.ok ? 'SUCCESS' : 'FAILED', { scopeId })
+  const scope = await db.scopeOfWork.create({
+    data: {
+      clientId: client.id,
+      version,
+      status: 'AWAITING_ADMIN_APPROVAL',
+      summary: sanitizeText(String(normalizedDraft.summary ?? ''), 1000),
+      content: JSON.stringify(normalizedDraft),
+      aiNotes: review.output ? review.output.slice(0, 8000) : 'AI offline — structured 21-section manual-fallback draft created for operator review.',
+      generatedBy,
+    },
+  })
+  const scopeId = scope.id
+  await setStage(client.id, 'SCOPE_REVIEW', 'Draft SOW generated, awaiting admin approval')
+  // Queue admin approval (sensitive: final scope send comes later)
+  await db.approvalRequest.create({
+    data: {
+      type: 'FINAL_SCOPE_SEND',
+      title: `Approve Final Scope v${version} for ${client.clientId} (${client.name})`,
+      description: 'Review the 21-section draft Scope of Work. Approving will finalize it and send to client via WhatsApp + Email.',
+      clientId: client.id,
+      agentCode: forge.ok ? 'SCP-008' : null,
+      payload: JSON.stringify({ scopeId: scope.id, version, content: normalizedDraft }),
+      risk: 'MEDIUM',
+      requestedBy: generatedBy,
+    },
+  })
+  await db.notification.create({
+    data: { type: 'APPROVAL', title: 'Scope awaiting admin approval', body: `${client.clientId} — ${client.name} (v${version})`, severity: 'INFO' },
+  }).catch(() => null)
+
+  // STAGE 3 — the client is told the requirements were received and
+  // that the draft is under internal review. The final Scope of Work
+  // itself is NOT sent here: it waits for the admin approval above.
+  await sendPipelineMessage({
+    clientRowId: client.id,
+    stage: 'SCOPE_DETAILS_RECEIVED',
+    variables: pipelineVars(client),
+    agentCode: 'SCP-008',
+    workflowId: log.id,
+  })
+  await finishLog(log.id, 'SUCCESS', { scopeId, generatedBy, version })
   return { review, forge, scopeId }
 }
 
@@ -482,7 +499,7 @@ export async function finalizeScopeAndSend(scopeId: string, adminUserId: string)
   const log = await startLog('FINAL_SCOPE', 'ADMIN_APPROVAL', scope.clientId, { scopeId })
 
   await db.scopeOfWork.update({ where: { id: scope.id }, data: { status: 'FINAL', approvedBy: adminUserId, approvedAt: new Date() } })
-  await db.scopeOfWork.updateMany({ where: { clientId: scope.clientId, id: { not: scope.id }, status: { in: ['DRAFT', 'AWAITING_ADMIN_APPROVAL', 'APPROVED'] } }, data: { status: 'SUPERSEDED' } })
+  await db.scopeOfWork.updateMany({ where: { clientId: scope.clientId, id: { not: scope.id }, status: { in: ['DRAFT', 'AWAITING_ADMIN_APPROVAL', 'APPROVED', 'FINAL'] } }, data: { status: 'SUPERSEDED' } })
   await setStage(scope.clientId, 'FINAL_SCOPE', 'Final SOW ready')
 
   const content = JSON.parse(scope.content || '{}') as Record<string, unknown>
@@ -965,13 +982,37 @@ export async function recordPayment(clientRowId: string, input: { amount: number
  * Returns the new status (or null when nothing changed).
  */
 export async function recalcInvoiceStatus(invoiceId: string): Promise<string | null> {
-  const invoice = await db.invoice.findUnique({ where: { id: invoiceId } })
-  if (!invoice || invoice.status === 'CANCELLED') return null
-  const paidAgg = await db.payment.aggregate({ where: { invoiceId: invoice.id, status: 'PAID' }, _sum: { amount: true } })
-  const paidSum = paidAgg._sum.amount ?? 0
-  const next = paidSum >= invoice.amount && invoice.amount > 0 ? 'PAID' : paidSum > 0 ? 'PARTIAL' : null
-  if (!next || next === invoice.status) return invoice.status
-  await db.invoice.update({ where: { id: invoice.id }, data: { status: next } })
+  const invoice = await db.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { payments: { select: { amount: true, status: true } } },
+  })
+  if (
+    !invoice ||
+    invoice.status === 'CANCELLED' ||
+    invoice.status === 'VOID' ||
+    invoice.status === 'REFUNDED' ||
+    invoice.status === 'DISPUTED'
+  ) {
+    return null
+  }
+  const { computeInvoiceSettlement, resolveInvoiceTotalMinor } = await import('@/lib/invoice-policy')
+  const settlement = computeInvoiceSettlement({
+    invoiceAmount: invoice.amount,
+    invoiceTotalMinor: resolveInvoiceTotalMinor({ totalMinor: invoice.totalMinor, amount: invoice.amount }),
+    currentStatus: invoice.status,
+    dueAt: invoice.dueAt,
+    payments: invoice.payments,
+  })
+  const next = settlement.nextStatus
+  if (next === invoice.status) return invoice.status
+  await db.invoice.update({
+    where: { id: invoice.id },
+    data: {
+      status: next,
+      ...(next === 'PAID' && !invoice.paidAt ? { paidAt: new Date() } : {}),
+      updatedAt: new Date(),
+    },
+  })
   return next
 }
 
@@ -1035,8 +1076,12 @@ export async function verifyPayment(paymentId: string, adminUserId: string) {
       agentCode: 'PAY-016',
     })
   }
-  await audit({ actor: `admin:${adminUserId}`, action: alreadyVerified ? 'PAYMENT_VERIFICATION_RECONCILED' : 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null } })
-  return { ok: true, idempotent: alreadyVerified }
+  const { ensureVerifiedPaymentReceipt } = await import('@/lib/receipts')
+  const receiptOutcome = await ensureVerifiedPaymentReceipt(payment.id).catch(() => null)
+  const receiptNumber = receiptOutcome && receiptOutcome.ok ? receiptOutcome.receipt.receiptNumber : null
+
+  await audit({ actor: `admin:${adminUserId}`, action: alreadyVerified ? 'PAYMENT_VERIFICATION_RECONCILED' : 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null, receiptNumber } })
+  return { ok: true, idempotent: alreadyVerified, receiptNumber }
 }
 
 // ------------------------------------------------------------

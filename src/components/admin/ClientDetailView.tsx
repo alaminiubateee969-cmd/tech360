@@ -89,7 +89,19 @@ export function ClientDetailView({
 }) {
   const { data, loading, error, refresh } = useApi<ClientDetailResponse>(`/api/admin/clients/${encodeURIComponent(clientId)}`)
   const approvalsApi = useApi<ApprovalsResponse>('/api/admin/approvals')
+  const mergeApi = useApi<{
+    ok: boolean
+    duplicates: Array<{
+      client: { id: string; clientId: string; name: string; businessName?: string | null; email?: string | null; whatsapp?: string | null; status: string }
+      reasons: string[]
+      confidenceScore: number
+    }>
+    mergedChildren: Array<{ id: string; clientId: string; name: string; email?: string | null; updatedAt?: string }>
+  }>(`/api/admin/clients/${encodeURIComponent(clientId)}/merge`)
   const client = data?.client
+  const [mergeTargetSource, setMergeTargetSource] = useState<{ clientId: string; name: string } | null>(null)
+  const [mergeReason, setMergeReason] = useState('')
+  const [mergeBusy, setMergeBusy] = useState(false)
 
   const [dialog, setDialog] = useState<JourneyDialog | null>(null)
   const [busy, setBusy] = useState(false)
@@ -396,6 +408,108 @@ export function ClientDetailView({
           </>
         }
       />
+
+      {/* Duplicate Detection & Auditable Merge Banner */}
+      {((mergeApi.data?.duplicates?.length ?? 0) > 0 || (mergeApi.data?.mergedChildren?.length ?? 0) > 0) ? (
+        <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+          {(mergeApi.data?.duplicates?.length ?? 0) > 0 ? (
+            <div className="space-y-1.5">
+              <p className="font-semibold text-amber-300">
+                Potential Duplicate Client Records Detected ({mergeApi.data?.duplicates.length}) — Manual Review Required
+              </p>
+              <div className="space-y-1">
+                {mergeApi.data?.duplicates.map((dup) => (
+                  <div key={dup.client.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-500/20 bg-slate-950/60 px-2.5 py-1.5">
+                    <div>
+                      <span className="font-mono font-semibold text-[#009FE3]">{dup.client.clientId}</span> ·{' '}
+                      <span className="font-medium text-slate-200">{dup.client.name}</span>
+                      {dup.client.email ? <span className="text-slate-400"> · {dup.client.email}</span> : null}
+                      <span className="ml-2 text-[10px] text-amber-300">({dup.reasons.join(', ')})</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setMergeTargetSource({ clientId: dup.client.clientId, name: dup.client.name })
+                        setMergeReason('')
+                      }}
+                      className="h-7 border-amber-500/40 bg-amber-500/15 px-2.5 text-[11px] text-amber-200 hover:bg-amber-500/25"
+                    >
+                      Merge into {client.clientId}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {(mergeApi.data?.mergedChildren?.length ?? 0) > 0 ? (
+            <p className="text-[11px] text-slate-300">
+              Preserved Merged Client IDs:{' '}
+              {mergeApi.data?.mergedChildren.map((m) => `${m.clientId} (${m.name})`).join(', ')}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Dialog open={mergeTargetSource !== null} onOpenChange={(open) => { if (!open) setMergeTargetSource(null) }}>
+        <DialogContent className="max-w-md border-slate-800 bg-slate-950">
+          <DialogHeader>
+            <DialogTitle className="text-slate-100">
+              Merge {mergeTargetSource?.clientId} into {client.clientId}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Transfers all messages, scopes, projects, invoices, payments, receipts, and files from{' '}
+              <strong>{mergeTargetSource?.clientId}</strong> ({mergeTargetSource?.name}) into{' '}
+              <strong>{client.clientId}</strong> while permanently preserving both canonical Client IDs in the audit log.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2 text-xs">
+            <Label htmlFor="merge-reason" className="text-slate-300">Audit Reason (10–1000 characters) *</Label>
+            <Textarea
+              id="merge-reason"
+              value={mergeReason}
+              onChange={(e) => setMergeReason(e.target.value)}
+              rows={3}
+              placeholder="Explain why these client records belong to the same verified customer..."
+              className="border-slate-800 bg-slate-900/60 text-slate-200"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setMergeTargetSource(null)} disabled={mergeBusy} className="text-slate-400">
+              Cancel
+            </Button>
+            <Button
+              disabled={mergeBusy || mergeReason.trim().length < 10}
+              onClick={async () => {
+                if (!mergeTargetSource) return
+                setMergeBusy(true)
+                try {
+                  await fetchJson(`/api/admin/clients/${encodeURIComponent(client.clientId)}/merge`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      sourceClientId: mergeTargetSource.clientId,
+                      reason: mergeReason.trim(),
+                    }),
+                  })
+                  toast.success(`Merged ${mergeTargetSource.clientId} into ${client.clientId} with full history preserved.`)
+                  setMergeTargetSource(null)
+                  refresh()
+                  mergeApi.refresh()
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : 'Client merge failed.')
+                } finally {
+                  setMergeBusy(false)
+                }
+              }}
+              className="gap-2 font-semibold"
+              style={{ background: '#009FE3' }}
+            >
+              {mergeBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+              Confirm Merge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Stage stepper (20 stages) */}
       <section className={CARD} aria-label="Pipeline progress">

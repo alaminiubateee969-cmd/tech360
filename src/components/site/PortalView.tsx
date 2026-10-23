@@ -32,8 +32,9 @@ type PortalData = {
   referral: { status: string; name: string | null; contact: string | null; createdAt: string } | null
   handover: { status: string; downloadLink: string | null; confirmLink: string | null; passwordChangeRequested: boolean; passwordChangeConfirmed: boolean } | null
   delivery: { status: string; confirmedAt: string | null } | null
-  payments: Array<{ milestone: string | null; amount: number; currency: string; status: string; verifiedAt: string | null }>
-  invoices: Array<{ number: string; amount: number; currency: string; status: string; notes: string | null }>
+  paymentReadiness?: { configured: boolean; status: 'ACTIVE' | 'NOT_CONFIGURED' | 'DISABLED'; message: string; stripeReady: boolean }
+  payments: Array<{ id?: string; milestone: string | null; amount: number; currency: string; status: string; verifiedAt: string | null; receiptAvailable?: boolean; receiptNumber?: string | null }>
+  invoices: Array<{ number: string; amount: number; remainingAmount?: number; currency: string; status: string; payable?: boolean; dueAt?: string | null; notes: string | null }>
   communications: Array<{ channel: string; direction: string; subject: string | null; preview: string; status: string; at: string }>
   workforce: Array<{ id: string; agentName: string; agentTitle: string | null; work: string; status: string; at: string; durationMs: number | null }>
   meetings: Array<{ id: string; status: string; scheduledAt: string | null; reason: string | null; channel: string | null; bookingLink: string | null; notes: string | null; clientResponse: string | null; clientRespondedAt: string | null }>
@@ -230,31 +231,50 @@ export default function PortalView() {
           </SectionCard>
 
           {/* Payments */}
-          <SectionCard icon={<CreditCard className="h-5 w-5" />} title="Payments">
+          <SectionCard icon={<CreditCard className="h-5 w-5" />} title="Payments & Verified Receipts">
             {data.payments.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wide text-slate-400">
-                    <th className="py-2 pr-4 font-medium">Milestone</th><th className="py-2 pr-4 font-medium">Amount</th><th className="py-2 pr-4 font-medium">Status</th><th className="py-2 font-medium">Verified</th>
+                    <th className="py-2 pr-4 font-medium">Milestone</th><th className="py-2 pr-4 font-medium">Amount</th><th className="py-2 pr-4 font-medium">Status</th><th className="py-2 pr-4 font-medium">Verified</th><th className="py-2 text-right font-medium">Receipt</th>
                   </tr></thead>
                   <tbody>
                     {data.payments.map((p, i) => (
-                      <tr key={i} className="border-b border-slate-100 last:border-0">
+                      <tr key={p.id ?? i} className="border-b border-slate-100 last:border-0">
                         <td className="py-2.5 pr-4 text-slate-700">{p.milestone ?? 'Payment'}</td>
                         <td className="py-2.5 pr-4 font-semibold text-[#0B1F33]">{fmtMoney(p.amount, p.currency)}</td>
                         <td className="py-2.5 pr-4"><Badge variant={statusTone(p.status)} className="capitalize">{p.status.toLowerCase()}</Badge></td>
-                        <td className="py-2.5 text-xs text-slate-500">{p.verifiedAt ? fmtDate(p.verifiedAt) : 'pending verification'}</td>
+                        <td className="py-2.5 pr-4 text-xs text-slate-500">{p.verifiedAt ? fmtDate(p.verifiedAt) : 'pending verification'}</td>
+                        <td className="py-2.5 text-right text-xs">
+                          {p.receiptAvailable && p.id ? (
+                            <a
+                              href={`/api/portal/payments/${encodeURIComponent(p.id)}/receipt`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 font-semibold text-[#063B8F] underline-offset-2 hover:underline"
+                            >
+                              <Receipt className="h-3.5 w-3.5" aria-hidden="true" />
+                              {p.receiptNumber || 'Official Receipt'}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400">After verification</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <p className="mt-3 text-xs text-slate-400">Payments are marked paid only after verification by Tech360 — never automatically.</p>
+                <p className="mt-3 text-xs text-slate-400">Official receipts are generated only after server-verified settlement — never for pending, failed, or refunded entries.</p>
               </div>
             ) : <EmptyLine text="No payments recorded yet. Payment milestones appear here after you approve your preview." />}
           </SectionCard>
 
-          {/* Invoices — per-invoice payment allocation, Pay Now via the real Stripe checkout API */}
-          <InvoicesCard invoices={data.invoices} supportContact={data.policy.supportContact} />
+          {/* Invoices — per-invoice payment allocation, Pay Now only when Stripe is actively configured */}
+          <InvoicesCard
+            invoices={data.invoices}
+            supportContact={data.policy.supportContact}
+            paymentReadiness={data.paymentReadiness}
+          />
 
           {/* Communications */}
           <SectionCard icon={<MessageSquare className="h-5 w-5" />} title="Our communication history">
@@ -1222,21 +1242,39 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
 
 // ---------------- Invoices card (per-invoice allocation + Pay Now) ----------------
 
-type PortalInvoice = { number: string; amount: number; currency: string; status: string; notes: string | null }
+type PortalInvoice = {
+  number: string
+  amount: number
+  remainingAmount?: number
+  currency: string
+  status: string
+  payable?: boolean
+  dueAt?: string | null
+  notes: string | null
+}
 
 function invoiceTone(s: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (s === 'PAID') return 'default'
-  if (s === 'OVERDUE') return 'destructive'
-  if (s === 'CANCELLED') return 'outline'
-  return 'secondary' // DRAFT | SENT | PARTIAL
+  if (s === 'OVERDUE' || s === 'DISPUTED') return 'destructive'
+  if (s === 'CANCELLED' || s === 'VOID' || s === 'REFUNDED') return 'outline'
+  return 'secondary'
 }
 
-function InvoicesCard({ invoices, supportContact }: { invoices: PortalInvoice[]; supportContact: string }) {
-  const [paying, setPaying] = useState<string | null>(null) // invoice number in flight
+function InvoicesCard({
+  invoices,
+  supportContact,
+  paymentReadiness,
+}: {
+  invoices: PortalInvoice[]
+  supportContact: string
+  paymentReadiness?: PortalData['paymentReadiness']
+}) {
+  const [paying, setPaying] = useState<string | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
+  const stripeReady = Boolean(paymentReadiness?.stripeReady)
 
   async function payNow(invoiceNumber: string) {
-    if (paying) return
+    if (paying || !stripeReady) return
     setPaying(invoiceNumber)
     setPayError(null)
     try {
@@ -1256,7 +1294,16 @@ function InvoicesCard({ invoices, supportContact }: { invoices: PortalInvoice[];
   }
 
   return (
-    <SectionCard icon={<Receipt className="h-5 w-5" />} title="Invoices">
+    <SectionCard icon={<Receipt className="h-5 w-5" />} title="Official Invoices">
+      {paymentReadiness && !paymentReadiness.configured ? (
+        <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
+          <span className="font-semibold text-slate-800">Payment status: Not Configured</span> — Payment setup required before live online checkout. Contact{' '}
+          <a href={`mailto:${supportContact}`} className="font-medium text-[#063B8F] underline underline-offset-2">
+            {supportContact}
+          </a>{' '}
+          for billing assistance.
+        </div>
+      ) : null}
       {invoices.length > 0 ? (
         <div>
           {payError ? (
@@ -1264,7 +1311,7 @@ function InvoicesCard({ invoices, supportContact }: { invoices: PortalInvoice[];
               <p className="leading-relaxed">
                 {payError}{' '}
                 <span className="block text-amber-700">
-                  You can also pay by bank transfer — <a href={`mailto:${supportContact}`} className="font-medium underline underline-offset-2">contact us</a> and we&rsquo;ll send details.
+                  For billing assistance, write to <a href={`mailto:${supportContact}`} className="font-medium underline underline-offset-2">{supportContact}</a>.
                 </span>
               </p>
               <button type="button" onClick={() => setPayError(null)} aria-label="Dismiss payment error" className="shrink-0 rounded p-1 hover:bg-amber-100">
@@ -1277,46 +1324,64 @@ function InvoicesCard({ invoices, supportContact }: { invoices: PortalInvoice[];
               <thead>
                 <tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wide text-slate-400">
                   <th className="py-2 pr-4 font-medium">Invoice</th>
-                  <th className="py-2 pr-4 font-medium">Amount</th>
+                  <th className="py-2 pr-4 font-medium">Total</th>
+                  <th className="py-2 pr-4 font-medium">Balance Due</th>
                   <th className="py-2 pr-4 font-medium">Status</th>
-                  <th className="py-2 font-medium text-right">Action</th>
+                  <th className="py-2 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((inv) => (
-                  <tr key={inv.number} className="border-b border-slate-100 last:border-0">
-                    <td className="py-2.5 pr-4 font-mono text-[13px] font-medium text-[#063B8F]">{inv.number}</td>
-                    <td className="py-2.5 pr-4 font-semibold text-[#0B1F33]">{fmtMoney(inv.amount, inv.currency)}</td>
-                    <td className="py-2.5 pr-4"><Badge variant={invoiceTone(inv.status)} className="capitalize">{inv.status.toLowerCase()}</Badge></td>
-                    <td className="py-2.5 text-right">
-                      {inv.status === 'PAID' ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#18B83A]">
-                          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Paid
-                        </span>
-                      ) : inv.status === 'CANCELLED' ? (
-                        <span className="text-xs text-slate-400">—</span>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => payNow(inv.number)}
-                          disabled={paying !== null}
-                          aria-label={`Pay invoice ${inv.number} now`}
-                          className="h-8 gap-1.5 bg-[#063B8F] px-3 text-xs font-semibold text-white hover:bg-[#0B1F33] disabled:opacity-50"
-                        >
-                          {paying === inv.number ? <><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Opening…</> : <><CreditCard className="h-3.5 w-3.5" aria-hidden="true" /> Pay Now</>}
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {invoices.map((inv) => {
+                  const balance = inv.remainingAmount ?? (inv.status === 'PAID' ? 0 : inv.amount)
+                  const canCheckout = Boolean(inv.payable) && stripeReady && balance > 0
+                  return (
+                    <tr key={inv.number} className="border-b border-slate-100 last:border-0">
+                      <td className="py-2.5 pr-4 font-mono text-[13px] font-medium text-[#063B8F]">{inv.number}</td>
+                      <td className="py-2.5 pr-4 font-semibold text-[#0B1F33]">{fmtMoney(inv.amount, inv.currency)}</td>
+                      <td className="py-2.5 pr-4 text-slate-700">{fmtMoney(balance, inv.currency)}</td>
+                      <td className="py-2.5 pr-4"><Badge variant={invoiceTone(inv.status)} className="capitalize">{inv.status.replace(/_/g, ' ').toLowerCase()}</Badge></td>
+                      <td className="py-2.5 text-right">
+                        <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                          <a
+                            href={`/api/portal/invoices/${encodeURIComponent(inv.number)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-8 items-center gap-1 rounded-md border border-[#CBD8E6] bg-white px-2.5 text-xs font-medium text-[#063B8F] hover:bg-[#F4FAFF]"
+                          >
+                            <FileText className="h-3.5 w-3.5" aria-hidden="true" /> View / Print
+                          </a>
+                          {inv.status === 'PAID' ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-[#18B83A]">
+                              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Paid
+                            </span>
+                          ) : canCheckout ? (
+                            <Button
+                              size="sm"
+                              onClick={() => payNow(inv.number)}
+                              disabled={paying !== null}
+                              aria-label={`Pay invoice ${inv.number} now`}
+                              className="h-8 gap-1.5 bg-[#063B8F] px-3 text-xs font-semibold text-white hover:bg-[#0B1F33] disabled:opacity-50"
+                            >
+                              {paying === inv.number ? <><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Opening…</> : <><CreditCard className="h-3.5 w-3.5" aria-hidden="true" /> Pay Now</>}
+                            </Button>
+                          ) : inv.payable && !stripeReady ? (
+                            <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-500">
+                              Payment setup required
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
           <p className="mt-3 text-xs text-slate-400">
-            Each invoice is settled from its own payments — a partially paid invoice shows PARTIAL until the remainder arrives. Card payments are processed by Stripe.
+            Invoices appear here only after formal issuance. Source-code handover unlocks automatically once verified payments settle 100% of your contracted project value.
           </p>
         </div>
-      ) : <EmptyLine text="No invoices yet. Invoices appear here per payment milestone once work is underway." />}
+      ) : <EmptyLine text="No issued invoices yet. Invoices appear here per payment milestone once your HTML preview is approved." />}
     </SectionCard>
   )
 }

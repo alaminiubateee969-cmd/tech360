@@ -11,7 +11,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const rl = rateLimit(`handover-confirm:${clientIp(req)}`, 10, 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many requests' }, { status: 429 })
   const clean = sanitizeText(token, 64).replace(/[^a-f0-9]/gi, '')
-  const handover = await db.handoverRecord.findUnique({ where: { packageToken: clean }, include: { project: true } })
+  const handover = await db.handoverRecord.findUnique({
+    where: { packageToken: clean },
+    include: { project: true, client: { select: { clientId: true } } },
+  })
   if (!handover) return Response.json({ error: 'Package not found' }, { status: 404 })
   if (handover.expiryAt && handover.expiryAt < new Date()) {
     return Response.json({ error: 'This handover link has expired. Contact TECH360 support.' }, { status: 410 })
@@ -33,10 +36,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const notes = sanitizeText(raw.notes, 2000)
 
   const result = await confirmDelivery(handover.project.clientId, { received, working, passwordsChanged, notes }, handover.projectId)
+  const canonicalClientId = handover.client?.clientId ?? handover.project.clientId
   await audit({
-    actor: `client:${handover.project.clientId}`,
+    actor: `client:${canonicalClientId}`,
     action: result.accepted ? 'DELIVERY_ACCEPTED' : 'DELIVERY_ISSUE_REPORTED',
-    clientId: handover.project.clientId,
+    clientId: canonicalClientId,
     projectId: handover.projectId,
     details: { passwordsChanged, received, working, code: result.code, notes: notes.slice(0, 300) },
     ip: clientIp(req),
