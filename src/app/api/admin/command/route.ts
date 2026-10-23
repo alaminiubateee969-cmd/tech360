@@ -235,6 +235,9 @@ ${CAPABILITIES}`
               select: {
                 status: true,
                 thresholdVersion: true,
+                // Required to validate the certificate window; without it every
+                // department is reported as not currently certified.
+                assessedAt: true,
                 expiresAt: true,
                 evidence: true,
                 sopCoverage: true,
