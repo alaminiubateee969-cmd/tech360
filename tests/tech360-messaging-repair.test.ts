@@ -38,7 +38,7 @@ describe('1 — website chat AI response or honest error', () => {
     const src = read('src/app/api/chat/session/route.ts')
     assert.match(src, /clientId/, 'must link ChatConversation to Client ID')
     assert.match(src, /getZaiProviderStatus|aiAvailable/, 'must expose AI availability honestly')
-    assert.match(src, /intakeLead|nextClientId/, 'must create or reuse CRM Client via existing intake')
+    assert.match(src, /ensureChatClient/, 'must create or reuse CRM Client through the consented intake helper')
   })
 
   it('ChatWidget removes the misleading instant-AI promise', () => {
@@ -115,20 +115,24 @@ describe('4 — inbound SMS CRM lifecycle', () => {
 })
 
 // ============================================================
-// 5 — Customer email saved against correct Client ID
+// 5 — Public email input stays contact data until verified
 // ============================================================
-describe('5 — email collection against correct Client ID', () => {
-  it('validates email and saves against existing CRM client (no duplicate ID)', () => {
+describe('5 — email verification before identity linkage', () => {
+  it('normalizes email but refuses to link free-text input without OTP proof', () => {
     const src = read('src/lib/channel-router.ts')
-    assert.match(src, /validateEmail/, 'must validate email before saving')
-    assert.match(src, /db\.client\.update[\s\S]*?email/, 'must save validated email against Client row')
-    assert.match(src, /EMAIL_DUPLICATE_COLLISION/, 'must audit collision, not auto-merge')
+    assert.match(src, /validateEmail/, 'must normalize and validate the address')
+    assert.match(src, /Email verification is required/i, 'must fail closed without verified identity proof')
+    assert.doesNotMatch(src, /db\.client\.update[\s\S]*?email:/, 'raw email must not mutate the CRM identity')
   })
 
-  it('chat orchestrator extracts email from visitor message and saves it', () => {
+  it('chat orchestrator never treats a raw free-text email as verified CRM identity', () => {
     const src = read('src/lib/chat-orchestrator.ts')
-    assert.match(src, /extractEmail|emailInMessage/, 'must extract email from free-form message')
-    assert.match(src, /db\.client\.update[\s\S]*?email: v\.normalized/, 'must persist extracted email against Client ID')
+    assert.match(src, /unverified contact data/i)
+    assert.doesNotMatch(src, /extractEmail|db\.client\.update[\s\S]*?email:/)
+    const onboarding = read('src/lib/chat-onboarding.ts')
+    assert.match(onboarding, /contactConsentAt/)
+    assert.match(onboarding, /identityReviewRequired/)
+    assert.match(onboarding, /intakeLead/)
   })
 
   it('pure validation: correct emails pass, bad ones fail', () => {
@@ -181,7 +185,7 @@ describe('7 — inbound email reply threading', () => {
   it('email webhook dedupes, validates secret, persists thread status', () => {
     const src = read('src/app/api/webhooks/email/route.ts')
     assert.match(src, /claimInboundWebhookEvent.*EMAIL/, 'must dedupe provider events')
-    assert.match(src, /SOCIAL_WEBHOOK_SECRET|N8N_WEBHOOK_SECRET|x-webhook-secret/, 'must validate webhook secret where supported')
+    assert.match(src, /verifyEmailWebhookAuth|EMAIL_WEBHOOK_SECRET/, 'must fail closed on a dedicated email webhook credential')
     assert.match(src, /status: 'RECEIVED'|providerMessageId.*eventId/, 'must persist delivery status honestly')
     assert.match(src, /recordInbound.*EMAIL/, 'must update communication state machine')
     assert.match(src, /handleCustomerMessage.*EMAIL|audit.*INBOUND_EMAIL/, 'must not silently ignore — must route to orchestrator or audit')
@@ -552,9 +556,17 @@ describe('D — channel routing invariants', () => {
     assert.ok(decision.reason.length > 10)
   })
 
-  it('WEB chat normalizes email and phone, prevents duplicate Client IDs', () => {
+  it('WEB chat uses consent, request idempotency, and never links CRM by raw email', () => {
+    const chatSession = read('src/app/api/chat/session/route.ts')
     const chatMsg = read('src/app/api/chat/message/route.ts')
-    assert.match(chatMsg, /ensureClientForConversation|prior.*anonId.*clientId/, 'must reuse stable Client ID per anonId, not create duplicate per message')
-    assert.match(chatMsg, /where: \{ email/, 'must dedupe by normalized email before creating new client')
+    const onboarding = read('src/lib/chat-onboarding.ts')
+    assert.match(chatSession, /hasExplicitContactConsent/)
+    assert.match(chatSession, /clientRequestId: requestId/)
+    assert.match(chatSession, /withChatSessionCookie/)
+    assert.match(chatMsg, /clientRequestId: requestId/)
+    assert.match(chatMsg, /chatSessionCookieIsValid/)
+    assert.doesNotMatch(chatMsg, /where: \{ email/)
+    assert.match(onboarding, /contactConsentAt: \{ not: null \}/, 'only consented prior browser chats may reuse the Client ID')
+    assert.match(onboarding, /identityReviewRequired/, 'email collisions must not expose an existing Client ID')
   })
 })

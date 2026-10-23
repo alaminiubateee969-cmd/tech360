@@ -1,7 +1,20 @@
 export type WelcomeChannel = 'WHATSAPP' | 'EMAIL' | 'SMS' | null
 
+/** Bump when the corresponding consent copy or processing purpose changes. */
+export const CONTACT_CONSENT_VERSION = 'contact-v2-2026-10-23'
+export const MARKETING_CONSENT_VERSION = 'marketing-v1-2026-10-23'
+
 export function hasExplicitContactConsent(value: unknown): boolean {
   return value === true
+}
+
+export function hasExplicitMarketingConsent(value: unknown): boolean {
+  return value === true
+}
+
+/** Accept only a bounded opaque idempotency key; clients generate UUIDs. */
+export function isValidClientRequestId(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{15,63}$/.test(value)
 }
 
 /**

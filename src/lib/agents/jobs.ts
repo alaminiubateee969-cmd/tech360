@@ -3,6 +3,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { db } from '@/lib/db'
 import { newCorrelationId } from '@/lib/security'
 import { getAgentDefinition } from '@/lib/agents/bootstrap'
+import { isValidExistingChildAgent } from '@/lib/agents/hierarchy-service'
+import { isWellFormedDynamicAgent } from '@/lib/agents/runtime-policy'
 import type { AgentSeed } from '@/lib/agents/registry'
 import { runAgent } from '@/lib/agents/engine'
 import { agentHasPermission, authorizeAgentTool, PRIVILEGED_AGENT_TOOLS, type AgentTool } from '@/lib/ai-workforce-policy'
@@ -152,26 +154,38 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
     code: string
     status: string
     requiresApproval: boolean
+    purpose: string
+    systemPrompt: string
     tools: string
     permissions: string
+    parentCode: string | null
+    departmentId: string | null
     department: { code: string } | null
   } | null = null
   if (agentOwned) {
     if (!agentCode) throw new AgentJobInputError(`A ${taskType} task requires an agent code`)
     definition = getAgentDefinition(agentCode)
-    if (!definition) throw new AgentJobInputError(`Agent ${agentCode} is not in the executable registry`)
     agent = await db.aiAgent.findUnique({
       where: { code: agentCode },
-      select: { code: true, status: true, requiresApproval: true, tools: true, permissions: true, department: { select: { code: true } } },
+      select: {
+        code: true, status: true, requiresApproval: true, purpose: true, systemPrompt: true,
+        tools: true, permissions: true, parentCode: true, departmentId: true,
+        department: { select: { code: true } },
+      },
     })
     if (!agent) throw new AgentJobInputError(`Agent ${agentCode} is not registered in the database`)
     if (agent.status !== 'ACTIVE') throw new AgentJobInputError(`Agent ${agentCode} is ${agent.status}`)
+    if (definition && agent.department?.code !== definition.dept) throw new AgentJobInputError(`Agent ${agentCode} department mapping is invalid`)
+    if (!definition) {
+      if (!isWellFormedDynamicAgent(agent) || !(await isValidExistingChildAgent(db, agent))) {
+        throw new AgentJobInputError(`Dynamic agent ${agentCode} is not in a valid executable hierarchy`)
+      }
+    }
     if (toolCall) {
-      if (agent.department?.code !== definition.dept) throw new AgentJobInputError(`Agent ${agentCode} department mapping is invalid`)
-      if (!definition.tools.includes(toolCall.toolName)) throw new AgentJobInputError(`Agent ${agentCode} is not authorized for tool '${toolCall.toolName}' by the canonical registry`)
+      if (definition && !definition.tools.includes(toolCall.toolName)) throw new AgentJobInputError(`Agent ${agentCode} is not authorized for tool '${toolCall.toolName}' by the canonical registry`)
       const toolDecision = authorizeAgentTool(agent, toolCall.toolName as AgentTool)
       if (!toolDecision.allowed) throw new AgentJobInputError(`Tool '${toolCall.toolName}' is not granted (${toolDecision.code})`)
-      if (!agentHasPermission(agent, 'write:tasks') || !definition.permissions.includes('write:tasks')) {
+      if (!agentHasPermission(agent, 'write:tasks') || (definition && !definition.permissions.includes('write:tasks'))) {
         throw new AgentJobInputError(`Agent ${agentCode} does not have the required write:tasks permission`)
       }
     }

@@ -148,7 +148,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
 
       {/* Example system */}
       <section aria-labelledby="example-heading" className="bg-[#F4FAFF]">
-        <h2 id="example-heading" className="sr-only">Example system for this sector</h2>
+        <h2 id="example-heading" className="sr-only">Illustrative scenario for this sector</h2>
         <div className="mx-auto w-full max-w-4xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
           <Reveal>
             <Card className="border-[#009FE3]/30 bg-white">
@@ -159,17 +159,16 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
                   </span>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#009FE3]">
-                      Example system
+                      Illustrative scenario
                     </p>
-                    <p className="text-xs text-[#526173]">An illustrative engagement pattern</p>
+                    <p className="text-xs text-[#526173]">Hypothetical system concept</p>
                   </div>
                 </div>
                 <p className="mt-5 text-base leading-relaxed text-[#0B1F33]">
                   {industry.exampleSystem}
                 </p>
                 <p className="mt-4 text-xs leading-relaxed text-[#526173]">
-                  Representative project pattern for this sector. Engagements are
-                  anonymised; references are available on request under NDA.
+                  Hypothetical example only — not a verified client engagement or measured outcome. Any technology or integration shown would need to be validated for a real project; client references require prior written permission and may not be available.
                 </p>
               </CardContent>
             </Card>

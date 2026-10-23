@@ -575,11 +575,14 @@ model FormSubmission {
   id           String  @id @default(cuid())
   clientId     String?
   client       Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  form         String  @default("CONTACT") // CONTACT | CAREERS | NEWSLETTER
+  clientRequestId String? @unique(map: "FormSubmission_clientRequestId_key") @db.VarChar(64)
+  requestHash  String? @db.Char(64)
+  form         String  @default("CONTACT") // CONTACT | CHAT | CAREERS | NEWSLETTER
   name         String
   businessName String?
   businessType String?
   email        String?
+  phone        String?
   whatsapp     String?
   country      String?
   projectType  String?
@@ -588,7 +591,10 @@ model FormSubmission {
   preferredContact String?
   tracking     String? @db.Text // JSON
   ip           String?
-  status       String  @default("NEW") // NEW | PROCESSING | PROCESSED | FAILED
+  contactConsentAt DateTime?
+  marketingConsentAt DateTime?
+  consentVersion String? @db.VarChar(64)
+  status       String  @default("NEW") // NEW | PROCESSING | PROCESSED | FAILED | PENDING_REVIEW
   createdAt    DateTime @default(now())
 
   @@index([status])
@@ -623,7 +629,34 @@ model Department {
   description String? @db.Text
   createdAt   DateTime @default(now())
 
-  agents AiAgent[]
+  agents        AiAgent[]
+  dccAssessments DepartmentCapabilityAssessment[]
+}
+
+model DepartmentCapabilityAssessment {
+  id                  String   @id @default(cuid())
+  departmentId        String
+  department          Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  thresholdVersion   String   @db.VarChar(32)
+  status              String   @default("UNDER_REVIEW") // CERTIFIED | BLOCKED | UNDER_REVIEW
+  sopCoverage         Float?
+  knowledgeCoverage  Float?
+  skillCoverage       Float?
+  testPassRate        Float?
+  kpiAchievement      Float?
+  securityCompliance Float?
+  auditCompliance     Float?
+  selfRecoveryRate    Float?
+  humanEscalationRate Float?
+  evidence            String @db.LongText // JSON: per-metric source, method, samples and limitations
+  measurementStart    DateTime?
+  measurementEnd      DateTime?
+  assessedBy          String
+  assessedAt          DateTime @default(now())
+  expiresAt           DateTime?
+
+  @@index([departmentId, assessedAt])
+  @@index([status, expiresAt])
 }
 
 model AiAgent {
@@ -655,6 +688,7 @@ model AiAgent {
 
   @@index([departmentId])
   @@index([status])
+  @@index([parentCode])
 }
 
 model AiAgentExecution {
@@ -1128,10 +1162,13 @@ model ChatConversation {
   id                 String   @id @default(cuid())
   anonId             String
   clientId           String?
+  clientRequestId    String?  @unique(map: "ChatConversation_clientRequestId_key") @db.VarChar(64)
   status             String    @default("OPEN") // OPEN | CLOSED
   visitorName        String?
   visitorEmail       String?
   visitorPhone       String?
+  contactConsentAt   DateTime?
+  consentVersion     String? @db.VarChar(64)
   subject            String? @db.Text
   lastMessagePreview String? @db.Text
   lastMessageAt      DateTime @default(now())
@@ -1151,6 +1188,7 @@ model ChatMessage {
   id             String          @id @default(cuid())
   conversationId String
   conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  clientRequestId String?        @unique(map: "ChatMessage_clientRequestId_key") @db.VarChar(64)
   sender          String // VISITOR | ADMIN | SYSTEM
   body            String @db.Text
   agentEmail      String?
@@ -1165,6 +1203,8 @@ model NewsletterSubscriber {
   name            String?
   status          String    @default("ACTIVE") // ACTIVE | UNSUBSCRIBED
   source          String    @default("FOOTER")
+  consentAt       DateTime?
+  consentVersion  String?   @db.VarChar(64)
   unsubscribedAt  DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

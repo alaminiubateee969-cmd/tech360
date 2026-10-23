@@ -233,7 +233,7 @@ const INTEGRATIONS: Array<{ key: string; label: string; blurb: string; status: I
   { key: "email", label: "Email", blurb: "SMTP • campaigns", status: "REQUIRES_SETUP", icon: <Mail className="size-5" /> },
   { key: "sms", label: "SMS", blurb: "Gateway • OTP", status: "REQUIRES_SETUP", icon: <Smartphone className="size-5" /> },
   { key: "stripe", label: "Stripe", blurb: "Checkout • webhooks", status: "AVAILABLE", icon: <CreditCard className="size-5" /> },
-  { key: "n8n", label: "n8n", blurb: "26 workflows", status: "AVAILABLE", icon: <Workflow className="size-5" /> },
+  { key: "n8n", label: "n8n", blurb: "26 workflow files in source", status: "AVAILABLE", icon: <Workflow className="size-5" /> },
   { key: "github", label: "GitHub", blurb: "Factory export", status: "AVAILABLE", icon: <Github className="size-5" /> },
   { key: "nextjs", label: "Next.js", blurb: "16 • React 19", status: "AVAILABLE", icon: <Layers className="size-5" /> },
 ];
@@ -279,7 +279,7 @@ function IntegrationShowcase() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-[#526173]">Status meanings: <span className="font-semibold text-[#0B1F33]">Available</span> = code is ready, credentials not yet verified. <span className="font-semibold text-amber-700">Requires setup</span> = provider credentials and policy approval required. Nothing sends while <span className="font-semibold">NOT_CONFIGURED</span>.</p>
+        <p className="mt-3 text-xs leading-relaxed text-[#526173]">Status meanings: <span className="font-semibold text-[#0B1F33]">Available</span> = integration code exists; credentials are not verified. <span className="font-semibold text-amber-700">Requires setup</span> = provider credentials and policy approval are required. The n8n count is repository files, not a claim of deployment or successful runs. Nothing sends while <span className="font-semibold">NOT_CONFIGURED</span>.</p>
       </div>
     </section>
   );
@@ -291,10 +291,10 @@ function IntegrationShowcase() {
 
 function TrustByNumbers() {
   const stats = [
-    { value: String(SERVICES.length), label: "Services", note: "From websites to AI agents — every service is a real delivery track." },
-    { value: String(INDUSTRIES.length), label: "Industries", note: "eCommerce to legal — systems shaped to sector reality." },
-    { value: String(CASE_STUDIES.length), label: "Representative engagements", note: "Anonymised patterns; references under NDA on request." },
-    { value: "20", label: "Pipeline stages", note: "First message → final delivery, tracked end-to-end." },
+    { value: String(SERVICES.length), label: "Service descriptions", note: "Twenty entries are defined in the public catalogue; scope and availability are confirmed before engagement." },
+    { value: String(INDUSTRIES.length), label: "Industry profiles", note: "Twenty profiles are defined in the public catalogue; this is not a customer-count claim." },
+    { value: String(CASE_STUDIES.length), label: "Illustrative scenarios", note: "Examples only; they are not verified customer engagements or measured outcomes." },
+    { value: "20", label: "Pipeline-stage definitions", note: "Twenty stages are defined in source. Live adoption and automation coverage have not been verified." },
   ];
   return (
     <section aria-labelledby="trust-numbers-heading" className="bg-[#F8FCFF]">
@@ -417,7 +417,7 @@ function FlagshipServices() {
       ),
     },
     "n8n-workflow-automation": {
-      eyebrow: "26 workflows, not promises",
+      eyebrow: "26 source workflow files; deployment unverified",
       mock: (
         <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
           <div className="flex items-center gap-2 text-[11px]"><span className="rounded bg-[#063B8F] px-2 py-1 text-white font-bold">Lead intake</span><ArrowRight className="size-3 text-[#009FE3]" /><span className="rounded border border-[#E2E8F0] px-2 py-1 text-[#526173]">Enrich</span><ArrowRight className="size-3 text-[#009FE3]" /><span className="rounded border border-[#E2E8F0] px-2 py-1 text-[#526173]">Notify</span></div>
@@ -447,7 +447,7 @@ function FlagshipServices() {
           id="services-heading"
           eyebrow="What we do"
           title="Six ways we move a business forward"
-          description="Twenty engineering services, one operating principle: show you the result before you pay for it. Each block is a real interface preview, not a stock illustration."
+          description="Twenty service descriptions are defined in the catalogue; scope and availability are confirmed for each engagement. The interface visuals and scenario text below are illustrative concepts, not live systems or verified client results."
         />
         <div className="mt-12 space-y-8">
           {flagship.map((service, idx) => {
@@ -486,14 +486,17 @@ function FlagshipServices() {
                   </div>
                   <div className="lg:col-span-5">
                     <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FCFF] p-4">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#526173]">Interface preview — {service.title}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#526173]">Illustrative interface concept — {service.title}</p>
                       <div className="mt-3">{prev?.mock}</div>
-                      <div className="mt-3 flex flex-wrap gap-1.5">
+                      <p className="mt-3 text-[10px] leading-relaxed text-[#64748B]">Placeholder interface only; it is not connected to a live system or live customer data.</p>
+                      <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">Possible technology examples</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
                         {service.tech.slice(0, 4).map((t) => (
                           <span key={t} className="rounded-md border border-[#E2E8F0] bg-white px-2 py-1 text-[11px] font-medium text-[#526173]">{t}</span>
                         ))}
                       </div>
-                      <p className="mt-3 text-xs leading-relaxed text-[#526173]"><span className="font-semibold text-[#0B1F33]">Outcome:</span> {service.example}</p>
+                      <p className="mt-3 text-xs leading-relaxed text-[#526173]"><span className="font-semibold text-[#0B1F33]">Illustrative scenario:</span> {service.example}</p>
+                      <p className="mt-1 text-[10px] leading-relaxed text-[#64748B]">Hypothetical example only — not a verified client engagement or measured outcome.</p>
                     </div>
                   </div>
                 </div>
@@ -702,9 +705,9 @@ function SelectedWork() {
       <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <SectionHeading
           id="work-heading"
-          eyebrow="Selected work"
-          title="Representative engagements"
-          description="Anonymised project patterns from real deliveries. Client references are available on request under NDA."
+          eyebrow="Example scenarios"
+          title="Illustrative project scenarios"
+          description="These examples show possible solution patterns; they are not verified client engagements, measured results, or available client references."
         />
         <RevealList className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {cases.map((c) => (
@@ -712,7 +715,7 @@ function SelectedWork() {
               <Card className="flex h-full flex-col border-[#E2E8F0] bg-white transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/40 hover:shadow-[0_12px_32px_rgba(6,59,143,0.1)]">
                 <CardContent className="flex h-full flex-col p-6">
                   <Badge className="mb-4 w-fit rounded-md bg-[#063B8F]/10 text-xs font-medium text-[#063B8F] hover:bg-[#063B8F]/10">
-                    {c.industry}
+                    {c.industry} · illustrative scenario
                   </Badge>
                   <h3 className="text-lg font-semibold leading-snug text-[#0B1F33]">{c.title}</h3>
                   <p className="mt-3 line-clamp-3 flex-1 text-sm leading-relaxed text-[#526173]">
@@ -734,7 +737,7 @@ function SelectedWork() {
           ))}
         </RevealList>
         <div className="mt-10 text-center">
-          <OutlineLink href="#/work">All representative engagements</OutlineLink>
+          <OutlineLink href="#/work">All illustrative scenarios</OutlineLink>
         </div>
       </div>
     </section>
@@ -791,9 +794,9 @@ function ClientReviews() {
       <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <SectionHeading
           id="reviews-heading"
-          eyebrow="Client reviews"
-          title="What clients say after delivery"
-          description="Every review below was submitted by a real client after project delivery, with their explicit consent to publish — nothing here is written by us."
+          eyebrow="Client feedback"
+          title="Reviews approved for public display"
+          description="Only reviews marked approved, published, and consented in the review system are shown here; these records were not independently inspected in this audit."
         />
         <RevealList
           className={

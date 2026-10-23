@@ -7,6 +7,8 @@ import {
   type AgentTool,
 } from '@/lib/ai-workforce-policy'
 import { getAgentDefinition } from '@/lib/agents/bootstrap'
+import { isValidExistingChildAgent } from '@/lib/agents/hierarchy-service'
+import { isWellFormedDynamicAgent } from '@/lib/agents/runtime-policy'
 
 export const AGENT_JOB_TOOL_ALLOWLIST = ['task.create'] as const
 export type AgentJobToolName = (typeof AGENT_JOB_TOOL_ALLOWLIST)[number]
@@ -146,7 +148,7 @@ export async function executeAgentJobTool(input: {
   const [agent, project] = await Promise.all([
     db.aiAgent.findUnique({
       where: { code: agentCode },
-      select: { code: true, status: true, requiresApproval: true, tools: true, permissions: true, department: { select: { code: true } } },
+      select: { code: true, status: true, requiresApproval: true, purpose: true, systemPrompt: true, tools: true, permissions: true, parentCode: true, departmentId: true, department: { select: { code: true } } },
     }),
     job.projectId
       ? db.project.findUnique({
@@ -156,24 +158,27 @@ export async function executeAgentJobTool(input: {
       : Promise.resolve(null),
   ])
   const definition = getAgentDefinition(agentCode)
-  if (!agent || !definition || agent.status !== 'ACTIVE') {
+  if (!agent || agent.status !== 'ACTIVE') {
     return { ok: false, status: 'FAILED', output: '', error: 'AGENT_INACTIVE_OR_UNREGISTERED' }
   }
-  if (agent.department?.code !== definition.dept) {
+  if (definition && agent.department?.code !== definition.dept) {
     return { ok: false, status: 'FAILED', output: '', error: 'AGENT_DEPARTMENT_INVALID' }
   }
-  if (!definition.tools.includes(invocation.toolName)) {
+  if (!definition && (!isWellFormedDynamicAgent(agent) || !(await isValidExistingChildAgent(db, agent)))) {
+    return { ok: false, status: 'FAILED', output: '', error: 'DYNAMIC_AGENT_HIERARCHY_INVALID' }
+  }
+  if (definition && !definition.tools.includes(invocation.toolName)) {
     return { ok: false, status: 'FAILED', output: '', error: 'TOOL_NOT_IN_CANONICAL_AGENT_REGISTRY' }
   }
   const toolDecision = authorizeAgentTool(agent, invocation.toolName as AgentTool)
   if (!toolDecision.allowed) {
     return { ok: false, status: 'FAILED', output: '', error: `TOOL_DENIED_${toolDecision.code}` }
   }
-  if (!agentHasPermission(agent, 'write:tasks') || !definition.permissions.includes('write:tasks')) {
+  if (!agentHasPermission(agent, 'write:tasks') || (definition && !definition.permissions.includes('write:tasks'))) {
     return { ok: false, status: 'FAILED', output: '', error: 'TOOL_DENIED_WRITE_TASKS' }
   }
   const requiresApproval = agent.requiresApproval
-    || definition.requiresApproval === true
+    || definition?.requiresApproval === true
     || PRIVILEGED_AGENT_TOOLS.includes(invocation.toolName as AgentTool)
   if (requiresApproval && job.approvalState !== 'APPROVED') {
     return { ok: false, status: 'FAILED', output: '', error: 'TOOL_APPROVAL_REQUIRED' }
@@ -206,7 +211,7 @@ export async function executeAgentJobTool(input: {
       // earlier preflight snapshot.
       const currentAgent = await tx.aiAgent.findUnique({
         where: { code: agentCode },
-        select: { code: true, status: true, requiresApproval: true, tools: true, permissions: true, department: { select: { code: true } } },
+        select: { code: true, status: true, requiresApproval: true, purpose: true, systemPrompt: true, tools: true, permissions: true, parentCode: true, departmentId: true, department: { select: { code: true } } },
       })
       const currentProject = job.projectId
         ? await tx.project.findUnique({
@@ -214,17 +219,27 @@ export async function executeAgentJobTool(input: {
             select: { id: true, clientId: true, status: true, deletedAt: true, client: { select: { id: true, deletedAt: true } } },
           })
         : null
-      if (!currentAgent || currentAgent.status !== 'ACTIVE' || currentAgent.department?.code !== definition.dept) {
-        throw new AgentJobToolInputError('Agent is inactive or its canonical department mapping changed')
+      if (!currentAgent || currentAgent.status !== 'ACTIVE') {
+        throw new AgentJobToolInputError('Agent is inactive')
       }
-      if (!definition.tools.includes(invocation.toolName) || !authorizeAgentTool(currentAgent, invocation.toolName).allowed) {
+      if (definition) {
+        if (currentAgent.department?.code !== definition.dept) {
+          throw new AgentJobToolInputError('Agent canonical department mapping changed')
+        }
+        if (!definition.tools.includes(invocation.toolName) || !definition.permissions.includes('write:tasks')) {
+          throw new AgentJobToolInputError('Tool is not authorized by the canonical registry')
+        }
+      } else if (!isWellFormedDynamicAgent(currentAgent) || !(await isValidExistingChildAgent(tx, currentAgent))) {
+        throw new AgentJobToolInputError('Dynamic agent hierarchy or persisted policy changed before execution')
+      }
+      if (!authorizeAgentTool(currentAgent, invocation.toolName).allowed) {
         throw new AgentJobToolInputError('Tool grant changed before execution')
       }
-      if (!agentHasPermission(currentAgent, 'write:tasks') || !definition.permissions.includes('write:tasks')) {
+      if (!agentHasPermission(currentAgent, 'write:tasks')) {
         throw new AgentJobToolInputError('write:tasks permission was removed before execution')
       }
       const currentRequiresApproval = currentAgent.requiresApproval
-        || definition.requiresApproval === true
+        || definition?.requiresApproval === true
         || PRIVILEGED_AGENT_TOOLS.includes(invocation.toolName as AgentTool)
       if (currentRequiresApproval && job.approvalState !== 'APPROVED') {
         throw new AgentJobToolInputError('Tool approval is required before execution')

@@ -67,7 +67,8 @@
     "KnowledgeEntity.properties",
     "Invoice.lineItems",
     "PaymentReceipt.snapshot",
-    "RefundCase.evidenceNotes"
+    "RefundCase.evidenceNotes",
+    "DepartmentCapabilityAssessment.evidence"
   ],
   "Text": [
     "Session.userAgent",

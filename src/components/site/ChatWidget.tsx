@@ -93,6 +93,11 @@ function trackChatOpen(anonId: string) {
 // ------------------------------------------------------------
 // Small helpers
 // ------------------------------------------------------------
+function newRequestId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`
+}
+
 function fmtTime(iso: string): string {
   try {
     return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -128,11 +133,14 @@ export default function ChatWidget() {
   const [busy, setBusy] = useState(false) // sending a message / starting a chat
   const [aiStatus, setAiStatus] = useState<'checking' | 'ready' | 'unavailable' | 'unknown'>('checking')
   const [aiError, setAiError] = useState<string | null>(null)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+  const [deliveryNotice, setDeliveryNotice] = useState<string | null>(null)
   const [clientId, setClientId] = useState<string | null>(null)
 
   // first-contact form
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [contactConsent, setContactConsent] = useState(false)
   const [subject, setSubject] = useState('')
   const [initialMsg, setInitialMsg] = useState('')
 
@@ -143,6 +151,8 @@ export default function ChatWidget() {
   const messagesRef = useRef<ChatMsg[]>([])
   const seenIdRef = useRef<string | null>(null)
   const conversationRef = useRef<ConversationState>(null)
+  const startRequestIdRef = useRef<string | null>(null)
+  const messageRequestIdRef = useRef<string | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
@@ -338,11 +348,14 @@ export default function ChatWidget() {
     e.preventDefault()
     if (busy) return
     const trimmedName = name.trim()
+    const trimmedEmail = email.trim()
     const trimmedMsg = initialMsg.trim()
-    if (trimmedName.length < 1) return
-    if (trimmedMsg.length < 1) return
+    if (trimmedMsg.length < 1 || !trimmedEmail || !contactConsent) return
+    startRequestIdRef.current ??= newRequestId()
     setBusy(true)
     setConnIssue(false)
+    setSessionError(null)
+    setDeliveryNotice(null)
     setAiError(null)
     try {
       const res = await fetch('/api/chat/session', {
@@ -350,22 +363,39 @@ export default function ChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           anonId: anonIdRef.current,
+          requestId: startRequestIdRef.current,
           name: trimmedName,
-          email: email.trim() || undefined,
+          email: trimmedEmail,
           subject: subject.trim() || undefined,
           message: trimmedMsg,
+          contactConsent: true,
         }),
       })
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null
         throw new Error(data?.error ?? 'Could not start the chat.')
       }
-      const data = (await res.json()) as { conversation: { id: string; status: string; clientId?: string | null }; ai?: { available: boolean; detail: string } }
+      const data = (await res.json()) as {
+        conversation: { id: string; status: string; clientId?: string | null }
+        ai?: { available: boolean; detail: string }
+        identityReviewRequired?: boolean
+        emailDeliveryStatus?: 'ACCEPTED_BY_PROVIDER' | 'NOT_CONFIRMED' | null
+        notice?: string
+      }
+      startRequestIdRef.current = null
       setConversation({ id: data.conversation.id, status: 'OPEN', visitorName: trimmedName })
       if (data.conversation.clientId) setClientId(data.conversation.clientId)
+      if (data.emailDeliveryStatus === 'ACCEPTED_BY_PROVIDER') {
+        setDeliveryNotice('The initial email was accepted by the configured mail service; delivery to the inbox is not confirmed.')
+      } else if (data.emailDeliveryStatus === 'NOT_CONFIRMED') {
+        setDeliveryNotice('Your enquiry is saved, but initial email delivery was not confirmed. Please contact info@bdtech360.com if you need a reply by email.')
+      }
       if (data.ai) {
         setAiStatus(data.ai.available ? 'ready' : 'unavailable')
         if (!data.ai.available) setAiError(data.ai.detail)
+      }
+      if (data.identityReviewRequired && data.notice) {
+        setAiError(data.notice)
       }
       // Session now handles initial message atomically — fetch thread to get AI reply
       const thread = await fetchThread(null)
@@ -380,7 +410,8 @@ export default function ChatWidget() {
       setInitialMsg('')
       setSubject('')
       requestAnimationFrame(() => composerRef.current?.focus())
-    } catch {
+    } catch (error) {
+      setSessionError(error instanceof Error ? error.message : 'Could not start the chat. Please try again.')
       setConnIssue(true)
     } finally {
       setBusy(false)
@@ -391,6 +422,7 @@ export default function ChatWidget() {
     if (busy) return
     const trimmed = draft.trim()
     if (trimmed.length < 1 || trimmed.length > MAX_BODY) return
+    messageRequestIdRef.current ??= newRequestId()
     setBusy(true)
     setConnIssue(false)
     setAiError(null)
@@ -398,10 +430,14 @@ export default function ChatWidget() {
       const res = await fetch('/api/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ anonId: anonIdRef.current, body: trimmed }),
+        body: JSON.stringify({ anonId: anonIdRef.current, requestId: messageRequestIdRef.current, body: trimmed, name: name.trim() || undefined }),
       })
-      if (!res.ok) throw new Error('send failed')
-      const data = (await res.json()) as { message: ChatMsg; messages?: ChatMsg[]; reply?: { body: string; wasAiGenerated: boolean; escalated: boolean; error?: string | null }; error?: string; code?: string }
+      if (!res.ok) {
+        const failure = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(failure?.error ?? 'Your message could not be sent. Please try again.')
+      }
+      const data = (await res.json()) as { message: ChatMsg | null; messages?: ChatMsg[]; reply?: { body: string; wasAiGenerated: boolean; escalated: boolean; error?: string | null }; error?: string; code?: string; notice?: string; identityReviewRequired?: boolean }
+      messageRequestIdRef.current = null
       // Server now returns full thread after AI reply — use it when available
       if (data.messages && data.messages.length > 0) {
         setMessages(data.messages)
@@ -411,8 +447,9 @@ export default function ChatWidget() {
           writeSeenId(last.id)
         }
         if (data.reply?.error) setAiError(data.reply.error)
-        if (data.reply?.escalated) setAiStatus('unavailable')
-      } else {
+        if (data.notice) setAiError(data.notice)
+        if (data.reply?.escalated || data.identityReviewRequired) setAiStatus('unavailable')
+      } else if (data.message) {
         const next = [...messagesRef.current, data.message]
         setMessages(next)
         if (data.message.id) {
@@ -423,37 +460,27 @@ export default function ChatWidget() {
       }
       setDraft('')
       if (composerRef.current) composerRef.current.style.height = 'auto'
-    } catch {
+    } catch (error) {
       setConnIssue(true)
+      if (error instanceof Error && error.message) setAiError(error.message)
     } finally {
       setBusy(false)
     }
   }
 
-  const restartConversation = async () => {
+  const restartConversation = () => {
     if (busy) return
-    setBusy(true)
+    // A fresh conversation must capture contact consent again. The first-contact
+    // form will resume the same browser's stable CRM Client ID when safe.
+    setConversation(null)
+    setMessages([])
+    setBadgeCount(0)
+    setContactConsent(false)
+    setSessionError(null)
+    setDeliveryNotice(null)
     setConnIssue(false)
-    try {
-      const res = await fetch('/api/chat/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          anonId: anonIdRef.current,
-          name: conversationRef.current?.visitorName || name || 'Visitor',
-          email: email.trim() || undefined,
-        }),
-      })
-      if (!res.ok) throw new Error('could not restart')
-      const data = (await res.json()) as { conversation: { id: string; status: string } }
-      setConversation({ id: data.conversation.id, status: 'OPEN', visitorName: conversationRef.current?.visitorName ?? name })
-      setMessages([])
-      requestAnimationFrame(() => composerRef.current?.focus())
-    } catch {
-      setConnIssue(true)
-    } finally {
-      setBusy(false)
-    }
+    startRequestIdRef.current = null
+    messageRequestIdRef.current = null
   }
 
   // ---------------- render ----------------
@@ -512,7 +539,7 @@ export default function ChatWidget() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold leading-tight">TECH360 Support</p>
                 <p className="mt-0.5 text-[11px] leading-tight text-white/85">
-                  {aiStatus === 'checking' ? 'Checking assistant status…' : aiStatus === 'ready' ? 'AI assistant ready — reply within seconds' : aiStatus === 'unavailable' ? 'Team will reply within 1 business day' : 'Leave a message — we reply promptly'}
+                  {aiStatus === 'checking' ? 'Checking assistant status…' : aiStatus === 'ready' ? 'Assistant available' : aiStatus === 'unavailable' ? 'Assistant unavailable — email info@bdtech360.com' : 'Send a message or email info@bdtech360.com'}
                 </p>
               </div>
               <button
@@ -528,20 +555,17 @@ export default function ChatWidget() {
             {/* ---------------- first-contact form ---------------- */}
             {!showThread && !showClosed && (
               <form onSubmit={startConversation} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
-                <p className="text-sm text-slate-600">
-                  Hi there 👋 Tell us a little about you and what you need — we&apos;ll get back to you during business
-                  hours.
+                <p className="text-sm leading-relaxed text-slate-600">
+                  Welcome to TECH360. Describe what you want to build or improve; we can ask follow-up questions as we go. Email is required for service-related updates, while your name and other profile details can wait. A Client ID is issued or linked only after identity can be handled safely. WhatsApp is optional.
                 </p>
                 <div className="space-y-1">
                   <label htmlFor="chat-name" className="text-xs font-medium text-slate-700">
-                    Name <span className="text-[#EF4444]" aria-hidden="true">*</span>
-                    <span className="sr-only">(required)</span>
+                    Name <span className="font-normal text-slate-400">(optional; you can share it later)</span>
                   </label>
                   <input
                     id="chat-name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    required
                     maxLength={80}
                     autoComplete="name"
                     placeholder="Your name"
@@ -550,11 +574,13 @@ export default function ChatWidget() {
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="chat-email" className="text-xs font-medium text-slate-700">
-                    Email <span className="font-normal text-slate-400">(optional)</span>
+                    Email <span className="text-[#EF4444]" aria-hidden="true">*</span>
+                    <span className="sr-only">(required)</span>
                   </label>
                   <input
                     id="chat-email"
                     type="email"
+                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={320}
@@ -562,6 +588,7 @@ export default function ChatWidget() {
                     placeholder="you@company.com"
                     className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#009FE3] focus:outline-none focus:ring-2 focus:ring-[#009FE3]/30"
                   />
+                  <p className="text-[11px] leading-relaxed text-slate-500">We use this email for service-related updates. A typed address alone does not verify ownership; marketing messages require separate opt-in.</p>
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="chat-subject" className="text-xs font-medium text-slate-700">
@@ -592,14 +619,33 @@ export default function ChatWidget() {
                     className="min-h-24 flex-1 resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#009FE3] focus:outline-none focus:ring-2 focus:ring-[#009FE3]/30"
                   />
                 </div>
+                <label htmlFor="chat-contact-consent" className="flex items-start gap-2 text-xs leading-relaxed text-slate-600">
+                  <input
+                    id="chat-contact-consent"
+                    type="checkbox"
+                    required
+                    checked={contactConsent}
+                    onChange={(e) => setContactConsent(e.target.checked)}
+                    className="mt-0.5 size-4 shrink-0 accent-[#009FE3]"
+                  />
+                  <span>
+                    I consent to TECH360 LLC storing this enquiry and using my email to respond and send service-related updates about this request. Marketing messages require a separate opt-in. See the{" "}
+                    <a href="#/legal/privacy" className="font-semibold underline underline-offset-2">Privacy Policy</a>.
+                  </span>
+                </label>
+                {sessionError && (
+                  <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                    {sessionError}
+                  </p>
+                )}
                 {connIssue && (
                   <p role="status" className="text-xs text-amber-700">
-                    Connection issue — retrying. Your message has not been sent yet.
+                    We could not confirm whether it was saved. Retrying uses the same request id to avoid a duplicate.
                   </p>
                 )}
                 <button
                   type="submit"
-                  disabled={busy}
+                  disabled={busy || !contactConsent || !email.trim()}
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white shadow transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]/50 focus-visible:ring-offset-2 disabled:opacity-60"
                   style={{ background: 'linear-gradient(135deg, #009FE3 0%, #063B8F 100%)' }}
                 >
@@ -645,6 +691,11 @@ export default function ChatWidget() {
                 >
                   {clientId && (
                     <p className="text-center text-[11px] text-slate-400">Client ID: <span className="font-mono font-medium text-slate-600">{clientId}</span></p>
+                  )}
+                  {deliveryNotice && (
+                    <p role="status" className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-800">
+                      {deliveryNotice}
+                    </p>
                   )}
                   {aiError && (
                     <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">

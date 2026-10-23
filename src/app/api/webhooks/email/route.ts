@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { sanitizeText, sanitizeEmail, rateLimit, clientIp, logError, audit } from '@/lib/security'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent } from '@/lib/identity-resolver'
+import { verifyEmailWebhookAuth } from '@/lib/email-webhook-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,22 +19,22 @@ export async function POST(req: NextRequest) {
   if (!rl.ok) return Response.json({ ok: true })
 
   const rawBody = await req.text()
+  const auth = verifyEmailWebhookAuth({
+    rawBody,
+    secret: process.env.EMAIL_WEBHOOK_SECRET,
+    signature: req.headers.get('x-tech360-signature') ?? req.headers.get('x-hub-signature-256'),
+    sharedSecret: req.headers.get('x-email-webhook-secret'),
+  })
+  if (!auth.ok) {
+    const status = auth.reason === 'NOT_CONFIGURED' ? 503 : 401
+    return Response.json({ ok: false, error: status === 503 ? 'Email webhook authentication is not configured.' : 'Invalid webhook authentication.' }, { status })
+  }
+
   let payload: Record<string, unknown>
   try {
     payload = JSON.parse(rawBody) as Record<string, unknown>
   } catch {
-    return Response.json({ ok: true })
-  }
-
-  // Webhook secret validation (where provider supports it)
-  const expectedSecret = process.env.SOCIAL_WEBHOOK_SECRET || process.env.N8N_WEBHOOK_SECRET
-  if (expectedSecret) {
-    const got = req.headers.get('x-webhook-secret') ?? req.headers.get('x-n8n-secret') ?? (payload.secret as string | undefined) ?? ''
-    if (got && got !== expectedSecret) {
-      return Response.json({ ok: false, error: 'Invalid webhook secret' }, { status: 401 })
-    }
-    // If no secret header and provider is not required to send one, we still proceed
-    // but log the absence for audit — the event is still deduped by providerEventId
+    return Response.json({ ok: false, error: 'Invalid JSON payload.' }, { status: 400 })
   }
 
   // Normalize inbound fields across providers

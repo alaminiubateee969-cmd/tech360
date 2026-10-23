@@ -248,20 +248,21 @@ function PublicView({ section, param, navigate }: { section: string; param: stri
   }
 }
 
-export default function Page() {
-  const [hash, setHash] = useState<string>('/')
+export default function Page({ initialHash = '/' }: { initialHash?: string }) {
+  const [hash, setHash] = useState<string>(initialHash)
   const { consent, decide } = useConsent()
 
   useEffect(() => {
+    const fallbackHash = `#${initialHash.startsWith('/') ? initialHash : `/${initialHash}`}`
     const onHash = () => {
-      const next = (window.location.hash || '#/').replace(/^#/, '') || '/'
+      const next = (window.location.hash || fallbackHash).replace(/^#/, '') || '/'
       setHash(next)
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
     }
     window.addEventListener('hashchange', onHash)
     onHash()
     return () => window.removeEventListener('hashchange', onHash)
-  }, [])
+  }, [initialHash])
 
   const { section, param } = useMemo(() => parseHash(hash), [hash])
   const isAdmin = section === 'admin'

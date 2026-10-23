@@ -4,6 +4,8 @@ import { withTimeout, resolveAgentTimeoutMs, isTransientRunError, MAX_RETRY_ATTE
 import { newCorrelationId, logError } from '@/lib/security'
 import { authorizeAgentTool, agentMayAccessClient, type AgentTool } from '@/lib/ai-workforce-policy'
 import { getAgentDefinition } from '@/lib/agents/bootstrap'
+import { isValidExistingChildAgent } from '@/lib/agents/hierarchy-service'
+import { isWellFormedDynamicAgent } from '@/lib/agents/runtime-policy'
 
 // ------------------------------------------------------------
 // Real AI agent execution engine (server-side only)
@@ -74,20 +76,38 @@ export async function reapStaleAgentExecutions(now = new Date()): Promise<number
   const cutoff = new Date(now.getTime() - (timeoutMs * 2 + 60_000))
   const stale = await db.aiAgentExecution.findMany({
     where: { status: 'RUNNING', createdAt: { lt: cutoff } },
-    select: { id: true },
+    select: { id: true, agentCode: true, correlationId: true, clientId: true, projectId: true },
     take: 50,
   })
   if (stale.length === 0) return 0
-  const result = await db.aiAgentExecution.updateMany({
-    where: { id: { in: stale.map((execution) => execution.id) }, status: 'RUNNING' },
-    data: {
-      status: 'TIMEOUT',
-      error: 'TIMEOUT: stale RUNNING execution reaped by the execution engine',
-      durationMs: timeoutMs * 2 + 60_000,
-      completedAt: now,
-    },
+  return db.$transaction(async (tx) => {
+    let reaped = 0
+    for (const execution of stale) {
+      const result = await tx.aiAgentExecution.updateMany({
+        where: { id: execution.id, status: 'RUNNING' },
+        data: {
+          status: 'TIMEOUT',
+          error: 'TIMEOUT: stale RUNNING execution reaped by the execution engine',
+          durationMs: timeoutMs * 2 + 60_000,
+          completedAt: now,
+        },
+      })
+      if (result.count === 0) continue
+      await tx.auditLog.create({
+        data: {
+          actor: execution.agentCode,
+          action: 'AGENT_EXECUTION_OUTCOME',
+          entityType: 'AiAgentExecution',
+          entityId: execution.id,
+          clientId: execution.clientId,
+          projectId: execution.projectId,
+          details: JSON.stringify({ correlationId: execution.correlationId, status: 'TIMEOUT', reason: 'STALE_EXECUTION_REAPED' }),
+        },
+      })
+      reaped += result.count
+    }
+    return reaped
   })
-  return result.count
 }
 
 /**
@@ -128,14 +148,19 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     where: { code: agentCode },
     include: { department: { select: { code: true } } },
   })
-  if (!agent || !definition) {
-    await logError({ source: 'AGENT', code: 'AGENT_NOT_FOUND', message: `Agent ${agentCode} not found`, correlationId })
-    return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Agent not found', status: 'FAILED' }
+  if (!agent || (!definition && !isWellFormedDynamicAgent(agent))) {
+    await logError({ source: 'AGENT', code: 'AGENT_NOT_FOUND', message: `Agent ${agentCode} is not in an executable persisted registry`, correlationId })
+    return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Agent not found in the executable registry', status: 'FAILED' }
   }
-  if (agent.department?.code !== definition.dept) {
+  if (definition && agent.department?.code !== definition.dept) {
     const error = `Agent ${agentCode} department mapping is invalid`
     await logError({ source: 'AGENT', code: 'AGENT_DEPARTMENT_INVALID', message: error, correlationId })
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error, status: 'FAILED' }
+  }
+  if (!definition && !(await isValidExistingChildAgent(db, agent))) {
+    const error = `Dynamic agent ${agentCode} failed persisted hierarchy validation`
+    await logError({ source: 'AGENT', code: 'DYNAMIC_AGENT_HIERARCHY_INVALID', message: error, correlationId })
+    return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Dynamic agent hierarchy is invalid or its parent is not active', status: 'FAILED' }
   }
   if (agent.status !== 'ACTIVE') {
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: `Agent ${agentCode} is ${agent.status}`, status: 'FAILED' }
@@ -219,19 +244,33 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     if (run.expectJson && !json) throw new ZaiProviderError('INVALID_PROVIDER_RESPONSE', 'Provider output was not valid JSON')
     const completedAt = new Date()
     const tokensUsed = typeof completion?.usage?.total_tokens === 'number' ? completion.usage.total_tokens : 0
-    await db.aiAgentExecution.update({
-      where: { id: execution.id },
-      data: {
-        output: output.slice(0, 20000), status: 'SUCCESS', tokensUsed,
-        durationMs: completedAt.getTime() - startedAt.getTime(), completedAt,
-        metadata: JSON.stringify({ provider: 'zai' }),
-      },
-    })
-    await db.aiAgent.update({
-      where: { code: agentCode },
-      // tokensToday is the recomputed day total (not an ever-incremented cache),
-      // so the admin counter and the quota gate agree and reset at the day boundary.
-      data: { executionCount: { increment: 1 }, successCount: { increment: 1 }, tokensToday: tokensToday + tokensUsed },
+    const durationMs = completedAt.getTime() - startedAt.getTime()
+    await db.$transaction(async (tx) => {
+      await tx.aiAgentExecution.update({
+        where: { id: execution.id },
+        data: {
+          output: output.slice(0, 20000), status: 'SUCCESS', tokensUsed,
+          durationMs, completedAt,
+          metadata: JSON.stringify({ provider: 'zai' }),
+        },
+      })
+      await tx.aiAgent.update({
+        where: { code: agentCode },
+        // tokensToday is the recomputed day total (not an ever-incremented cache),
+        // so the admin counter and the quota gate agree and reset at the day boundary.
+        data: { executionCount: { increment: 1 }, successCount: { increment: 1 }, tokensToday: tokensToday + tokensUsed },
+      })
+      await tx.auditLog.create({
+        data: {
+          actor: agentCode,
+          action: 'AGENT_EXECUTION_OUTCOME',
+          entityType: 'AiAgentExecution',
+          entityId: execution.id,
+          clientId: run.clientId ?? null,
+          projectId: run.projectId ?? null,
+          details: JSON.stringify({ correlationId, workflow: run.workflow ?? null, status: 'SUCCESS', durationMs, tokensUsed }),
+        },
+      })
     })
     if (run.tool) {
       await db.auditLog.create({
@@ -249,13 +288,27 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     const timeout = error instanceof RunTimeoutError || (error instanceof ZaiProviderError && error.code === 'PROVIDER_TIMEOUT')
     const status = timeout ? 'TIMEOUT' : 'FAILED'
     const message = providerErrorMessage(lastError).slice(0, 2000)
-    await db.aiAgentExecution.update({
-      where: { id: execution.id },
-      data: { status, error: message, durationMs: completedAt.getTime() - startedAt.getTime(), completedAt, metadata: JSON.stringify({ provider: 'zai' }) },
-    }).catch(() => null)
-    await db.aiAgent.update({
-      where: { code: agentCode },
-      data: { executionCount: { increment: 1 }, failureCount: { increment: 1 } },
+    const durationMs = completedAt.getTime() - startedAt.getTime()
+    await db.$transaction(async (tx) => {
+      await tx.aiAgentExecution.update({
+        where: { id: execution.id },
+        data: { status, error: message, durationMs, completedAt, metadata: JSON.stringify({ provider: 'zai' }) },
+      })
+      await tx.aiAgent.update({
+        where: { code: agentCode },
+        data: { executionCount: { increment: 1 }, failureCount: { increment: 1 } },
+      })
+      await tx.auditLog.create({
+        data: {
+          actor: agentCode,
+          action: 'AGENT_EXECUTION_OUTCOME',
+          entityType: 'AiAgentExecution',
+          entityId: execution.id,
+          clientId: run.clientId ?? null,
+          projectId: run.projectId ?? null,
+          details: JSON.stringify({ correlationId, workflow: run.workflow ?? null, status, durationMs, errorCode: timeout ? 'PROVIDER_TIMEOUT' : 'EXECUTION_FAILED' }),
+        },
+      })
     }).catch(() => null)
     await logError({ source: 'AGENT', code: timeout ? 'EXECUTION_TIMEOUT' : 'EXECUTION_FAILED', message: `Agent ${agentCode}: ${message}`, correlationId, clientId: run.clientId, workflow: run.workflow })
     return { ok: false, agentCode, executionId: execution.id, correlationId, output: '', json: null, error: message, status }

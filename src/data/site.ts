@@ -1006,7 +1006,7 @@ export const INDUSTRIES: Industry[] = [
 ];
 
 /* ------------------------------------------------------------------ */
-/* Case studies (representative engagement patterns — anonymised)      */
+/* Illustrative project scenarios — not audited customer case studies   */
 /* ------------------------------------------------------------------ */
 
 export interface CaseStudy {
@@ -1023,97 +1023,97 @@ export const CASE_STUDIES: CaseStudy[] = [
   {
     slug: "fashion-retail-store-launch",
     industry: "eCommerce",
-    title: "From social-media selling to a governed storefront",
+    title: "Illustrative storefront for social-commerce operations",
     challenge:
-      "A fashion retailer was selling entirely through inbox conversations — orders on chat, payments by screenshot, delivery updates by memory. Volume growth had stopped because the process could not scale past the founder's attention.",
+      "Illustrative scenario: A fashion retailer handles orders through inbox conversations, payment screenshots, and manual delivery updates. Growing volume makes status tracking and follow-up difficult.",
     approach:
-      "A conversion-engineered storefront with local payment integration, automated WhatsApp order confirmations and delivery-status updates, and a closing sales report generated each night.",
+      "Possible approach: a storefront with local payment integration, order confirmations, delivery-status updates, and a closing report — each provider integration would need to be configured and tested for the engagement.",
     outcome:
-      "Order communication became automatic and consistent; checkout abandonment improved after the redesign; the founder reclaimed the hours previously spent confirming orders manually.",
+      "Intended outcome, not a measured result: a single place to review orders and customer updates. Conversion, time savings, and revenue changes would need to be measured against an agreed baseline.",
     stack: ["Next.js", "PostgreSQL", "WhatsApp Cloud API", "bKash", "n8n", "Google Cloud Run"],
   },
   {
     slug: "clinic-appointment-automation",
     industry: "Healthcare",
-    title: "A front desk that stopped making reminder calls",
+    title: "Appointment reminders organized in one workflow",
     challenge:
-      "A multi-physician clinic depended on front-desk staff calling patients for reminders. No-shows were routine during busy hours precisely because reminder calls were the first thing dropped under pressure.",
+      "Illustrative scenario: A multi-physician clinic relies on front-desk staff to call patients about appointments; reminder work competes with other duties during busy periods.",
     approach:
-      "Online booking with automated SMS reminders and confirmation replies, plus a structured daily schedule view for the front desk and recall workflows for follow-up visits.",
+      "Possible approach: online booking with configured SMS reminders and confirmations, a daily schedule view, and follow-up workflows, subject to provider and privacy requirements.",
     outcome:
-      "Manual reminder calls ended entirely; no-shows fell noticeably after reminders became systematic; staff time shifted from dialling to patient care.",
+      "Intended outcome, not a measured result: a more consistent reminder process and a clear schedule. Any change in attendance or staff time requires measured pilot data.",
     stack: ["Next.js", "PostgreSQL", "SMS gateway", "Node.js", "Google Cloud Run"],
   },
   {
     slug: "school-enquiry-pipeline",
     industry: "Education",
-    title: "Admission enquiries answered before competitors wake up",
+    title: "A structured admissions-enquiry workflow",
     challenge:
-      "A coaching centre received enquiries at all hours but replied only when staff saw them. Parents shortlisting multiple centres moved on before the reply arrived.",
+      "Illustrative scenario: A coaching centre receives enquiries outside staff hours and has no shared queue to prioritize replies.",
     approach:
-      "An enquiry-to-admission CRM with instant automated first-response, guided follow-up questions, batch-allocation notices and guardian progress updates — every message logged against the student's record.",
+      "Possible approach: an enquiry CRM, first-response automation, guided follow-up, batch allocation, and guardian updates, with messages logged against a record.",
     outcome:
-      "Response latency dropped from hours to minutes; admission-season workload stayed manageable; no enquiry was lost to an unread inbox.",
+      "Intended outcome, not a measured result: enquiries are visible in one workflow and response timing can be measured; no response-time or enrolment increase is claimed.",
     stack: ["Next.js", "PostgreSQL", "WhatsApp Cloud API", "n8n", "Prisma"],
   },
   {
     slug: "developer-sales-crm",
     industry: "Real Estate",
-    title: "One client timeline replacing eleven spreadsheets",
+    title: "A unified client timeline for property sales",
     challenge:
-      "A property developer ran sales through agents' personal spreadsheets and chats. Management could not answer \"where is this buyer?\" without a meeting, and handovers between agents lost context.",
+      "Illustrative scenario: A property sales team keeps buyer context in separate agent spreadsheets and chats, making handovers and management visibility difficult.",
     approach:
-      "A custom CRM tying every enquiry, site visit, booking and installment to a single client timeline — with automated follow-up scheduling and agent performance reporting.",
+      "Possible approach: tie each enquiry, site visit, booking, and installment to a client timeline, with follow-up scheduling and reporting.",
     outcome:
-      "Pipeline visibility became instant; follow-ups stopped depending on individual memory; leadership reviewed the live pipeline instead of compiled spreadsheets.",
+      "Intended outcome, not a measured result: a common view of pipeline activity and next steps. No spreadsheet-reduction or sales-performance result is asserted.",
     stack: ["Next.js", "TypeScript", "PostgreSQL", "Prisma", "Google Cloud Run"],
   },
   {
     slug: "restaurant-order-pipeline",
     industry: "Restaurants & Food",
-    title: "Four order channels converging into one pipeline",
+    title: "Order intake across channels in one workflow",
     challenge:
-      "A restaurant chain took orders from chat, phone, marketplace apps and walk-ins — each into a different place. Peak-hour errors were routine and no consolidated sales picture existed.",
+      "Illustrative scenario: A restaurant accepts orders through chat, phone, marketplaces, and walk-ins, with staff coordinating status across separate tools.",
     approach:
-      "All channels routed into a single order pipeline with automated confirmations, live preparation and delivery status, and a nightly closing report per branch.",
+      "Possible approach: route order events into one operational queue with confirmations, preparation and delivery status, and branch reports.",
     outcome:
-      "Peak-hour order handling became consistent across branches; delivery-status questions from customers fell away; branch comparison became a daily fact rather than a month-end estimate.",
+      "Intended outcome, not a measured result: staff can review order status across channels. Error rates, speed, and branch performance must be measured during delivery.",
     stack: ["Node.js", "PostgreSQL", "WhatsApp Cloud API", "n8n", "Google Cloud Run"],
   },
   {
     slug: "logistics-live-tracking",
     industry: "Logistics",
-    title: "Forty status calls a day replaced by a tracking link",
+    title: "Shipment status shared through a tracking link",
     challenge:
-      "A courier company's dispatchers spent most of the day answering \"where is my parcel?\" — the same question, re-answered per customer, with status known only inside the dispatcher's head.",
+      "Illustrative scenario: A courier team receives repeated parcel-status questions while shipment information is spread across dispatch tools.",
     approach:
-      "Shipment objects with live status, customer-visible tracking links, automated milestone notifications and a dispatch planning dashboard for route load.",
+      "Possible approach: shipment records, customer-visible tracking links, milestone notifications, and a dispatch planning view.",
     outcome:
-      "Status calls collapsed; customers checked tracking links instead of calling; dispatchers returned to exception handling rather than repetition.",
+      "Intended outcome, not a measured result: customers can view configured shipment updates. No call-volume reduction or dispatch-time claim is made.",
     stack: ["Next.js", "PostgreSQL", "SMS gateway", "Node.js", "Cloud Storage"],
   },
   {
     slug: "agency-client-portal",
     industry: "Agencies",
-    title: "Approvals that used to live in forwarded messages",
+    title: "Approval history in a client portal",
     challenge:
-      "A digital agency collected client approvals through chats and email. Rounds were disputed, versions conflicted, and preparing each status update consumed senior hours.",
+      "Illustrative scenario: An agency collects approval feedback through forwarded chats and email, making versions and decisions difficult to audit.",
     approach:
-      "A branded client portal with structured review workflows — deliverables uploaded, reviewed and approved with a permanent record, plus automated weekly status digests.",
+      "Possible approach: a client portal for deliverable review, explicit approvals, revision history, and scheduled status summaries.",
     outcome:
-      "Approval disputes ended (the record answered them); status meetings shortened from an hour to fifteen minutes; onboarding new clients became a repeatable process.",
+      "Intended outcome, not a measured result: approvals and revisions have a shared record. No meeting-time or dispute reduction is claimed.",
     stack: ["Next.js", "TypeScript", "PostgreSQL", "Cloud Storage", "Google Cloud Run"],
   },
   {
     slug: "firm-intake-automation",
     industry: "Professional Services",
-    title: "An accounting practice that stopped burying deadlines",
+    title: "Document intake and deadline tracking for a practice",
     challenge:
-      "An accounting firm exchanged client documents through personal email and tracked engagements in a private spreadsheet. Deadlines surfaced only through individual discipline.",
+      "Illustrative scenario: A professional practice receives client documents through personal email and tracks deadlines in separate files.",
     approach:
-      "A secure client portal for document delivery and approvals, automated deadline reminders, and an engagement pipeline visible to the whole practice.",
+      "Possible approach: a secure client portal for document delivery and approvals, deadline reminders, and a shared engagement pipeline.",
     outcome:
-      "Document exchange became trackable and confidential; deadline reminders ran on schedule regardless of workload; partners reviewed live engagement status instead of chasing updates.",
+      "Intended outcome, not a measured result: document receipt and upcoming deadlines are visible in one workflow. Security, confidentiality, and adoption require validation in the specific deployment.",
     stack: ["Next.js", "PostgreSQL", "SMTP", "Node.js", "Secret Manager"],
   },
 ];
@@ -1339,11 +1339,11 @@ export const FAQS: Faq[] = [
   },
   {
     q: "How do you protect my business data and confidentiality?",
-    a: "Client data is stored under access control with audit logging, credentials live in encrypted secret management rather than code, and project records are tied to your Client ID with role-based access. Confidential information is never reused or shared, and our Privacy Policy governs what we collect and why. For sensitive engagements, an NDA precedes disclosure.",
+    a: "Our Privacy Policy describes the information we collect and the safeguards we aim to use. Do not submit passwords, API keys, payment credentials, or highly sensitive information through the public form or ordinary chat. Contact us to discuss an appropriate secure transfer method and any confidentiality terms before sharing sensitive material.",
   },
   {
     q: "Where do you work? Can you handle clients outside the US?",
-    a: "TECH360 LLC is a Missouri-registered company (LC014737249) with an engineering team spanning the USA and Bangladesh. We deliver worldwide — the preview-first, milestone-based process is designed precisely so geography never becomes a trust problem. Current clients and representative patterns are available on request under NDA.",
+    a: "TECH360 LLC is registered in Missouri, USA (LC014737249). The Work page contains illustrative scenarios, not verified client engagements; any public client reference requires that client’s prior written permission and may not be available.",
   },
   {
     q: "How do we start working together?",
@@ -1509,7 +1509,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     title: "Terms & Conditions",
     summary:
       "The general terms governing use of this website and the framework under which TECH360 LLC provides services.",
-    updated: "January 2026",
+    updated: "October 2026",
     sections: [
       {
         heading: "1. Agreement to these terms",
@@ -1539,14 +1539,14 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "4. Intellectual property",
         body: [
           "Upon full payment of an engagement, ownership of the custom source code, design assets and documentation created specifically for your project is transferred to you in accordance with our Source Code Handover Policy.",
-          "Tech360 retains ownership of: pre-existing tools, internal frameworks, templates and know-how used to produce your deliverable; and the right to present the engagement as representative work, subject to any confidentiality restriction you have agreed with us in writing.",
+          "Tech360 retains ownership of pre-existing tools, internal frameworks, templates and know-how used to produce your deliverable. We will identify or display a client engagement, deliverable, or related materials publicly only with the client's separate prior written permission and subject to applicable confidentiality terms.",
           "Third-party components delivered as part of your project (open-source libraries, licensed fonts, third-party services) remain subject to their own licences.",
         ],
       },
       {
         heading: "5. Website content and accuracy",
         body: [
-          "We work to keep the Site accurate and current, but content is provided for general information only and may change without notice. Case material presented on the Site is anonymised and representative; references are available on request under NDA.",
+          "We work to keep the Site accurate and current, but content is provided for general information only and may change without notice. The scenarios on the Work page are illustrative examples, not verified records of client engagements or measured results. We do not promise that client references are available; any reference requires the client's prior permission and may not be available.",
           "The Site may include links to third-party services (for example, WhatsApp). We are not responsible for third-party content or availability.",
         ],
       },
@@ -1568,68 +1568,110 @@ export const LEGAL_DOCS: LegalDoc[] = [
     ],
   },
   {
-    slug: "privacy",
-    title: "Privacy Policy",
-    summary:
-      "What information we collect through this website, why we collect it, how long we keep it, and the choices you have.",
-    updated: "January 2026",
-    sections: [
+    "slug": "privacy",
+    "title": "Privacy Policy",
+    "summary": "What information TECH360 collects through its website and services, why it is used, how it is protected and retained, and the choices available to you.",
+    "updated": "October 23, 2026",
+    "sections": [
       {
-        heading: "1. Who we are",
-        body: [
-          "TECH360 LLC (\"Tech360\", \"we\", \"us\") is a Missouri-registered LLC (LC014737249, EIN 98-1940053), registered address 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA. We operate bdtech360.com and provide software design, development and automation services.",
-          "This policy explains how we handle personal information collected through the Site and during client engagements. It applies as written unless a signed agreement states otherwise, in which case the agreement prevails.",
-        ],
+        "heading": "1. Who we are",
+        "body": [
+          "TECH360 LLC (“TECH360,” “we,” “us,” or “our”) is a Missouri-registered limited liability company (Registration No. LC014737249, EIN 98-1940053), with a registered address at 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
+          "We operate bdtech360.com and provide software design, development, automation, and related technology services. This Policy applies to information collected through our website and in connection with our services, communications, and client engagements. Specific privacy or confidentiality terms in a signed agreement apply to the extent agreed and permitted by law."
+        ]
       },
       {
-        heading: "2. Information we collect",
-        body: [
-          "Information you give us voluntarily: name, business name, business type, email address, WhatsApp number, country, project details and preferences submitted through the contact form; and any information you send us by email or WhatsApp.",
-          "Technical information: pages visited, referring page and basic request metadata, collected to operate and secure the Site. Where analytics are enabled, they run under consent controls.",
-          "Client engagement records: communications, approvals, payments and delivery records created during a project. These are tied to your client reference ID (TECH-YYYY-NNNNNN) for accuracy and accountability.",
-        ],
+        "heading": "2. Information we collect",
+        "body": [
+          "Depending on your interaction with us, information you provide may include your name, business name, email address, Client ID or customer reference, business telephone or optional WhatsApp number, country, business type, project requirements, preferences, documents, instructions, and approvals submitted through website forms, chat, email, or other communication channels.",
+          "Technical information may include IP address and request metadata, browser and device information, pages requested, referring pages, security events, error logs, and abuse-prevention records needed to operate and secure the website.",
+          "Client and service records may include relevant communications, requirements, project approvals, invoices, payment records, delivery status, and handover documentation associated with a Client ID.",
+          "You are not required to provide information that is unnecessary for your enquiry or engagement. WhatsApp is optional. Email verification status is recorded through verified identity records when an approved verification step is completed; a typed email address alone is not proof of ownership."
+        ]
       },
       {
-        heading: "3. Why we process it (purposes and bases)",
-        body: [
-          "To respond to enquiries and prepare proposals (legitimate interest in prospective business; your consent when you submit the form).",
-          "To perform engagements: scope records, approvals, payments, delivery and handover (performance of a contract).",
-          "To operate and secure the Site: rate limiting, abuse prevention, error diagnosis (legitimate interest).",
-          "To comply with legal, accounting and tax obligations where applicable.",
-          "We do not sell personal information. We do not use your project data to train third-party AI services.",
-        ],
+        "heading": "3. Why we collect and use information",
+        "body": [
+          "We use information to respond to enquiries, understand requirements, prepare proposals or quotations, identify buyers and maintain accurate Client ID records, deliver requested services and documents, send relevant service-related updates, manage approvals and projects, process invoices and payments, provide support, secure our systems, prevent fraud and abuse, investigate technical problems, and meet legal, accounting, tax, contractual, or regulatory obligations.",
+          "Contact consent for an enquiry is recorded separately from optional marketing consent. We do not send marketing messages based only on a project enquiry. We send marketing communications only where the applicable consent or other lawful basis exists, and unsubscribe choices are respected.",
+          "Depending on the circumstances and applicable law, processing may be based on performing a contract, taking steps requested before a contract, legitimate business interests, consent, or compliance with legal obligations.",
+          "We do not sell personal information. TECH360 does not use buyer project data to train third-party AI models."
+        ]
       },
       {
-        heading: "4. Sharing and processors",
-        body: [
-          "We share information only with service providers necessary to operate our business: hosting (Google Cloud), messaging infrastructure (WhatsApp/Meta, SMTP providers), payment processing (as applicable to your engagement) and professional advisers under confidentiality.",
-          "Each provider receives only the information required for its function. Engagement data may be processed in the USA and Bangladesh under our internal access controls and confidentiality rules.",
-          "We may disclose information where required by law or to protect our legal rights.",
-        ],
+        "heading": "4. Buyer information and data protection",
+        "body": [
+          "We aim to collect and retain only information reasonably necessary to identify buyers, communicate with them, provide requested services, deliver documents and project materials, and meet legitimate operational requirements.",
+          "Access to buyer information is limited to authorized personnel and approved service providers who need it to perform their responsibilities. We take reasonable steps to prevent unauthorized access, disclosure, alteration, loss, or misuse, while recognizing that no online system or transmission method can be guaranteed completely secure.",
+          "AI tools may assist with authorized tasks such as understanding requirements, preparing documents, supporting project workflows, and responding to service enquiries. AI tools and agents are not authorized to disclose buyer information or use it for unrelated purposes. Third-party processing remains subject to the provider’s terms, configuration, and applicable safeguards."
+        ]
       },
       {
-        heading: "5. Retention",
-        body: [
-          "Enquiry information that does not become an engagement is retained for a limited period and then deleted.",
-          "Client engagement records (scopes, approvals, payments, delivery evidence) are retained for the period required by accounting, tax and legal obligations, and to honour warranty and handover commitments.",
-          "You may request deletion of your enquiry data at any time via info@bdtech360.com, subject to legal retention obligations.",
-        ],
+        "heading": "5. Sharing and service providers",
+        "body": [
+          "We may share limited information with service providers when necessary to operate the website, communicate with buyers, process payments, or deliver services. Depending on the actual services and configuration, these providers may include hosting and infrastructure providers such as Google Cloud or others; authorized messaging providers such as WhatsApp or Meta; SMTP or transactional email providers; payment processors applicable to a particular engagement; and approved technical, security, backup, or professional service providers.",
+          "We aim to provide each service provider only the information needed for its assigned function. Providers may process information under their own terms, applicable agreements, and legal obligations. Information may be processed in the United States, Bangladesh, or other locations where authorized service providers operate, subject to applicable law and available safeguards.",
+          "We may disclose information when reasonably necessary to comply with law or lawful requests, protect our rights, investigate fraud, or protect users and service security. We do not sell personal information to third parties."
+        ]
       },
       {
-        heading: "6. Security",
-        body: [
-          "Access to personal and client data is role-restricted and logged. Credentials and secrets are stored in encrypted secret management, not in source code. Backups are verified. Communication about sensitive matters is conducted through your preferred verified channel.",
-          "No system is perfectly secure; if a breach affecting your information occurs, we will notify affected parties and regulators as required by law.",
-        ],
+        "heading": "6. Data retention",
+        "body": [
+          "We retain information only as long as reasonably necessary for the purposes in this Policy, subject to applicable legal and contractual obligations.",
+          "Enquiry information that does not become an engagement is retained for a limited period to respond, manage follow-ups, and maintain necessary business records, then deleted or anonymized when no longer needed unless a valid reason requires continued retention.",
+          "Buyer contact details and Client IDs are retained as needed to identify buyers, maintain accurate service records, and provide relevant support. Project documents, approvals, deliverables, and handover records are retained for the period reasonably necessary to fulfil commitments and address support, warranty, or dispute-resolution needs.",
+          "Invoices, payment records, and other financial documents are retained for the period required by applicable law and accounting obligations. Security and technical logs are retained for a proportionate period to protect systems, investigate incidents, and address abuse.",
+          "You may request deletion by contacting info@bdtech360.com. We assess requests and delete information where appropriate, subject to legal, accounting, contractual, security, and dispute-resolution requirements."
+        ]
       },
       {
-        heading: "7. Your choices and contact",
-        body: [
-          "You may request access, correction, export or deletion of your personal information, or withdraw consent for optional processing, by writing to info@bdtech360.com. We respond within a reasonable period and may verify identity before acting.",
-          "Privacy questions: info@bdtech360.com. Postal: TECH360 LLC, 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
-        ],
+        "heading": "7. Security",
+        "body": [
+          "We take reasonable technical and organizational measures to protect personal information and confidential buyer records. Measures may include role-based access restrictions, access logging where supported, secure credential and secret handling, appropriate protection of databases and documents, authentication and authorization controls, backups and recovery procedures, security updates, and investigation of relevant system errors.",
+          "Credentials and secrets should be stored in protected server-side configuration or an appropriate secret-management system, not exposed in public source code. Buyers should not send passwords, payment-card security codes, or similarly sensitive credentials through ordinary chat or email.",
+          "No security measure can guarantee absolute protection. If a personal-data breach occurs, we assess the incident and notify affected individuals or authorities where required by law."
+        ]
       },
-    ],
+      {
+        "heading": "8. Cookies and analytics",
+        "body": [
+          "The website may use essential cookies or similar technologies for functionality, security, sessions, and user preferences. Optional analytics or tracking, where enabled, are subject to applicable consent requirements and controls made available on the website.",
+          "We aim to avoid sending private client documents, confidential project details, or unnecessary personal information to analytics providers. You can manage cookies in your browser, although disabling essential cookies may affect website functionality."
+        ]
+      },
+      {
+        "heading": "9. Your privacy rights and choices",
+        "body": [
+          "Subject to applicable law and the circumstances of your request, you may ask us to confirm whether we hold your personal information; provide access or an export where applicable; correct inaccurate or incomplete information; delete information that we no longer have a valid reason to retain; withdraw consent for optional processing or marketing; or explain how information is used or shared.",
+          "To make a request, contact info@bdtech360.com. We may need to verify your identity before processing a request. Some records may be retained for legal obligations, contract performance, security, or dispute resolution. Withdrawing consent does not affect processing that was lawful before withdrawal or processing that continues under another applicable legal basis."
+        ]
+      },
+      {
+        "heading": "10. Third-party websites and services",
+        "body": [
+          "The website may contain links to external websites, payment providers, communication platforms, or other third-party services. Those services operate under their own privacy policies and terms. We do not control their independent privacy practices; review their policies before submitting information directly to them."
+        ]
+      },
+      {
+        "heading": "11. Children’s privacy",
+        "body": [
+          "The website and services are intended for business customers and others seeking our services, not specifically for children. We do not knowingly collect children’s personal information where doing so would violate applicable law. If you believe a child has provided information inappropriately, contact info@bdtech360.com so we can review and take appropriate action."
+        ]
+      },
+      {
+        "heading": "12. Changes to this Privacy Policy",
+        "body": [
+          "We may update this Policy to reflect changes in services, technology, operational practices, or applicable legal requirements. When we make changes, we update the “Last updated” date and provide additional notice or obtain consent for material changes where required by law. We encourage visitors and buyers to review this page periodically."
+        ]
+      },
+      {
+        "heading": "13. Contact us",
+        "body": [
+          "For privacy questions, access requests, corrections, or deletion requests, contact TECH360 LLC at info@bdtech360.com or https://bdtech360.com. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA. The public WhatsApp channel is optional: +8801327100297.",
+          "We review privacy requests and respond within a reasonable period, subject to applicable law and any necessary identity verification. Our commitment is to collect only information reasonably needed, protect its confidentiality, use it for legitimate purposes, and treat every buyer’s information with respect."
+        ]
+      }
+    ]
   },
   {
     slug: "refund",
@@ -1732,57 +1774,61 @@ export const LEGAL_DOCS: LegalDoc[] = [
     ],
   },
   {
-    slug: "payment",
-    title: "Payment Policy",
-    summary:
-      "Milestone structure, currencies, methods, verification before status changes, and receipts.",
-    updated: "January 2026",
-    sections: [
+    "slug": "payment",
+    "title": "Payment Policy",
+    "summary": "Milestone amounts, payment methods, verification evidence, reconciliation, partial payments, and dispute handling.",
+    "updated": "October 2026",
+    "sections": [
       {
         heading: "1. Payment structure",
         body: [
-          "Payments follow the milestone structure written in your approved Final Scope of Work. The default structure is: 40% advance (after preview approval), 30% at the defined midpoint milestone, and 30% at delivery. Engagements may vary this structure in writing.",
-          "No payment of any kind is requested before your preview approval. There are no booking fees, hidden charges or \"administration costs\" outside the scope.",
+          "Payment amounts, milestones, currency, and due dates come from the approved Final Scope of Work and payment agreement. A commonly used schedule is 40% after preview approval, 30% at the agreed midpoint, and 30% at delivery; only the schedule written in the approved agreement applies. The signed engagement agreement governs where it expressly differs from this policy.",
+          "Under the standard Payment Policy, no booking fee, advance payment, administration charge, or other payment is requested before the customer approves the applicable preview. There are no hidden charges. Any signed-agreement exception must be displayed clearly and reviewed by an authorized person before activation.",
         ],
       },
       {
-        heading: "2. Currency and pricing",
-        body: [
-          "Quoted amounts state their currency explicitly — typically USD for international engagements. Where a local-currency quotation is agreed, the currency is stated in the scope and the amount is fixed in that currency.",
-          "Price changes never apply retroactively to an approved scope. Any change to pricing requires a new written quotation and your approval.",
-        ],
+        "heading": "2. Currency and pricing",
+        "body": [
+          "All quoted amounts state their currency explicitly. USD is the standard currency unless another currency has been expressly agreed in writing.",
+          "No hidden charges or retroactive price changes apply to an approved scope. A revised price requires a written quotation and customer approval before it takes effect."
+        ]
       },
       {
-        heading: "3. Accepted methods",
-        body: [
-          "Bank transfer (details provided with your payment request, referenced to your client ID), card payments via the processing provider named in your payment request where applicable, and local mobile-financial-service methods (such as bKash or Nagad) where agreed for Bangladesh-based engagements.",
-          "Each payment request states: the amount, currency, milestone reference, and the client ID to include in the transfer reference. Payments without a reference take longer to verify — we will help you fix the reference if a transfer is already sent.",
-        ],
+        "heading": "3. Accepted payment methods",
+        "body": [
+          "Payment methods depend on what is actually configured and authorized for the engagement. They may include bank transfer, card payment through a configured provider, or supported online banking transfer. An unavailable or unconfigured provider is not presented as operational.",
+          "Every payment request identifies the Client ID, invoice or payment reference, project reference, milestone, amount and currency, verified payment instructions, and applicable due date. Payment instructions are provided through an authorized TECH360 communication channel."
+        ]
       },
       {
-        heading: "4. Verification before status change",
-        body: [
-          "Project status changes only after a payment is verified — meaning the funds are confirmed as received, not merely claimed. Screenshots and message confirmations are appreciated for speed but do not by themselves change project status.",
-          "Verification is completed within one business day of funds appearing in our account. When a payment is pending verification, the engagement continues normally; verification affects status records, not work goodwill.",
-          "If funds do not arrive or a discrepancy exists, we raise it with you immediately and resolve it before proceeding — no silent holds.",
-        ],
+        "heading": "4. Payment verification",
+        "body": [
+          "A payment is marked paid only after the funds have been verified through the provider’s verified event, bank reconciliation, or an authorized reconciliation process. A screenshot or customer message may support an investigation but is not proof that funds were received.",
+          "The payment record identifies the amount received, currency, transaction reference, customer and invoice association, verification source and timestamp, reconciliation status, and any outstanding balance. Signed webhook verification, idempotency, and replay protection are used where supported by the configured provider. A mismatch in amount, currency, account, or invoice is sent to reconciliation rather than credited automatically."
+        ]
       },
       {
-        heading: "5. Receipts, records and taxes",
-        body: [
-          "Every verified payment is receipted in the client record, tied to your client ID, and a receipt copy is provided to you in writing. Milestone and payment history for your engagement is available to you at any time on request.",
-          "Quoted amounts are exclusive of taxes unless stated. Tax treatment (including any withholding applicable to cross-border payments) follows the laws of the relevant jurisdiction; we provide necessary documentation (W-8/W-9 equivalents or local certificates) on request.",
-        ],
+        "heading": "5. Late and partial payments",
+        "body": [
+          "Partial payments are recorded separately from outstanding balances. A partial payment does not satisfy a milestone unless both parties agree otherwise in writing.",
+          "If a payment is delayed, any work pause follows the approved agreement and is communicated to the customer where reasonably practicable. No hidden payment penalties are added."
+        ]
       },
       {
-        heading: "6. Late, partial and failed payments",
-        body: [
-          "If a milestone payment is delayed, work pauses at the next milestone boundary rather than degrading silently — you keep everything already delivered and accepted, and the timeline is extended by the delay. We communicate a pause before it happens, in writing.",
-          "Partially received amounts are applied to the engagement once cleared and documented; the remaining balance is stated with an updated receipt. Returned or reversed transfers are raised with you the day we learn of them, with the bank evidence attached, and resolved case by case in writing.",
-          "Persistent non-payment after delivery does not result in hidden penalties — it simply gates source-code handover and support under the Source Code Handover Policy, and where necessary the engagement is escalated through ordinary, lawful channels.",
-        ],
+        "heading": "6. Reversals, refunds, and chargebacks",
+        "body": [
+          "A reversal or chargeback request is not automatically approved or automatically treated as invalid. It is handled under the signed engagement agreement, applicable Refund Policy, payment-provider rules, and applicable law.",
+          "Disputes, provider notifications, refunds, reversals, and reconciliation changes are recorded, and the customer is notified of relevant changes. Payment records are not altered to conceal a dispute or falsely represent a reversed transaction as settled."
+        ]
       },
-    ],
+      {
+        "heading": "7. Payment support",
+        "body": [
+          "For payment questions, contact info@bdtech360.com or https://bdtech360.com. The public WhatsApp channel is optional: +8801327100297. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
+          "Include your Client ID and relevant payment reference. Never share passwords, online banking credentials, or card security codes through email or chat."
+        ]
+      }
+    ]
   },
   {
     slug: "client-approval",
@@ -1833,54 +1879,85 @@ export const LEGAL_DOCS: LegalDoc[] = [
     ],
   },
   {
-    slug: "source-code-handover",
-    title: "Source Code Handover Policy",
-    summary:
-      "When and how the full source code, credentials and documentation are transferred to you — and the final payment gate.",
-    updated: "January 2026",
-    sections: [
+    "slug": "source-code-handover",
+    "title": "Source Code Handover Policy",
+    "summary": "When agreed source code, build assets, documentation, credentials, and other deliverables are transferred, and the responsibilities that follow.",
+    "updated": "October 2026",
+    "sections": [
       {
-        heading: "1. The principle",
-        body: [
-          "You own what you pay for. The complete source code, build assets and documentation for your engagement are handed over to you after final payment is verified. Before that gate, work-in-progress is available for your review at preview and milestone stages — you are never asked to pay for a black box.",
-          "This policy exists to protect both parties: clients cannot lose code they have fully paid for, and no code is released before the engagement's payment terms are complete.",
-        ],
+        "heading": "1. The principle",
+        "body": [
+          "Subject to the approved Final Scope of Work, engagement agreement, verified final payment, and applicable law, TECH360 delivers the agreed source code, applicable build assets, documentation, and other handover materials.",
+          "Before final payment, work in progress is available for review at the agreed preview and milestone stages. You are not required to pay for an undisclosed black box.",
+          "The agreed payment gate protects both parties: the client receives the deliverables covered by the agreement, and TECH360 releases the final handover package after the agreed payment condition is satisfied."
+        ]
       },
       {
-        heading: "2. What is handed over",
-        body: [
-          "The handover package contains: the full source repository (application code, configuration templates, database schema and migrations); build and deployment documentation written so any competent developer can rebuild and deploy the system; environment variable inventory with credential names (values supplied separately); third-party dependency list with versions and licences; and the handover record itself.",
-          "For engagements on our managed hosting, the handover additionally includes: infrastructure configuration description, backup snapshot, and the steps (or our assistance) to migrate to your own hosting if you choose.",
-        ],
+        "heading": "2. What is handed over",
+        "body": [
+          "The handover package includes the applicable items specified in the approved scope, which may include: the custom source-code repository and application code; applicable build assets and custom files; configuration templates without embedded secrets; database schemas and migrations; installation, dependency, build, deployment, and maintenance documentation sufficient for a competent developer to rebuild and deploy the system; an environment-variable and credential-name inventory; a third-party dependency, version, and licence inventory; and a written handover manifest.",
+          "For systems hosted on TECH360-managed infrastructure, the package includes an infrastructure description and migration instructions or reasonable migration assistance only where that work is included in the approved scope or a separate written agreement.",
+          "Backups are excluded unless expressly included in the approved Final Scope of Work or a separate written agreement. A backup snapshot will be provided only where it has been expressly included and is available for delivery."
+        ]
       },
       {
-        heading: "3. Credentials handover",
-        body: [
-          "Account credentials for systems we created or managed on your behalf — hosting accounts, databases, service dashboards, API keys — are delivered through a secure channel, never plaintext email.",
-          "Where the account belongs to a third-party provider (domain registrar, payment gateway, cloud platform), we assist you in taking or confirming ownership of that account directly with the provider.",
-          "All credentials are transferred with their current state documented: what each credential accesses, its scope and its rotation guidance.",
-        ],
+        "heading": "3. Credentials handover",
+        "body": [
+          "Applicable credentials for systems created or managed on the client’s behalf are transferred through a suitable secure channel, not as unprotected passwords, API secrets, database passwords, private keys, or tokens in ordinary email.",
+          "For third-party accounts, TECH360 assists with ownership transfer or confirmation only where the provider permits it and the engagement includes that assistance.",
+          "Where applicable, handover documentation identifies the account or system, the access being transferred, relevant permission levels, transfer method, required password or key rotation, and remaining third-party restrictions."
+        ]
       },
       {
-        heading: "4. Password change confirmation",
-        body: [
-          "Within a reasonable period after receiving credentials (we suggest 72 hours), you change every handed-over password. You then confirm in writing that the changes are complete — this is the handover's final acknowledgement.",
-          "Why we ask: it is the only point at which access control becomes fully and provably yours. Until you have rotated the credentials, shared access technically persists; after rotation, the system is exclusively under your control, and our support access going forward exists only if you grant it explicitly.",
-        ],
+        "heading": "4. Password changes and handover confirmation",
+        "body": [
+          "Clients should rotate applicable transferred passwords, API keys, tokens, and other secrets promptly after handover. A period of 72 hours is recommended where practical.",
+          "The client may confirm the rotation in writing. That acknowledgement records the handover and does not waive any rights or obligations that cannot legally be waived.",
+          "After handover, TECH360 does not retain or use access to client-controlled systems except where separately authorized by the client or otherwise permitted under the engagement agreement and applicable law. Temporary access that is no longer needed should be revoked securely."
+        ]
       },
       {
-        heading: "5. After handover",
-        body: [
-          "Ownership of the custom code transfers to you on handover. We retain the right to present the engagement as representative work (anonymised) unless you have agreed otherwise in writing.",
-          "Maintenance and support after handover is optional and available under a separate agreement; the handover itself is complete, final and independent of any future support relationship. Your documentation stands on its own — that is the standard we hold it to.",
-        ],
+        "heading": "5. Client responsibilities after handover",
+        "body": [
+          "After the agreed handover, the client is responsible for taking reasonable care of the delivered materials, including: keeping secure copies of source code and documentation; maintaining independent backups unless a backup service is expressly included; protecting credentials and confidential configuration; managing user access and permissions; reviewing and testing changes made by the client or subsequent developers; and maintaining client-managed hosting, databases, infrastructure, and third-party services.",
+          "TECH360 does not provide ongoing source-code storage or backup services after handover unless a separate written agreement expressly includes them. TECH360 does not guarantee that it will retain or be able to recover a copy of handed-over source code after delivery."
+        ]
       },
-    ],
+      {
+        "heading": "6. Issues arising after handover",
+        "body": [
+          "Unless otherwise agreed, post-handover troubleshooting, restoration, maintenance, and recovery are separate services. Client or third-party modifications, lost source code, compromised client-controlled credentials, inadequate client-managed backups, and systems outside TECH360’s control may require separately agreed assistance.",
+          "TECH360 does not automatically classify every post-handover defect as the client’s responsibility. Responsibility for defects, breaches, warranties, or failures attributable to TECH360’s own work, and any obligation that cannot lawfully be excluded, remains subject to the applicable agreement and law."
+        ]
+      },
+      {
+        "heading": "7. Ownership and third-party materials",
+        "body": [
+          "Subject to full payment, the approved engagement agreement, and applicable law, ownership or the agreed rights to custom deliverables transfer to the client as specified in the contract.",
+          "Third-party libraries, frameworks, fonts, software, and other licensed materials remain subject to their respective licences. Open-source and third-party components are not transferred as exclusive property where their licences do not permit that. Pre-existing TECH360 materials and reusable components are identified and licensed as agreed.",
+          "TECH360 will identify or display a client engagement or related materials publicly only with the client’s separate prior written permission and subject to applicable confidentiality terms."
+        ]
+      },
+      {
+        "heading": "8. Support after handover",
+        "body": [
+          "Maintenance and support after handover are optional and may be provided only under a separate written agreement that identifies the scope, response targets, fees, support hours, covered systems, exclusions, renewal, and termination terms.",
+          "Hosting, monitoring, backups, restoration, recovery, and maintenance do not continue automatically after handover unless expressly agreed in writing."
+        ]
+      },
+      {
+        "heading": "9. Contact",
+        "body": [
+          "For handover questions, contact TECH360 LLC at info@bdtech360.com or https://bdtech360.com. The public WhatsApp channel is optional: +8801327100297. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
+          "Include your Client ID and project reference when asking about a handover. Never send passwords, API secrets, online banking credentials, or card security codes through ordinary email or chat."
+        ]
+      }
+    ]
   },
 ];
 
 /* ------------------------------------------------------------------ */
-/* Stats (honest, qualitative — no fabricated counters)                */
+/* Stats (source/catalogue counts only; live operation is not asserted) */
 /* ------------------------------------------------------------------ */
 
 export const STATS: { value: string; label: string; note: string }[] = [
@@ -1891,18 +1968,18 @@ export const STATS: { value: string; label: string; note: string }[] = [
   },
   {
     value: "110",
-    label: "internal departments",
-    note: "A structured delivery organisation — 110 departments are defined in the platform's department registry and seeded into its database; every engagement runs through accountable departments, not one inbox.",
+    label: "department definitions",
+    note: "The source registry defines 110 department records. This is a catalogue count, not a claim that 110 teams are deployed or staffed.",
   },
   {
     value: "20",
-    label: "automated workflow stages",
-    note: "From first message to handover, every stage is tracked, logged and auditable end-to-end.",
+    label: "pipeline-stage definitions",
+    note: "Twenty pipeline stages are defined in source. Live usage, automation coverage, and end-to-end audit completeness have not been verified.",
   },
   {
-    value: "50s → 60 min",
-    label: "cinematic video pipeline",
-    note: "In-house production capability — from storyboard to finished film in a single working session.",
+    value: "26",
+    label: "n8n workflow files",
+    note: "Twenty-six workflow JSON files are tracked in the repository; deployment and successful live execution have not been verified.",
   },
 ];
 

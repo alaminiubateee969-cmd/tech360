@@ -724,6 +724,76 @@ export interface PaymentMutationResponse {
   message?: string
 }
 
+export interface DccMetricRow {
+  key: string
+  label: string
+  threshold: number
+  comparator: 'MIN' | 'MAX'
+  value: number | null
+  source: string
+  note: string
+  numerator?: number
+  denominator?: number
+  sampleSize?: number
+  status: 'PASS' | 'FAIL' | 'NOT_MEASURED' | 'INVALID_EVIDENCE'
+}
+export interface DepartmentDccResponse {
+  source: 'PERSISTED_DATABASE'
+  persistedDepartmentCount: number
+  sourceDefinedDepartmentCount: number
+  thresholdVersion: string
+  limit: number
+  offset: number
+  departments: Array<{
+    id: string
+    code: string
+    name: string
+    category: string
+    persistedAgentCount: number
+    latestAssessment: null | {
+      id: string
+      thresholdVersion: string
+      status: string
+      sopCoverage: number | null
+      knowledgeCoverage: number | null
+      skillCoverage: number | null
+      testPassRate: number | null
+      kpiAchievement: number | null
+      securityCompliance: number | null
+      auditCompliance: number | null
+      selfRecoveryRate: number | null
+      humanEscalationRate: number | null
+      evidence: string
+      measurementStart: string | null
+      measurementEnd: string | null
+      assessedBy: string
+      assessedAt: string
+      expiresAt: string | null
+      certificationCurrent: boolean
+      evaluation: {
+        status: 'CERTIFIED' | 'BLOCKED' | 'UNDER_REVIEW'
+        certified: boolean
+        metrics: DccMetricRow[]
+        failed: string[]
+        missing: string[]
+      } | null
+    }
+  }>
+}
+export interface DepartmentDccAssessmentResponse {
+  department: { id: string; code: string; name: string }
+  assessment: { id: string; status: string; thresholdVersion: string; assessedBy: string; assessedAt: string; expiresAt: string | null }
+  evaluation: {
+    status: 'CERTIFIED' | 'BLOCKED' | 'UNDER_REVIEW'
+    certified: boolean
+    metrics: DccMetricRow[]
+    failed: string[]
+    missing: string[]
+  }
+  measurementWindow: { start: string; end: string }
+  message: string
+}
+
 export interface AgentRow {
   code: string
   name: string
@@ -734,6 +804,7 @@ export interface AgentRow {
   successRate?: number | null
   requiresApproval?: boolean | null
   level?: number | null
+  parentCode?: string | null
 }
 export interface DepartmentRow { code: string; name: string; category?: string | null }
 export interface AgentsResponse {
@@ -1103,10 +1174,20 @@ export const api = {
       method: 'POST',
       body: { decision, note },
     }),
-  createAgent: (purpose: string, description: string) =>
-    fetchJson<{ ok?: boolean; message?: string }>('/api/admin/agents/create', {
+  createAgent: (purpose: string, description: string, departmentCode: string, parentCode: string) =>
+    fetchJson<{ ok?: boolean; message?: string; agent?: { code: string; name: string; status: string } }>('/api/admin/agents/create', {
       method: 'POST',
-      body: { purpose, description },
+      body: { purpose, description, departmentCode, parentCode },
+    }),
+  assessDepartmentDcc: (departmentCode: string) =>
+    fetchJson<DepartmentDccAssessmentResponse>('/api/admin/dcc', {
+      method: 'POST',
+      body: { departmentCode },
+    }),
+  updateAgentStatus: (code: string, status: 'ACTIVE' | 'PAUSED', reason: string, confirmation?: string) =>
+    fetchJson<{ ok?: boolean; message?: string; agent?: { code: string; status: string } }>(`/api/admin/agents/${encodeURIComponent(code)}`, {
+      method: 'PATCH',
+      body: { status, reason, confirmation },
     }),
   command: (sessionId: string, message: string) =>
     fetchJson<CommandResponse>('/api/admin/command', { method: 'POST', body: { sessionId, message } }),

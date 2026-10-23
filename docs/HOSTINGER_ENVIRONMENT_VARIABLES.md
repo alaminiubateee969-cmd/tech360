@@ -36,10 +36,11 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | SMTP email delivery | `SMTP_PASS` secret; others configuration | Mail provider | Optional; required before email sending |
 | `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` | Generic SMS delivery | `SMS_API_KEY` secret; others configuration | SMS provider | Optional |
 | `HTTPSMS_API_KEY`, `HTTPSMS_BASE_URL`, `HTTPSMS_FROM` | HTTP SMS provider adapter | `HTTPSMS_API_KEY` secret; base URL/sender are configuration | httpsSMS account | Optional |
-| `PORTAL_OTP`, `PORTAL_OTP_CHANNEL` | Portal one-time-code behavior and preferred channel | Non-secret | Owner policy (`auto`/`off`/`required`; `email`/`whatsapp`/`sms`) | Optional |
+| `PORTAL_OTP`, `PORTAL_OTP_CHANNEL` | Portal one-time-code behavior and preferred channel | Non-secret | OTP is always required in production; `off` is honored only outside production. Preferred channel: `email`/`whatsapp`/`sms` | Optional |
 | `FACEBOOK_PAGE_TOKEN`, `INSTAGRAM_TOKEN`, `LINKEDIN_TOKEN`, `X_TOKEN` | Social publishing | Secret | Respective provider | Optional |
 | `SOCIAL_WEBHOOK_SECRET` | Social inbound webhook auth | Secret | Owner-generated | Optional; required to enable endpoint |
 | `N8N_WEBHOOK_SECRET`, `N8N_WEBHOOK_BASE` | n8n bridge auth and URL | Secret/URL | n8n deployment | Optional; required to enable endpoint |
+| `EMAIL_WEBHOOK_SECRET` | Dedicated inbound email-webhook raw-body HMAC or `x-email-webhook-secret` key | Secret | Owner-generated; at least 32 random bytes | Optional; the endpoint returns 503 until configured |
 | `PREVIEW_TTL_DAYS` | Preview expiry policy | Non-secret | Optional; the application defaults to 30 days | Optional |
 
 The repository also contains dynamic feature metadata for the payment credentials above (`src/lib/features.ts`), so those names are included even though they are not accessed using a literal `process.env.NAME` expression.

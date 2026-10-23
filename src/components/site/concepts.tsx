@@ -47,7 +47,7 @@ function BrowserFrame({
 export function WebsiteConceptMockup() {
   return (
     <BrowserFrame
-      address="bdtech360.com — concept preview"
+      address="Website design concept — not live"
       label="Illustrative website design concept: hero section with bold headline, services grid, and trust strip in the Tech360 brand style"
     >
       <div className="bg-white">
@@ -91,8 +91,7 @@ export function WebsiteConceptMockup() {
       </div>
       <figcaption className="border-t border-[#E2E8F0] bg-white px-4 py-3 text-xs leading-relaxed text-[#526173] sm:px-5">
         <span className="font-semibold text-[#0B1F33]">Illustrative design concept.</span>{" "}
-        Representative of the calibre of website we deliver — real client work ships under NDA,
-        so we show labelled concepts rather than client screenshots.
+        This is a visual mockup only — not a customer website, client screenshot, or evidence of a completed engagement. Any client reference requires prior written permission.
       </figcaption>
     </BrowserFrame>
   );
@@ -105,8 +104,8 @@ export function CrmConsoleConcept() {
   const stages = ["New", "Contacted", "Scoped", "Won"];
   return (
     <BrowserFrame
-      address="app.bdtech360.com — CRM console (concept)"
-      label="Illustrative CRM interface concept: KPI cards, pipeline columns with deal cards, and a client timeline"
+      address="CRM console — illustrative concept (not live)"
+      label="Illustrative CRM interface concept; all displayed values, IDs, statuses, and timeline entries are placeholders, not live customer data"
     >
       <div className="bg-[#F4FAFF] p-4 sm:p-6">
         <div className="flex items-center gap-2">
@@ -116,10 +115,10 @@ export function CrmConsoleConcept() {
         {/* KPI cards */}
         <div className="mt-4 grid grid-cols-4 gap-2">
           {[
-            { l: "Leads", v: "128", c: "#009FE3" },
-            { l: "Pipeline", v: "$42k", c: "#063B8F" },
-            { l: "Clients", v: "36", c: "#18B83A" },
-            { l: "Won", v: "18", c: "#526173" },
+            { l: "Leads", v: "—", c: "#009FE3" },
+            { l: "Pipeline", v: "—", c: "#063B8F" },
+            { l: "Clients", v: "—", c: "#18B83A" },
+            { l: "Won", v: "—", c: "#526173" },
           ].map((k) => (
             <div key={k.l} className="rounded-lg border border-[#E2E8F0] bg-white p-2.5">
               <div className="text-[8px] font-bold uppercase tracking-wider text-[#526173]">{k.l}</div>
@@ -136,7 +135,7 @@ export function CrmConsoleConcept() {
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-bold text-[#0B1F33]">{s}</span>
                 <span className="rounded bg-[#009FE3]/10 px-1.5 text-[8px] font-bold text-[#009FE3]">
-                  {[4, 3, 2, 2][i]}
+                  —
                 </span>
               </div>
               <div className="mt-1.5 space-y-1.5">
@@ -152,12 +151,12 @@ export function CrmConsoleConcept() {
         </div>
         {/* Timeline */}
         <div className="mt-3 rounded-lg border border-[#E2E8F0] bg-white p-3">
-          <div className="text-[9px] font-bold text-[#0B1F33]">Client timeline — TECH-2026-000001</div>
+          <div className="text-[9px] font-bold text-[#0B1F33]">Sample client timeline — placeholder</div>
           <div className="mt-2 space-y-1.5">
             {[
-              ["Enquiry received", "#009FE3"],
-              ["Scope approved", "#063B8F"],
-              ["Milestone 1 paid", "#18B83A"],
+              ["Enquiry event (sample)", "#009FE3"],
+              ["Scope event (sample)", "#063B8F"],
+              ["Milestone event (sample)", "#18B83A"],
             ].map(([t, c]) => (
               <div key={t} className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full" style={{ background: c }} aria-hidden="true" />
@@ -170,8 +169,7 @@ export function CrmConsoleConcept() {
       </div>
       <figcaption className="border-t border-[#E2E8F0] bg-white px-4 py-3 text-xs leading-relaxed text-[#526173] sm:px-5">
         <span className="font-semibold text-[#0B1F33]">Illustrative concept.</span>{" "}
-        Every lead, message, approval, payment and file linked to one Client ID — this
-        concept shows the shape of the console we build around your pipeline.
+        All values, IDs, statuses and timeline entries are placeholders — not live customer or payment records. This concept is not a deployed CRM.
       </figcaption>
     </BrowserFrame>
   );
@@ -184,17 +182,17 @@ export function AdminDashboardConcept() {
   const bars = [40, 65, 45, 80, 55, 70, 90];
   return (
     <BrowserFrame
-      address="app.bdtech360.com — operations dashboard (concept)"
-      label="Illustrative analytics dashboard concept: KPI cards, a revenue trend chart, and an operations monitor panel"
+      address="Operations dashboard — illustrative concept (not live)"
+      label="Illustrative dashboard concept; all displayed metrics, charts, and statuses are placeholders, not live operational data"
     >
       <div className="bg-[#F4FAFF] p-4 sm:p-6">
         <div className="h-3 w-32 rounded bg-[#063B8F]" />
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
-            { l: "Active projects", v: "12", c: "#009FE3" },
-            { l: "Revenue (30d)", v: "$18.4k", c: "#18B83A" },
-            { l: "Open tickets", v: "5", c: "#063B8F" },
-            { l: "Agent runs", v: "1,455", c: "#526173" },
+            { l: "Active projects", v: "—", c: "#009FE3" },
+            { l: "Revenue (30d)", v: "—", c: "#18B83A" },
+            { l: "Open tickets", v: "—", c: "#063B8F" },
+            { l: "Agent runs", v: "—", c: "#526173" },
           ].map((k) => (
             <div key={k.l} className="rounded-lg border border-[#E2E8F0] bg-white p-2.5">
               <div className="text-[8px] font-bold uppercase tracking-wider text-[#526173]">{k.l}</div>
@@ -210,7 +208,7 @@ export function AdminDashboardConcept() {
         <div className="mt-3 grid grid-cols-5 gap-2">
           {/* Chart */}
           <div className="col-span-3 rounded-lg border border-[#E2E8F0] bg-white p-3">
-            <div className="text-[9px] font-bold text-[#0B1F33]">Revenue trend</div>
+            <div className="text-[9px] font-bold text-[#0B1F33]">Example chart (no live data)</div>
             <div className="mt-2 flex h-20 items-end gap-1.5">
               {bars.map((h, i) => (
                 <div
@@ -226,7 +224,7 @@ export function AdminDashboardConcept() {
           <div className="col-span-2 rounded-lg border border-[#E2E8F0] bg-white p-3">
             <div className="flex items-center gap-1.5">
               <span className="size-1.5 animate-pulse rounded-full bg-[#18B83A]" aria-hidden="true" />
-              <span className="text-[9px] font-bold text-[#0B1F33]">Ops monitor</span>
+              <span className="text-[9px] font-bold text-[#0B1F33]">Sample monitor (placeholder)</span>
             </div>
             <div className="mt-2 space-y-1.5">
               {[
@@ -246,8 +244,7 @@ export function AdminDashboardConcept() {
       </div>
       <figcaption className="border-t border-[#E2E8F0] bg-white px-4 py-3 text-xs leading-relaxed text-[#526173] sm:px-5">
         <span className="font-semibold text-[#0B1F33]">Illustrative concept.</span>{" "}
-        KPIs, trends and operational signals in one view — the kind of dashboard we
-        assemble from your real business data.
+        Metrics, chart bars and status indicators above are placeholders, not live business or agent data. A production dashboard requires verified data sources and deployment.
       </figcaption>
     </BrowserFrame>
   );

@@ -10,7 +10,7 @@ import { hasExplicitContactConsent, selectWelcomeChannel } from '@/lib/contact-p
 import { hasAcceptedPreviewDelivery } from '@/lib/preview-policy'
 import { createHandoverManifest, parseHandoverManifest, verifyHandoverArtifacts } from '@/lib/handover-artifacts'
 import { normalizeIdentity, resolveOrCreateVerifiedClient, type VerifiedIdentityProof } from '@/lib/identity-resolver'
-import { sendPipelineMessage, recordStageChange, type PipelineChannel } from '@/lib/pipeline/send'
+import { sendPipelineMessage, recordStageChange, type PipelineChannel, type PipelineSendResult } from '@/lib/pipeline/send'
 import type { PipelineVariables } from '@/lib/pipeline/templates'
 import { assertDeliveryRules, screenAiContent } from '@/lib/pipeline/rules'
 import { nextScopeVersionNumber, normalizeTo21PointScope } from '@/lib/scope-validator'
@@ -132,10 +132,17 @@ export async function intakeLead(input: {
   verifiedIdentities?: VerifiedIdentityProof[]
   tracking?: unknown
   formId?: string
-}): Promise<{ clientId: string; clientRowId: string; logId: string }> {
+}): Promise<{
+  clientId: string
+  clientRowId: string
+  logId: string
+  welcome: { status: PipelineSendResult['status']; deliveries: Array<{ channel: string; status: string; ok: boolean }> } | null
+}> {
   // Keep contact details out of automation-log inputs; the CRM stores the
   // minimum required record, while the log tracks only workflow metadata.
   const log = await startLog('LEAD_INTAKE', input.source, undefined, { source: input.source, providerEvent: Boolean(input.providerMessageId), hasFormId: Boolean(input.formId) })
+  let claimedFormSubmission = false
+  let welcomeResult: { status: PipelineSendResult['status']; deliveries: Array<{ channel: string; status: string; ok: boolean }> } | null = null
   try {
     if (input.formId) {
       const priorSubmission = await db.formSubmission.findUnique({ where: { id: input.formId }, select: { clientId: true, status: true } })
@@ -143,10 +150,21 @@ export async function intakeLead(input: {
         const priorClient = await db.client.findUnique({ where: { id: priorSubmission.clientId } })
         if (priorSubmission.status === 'PROCESSED' && priorClient) {
           await finishLog(log.id, 'SUCCESS', { clientId: priorClient.clientId, idempotentReplay: true })
-          return { clientId: priorClient.clientId, clientRowId: priorClient.id, logId: log.id }
+          return { clientId: priorClient.clientId, clientRowId: priorClient.id, logId: log.id, welcome: null }
         }
         throw new Error('This form submission is already processing or needs operator review; duplicate intake was refused.')
       }
+
+      // Atomically claim a persisted form before creating a Client. Concurrent
+      // retries with the same formId cannot each create a different identity.
+      const claim = await db.formSubmission.updateMany({
+        where: { id: input.formId, clientId: null, status: { in: ['NEW', 'FAILED'] } },
+        data: { status: 'PROCESSING' },
+      })
+      if (claim.count !== 1) {
+        throw new Error('This form submission is already processing or needs operator review; duplicate intake was refused.')
+      }
+      claimedFormSubmission = true
     }
 
     const createData = {
@@ -238,28 +256,49 @@ export async function intakeLead(input: {
       // inbound messages may receive a reply only on their originating channel.
       const hasContactPermission = createData.source !== 'WEBSITE' || hasExplicitContactConsent(input.contactConsent)
       const selectedChannel = hasContactPermission ? selectWelcomeChannel(createData.source, clientRow.preferredContact) : null
+      const welcomeChannels: PipelineChannel[] = []
+      if (hasContactPermission && createData.source === 'WEBSITE' && clientRow.email) {
+        // Email remains primary for every website enquiry. An additional
+        // WhatsApp message is sent only when the visitor selected it and
+        // provided a number; the recorded contact consent covers that choice.
+        welcomeChannels.push('EMAIL')
+        if (clientRow.preferredContact?.toLowerCase() === 'whatsapp' && clientRow.whatsapp) {
+          welcomeChannels.push('WHATSAPP')
+        }
+      } else if (hasContactPermission && selectedChannel) {
+        welcomeChannels.push(selectedChannel as PipelineChannel)
+      }
+
       let welcomeAccepted = false
       if (!hasContactPermission) {
         await stepLog(log.id, 'welcome_skipped', {
           reason: 'explicit website contact consent was not recorded',
         })
-      } else if (selectedChannel) {
-        // STAGE 1 — the first reply. The exact pipeline copy is sent on the
-        // client's own channel, with the generated Client ID inside it.
+      } else if (welcomeChannels.length > 0) {
+        // STAGE 1 — save and dispatch the first reply through the centralized
+        // sender. Website email delivery status is returned to the intake UI.
         const welcome = await sendPipelineMessage({
           clientRowId: clientRow.id,
           stage: 'FIRST_MESSAGE',
-          variables: pipelineVars(clientRow),
-          channels: [selectedChannel as PipelineChannel],
+          variables: pipelineVars(clientRow, { inquirySummary: sanitizeText(input.message, 1200) }),
+          channels: welcomeChannels,
           agentCode: 'COM-010',
           workflowId: log.id,
         })
-        welcomeAccepted = welcome.deliveries.some((delivery) => delivery.ok)
+        welcomeResult = {
+          status: welcome.status,
+          deliveries: welcome.deliveries.map(({ channel, status, ok }) => ({ channel, status, ok })),
+        }
+        const emailDelivery = welcome.deliveries.find((delivery) => delivery.channel === 'EMAIL')
+        welcomeAccepted = createData.source === 'WEBSITE'
+          ? Boolean(emailDelivery?.ok)
+          : welcome.deliveries.some((delivery) => delivery.ok)
         await stepLog(log.id, 'welcome_sent', {
           stage: 'FIRST_MESSAGE',
-          channel: selectedChannel,
+          channels: welcomeChannels,
           status: welcome.status,
           providerAccepted: welcomeAccepted,
+          emailProviderAccepted: emailDelivery?.ok ?? false,
           deliveries: welcome.deliveries.map((delivery) => `${delivery.channel}:${delivery.status}`),
         })
       } else {
@@ -268,7 +307,7 @@ export async function intakeLead(input: {
         })
       }
 
-      if (welcomeAccepted) await setStage(clientRow.id, 'CONTACTED', 'Welcome send accepted by selected provider channel')
+      if (welcomeAccepted) await setStage(clientRow.id, 'CONTACTED', 'Initial email accepted by the configured provider')
       // Business detection runs after the welcome attempt. It may update
       // businessType, but only an accepted welcome can advance the pipeline.
       const businessRun = await detectBusiness(clientRow.id, input.message, { advanceStage: welcomeAccepted })
@@ -296,10 +335,15 @@ export async function intakeLead(input: {
     if (input.formId) {
       await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSED' } })
     }
-    return { clientId: clientRow.clientId, clientRowId: clientRow.id, logId: log.id }
+    return { clientId: clientRow.clientId, clientRowId: clientRow.id, logId: log.id, welcome: welcomeResult }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    if (input.formId) await db.formSubmission.updateMany({ where: { id: input.formId, status: 'PROCESSING' }, data: { status: 'FAILED' } }).catch(() => null)
+    if (input.formId && claimedFormSubmission) {
+      await db.formSubmission.updateMany({
+        where: { id: input.formId, status: 'PROCESSING' },
+        data: { status: 'FAILED' },
+      }).catch(() => null)
+    }
     await finishLog(log.id, 'FAILED', undefined, msg)
     await logError({ source: 'AUTOMATION', code: 'LEAD_INTAKE_FAILED', message: msg, workflow: 'LEAD_INTAKE' })
     throw e

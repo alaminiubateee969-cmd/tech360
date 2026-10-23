@@ -117,6 +117,62 @@ export async function resolveOrCreateVerifiedClient(
   }
 }
 
+/**
+ * Persist a provider-verified identity for an already authenticated client.
+ * Unlike resolveOrCreateVerifiedClient, this function never creates a Client.
+ */
+export async function recordVerifiedIdentityForClient(input: {
+  clientRowId: string
+  proof: VerifiedIdentityProof
+}): Promise<{ recorded: boolean; identityType: string }> {
+  const identity = prepareIdentity(input.proof)
+  try {
+    return await db.$transaction(async (tx) => {
+      const client = await tx.client.findUnique({ where: { id: input.clientRowId }, select: { id: true, deletedAt: true } })
+      if (!client || client.deletedAt) throw new Error('Client not found or deleted.')
+      const existing = await tx.clientIdentity.findUnique({
+        where: { identityType_normalizedHash: { identityType: identity.identityType, normalizedHash: identity.normalizedHash } },
+        select: { id: true, clientId: true },
+      })
+      if (existing) {
+        if (existing.clientId !== client.id) throw new VerifiedIdentityConflictError()
+        return { recorded: false, identityType: identity.identityType }
+      }
+      const created = await tx.clientIdentity.create({
+        data: {
+          clientId: client.id,
+          identityType: identity.identityType,
+          normalizedHash: identity.normalizedHash,
+          verificationSource: identity.verificationSource,
+          verifiedAt: identity.verifiedAt,
+        },
+        select: { id: true },
+      })
+      await tx.auditLog.create({
+        data: {
+          actor: `system:${identity.verificationSource.toLowerCase()}`,
+          action: 'CLIENT_IDENTITY_VERIFIED',
+          entityType: 'ClientIdentity',
+          entityId: created.id,
+          clientId: client.id,
+          details: JSON.stringify({ identityType: identity.identityType, verificationSource: identity.verificationSource }),
+        },
+      })
+      return { recorded: true, identityType: identity.identityType }
+    })
+  } catch (error) {
+    if (!uniqueConflict(error)) throw error
+    const existing = await db.clientIdentity.findUnique({
+      where: { identityType_normalizedHash: { identityType: identity.identityType, normalizedHash: identity.normalizedHash } },
+      select: { clientId: true },
+    })
+    if (existing?.clientId === input.clientRowId) {
+      return { recorded: false, identityType: identity.identityType }
+    }
+    throw new VerifiedIdentityConflictError()
+  }
+}
+
 /** Manually verify and attach one identity with a reason and immutable audit entry. */
 export async function linkVerifiedIdentityToClient(input: {
   clientId: string

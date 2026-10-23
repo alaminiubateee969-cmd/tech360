@@ -13,6 +13,7 @@ export default function SiteFooter() {
 
   // Newsletter signup — writes the real subscriber via POST /api/newsletter.
   const [email, setEmail] = useState("");
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [subBusy, setSubBusy] = useState(false);
   const [subResult, setSubResult] = useState<
     { ok: true; message: string } | { ok: false; message: string } | null
@@ -20,14 +21,14 @@ export default function SiteFooter() {
 
   async function subscribe(e: React.FormEvent) {
     e.preventDefault();
-    if (subBusy || !email.trim()) return;
+    if (subBusy || !email.trim() || !marketingConsent) return;
     setSubBusy(true);
     setSubResult(null);
     try {
       const res = await fetch("/api/newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), consent: true, source: "FOOTER" }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
@@ -37,6 +38,7 @@ export default function SiteFooter() {
       if (res.ok && data.ok) {
         setSubResult({ ok: true, message: "Subscribed ✓" });
         setEmail("");
+        setMarketingConsent(false);
       } else {
         setSubResult({ ok: false, message: data.error ?? "Subscription failed — please try again." });
       }
@@ -137,31 +139,45 @@ export default function SiteFooter() {
               <p className="mt-1.5 text-sm leading-relaxed text-white/70">
                 Occasional engineering notes — no spam, unsubscribe anytime.
               </p>
-              <form onSubmit={subscribe} className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <label htmlFor="footer-newsletter-email" className="sr-only">
-                  Email address for the TECH360 newsletter
+              <form onSubmit={subscribe} className="mt-3 flex flex-col gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <label htmlFor="footer-newsletter-email" className="sr-only">
+                    Email address for the TECH360 newsletter
+                  </label>
+                  <input
+                    id="footer-newsletter-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    aria-label="Email address for the TECH360 newsletter"
+                    className="min-h-11 w-full rounded-lg border border-white/15 bg-[#0B1F33] px-3.5 text-sm text-white placeholder:text-white/40 outline-none transition-colors focus-visible:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]/50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={subBusy || !email.trim() || !marketingConsent}
+                    aria-label="Subscribe to the TECH360 newsletter"
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white transition hover:bg-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3] disabled:opacity-60"
+                  >
+                    {subBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                    Subscribe
+                  </button>
+                </div>
+                <label htmlFor="footer-newsletter-consent" className="flex items-start gap-2 text-xs leading-relaxed text-white/70">
+                  <input
+                    id="footer-newsletter-consent"
+                    type="checkbox"
+                    required
+                    checked={marketingConsent}
+                    onChange={(e) => setMarketingConsent(e.target.checked)}
+                    className="mt-0.5 size-4 shrink-0 accent-[#009FE3]"
+                  />
+                  <span>
+                    I agree to receive occasional engineering insights by email. I can unsubscribe at any time. See the{" "}
+                    <a href="#/legal/privacy" className="underline underline-offset-2 hover:text-white">Privacy Policy</a>.
+                  </span>
                 </label>
-                <input
-                  id="footer-newsletter-email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  aria-label="Email address for the TECH360 newsletter"
-                  className="min-h-11 w-full rounded-lg border border-white/15 bg-[#0B1F33] px-3.5 text-sm text-white placeholder:text-white/40 outline-none transition-colors focus-visible:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]/50"
-                />
-                <button
-                  type="submit"
-                  disabled={subBusy || !email.trim()}
-                  aria-label="Subscribe to the TECH360 newsletter"
-                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white transition hover:bg-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3] disabled:opacity-60"
-                >
-                  {subBusy ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  ) : null}
-                  Subscribe
-                </button>
               </form>
               {subResult ? (
                 <p
