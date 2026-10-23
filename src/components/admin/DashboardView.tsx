@@ -62,6 +62,7 @@ import {
   num,
   prettify,
   useApi,
+  type DashboardAgentRow,
   type DashboardResponse,
   type RecentLead,
 } from '@/lib/admin-client'
@@ -288,7 +289,58 @@ const MODULE_DIRECTORY: Array<{ section: string; items: Array<{ id: string; labe
   },
 ]
 
-export function DashboardView({ onOpenClient, onNavigate }: { onOpenClient: (id: string) => void; onNavigate: (id: string) => void }) {
+function AgentRosterCard({ data, loading, isSuperAdmin, onNavigate }: {
+  data: DashboardResponse['aiAgents'] | undefined
+  loading: boolean
+  isSuperAdmin: boolean
+  onNavigate: (id: string) => void
+}) {
+  const groups = new Map<string, DashboardAgentRow[]>()
+  for (const a of data?.agents ?? []) {
+    const key = a.deptName
+    groups.set(key, [...(groups.get(key) ?? []), a])
+  }
+  const statusTone = (s: string) =>
+    s === 'ACTIVE' ? 'bg-emerald-500/15 text-emerald-400' : s === 'PAUSED' ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-700/60 text-slate-400'
+  return (
+    <SectionCard
+      title="AI Workforce roster"
+      description={data ? `${data.active} active of ${data.total} registered AI agents. Identity and status only.` : 'Every registered AI agent'}
+      actions={isSuperAdmin ? <Button size="sm" variant="outline" onClick={() => onNavigate('agents')}>Open AI Workforce</Button> : undefined}
+    >
+      {loading && !data ? (
+        <Skeleton className="h-40 w-full" />
+      ) : data && data.agents.length > 0 ? (
+        <div className={`max-h-[420px] space-y-4 overflow-y-auto pr-1 ${SCROLL_THIN}`} aria-label="All registered AI agents">
+          {[...groups.entries()].map(([dept, rows]) => (
+            <div key={dept}>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{dept} · {rows.length}</p>
+              <ul className="divide-y divide-slate-800/70 rounded-lg border border-slate-800/70">
+                {rows.map((a) => (
+                  <li key={a.code} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[12px]">
+                    <span className="font-mono text-[10.5px] text-slate-500">{a.code}</span>
+                    <span className="font-medium text-slate-100">{a.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-slate-400">{a.title ?? '—'}</span>
+                    <span className="text-[10px] text-slate-500">L{a.level}</span>
+                    {a.requiresApproval ? <span className="text-[10px] text-amber-400">approval</span> : null}
+                    <span className="text-[10px] tabular-nums text-slate-500">{a.executions} runs</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${statusTone(a.status)}`}>{a.status}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="No AI agents registered" description="Agents appear here once the workforce is bootstrapped." />
+      )}
+    </SectionCard>
+  )
+}
+
+export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { role?: string; onOpenClient: (id: string) => void; onNavigate: (id: string) => void }) {
+  const isSuperAdmin = role === 'SUPER_ADMIN'
+  const canSeeRoster = role === 'ADMIN' || role === 'SUPER_ADMIN'
   const { data, loading, error, refresh } = useApi<DashboardResponse>('/api/admin/dashboard')
   const stats = data?.stats
   const pipeline = (data?.pipeline ?? []).map((p) => ({
@@ -373,8 +425,11 @@ export function DashboardView({ onOpenClient, onNavigate }: { onOpenClient: (id:
         <KpiCard label="Handovers: Confirm" value={num(stats?.handoversAwaitingConfirmation)} icon={CheckCircle2} tone="amber" loading={loading} sub="Released/downloaded; awaiting confirmation" />
       </section>
 
-      {/* LIVE AI operations evidence strip */}
-      <AiOpsCard loading={loading} />
+      {/* LIVE AI operations evidence strip — ops-status is SUPER_ADMIN only */}
+      {isSuperAdmin ? <AiOpsCard loading={loading} /> : null}
+
+      {/* Every registered AI agent — ADMIN and SUPER_ADMIN */}
+      {canSeeRoster ? <AgentRosterCard data={data?.aiAgents} loading={loading} isSuperAdmin={isSuperAdmin} onNavigate={onNavigate} /> : null}
 
       {/* Module directory — one click to any operating module */}
       <SectionCard
