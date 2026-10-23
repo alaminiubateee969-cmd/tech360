@@ -156,7 +156,7 @@ export const ALWAYS_HUMAN_ACTIONS: Array<{
     id: 'FINANCIAL_TRANSFER',
     description: 'A financial transfer, a payment verification or a refund.',
     matches: (context) =>
-      ['payment.verify', 'payment.prepare', 'invoice.generate'].includes(context.tool) ||
+      ['payment.verify', 'payment.prepare', 'invoice.generate', 'refund.settle'].includes(context.tool) ||
       (context.riskLevel === 'CRITICAL' && typeof context.amount === 'number' && context.amount > 0),
   },
   {
@@ -218,7 +218,7 @@ export const PUBLISHED_RESULT_TOOLS = [
   'task.update',
   'crm.update',
 ]
-export const FINANCIAL_TOOLS = ['payment.prepare', 'payment.verify', 'invoice.generate']
+export const FINANCIAL_TOOLS = ['payment.prepare', 'payment.verify', 'invoice.generate', 'refund.settle']
 
 export function defaultGovernanceRules(): GovernanceRule[] {
   const now = new Date()

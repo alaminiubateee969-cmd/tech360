@@ -95,7 +95,8 @@ export async function POST(req: NextRequest) {
       }
       case 'VERIFY_PAYMENT': {
         const paymentId = sanitizeText(raw.paymentId, 40)
-        result = await verifyPayment(paymentId, 'n8n-automation')
+        // Automation may not verify a payment. The governance boundary refuses it.
+        result = await verifyPayment(paymentId, { type: 'AUTOMATION', id: 'n8n' })
         break
       }
       case 'START_PROJECT': case 'PROJECT_START': {

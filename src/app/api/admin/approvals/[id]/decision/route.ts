@@ -9,6 +9,12 @@ import type { AdminApprovalCategory } from '@/lib/pipeline/rules'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Approval types that are granted here but executed by the requesting
+ * action through the governance boundary.
+ */
+const DEFERRED_APPROVAL_TYPES = new Set(['REFUND', 'PAYMENT_VERIFY', 'REFUND_SETTLE', 'INVOICE_GENERATE'])
+
 // Super Admin decision on sensitive actions → REAL execution of the gated action
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const g = await guard(req, { minRole: 'SUPER_ADMIN' })
@@ -29,10 +35,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Atomically claim the pending decision so concurrent requests cannot execute
   // a high-risk action twice.
+  // Governed types are only GRANTED here. The requesting action re-runs
+  // with this approval id, and the governance boundary consumes it inside
+  // the same transaction as the side effect. Approval never executes them.
+  const deferred = DEFERRED_APPROVAL_TYPES.has(approval.type)
   const claimed = await db.approvalRequest.updateMany({
     where: { id: approval.id, status: 'PENDING' },
     data: {
-      status: decision === 'REJECTED' ? 'REJECTED' : 'EXECUTING',
+      status: decision === 'REJECTED' ? 'REJECTED' : deferred ? 'APPROVED' : 'EXECUTING',
       decidedBy: g.user.id,
       decisionNote: note || null,
       updatedAt: new Date(),
@@ -43,6 +53,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (decision === 'REJECTED') {
     await audit({ actor: g.user.email, action: 'APPROVAL_REJECTED', userId: g.user.id, clientId: approval.clientId ?? undefined, entityId: approval.id, details: { type: approval.type, note } })
     return Response.json({ ok: true, result: { status: 'REJECTED' }, message: 'Action rejected. Nothing was executed.' })
+  }
+
+  if (deferred) {
+    await audit({ actor: g.user.email, action: 'APPROVAL_APPROVED_AWAITING_EXECUTION', userId: g.user.id, clientId: approval.clientId ?? undefined, entityId: approval.id, details: { type: approval.type, note } })
+    return Response.json({
+      ok: true,
+      result: { status: 'APPROVED' },
+      message: 'Approved. The action is not executed here. Repeat the request with this approval id to run it.',
+      approvalId: approval.id,
+    })
   }
 
   // APPROVED → execute the gated action for real
@@ -97,18 +117,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         break
       }
       default: {
-        // Generic sensitive action types (payment instructions, refunds, deletions, social publish…)
-        // are marked executed; their executors (agents/n8n) pick up via automation logs.
-        await db.automationLog.create({
-          data: {
-            workflow: `APPROVAL:${approval.type}`, trigger: 'ADMIN_APPROVAL', correlationId: `appr-${approval.id}`,
-            clientId: approval.clientId, status: 'SUCCESS', steps: '[]',
-            input: JSON.stringify({ approvalId: approval.id, type: approval.type }),
-            output: JSON.stringify({ approved: true, note }),
-          },
-        })
-        message = `${approval.type} approved and dispatched to executor.`
-        break
+        // Fail closed. Earlier code marked these as EXECUTED after writing an
+        // automation log, although nothing performed the action. Now an
+        // approval type without a real governed executor is refused.
+        throw new Error(`No governed executor exists for approval type ${approval.type}; nothing was executed.`)
       }
     }
     // Bearer download URLs must not be written into approval/audit logs. Keep

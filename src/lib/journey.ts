@@ -14,6 +14,15 @@ import { sendPipelineMessage, recordStageChange, type PipelineChannel, type Pipe
 import type { PipelineVariables } from '@/lib/pipeline/templates'
 import { assertDeliveryRules, screenAiContent } from '@/lib/pipeline/rules'
 import { nextScopeVersionNumber, normalizeTo21PointScope } from '@/lib/scope-validator'
+import { toMinorUnits } from '@/lib/invoice-policy'
+import type { Prisma } from '@prisma/client'
+import {
+  checkGovernedAction,
+  executeGoverned,
+  ensureGovernedApproval,
+  type GovernanceActor,
+  GovernanceDeniedError,
+} from '@/lib/governance/enforce'
 
 // The booking link the client uses to take a scope-explaining call.
 const MEETING_BOOKING_URL = process.env.MEETING_BOOKING_URL ?? `${COMPANY.url}/#contact`
@@ -902,6 +911,7 @@ export async function requestPayment(clientRowId: string, actor: string) {
   const finalScope = client.scopes.filter((s) => s.status === 'FINAL').sort((a, b) => b.version - a.version)[0]
   if (!finalScope) throw new Error('Final scope required')
 
+  let invoicesDeferred = 0
   const run = await runAgent('PAY-016', {
     input: `Prepare payment instructions. Scope payment policy: ${finalScope.content}\nClient: ${client.clientId}, ${client.name}\nCountry: ${client.country ?? 'unknown'}`,
     clientId: client.id, workflow: 'PAYMENT_REQUEST', expectJson: true,
@@ -911,9 +921,23 @@ export async function requestPayment(clientRowId: string, actor: string) {
     const milestones = Array.isArray(run.json.milestones) ? run.json.milestones : []
     instructions = milestones.map((m: Record<string, unknown>) => `• ${m.name}: ${m.amount} ${m.currency ?? 'USD'} — ${m.dueNote ?? ''}`).join('\n')
     // create invoices for milestones with amounts
-    for (const m of milestones as Array<Record<string, unknown>>) {
+    for (const [index, m] of (milestones as Array<Record<string, unknown>>).entries()) {
       const amount = Number(m.amount)
       if (!Number.isFinite(amount) || amount <= 0) continue
+      // The AI may not generate a financial document from its own amounts.
+      // The governance boundary decides; without a human approval the
+      // invoice is deferred, and the approval payload records that.
+      const gate = await checkGovernedAction({
+        action: 'invoice.generate',
+        actor: { type: 'AGENT', id: 'PAY-016' },
+        resourceKey: `client:${client.id}:milestone:${index}`,
+        amountMinor: toMinorUnits(amount),
+        clientId: client.id,
+      })
+      if (!gate.allowed) {
+        invoicesDeferred += 1
+        continue
+      }
       const number = await nextInvoiceNumber()
       await db.invoice.create({
         data: { number, clientId: client.id, amount, currency: String(m.currency ?? 'USD'), status: 'DRAFT', notes: String(m.name ?? 'Milestone') },
@@ -954,7 +978,7 @@ export async function requestPayment(clientRowId: string, actor: string) {
   }).catch(() => null)
   await setStage(client.id, 'PAYMENT_PENDING', 'Payment instructions prepared, awaiting admin approval')
   await audit({ actor, action: 'PAYMENT_INSTRUCTIONS_AWAITING_APPROVAL', clientId: client.clientId, entityId: approval.id, details: { instructions } })
-  return { instructions, results, approvalId: approval.id, status: 'AWAITING_APPROVAL' as const }
+  return { instructions, results, approvalId: approval.id, status: 'AWAITING_APPROVAL' as const, invoicesDeferred }
 }
 
 /**
@@ -1060,16 +1084,61 @@ export async function recalcInvoiceStatus(invoiceId: string): Promise<string | n
   return next
 }
 
-export async function verifyPayment(paymentId: string, adminUserId: string) {
+/**
+ * The PENDING-to-PAID transition. It runs only inside a governed
+ * transaction (see executeGoverned). Callers outside this module must not
+ * write a payment to PAID directly.
+ *
+ * The conditional update means only one request can flip the payment, so
+ * the PAYMENT_RECEIVED message is sent at most once.
+ */
+export async function markPaymentVerifiedInTx(
+  tx: Prisma.TransactionClient,
+  paymentId: string,
+  verifiedBy: string,
+  verifiedAt: Date = new Date(),
+): Promise<{ alreadyVerified: boolean }> {
+  const fresh = await tx.payment.findUnique({ where: { id: paymentId }, select: { status: true } })
+  if (!fresh || ['FAILED', 'REFUNDED', 'CANCELLED'].includes(fresh.status)) {
+    throw new GovernanceDeniedError('REQUEST_STATE_INVALID', 'payment.verify', 'The payment is no longer verifiable.')
+  }
+  const flipped = await tx.payment.updateMany({
+    where: { id: paymentId, status: { notIn: ['PAID', 'FAILED', 'REFUNDED', 'CANCELLED'] } },
+    data: { status: 'PAID', verifiedBy, verifiedAt },
+  })
+  return { alreadyVerified: flipped.count !== 1 }
+}
+
+/**
+ * Verify a payment (PENDING to PAID). This is the only code path that
+ * marks a payment verified. It is governed: the caller must name its
+ * actor, and a human actor must present an APPROVED PAYMENT_VERIFY
+ * approval for this payment. Only a verified Stripe webhook may confirm
+ * without one (provider evidence). Authorization, the approval
+ * consumption and the PENDING-to-PAID transition share one transaction.
+ */
+export async function verifyPayment(paymentId: string, actor: GovernanceActor, approvalId?: string | null) {
   const payment = await db.payment.findUnique({ where: { id: paymentId }, include: { client: true, project: true, invoice: true } })
   if (!payment) throw new Error('Payment not found')
   if (['FAILED', 'REFUNDED', 'CANCELLED'].includes(payment.status)) throw new Error(`A ${payment.status.toLowerCase()} payment cannot be verified.`)
-  const alreadyVerified = payment.status === 'PAID'
-  if (!alreadyVerified) {
-    await db.payment.update({ where: { id: payment.id }, data: { status: 'PAID', verifiedBy: adminUserId, verifiedAt: new Date() } })
-  }
+
+  const { alreadyVerified } = await executeGoverned(
+    {
+      action: 'payment.verify',
+      actor,
+      resourceKey: `payment:${payment.id}`,
+      amountMinor: toMinorUnits(payment.amount),
+      approvalId: approvalId ?? null,
+      clientId: payment.clientId,
+      projectId: payment.projectId,
+    },
+    (tx) => markPaymentVerifiedInTx(tx, payment.id, actor.id),
+  )
+  const auditActor = actor.type === 'HUMAN' ? `admin:${actor.id}` : `${actor.type.toLowerCase()}:${actor.id}`
+
   const client = payment.client
   const project = payment.project
+
 
   if (project) {
     const paid = await db.payment.aggregate({ where: { projectId: project.id, status: 'PAID' }, _sum: { amount: true } })
@@ -1124,7 +1193,7 @@ export async function verifyPayment(paymentId: string, adminUserId: string) {
   const receiptOutcome = await ensureVerifiedPaymentReceipt(payment.id).catch(() => null)
   const receiptNumber = receiptOutcome && receiptOutcome.ok ? receiptOutcome.receipt.receiptNumber : null
 
-  await audit({ actor: `admin:${adminUserId}`, action: alreadyVerified ? 'PAYMENT_VERIFICATION_RECONCILED' : 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null, receiptNumber } })
+  await audit({ actor: auditActor, action: alreadyVerified ? 'PAYMENT_VERIFICATION_RECONCILED' : 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null, receiptNumber } })
   return { ok: true, idempotent: alreadyVerified, receiptNumber }
 }
 

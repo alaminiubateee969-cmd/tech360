@@ -8,6 +8,7 @@ import {
   toMinorUnits,
 } from '@/lib/invoice-policy'
 import { audit, readJson, sanitizeText } from '@/lib/security'
+import { GovernanceDeniedError, ensureGovernedApproval, executeGoverned } from '@/lib/governance/enforce'
 
 export const dynamic = 'force-dynamic'
 
@@ -198,7 +199,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    const settledResult = await db.$transaction(async (tx) => {
+    const approvalId = sanitizeText(raw.approvalId, 40) || null
+    const resourceKey = `refund:${existing.id}:${approvedAmountMinor}`
+    // The money-state change, the approval consumption and the audit share
+    // one transaction. The conditional update below makes a second settle
+    // of the same case fail, even when two requests race.
+    const settle = await executeGoverned(
+      {
+        action: 'refund.settle',
+        actor: { type: 'HUMAN', id: g.user.id, role: g.user.role },
+        resourceKey,
+        amountMinor: approvedAmountMinor,
+        approvalId,
+        clientId: existing.clientId,
+        projectId: existing.projectId,
+      },
+      async (tx) => {
+      const fresh = await tx.refundCase.findUnique({ where: { id: existing.id }, select: { status: true, approvedAmountMinor: true } })
+      if (!fresh || !['REFUND_PENDING', 'APPROVED'].includes(fresh.status) || fresh.approvedAmountMinor !== approvedAmountMinor) {
+        throw new GovernanceDeniedError('REQUEST_STATE_INVALID', 'refund.settle', 'The refund case is not awaiting settlement at this amount.')
+      }
       let caseFinalStatus: 'PARTIALLY_REFUNDED' | 'REFUNDED' = 'REFUNDED'
       if (existing.payment && approvedAmountMinor < toMinorUnits(existing.payment.amount)) {
         caseFinalStatus = 'PARTIALLY_REFUNDED'
@@ -210,8 +230,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (approvedAmountMinor < invTotal) caseFinalStatus = 'PARTIALLY_REFUNDED'
       }
 
-      const updatedCase = await tx.refundCase.update({
-        where: { id: existing.id },
+      const flipped = await tx.refundCase.updateMany({
+        where: { id: existing.id, status: { in: ['REFUND_PENDING', 'APPROVED'] } },
         data: {
           status: caseFinalStatus,
           approvedAmountMinor,
@@ -222,6 +242,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           settledAt: now,
         },
       })
+      if (flipped.count !== 1) {
+        throw new GovernanceDeniedError('REQUEST_STATE_INVALID', 'refund.settle', 'The refund case was settled by another request.')
+      }
+      const updatedCase = await tx.refundCase.findUniqueOrThrow({ where: { id: existing.id } })
 
       if (existing.payment) {
         const allPaymentRefunds = await tx.refundCase.findMany({
@@ -301,7 +325,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
 
       return { updatedCase, handoverSuspended }
-    })
+      },
+      now,
+    ).then(
+      (value) => ({ ok: true as const, value }),
+      (error: unknown) => ({ ok: false as const, error }),
+    )
+    if (!settle.ok) {
+      const error = settle.error
+      if (error instanceof GovernanceDeniedError && error.code === 'APPROVAL_REQUIRED') {
+        // Nothing was settled. A PENDING approval is raised; repeat the request with its id once approved.
+        const pendingId = await ensureGovernedApproval({
+          action: 'refund.settle',
+          requestedBy: g.user.id,
+          resourceKey,
+          amountMinor: approvedAmountMinor,
+          clientId: existing.clientId,
+          projectId: existing.projectId,
+          title: `Settle refund ${existing.caseNumber}`,
+          description: 'A refund settlement needs a Super Admin approval before any money is reversed.',
+          extraPayload: { refundCaseId: existing.id, caseNumber: existing.caseNumber },
+        })
+        return Response.json(
+          { ok: false, status: 'APPROVAL_REQUIRED', approvalId: pendingId, error: 'Refund not settled. A Super Admin approval is required; it has been raised.', message: 'Refund not settled. A Super Admin approval is required; it has been raised.' },
+          { status: 409 },
+        )
+      }
+      if (error instanceof GovernanceDeniedError) {
+        return Response.json({ ok: false, status: 'GOVERNANCE_DENIED', code: error.code, error: 'This refund settlement was refused by governance.' }, { status: 409 })
+      }
+      throw error
+    }
+    const settledResult = settle.value
 
     await audit({
       userId: g.user.id,
