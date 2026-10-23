@@ -463,6 +463,9 @@ describe('G — follow-up policy (persisted state machine)', () => {
   })
 
   it('decideFollowUp sends at most one useful reminder after 24h and final after 72h (configurable)', () => {
+    // Pinned to 12:00 Asia/Dhaka. Quiet hours are 22:00-07:00, so using the wall clock
+    // made this test pass or fail depending on when it ran.
+    const noonDhaka = new Date(Date.UTC(2026, 9, 24, 6, 0, 0))
     assert.equal(defaultCommState('row', 'TECH-2026-000001').config.firstDelayHours, 24)
     assert.equal(defaultCommState('row', 'TECH-2026-000001').config.finalDelayHours, 72)
     assert.equal(defaultCommState('row', 'TECH-2026-000001').maxReminderCount, 2)
@@ -470,17 +473,17 @@ describe('G — follow-up policy (persisted state machine)', () => {
     // Not yet due → no send
     const fresh = defaultCommState('row', 'TECH-2026-000001')
     fresh.nextPendingActor = 'CLIENT'
-    fresh.lastInboundAt = new Date(Date.now() - 1000).toISOString() // inbound after outbound → already replied
-    fresh.lastOutboundAt = new Date(Date.now() - 2000).toISOString()
-    assert.equal(decideFollowUp(fresh, new Date()).shouldSend, false)
+    fresh.lastInboundAt = new Date(noonDhaka.getTime() - 1000).toISOString() // inbound after outbound → already replied
+    fresh.lastOutboundAt = new Date(noonDhaka.getTime() - 2000).toISOString()
+    assert.equal(decideFollowUp(fresh, noonDhaka).shouldSend, false)
 
     // Due → should send first
     const due = defaultCommState('row', 'TECH-2026-000001')
     due.nextPendingActor = 'CLIENT'
-    due.firstReminderAt = new Date(Date.now() - 1000).toISOString()
-    due.lastOutboundAt = new Date(Date.now() - 25 * 3600_000).toISOString()
-    due.lastInboundAt = new Date(Date.now() - 30 * 3600_000).toISOString()
-    const decision = decideFollowUp(due, new Date())
+    due.firstReminderAt = new Date(noonDhaka.getTime() - 1000).toISOString()
+    due.lastOutboundAt = new Date(noonDhaka.getTime() - 25 * 3600_000).toISOString()
+    due.lastInboundAt = new Date(noonDhaka.getTime() - 30 * 3600_000).toISOString()
+    const decision = decideFollowUp(due, noonDhaka)
     assert.equal(decision.shouldSend, true)
     assert.equal(decision.which, 'FIRST')
   })

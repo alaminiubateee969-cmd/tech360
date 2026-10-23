@@ -88,23 +88,19 @@ describe('communication pipeline — the exact client copy', () => {
     assert.ok(whatsapp.body.endsWith('After receiving this, our AI system will prepare your recommended plan.'))
   })
 
-  it('stage 1 email uses the exact subject and body', () => {
+  it('stage 1 welcome email carries the real Client ID and the required consent/verification statements', () => {
+    // Current intended welcome acknowledgement (commit 0ac4698). The subject and
+    // body were deliberately replaced; this test follows the product, not the old copy.
     const { email } = pipelineMessage('FIRST_MESSAGE', V)
-    assert.equal(email.subject, 'Tech360 Inquiry Received - Client ID TECH-2026-000001')
+    assert.equal(email.subject, 'Welcome to TECH360 — Your Client ID and Next Steps')
     assert.ok(email.body.startsWith('Dear Ayesha Rahman,'))
-    assert.ok(email.body.includes('Thank you for contacting Tech360.'))
-    assert.ok(email.body.includes('TECH-2026-000001'))
-    for (const question of [
-      '1. Your business type',
-      '2. Business name',
-      '3. Main business problem',
-      '4. Required system: website, CRM, eCommerce, automation, or full system',
-      '5. Existing website/Facebook page link, if available',
-      '6. Expected launch timeline',
-    ]) {
-      assert.ok(email.body.includes(question), `missing email intake question: ${question}`)
-    }
-    assert.ok(email.body.includes('Website: [https://bdtech360.com](https://bdtech360.com)'))
+    assert.ok(email.body.includes('TECH-2026-000001'), 'welcome email must carry the real Client ID')
+    assert.ok(email.body.includes('send service-related updates'), 'service vs marketing consent must be stated')
+    assert.ok(email.body.includes('Marketing messages require a separate opt-in'))
+    assert.ok(email.body.includes('not marked verified until you complete an email one-time code'))
+    assert.ok(email.body.includes('No payment is due before the applicable preview approval'))
+    assert.ok(email.body.includes('https://bdtech360.com/#/portal'))
+    assert.ok(email.body.includes('never email passwords'))
     assert.ok(email.body.includes('Email: [info@bdtech360.com](mailto:info@bdtech360.com)'))
   })
 

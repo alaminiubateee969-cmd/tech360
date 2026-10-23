@@ -195,6 +195,8 @@ export async function POST(req: NextRequest) {
         messages: latestMessages.map((item) => ({ id: item.id, sender: item.sender, body: item.body, agentEmail: item.agentEmail, createdAt: item.createdAt.toISOString() })),
       }, 201)
     } catch (error) {
+      // Honest fallback: the visitor message is already saved. We do not claim an AI reply
+      // was generated; the response carries AI_UNAVAILABLE and no reply body.
       const { logError } = await import('@/lib/security')
       await logError({
         source: 'CHAT_MESSAGE',
