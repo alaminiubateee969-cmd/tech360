@@ -90,11 +90,35 @@ export const SENSITIVE_APPROVAL_TYPES = [
   'PIPELINE_MESSAGE',
 ] as const
 
-export const ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'] as const
+export const ROLES = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'FINANCE',
+  'PROJECT_MANAGER',
+  'MANAGER',
+  'DEVELOPER',
+  'SALES',
+  'SUPPORT',
+  'AUDITOR',
+  'STAFF',
+] as const
 
 // Role hierarchy (higher = more authority). Shared by server guard() and
 // client-side role-gated navigation — single source of truth.
-export const ROLE_RANK: Record<string, number> = { SUPER_ADMIN: 4, ADMIN: 3, MANAGER: 2, STAFF: 1 }
+// AUDITOR holds rank 2 for read visibility, while guard() strictly blocks all
+// mutating methods for read-only roles.
+export const ROLE_RANK: Record<string, number> = {
+  SUPER_ADMIN: 4,
+  ADMIN: 3,
+  FINANCE: 2,
+  PROJECT_MANAGER: 2,
+  MANAGER: 2,
+  AUDITOR: 2,
+  DEVELOPER: 1,
+  SALES: 1,
+  SUPPORT: 1,
+  STAFF: 1,
+}
 export type Role = (typeof ROLES)[number]
 
 export const SESSION_COOKIE = 't360_session'

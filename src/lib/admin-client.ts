@@ -472,18 +472,59 @@ export interface PaymentRecord {
   verifiedAt?: string | null
   notes?: string | null
   createdAt?: string | null
-  client?: { clientId?: string; name?: string } | string | null
+  client?: { clientId?: string; name?: string; businessName?: string | null } | string | null
   invoice?: { number?: string } | null
+  receipt?: { receiptNumber?: string; issuedAt?: string | null } | null
 }
 export interface InvoiceRecord {
   id: string
   number?: string | null
   amount?: number | null
+  subtotalMinor?: number | null
+  discountMinor?: number | null
+  taxRateBps?: number | null
+  taxLabel?: string | null
+  taxMinor?: number | null
+  totalMinor?: number | null
+  remainingAmount?: number | null
   currency?: string | null
   status?: string | null
+  description?: string | null
+  customerNotes?: string | null
+  internalNotes?: string | null
   notes?: string | null
+  scopeVersion?: number | null
+  revision?: number | null
+  supersedesInvoiceNumber?: string | null
   issuedAt?: string | null
   dueAt?: string | null
+  client?: { clientId?: string; name?: string; businessName?: string | null } | string | null
+  project?: { code?: string; name?: string } | null
+}
+export interface RefundCaseRecord {
+  id: string
+  caseNumber: string
+  kind: string
+  status: string
+  requestedAmountMinor: number
+  approvedAmountMinor: number
+  requestedAmount?: number
+  approvedAmount?: number
+  currency: string
+  reason: string
+  policyBasis?: string | null
+  resolutionNotes?: string | null
+  providerRefundRef?: string | null
+  requestedBy: string
+  reviewedBy?: string | null
+  reviewedAt?: string | null
+  settledAt?: string | null
+  revokeHandover: boolean
+  createdAt: string
+  client?: { id?: string; clientId?: string; name?: string } | null
+  project?: { id?: string; code?: string; name?: string } | null
+  invoice?: { id?: string; number?: string } | null
+  payment?: { id?: string; amount?: number; transactionId?: string | null } | null
 }
 export interface ProjectSummary {
   id: string
@@ -669,6 +710,13 @@ export interface CommSendResponse {
 export interface PaymentsResponse {
   payments?: PaymentRecord[]
   invoices?: InvoiceRecord[]
+  paymentReadiness?: {
+    configured: boolean
+    status: 'ACTIVE' | 'NOT_CONFIGURED' | 'DISABLED'
+    message: string
+    stripeReady: boolean
+    activeMethods?: Array<{ code: string; name: string; settlement: string; mode: string }>
+  }
 }
 export interface PaymentMutationResponse {
   ok?: boolean
@@ -913,14 +961,44 @@ export const api = {
   createInvoiceDraft: (body: {
     clientId: string
     projectId?: string
-    description: string
-    amount: string
+    scopeVersion?: number
+    description?: string
+    amount?: string | number
     currency: string
     dueAt?: string
+    lineItems?: Array<{ description: string; quantity: number; unitPrice: number }>
+    discountAmount?: number
+    discountReason?: string
+    taxRatePercent?: number
+    taxLabel?: string
+    billingName?: string
+    billingBusiness?: string
+    billingEmail?: string
+    billingAddress?: string
+    billingCountry?: string
+    paymentTerms?: string
+    customerNotes?: string
+    internalNotes?: string
+    initialStatus?: 'DRAFT' | 'AWAITING_APPROVAL'
   }) => fetchJson<{ ok?: boolean; message?: string; invoice?: InvoiceRecord; error?: string }>(
     '/api/admin/invoices',
     { method: 'POST', body },
   ),
+  invoiceAction: (number: string, body: Record<string, unknown>) =>
+    fetchJson<{ ok?: boolean; invoice?: InvoiceRecord; error?: string }>(
+      `/api/admin/invoices/${encodeURIComponent(number)}`,
+      { method: 'PATCH', body },
+    ),
+  createRefundCase: (body: Record<string, unknown>) =>
+    fetchJson<{ ok?: boolean; refundCase?: RefundCaseRecord; error?: string }>(
+      '/api/admin/refunds',
+      { method: 'POST', body },
+    ),
+  decideRefundCase: (id: string, body: Record<string, unknown>) =>
+    fetchJson<{ ok?: boolean; refundCase?: RefundCaseRecord; handoverSuspended?: boolean; error?: string }>(
+      `/api/admin/refunds/${encodeURIComponent(id)}`,
+      { method: 'PATCH', body },
+    ),
   recordPayment: (body: {
     clientId: string
     amount: number

@@ -1,6 +1,13 @@
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
+import { getCustomerPaymentReadiness } from '@/lib/features'
+import {
+  computeInvoiceSettlement,
+  isCustomerVisibleInvoiceStatus,
+  isPayableInvoiceStatus,
+  resolveInvoiceTotalMinor,
+} from '@/lib/invoice-policy'
 import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { formatScopeForClient } from '@/lib/journey'
@@ -23,8 +30,11 @@ export async function GET(req: NextRequest) {
       projects: { orderBy: { createdAt: 'desc' }, include: { tasks: { orderBy: { order: 'asc' } } } },
       scopes: { orderBy: { version: 'desc' } },
       previews: { orderBy: { createdAt: 'desc' } },
-      payments: { orderBy: { createdAt: 'desc' } },
-      invoices: { orderBy: { issuedAt: 'desc' } },
+      payments: { orderBy: { createdAt: 'desc' }, include: { receipt: { select: { receiptNumber: true } } } },
+      invoices: {
+        orderBy: { issuedAt: 'desc' },
+        include: { payments: { select: { amount: true, status: true } } },
+      },
       meetings: { orderBy: [{ scheduledAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }] },
     },
   })
@@ -122,8 +132,40 @@ export async function GET(req: NextRequest) {
         }
       : null,
     delivery: delivery ? { status: delivery.status, confirmedAt: delivery.clientConfirmedAt } : null,
-    payments: client.payments.map((p) => ({ milestone: p.milestone, amount: p.amount, currency: p.currency, status: p.status, verifiedAt: p.verifiedAt })),
-    invoices: client.invoices.map((i) => ({ number: i.number, amount: i.amount, currency: i.currency, status: i.status, notes: i.notes })),
+    paymentReadiness: await getCustomerPaymentReadiness(),
+    payments: client.payments.map((p) => ({
+      id: p.id,
+      milestone: p.milestone,
+      amount: p.amount,
+      currency: p.currency,
+      status: p.status,
+      verifiedAt: p.verifiedAt,
+      receiptAvailable: Boolean(p.status === 'PAID' && p.verifiedAt && p.verifiedBy),
+      receiptNumber: p.receipt?.receiptNumber ?? null,
+    })),
+    invoices: client.invoices
+      .filter((i) => isCustomerVisibleInvoiceStatus(i.status))
+      .map((i) => {
+        const totalMinor = resolveInvoiceTotalMinor({ totalMinor: i.totalMinor, amount: i.amount })
+        const settlement = computeInvoiceSettlement({
+          invoiceAmount: i.amount,
+          invoiceTotalMinor: totalMinor,
+          currentStatus: i.status,
+          dueAt: i.dueAt,
+          payments: i.payments,
+        })
+        return {
+          number: i.number,
+          amount: i.amount,
+          remainingAmount: settlement.remainingAmount,
+          currency: i.currency,
+          status: i.status,
+          payable: isPayableInvoiceStatus(i.status) && settlement.remainingMinor > 0,
+          dueAt: i.dueAt,
+          // Strictly expose customer-facing notes only — never internalNotes!
+          notes: i.customerNotes ?? (i.internalNotes ? null : i.notes),
+        }
+      }),
     communications: communications.map((c) => ({
       channel: c.channel, direction: c.direction, subject: c.subject,
       preview: (c.body ?? '').slice(0, 160), status: c.status, at: c.createdAt,

@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
   const { code, challenge } = issueOtp(portalSecret(), client.clientId, target.ch)
   const text = `Your Tech360 portal sign-in code is ${code}. It expires in 10 minutes. Never share this code — Tech360 staff will never ask for it.`
   const { result } = await sendCommunication({
-    clientId: client.clientId,
+    clientId: client.id,
     channel: target.ch,
     to: target.to,
     subject: 'Your Tech360 sign-in code',

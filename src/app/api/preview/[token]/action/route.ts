@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
+import { canDecidePreview, forwardPipelineStage } from '@/lib/preview-policy'
 import { sanitizeText, readJson, rateLimit, clientIp, audit, logError } from '@/lib/security'
 import { recordPreviewDecision } from '@/lib/journey'
 
@@ -13,9 +14,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const clean = sanitizeText(token, 64).replace(/[^a-f0-9]/gi, '')
   const preview = await db.preview.findUnique({ where: { token: clean }, include: { client: true } })
   if (!preview || !preview.client) return Response.json({ error: 'Preview not found' }, { status: 404 })
-  // expiry guard: no decisions accepted on expired links (approved/revision are terminal)
-  const terminal = preview.status === 'APPROVED' || preview.status === 'REVISION_REQUESTED'
-  if (!terminal && preview.expiresAt && preview.expiresAt.getTime() < Date.now()) {
+
+  // Terminal-state guard: approved or revision-requested previews cannot be overwritten or replayed.
+  if (preview.status === 'APPROVED' || preview.status === 'REVISION_REQUESTED') {
+    return Response.json(
+      {
+        error: `This preview has already been marked ${preview.status}. A new preview version must be issued for further decisions.`,
+        code: 'PREVIEW_ALREADY_DECIDED',
+        status: preview.status,
+      },
+      { status: 409 },
+    )
+  }
+
+  // Expiry guard: no decisions accepted on expired links
+  if ((preview.expiresAt && preview.expiresAt.getTime() < Date.now()) || !canDecidePreview(preview.status)) {
     if (preview.status !== 'EXPIRED') {
       await db.preview.update({ where: { id: preview.id }, data: { status: 'EXPIRED' } })
       await db.previewEvent.create({ data: { previewId: preview.id, type: 'EXPIRED' } })
@@ -38,17 +51,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       await db.communication.create({
         data: { clientId: preview.clientId, channel: 'PORTAL', direction: 'IN', sender: preview.client.name, body: 'HTML preview APPROVED by client', status: 'RECEIVED' },
       })
-      await db.client.update({ where: { id: preview.clientId }, data: { pipelineStage: 'CLIENT_APPROVAL' } })
+      const nextStage = forwardPipelineStage(preview.client.pipelineStage, 'CLIENT_APPROVAL')
+      if (nextStage !== preview.client.pipelineStage) {
+        await db.client.update({ where: { id: preview.clientId }, data: { pipelineStage: nextStage } })
+      }
       await db.trackingEvent.create({ data: { name: 'approval', clientId: preview.clientId, consent: true, meta: '{"what":"preview"}' } }).catch(() => null)
       // STAGE 7B — the acknowledgement is prepared, and the payment step
       // waits for an admin approval before it reaches the client.
       const outcome = await recordPreviewDecision(preview.clientId, 'APPROVED')
-      await audit({ actor: `client:${preview.client.clientId}`, action: 'PREVIEW_APPROVED', clientId: preview.clientId, ip: clientIp(req) })
+      await audit({ actor: `client:${preview.client.clientId}`, action: 'PREVIEW_APPROVED', clientId: preview.client.clientId, ip: clientIp(req) })
       return Response.json({
         ok: true,
-        message: outcome.sent.status === 'AWAITING_APPROVAL'
-          ? 'Approval recorded. Team Tech360 will continue with payment instructions.'
-          : 'Approval recorded. Team Tech360 will continue with payment instructions.',
+        message: 'Approval recorded. Team Tech360 will continue with payment instructions.',
         paymentInstruction: outcome.sent.status,
       })
     } else {
@@ -61,11 +75,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       // STAGE 7A — the revision acknowledgement is auto-sent, the admin is
       // notified and a task is created.
       await recordPreviewDecision(preview.clientId, 'REVISION_REQUESTED', notes)
-      await audit({ actor: `client:${preview.client.clientId}`, action: 'PREVIEW_REVISION_REQUESTED', clientId: preview.clientId, details: { notes: notes.slice(0, 300) }, ip: clientIp(req) })
+      await audit({ actor: `client:${preview.client.clientId}`, action: 'PREVIEW_REVISION_REQUESTED', clientId: preview.client.clientId, details: { notes: notes.slice(0, 300) }, ip: clientIp(req) })
       return Response.json({ ok: true, message: 'Change request recorded. Team Tech360 will review and update the preview.' })
     }
   } catch (e) {
-    await logError({ source: 'API', code: 'PREVIEW_ACTION_FAILED', message: e instanceof Error ? e.message : 'unknown', clientId: preview.clientId })
+    await logError({ source: 'API', code: 'PREVIEW_ACTION_FAILED', message: e instanceof Error ? e.message : 'unknown', clientId: preview.client.clientId })
     return Response.json({ error: 'Could not record your response. Please contact info@bdtech360.com.' }, { status: 500 })
   }
 }

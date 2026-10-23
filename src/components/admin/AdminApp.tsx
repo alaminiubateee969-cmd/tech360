@@ -43,6 +43,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
+import { isReadOnlyRole } from '@/lib/access-policy'
 import { ROLE_RANK } from '@/lib/constants'
 import { ChangePasswordScreen } from './ChangePasswordScreen'
 import { LoginScreen } from './LoginScreen'
@@ -374,10 +375,29 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
   const viewKey = useMemo(() => `${view}:${clientId ?? ''}:${projectId ?? ''}`, [view, clientId, projectId])
 
   // Role-gated navigation: only advertise views this role can actually load.
-  const roleRank = me ? (ROLE_RANK[me.role ?? 'STAFF'] ?? 1) : 0
+  const userRole = me?.role ?? 'STAFF'
+  const roleRank = me ? (ROLE_RANK[userRole] ?? 1) : 0
+  const canAccessView = (id: ViewId): boolean => {
+    if (userRole === 'FINANCE') {
+      return ['dashboard', 'clients', 'payments', 'approvals', 'reports'].includes(id)
+    }
+    if (userRole === 'PROJECT_MANAGER') {
+      return ['dashboard', 'leads', 'clients', 'approvals', 'communications', 'chat', 'projects', 'pipeline', 'reports'].includes(id)
+    }
+    if (userRole === 'DEVELOPER') {
+      return ['dashboard', 'clients', 'communications', 'chat', 'projects'].includes(id)
+    }
+    if (userRole === 'SALES' || userRole === 'SUPPORT') {
+      return ['dashboard', 'leads', 'clients', 'communications', 'chat', 'telephony', 'marketing', 'prompts'].includes(id)
+    }
+    if (userRole === 'AUDITOR') {
+      return ['dashboard', 'leads', 'clients', 'payments', 'projects', 'reports'].includes(id)
+    }
+    return roleRank >= (ROLE_RANK[VIEW_MIN_ROLE[id]] ?? 4)
+  }
   const visibleNav = NAV.map((group) => ({
     ...group,
-    items: group.items.filter((item) => roleRank >= (ROLE_RANK[VIEW_MIN_ROLE[item.id]] ?? 4)),
+    items: group.items.filter((item) => canAccessView(item.id)),
   })).filter((group) => group.items.length > 0)
 
   // ---------------- auth states ----------------
@@ -537,6 +557,11 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
           </form>
 
           <div className="ml-auto flex items-center gap-1 md:ml-2">
+            {isReadOnlyRole({ role: me.role ?? 'STAFF' }) ? (
+              <span className="mr-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                Read-Only Auditor
+              </span>
+            ) : null}
             <NotificationCenter onNavigate={navigate} />
 
             <DropdownMenu>

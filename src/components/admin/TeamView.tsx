@@ -45,13 +45,43 @@ import {
 // passwords. Every action here is audited server-side.
 // ============================================================
 
-const ROLE_ORDER = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'] as const
+const ROLE_ORDER = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'FINANCE',
+  'PROJECT_MANAGER',
+  'MANAGER',
+  'DEVELOPER',
+  'SALES',
+  'SUPPORT',
+  'AUDITOR',
+  'STAFF',
+] as const
+
+const ROLE_DESCRIPTIONS: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin — full control, payment verification, refunds, settings & team',
+  ADMIN: 'Admin — operations across CRM, projects, scopes, invoices & content',
+  FINANCE: 'Finance — invoices, billing, receipts & refund requests (no payment verification)',
+  PROJECT_MANAGER: 'Project Manager — projects, tasks, scopes, previews & delivery',
+  MANAGER: 'Manager — CRM, operations, finance drafts, reports & content',
+  DEVELOPER: 'Developer — assigned projects, tasks, previews & technical delivery',
+  SALES: 'Sales — leads, clients, discovery scopes & communications',
+  SUPPORT: 'Support — client communications, live chat & telephony',
+  AUDITOR: 'Auditor — strictly read-only compliance, CRM, finance & audit visibility',
+  STAFF: 'Staff — leads, clients, chat & meetings',
+}
 
 function RoleBadge({ role }: { role: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     SUPER_ADMIN: { label: 'Super Admin', cls: 'border-red-500/40 bg-red-500/10 text-red-400' },
     ADMIN: { label: 'Admin', cls: 'border-[#009FE3]/40 bg-[#009FE3]/10 text-[#009FE3]' },
+    FINANCE: { label: 'Finance', cls: 'border-amber-500/40 bg-amber-500/10 text-amber-400' },
+    PROJECT_MANAGER: { label: 'Project Mgr', cls: 'border-indigo-500/40 bg-indigo-500/10 text-indigo-400' },
     MANAGER: { label: 'Manager', cls: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' },
+    DEVELOPER: { label: 'Developer', cls: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-400' },
+    SALES: { label: 'Sales', cls: 'border-teal-500/40 bg-teal-500/10 text-teal-400' },
+    SUPPORT: { label: 'Support', cls: 'border-sky-500/40 bg-sky-500/10 text-sky-400' },
+    AUDITOR: { label: 'Auditor (RO)', cls: 'border-purple-500/40 bg-purple-500/10 text-purple-400' },
     STAFF: { label: 'Staff', cls: 'border-slate-500/40 bg-slate-500/10 text-slate-400' },
   }
   const r = map[role] ?? { label: role, cls: 'border-slate-500/40 bg-slate-500/10 text-slate-400' }
@@ -407,10 +437,7 @@ export function TeamView() {
                   <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
                     {ROLE_ORDER.map((r) => (
                       <SelectItem key={r} value={r} className="focus:bg-slate-800">
-                        {r === 'SUPER_ADMIN' ? 'Super Admin — full control incl. settings & team' :
-                         r === 'ADMIN' ? 'Admin — full operations incl. AI runs' :
-                         r === 'MANAGER' ? 'Manager — CRM, finance, reports, content' :
-                         'Staff — leads, clients, chat, meetings'}
+                        {ROLE_DESCRIPTIONS[r] ?? r}
                       </SelectItem>
                     ))}
                   </SelectContent>

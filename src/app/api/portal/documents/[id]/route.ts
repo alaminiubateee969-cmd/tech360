@@ -1,12 +1,11 @@
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
+import { DOCUMENT_SECURITY_HEADERS, isInlineSafeMime } from '@/lib/files'
 import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { audit, rateLimit, clientIp } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
-
-const INLINE_SAFE_PREFIX = ['image/', 'application/pdf', 'text/']
 
 // ------------------------------------------------------------
 // GET /api/portal/documents/[id] — client downloads (or inline-
@@ -50,15 +49,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     details: { docId: doc.id, filename: doc.originalName, inline: req.nextUrl.searchParams.get('inline') === '1' },
   })
 
-  const inline = req.nextUrl.searchParams.get('inline') === '1' && INLINE_SAFE_PREFIX.some((p) => doc.mimeType.startsWith(p))
+  const inline = req.nextUrl.searchParams.get('inline') === '1' && isInlineSafeMime(doc.mimeType)
   const disposition = inline ? 'inline' : 'attachment'
+  const safeFilename = (doc.filename || 'document').replace(/["\\\r\n]/g, '_')
 
   return new Response(new Uint8Array(doc.content), {
     headers: {
-      'Content-Type': doc.mimeType || 'application/octet-stream',
+      ...DOCUMENT_SECURITY_HEADERS,
+      'Content-Type': inline ? doc.mimeType : 'application/octet-stream',
       'Content-Length': String(doc.size),
-      'Content-Disposition': `${disposition}; filename="${doc.filename}"`,
-      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': `${disposition}; filename="${safeFilename}"`,
       'Cache-Control': 'private, no-store',
     },
   })

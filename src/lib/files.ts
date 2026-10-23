@@ -43,6 +43,35 @@ export const DOC_MIME: Record<string, string> = {
 
 export const DOC_EXT_LIST = Object.values(DOC_MIME)
 
+/**
+ * Strict allow-list of MIME types safe to render with `Content-Disposition: inline`.
+ *
+ * Security invariant: NEVER include `text/html`, `text/javascript`, `text/xml`,
+ * `text/tsx`, `text/jsx`, `image/svg+xml`, or any active document type here —
+ * serving those inline on the application origin causes Stored XSS. Every
+ * inline or downloaded document response MUST carry `DOCUMENT_SECURITY_HEADERS`.
+ */
+export const INLINE_SAFE_MIMES: ReadonlySet<string> = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'text/plain',
+])
+
+export function isInlineSafeMime(mimeType: string | null | undefined): boolean {
+  if (!mimeType) return false
+  const normalized = mimeType.split(';')[0].trim().toLowerCase()
+  return INLINE_SAFE_MIMES.has(normalized)
+}
+
+export const DOCUMENT_SECURITY_HEADERS: Readonly<Record<string, string>> = Object.freeze({
+  'X-Content-Type-Options': 'nosniff',
+  'Content-Security-Policy': "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'",
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Referrer-Policy': 'no-referrer',
+})
+
 export type ScanVerdict = {
   status: 'SCANNED' | 'QUARANTINED'
   verdict: 'CLEAN' | 'FLAGGED'
@@ -95,7 +124,13 @@ export function scanDocumentBytes(bytes: Buffer, declaredMime: string, filename:
   if (textExtensions.includes(ext)) {
     const text = bytes.toString('utf8')
     if (bytes.includes(0)) flag('contains NUL bytes in a text/source file')
-    if (['txt', 'md', 'csv', 'json'].includes(ext) && /<script[\s>]/i.test(text)) flag('contains <script> markup')
+    if (['txt', 'md', 'csv', 'json', 'html'].includes(ext)) {
+      if (/<script[\s>]/i.test(text)) flag('contains <script> markup')
+      if (/(?:javascript|vbscript)\s*:/i.test(text)) flag('contains executable URI scheme')
+      if (/\bon(?:load|error|click|mouseover|focus|submit|animationstart|toggle)\s*=/i.test(text)) {
+        flag('contains inline DOM event handler')
+      }
+    }
     if (/BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY/.test(text)) flag('contains private key material')
     if (/eval\(atob\(/i.test(text)) flag('encoded payload pattern')
     if (/(?:sk_(?:live|test)_[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{20,}|AIza[0-9A-Za-z_-]{35})/.test(text)) {
