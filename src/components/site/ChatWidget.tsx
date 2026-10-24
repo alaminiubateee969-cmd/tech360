@@ -556,7 +556,7 @@ export default function ChatWidget() {
             {!showThread && !showClosed && (
               <form onSubmit={startConversation} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
                 <p className="text-sm leading-relaxed text-slate-600">
-                  Welcome to TECH360. Describe what you want to build or improve; we can ask follow-up questions as we go. Email is required for service-related updates, while your name and other profile details can wait. A Client ID is issued or linked only after identity can be handled safely. WhatsApp is optional.
+                  Welcome to TECH360. Describe what you want to build or improve; we can ask follow-up questions as we go. Email is required for service-related updates, while your name and other profile details can wait. A Client ID is issued or linked only after identity can be handled safely. A phone number is optional.
                 </p>
                 <div className="space-y-1">
                   <label htmlFor="chat-name" className="text-xs font-medium text-slate-700">

@@ -1182,7 +1182,7 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
             <li className="flex items-center gap-2.5"><Lock className="h-4.5 w-4.5 text-[#063B8F]" /> Source code released only after verified full payment</li>
             <li className="flex items-center gap-2.5"><Eye className="h-4.5 w-4.5 text-[#009FE3]" /> Every status you see is the real system status</li>
           </ul>
-          <p className="mt-6 text-xs text-slate-400">Don't have your reference? Email <a className="font-medium text-[#009FE3]" href={`mailto:${PUBLIC_CONTACT.email}`}>{PUBLIC_CONTACT.email}</a> or message us on WhatsApp.</p>
+          <p className="mt-6 text-xs text-slate-400">Don't have your reference? Email <a className="font-medium text-[#009FE3]" href={`mailto:${PUBLIC_CONTACT.email}`}>{PUBLIC_CONTACT.email}</a> or start a chat with the assistant — no phone number needed.</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>

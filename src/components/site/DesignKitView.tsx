@@ -201,7 +201,7 @@ export default function DesignKitView() {
           </Showcase>
           <Showcase
             label="Honest-by-default components"
-            note="The WhatsApp action renders nothing at all unless a number is supplied — the owner removed the public WhatsApp route, so no dead button is shown."
+            note="No WhatsApp number or chat deep link is published (owner decision, 2026-10-24). The action renders nothing unless a caller supplies an explicit number, so the public site can never show a dead or stale button."
           >
             <WhatsAppLink number="" />
             <span className="text-xs text-slate-500">Rendered output: nothing (component returns null while unconfigured).</span>
