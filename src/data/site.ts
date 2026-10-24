@@ -17,8 +17,6 @@ export const COMPANY = {
   ein: "98-1940053",
   address: "117 S Lexington St Ste 100, Harrisonville, MO 64701, USA",
   email: PUBLIC_CONTACT.email,
-  publicWhatsApp: PUBLIC_CONTACT.whatsappE164,
-  whatsappLink: PUBLIC_CONTACT.whatsappLink,
   founded: "2021",
   // Canonical About-page facts — single source reused in AboutView (do not hardcode elsewhere).
   bangladeshFoundedYear: "2021",
@@ -1586,7 +1584,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
           "Depending on your interaction with us, information you provide may include your name, business name, email address, Client ID or customer reference, business telephone or optional WhatsApp number, country, business type, project requirements, preferences, documents, instructions, and approvals submitted through website forms, chat, email, or other communication channels.",
           "Technical information may include IP address and request metadata, browser and device information, pages requested, referring pages, security events, error logs, and abuse-prevention records needed to operate and secure the website.",
           "Client and service records may include relevant communications, requirements, project approvals, invoices, payment records, delivery status, and handover documentation associated with a Client ID.",
-          "You are not required to provide information that is unnecessary for your enquiry or engagement. WhatsApp is optional. Email verification status is recorded through verified identity records when an approved verification step is completed; a typed email address alone is not proof of ownership."
+          "You are not required to provide information that is unnecessary for your enquiry or engagement. Providing a phone or WhatsApp number is optional. Email verification status is recorded through verified identity records when an approved verification step is completed; a typed email address alone is not proof of ownership."
         ]
       },
       {
@@ -1667,7 +1665,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         "heading": "13. Contact us",
         "body": [
-          "For privacy questions, access requests, corrections, or deletion requests, contact TECH360 LLC at info@bdtech360.com or https://bdtech360.com. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA. The public WhatsApp channel is optional: +8801327100297.",
+          "For privacy questions, access requests, corrections, or deletion requests, contact TECH360 LLC at info@bdtech360.com or https://bdtech360.com. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
           "We review privacy requests and respond within a reasonable period, subject to applicable law and any necessary identity verification. Our commitment is to collect only information reasonably needed, protect its confidentiality, use it for legitimate purposes, and treat every buyer’s information with respect."
         ]
       }
@@ -1824,7 +1822,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         "heading": "7. Payment support",
         "body": [
-          "For payment questions, contact info@bdtech360.com or https://bdtech360.com. The public WhatsApp channel is optional: +8801327100297. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
+          "For payment questions, contact info@bdtech360.com or https://bdtech360.com. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
           "Include your Client ID and relevant payment reference. Never share passwords, online banking credentials, or card security codes through email or chat."
         ]
       }
@@ -1948,7 +1946,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         "heading": "9. Contact",
         "body": [
-          "For handover questions, contact TECH360 LLC at info@bdtech360.com or https://bdtech360.com. The public WhatsApp channel is optional: +8801327100297. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
+          "For handover questions, contact TECH360 LLC at info@bdtech360.com or https://bdtech360.com. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
           "Include your Client ID and project reference when asking about a handover. Never send passwords, API secrets, online banking credentials, or card security codes through ordinary email or chat."
         ]
       }
@@ -2056,7 +2054,11 @@ export const BUDGET_RANGES: string[] = [
   "To be discussed",
 ];
 
-export const CONTACT_METHODS: string[] = ["WhatsApp", "Email", "Phone"];
+// How a VISITOR prefers to be contacted about their own enquiry. This is a
+// customer preference recorded on the CRM record — it does not publish a
+// TECH360 WhatsApp number (owner decision 2026-10-24 removed the public
+// WhatsApp channel; see src/lib/site-contact.ts).
+export const CONTACT_METHODS: string[] = ["Email", "Phone", "WhatsApp"];
 
 /* ------------------------------------------------------------------ */
 /* Lookups                                                             */

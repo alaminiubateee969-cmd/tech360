@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { readdir, stat } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -22,8 +22,12 @@ export async function GET(req: NextRequest) {
   const g = await guard(req, { minRole: 'SUPER_ADMIN' })
   if (isResponse(g)) return g
 
+  // BACKUP_DIR is the primary location; TECH360_BACKUP_DIR is the name used by
+  // the scheduled runner (scripts/backup/mysql-backup.sh). Both are read so the
+  // console shows the artefacts the scheduler actually wrote.
   const backupDirs = [
     process.env.BACKUP_DIR ?? '',
+    process.env.TECH360_BACKUP_DIR ?? '',
     join(process.cwd(), 'backups'),
     join(process.cwd(), 'deployment', 'backups'),
   ].filter(Boolean)
@@ -80,6 +84,77 @@ export async function GET(req: NextRequest) {
     // The database may be unavailable; the status below will say so.
   }
 
+  // ---------------------------------------------------------------
+  // Scheduled-runner evidence.
+  // The backup script writes last-run.json (and last-drill.json after a
+  // restore drill). Reading those files is the only way this route can
+  // know whether the scheduler actually ran, so it reports exactly that:
+  // the last recorded run, or "never" when no run record exists.
+  // ---------------------------------------------------------------
+  type LastRun = {
+    status?: string
+    code?: string
+    message?: string
+    file?: string
+    sizeBytes?: number
+    sha256?: string
+    tables?: number
+    database?: string
+    host?: string
+    startedAt?: string
+    finishedAt?: string
+    durationSec?: number
+    engine?: string
+    consistency?: string
+    offsite?: string
+    retention?: { daily?: number; weekly?: number; monthly?: number; kept?: number; deleted?: number }
+    scriptVersion?: string
+  }
+  type LastDrill = {
+    status?: string
+    code?: string
+    targetDatabase?: string
+    dump?: string
+    sha256?: string
+    sourceTables?: number
+    restoredTables?: number
+    finishedAt?: string
+    scriptVersion?: string
+  }
+
+  async function readJsonFile<T>(dir: string, name: string): Promise<{ value: T; dir: string } | null> {
+    try {
+      const raw = await readFile(join(dir, name), 'utf8')
+      return { value: JSON.parse(raw) as T, dir }
+    } catch {
+      return null
+    }
+  }
+
+  let lastRun: (LastRun & { directory: string; ageHours: number }) | null = null
+  let lastDrill: (LastDrill & { directory: string; ageHours: number }) | null = null
+  for (const dir of backupDirs) {
+    const run = await readJsonFile<LastRun>(dir, 'last-run.json')
+    if (run && !lastRun) {
+      const mtime = (await stat(join(dir, 'last-run.json')).catch(() => null))?.mtimeMs ?? Date.now()
+      lastRun = { ...run.value, directory: dir, ageHours: Math.round(((Date.now() - mtime) / 3_600_000) * 10) / 10 }
+    }
+    const drill = await readJsonFile<LastDrill>(dir, 'last-drill.json')
+    if (drill && !lastDrill) {
+      const mtime = (await stat(join(dir, 'last-drill.json')).catch(() => null))?.mtimeMs ?? Date.now()
+      lastDrill = { ...drill.value, directory: dir, ageHours: Math.round(((Date.now() - mtime) / 3_600_000) * 10) / 10 }
+    }
+  }
+
+  const schedule = {
+    script: 'scripts/backup/mysql-backup.sh',
+    restoreDrill: 'scripts/backup/mysql-restore-drill.sh',
+    trigger: process.env.BACKUP_SCHEDULE_NOTE ?? 'host cron / Hostinger hPanel cron — see docs/BACKUP_AND_RESTORE.md',
+    documentedSchedule: process.env.BACKUP_SCHEDULE ?? 'daily 02:15 server time (not verifiable from the application)',
+    offsiteConfigured: Boolean(process.env.TECH360_BACKUP_OFFSITE),
+    alertWebhookConfigured: Boolean(process.env.TECH360_BACKUP_ALERT_WEBHOOK),
+  }
+
   const newest = artifacts[0] ?? null
   const maxAgeHours = 48
   const status = !newest
@@ -95,6 +170,27 @@ export async function GET(req: NextRequest) {
     details: { artifacts: artifacts.length, status },
   })
 
+  // A run only counts as healthy when the runner itself recorded success and
+  // the drill passed. Artefacts alone are not proof the job still runs.
+  const runnerHealthy = Boolean(
+    lastRun &&
+      lastRun.status === 'OK' &&
+      lastRun.ageHours <= maxAgeHours * 2 &&
+      lastDrill &&
+      lastDrill.status === 'PASS',
+  )
+  const runnerReason = !lastRun
+    ? 'No scheduled-runner record (last-run.json) was found. The application cannot prove the backup job runs.'
+    : lastRun.status !== 'OK'
+      ? `The last scheduled run failed (${lastRun.code ?? 'UNKNOWN'}).`
+      : lastRun.ageHours > maxAgeHours * 2
+        ? `The last scheduled run was ${lastRun.ageHours}h ago — older than the ${maxAgeHours * 2}h automation target.`
+        : !lastDrill
+          ? 'No restore drill has been recorded for this host.'
+          : lastDrill.status !== 'PASS'
+            ? `The last restore drill did not pass (${lastDrill.code ?? 'UNKNOWN'}).`
+            : 'The last scheduled run succeeded and the restore drill passed.'
+
   return Response.json({
     status,
     detail:
@@ -106,12 +202,26 @@ export async function GET(req: NextRequest) {
     freshnessTargetHours: maxAgeHours,
     directories: backupDirs,
     artifacts,
+    runner: {
+      healthy: runnerHealthy,
+      reason: runnerReason,
+      lastRun,
+      lastDrill,
+      schedule,
+      note:
+        'Evidence is read from last-run.json / last-drill.json written by the backup scripts. ' +
+        'The application never executes mysqldump itself and cannot claim a backup ran without that record.',
+    },
     restoreEvidence: {
       ...restoreEvidence,
-      proven: Boolean(restoreEvidence.testedAt),
+      // Two independent evidence sources: the durable Setting row written by a
+      // real drill, and the drill script's own PASS record on disk.
+      proven: Boolean(restoreEvidence.testedAt) || lastDrill?.status === 'PASS',
       detail: restoreEvidence.testedAt
         ? `A restore was proven on ${restoreEvidence.testedAt}.`
-        : 'No restore has been proven on this host. A backup that has never been restored is not a backup.',
+        : lastDrill?.status === 'PASS'
+          ? `The restore drill script recorded PASS at ${lastDrill.finishedAt ?? 'an unknown time'} (${lastDrill.restoredTables ?? '?'} tables into ${lastDrill.targetDatabase ?? 'a scratch database'}).`
+          : 'No restore has been proven on this host. A backup that has never been restored is not a backup.',
     },
     database: {
       engine: 'MySQL',

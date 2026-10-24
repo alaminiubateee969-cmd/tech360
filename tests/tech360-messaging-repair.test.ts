@@ -404,48 +404,80 @@ describe('12 — visitor isolation & access control', () => {
 })
 
 // ============================================================
-// H — Website contact details: single shared source
+// H — Public contact details: shared source, NO public WhatsApp
+// Owner decision 2026-10-24: TECH360 publishes no WhatsApp number and
+// no chat deep link. Webchat, the enquiry form and email remain.
 // ============================================================
-describe('H — public contact details via single shared source', () => {
-  it('PUBLIC_CONTACT holds the approved WhatsApp and email', () => {
-    assert.equal(PUBLIC_CONTACT.whatsappE164, '+8801327100297')
+describe('H — public contact details via single shared source (no WhatsApp)', () => {
+  it('PUBLIC_CONTACT holds the email and origin, and no WhatsApp fields', () => {
     assert.equal(PUBLIC_CONTACT.email, 'info@bdtech360.com')
     assert.equal(PUBLIC_CONTACT.url, 'https://bdtech360.com')
-    assert.ok(PUBLIC_CONTACT.whatsappLink.includes('8801327100297'))
+    const record = PUBLIC_CONTACT as unknown as Record<string, unknown>
+    assert.equal(record.whatsappE164, undefined, 'no public WhatsApp number may remain')
+    assert.equal(record.whatsappLink, undefined, 'no public WhatsApp link may remain')
+    assert.equal(record.whatsappDigits, undefined, 'no wa.me digits helper may remain')
+    assert.deepEqual([...PUBLIC_CONTACT.channels], ['webchat', 'enquiry-form', 'email'])
   })
 
-  it('header, footer, contact page, WhatsApp button and email links share that source', () => {
+  it('header, footer, contact page and portal share that source and offer email + chat', () => {
     const footer = read('src/components/site/SiteFooter.tsx')
-    assert.match(footer, /COMPANY\.whatsappLink|PUBLIC_CONTACT/, 'footer must use shared WhatsApp link')
     assert.match(footer, /mailto.*COMPANY\.email/, 'footer must use shared email')
-
-    const buttons = read('src/components/site/buttons.tsx')
-    assert.match(buttons, /PUBLIC_CONTACT|whatsappE164/, 'WhatsApp button must fall back to shared contact')
+    assert.match(footer, /tech360:open-chat/, 'footer must offer the webchat entry point')
+    assert.ok(!/wa\.me|whatsappLink|publicWhatsApp/.test(footer), 'footer must not publish a WhatsApp route')
 
     const site = read('src/data/site.ts')
     assert.match(site, /PUBLIC_CONTACT/, 'site data must use shared contact')
+    assert.ok(!/whatsappLink|publicWhatsApp:/.test(site), 'site data must not export a WhatsApp link')
 
     const constants = read('src/lib/constants.ts')
     assert.match(constants, /PUBLIC_CONTACT/, 'constants must use shared contact')
+    assert.ok(!/whatsappLink|publicWhatsApp:/.test(constants), 'constants must not export a WhatsApp link')
 
     const portal = read('src/components/site/PortalView.tsx')
-    assert.match(portal, /PUBLIC_CONTACT|supportContact.*COMPANY|supportContact/, 'portal must use shared/policy email, not hardcoded elsewhere')
+    assert.match(portal, /PUBLIC_CONTACT/, 'portal must use the shared email')
+    assert.ok(!/message us on WhatsApp/i.test(portal), 'portal sign-in must not point at WhatsApp')
   })
 
-  it('no conflicting hardcoded phone numbers remain in site components (except placeholders/examples)', () => {
-    const siteFiles = [
+  it('no public component publishes the retired number or a wa.me deep link', () => {
+    const files = [
       'src/components/site/SiteHeader.tsx',
       'src/components/site/SiteFooter.tsx',
       'src/components/site/ContactView.tsx',
+      'src/components/site/PortalView.tsx',
+      'src/components/site/HomeView.tsx',
+      'src/components/site/ServiceDetailView.tsx',
+      'src/components/site/ServicesView.tsx',
+      'src/components/site/DesignKitView.tsx',
       'src/components/site/buttons.tsx',
+      'src/components/site/ChatWidget.tsx',
+      'src/lib/site-contact.ts',
+      'src/lib/constants.ts',
+      'src/data/site.ts',
+      'src/app/layout.tsx',
     ]
-    for (const file of siteFiles) {
+    for (const file of files) {
       const content = read(file)
-      // Hardcoded BD number outside of the shared import is a conflict
-      // Allow the placeholder +880 1XXX-XXXXXX and the shared constant assignment
-      const hasConflictingHardcode = /8801327100297/.test(content) && !content.includes('PUBLIC_CONTACT') && !content.includes('whatsappE164')
-      assert.ok(!hasConflictingHardcode, `${file} must not hardcode the public number outside the shared source`)
+      assert.ok(!/8801327100297/.test(content), `${file} must not contain the retired public number`)
     }
+    // The generic button may build a deep link only from an explicitly passed
+    // number; it must never fall back to a shared public number.
+    const buttons = read('src/components/site/buttons.tsx')
+    assert.ok(!/PUBLIC_CONTACT|whatsappE164/.test(buttons), 'WhatsApp button must not fall back to a public number')
+    const publicSite = ['SiteHeader', 'SiteFooter', 'ContactView', 'PortalView', 'HomeView', 'ServiceDetailView', 'ServicesView', 'DesignKitView', 'ChatWidget']
+      .map((n) => read(`src/components/site/${n}.tsx`))
+      .join('\n')
+    assert.ok(!/wa\.me/.test(publicSite), 'no public component may render a wa.me deep link')
+  })
+
+  it('the webchat and enquiry-form routes remain the public enquiry path', () => {
+    const chat = read('src/app/api/chat/message/route.ts')
+    assert.match(chat, /export async function POST/, 'webchat message route must exist')
+    const session = read('src/app/api/chat/session/route.ts')
+    assert.match(session, /export async function POST/, 'webchat session route must exist')
+    const contact = read('src/app/api/contact/route.ts')
+    assert.match(contact, /export async function POST/, 'enquiry form route must exist')
+    // Webchat must not require a phone number or a WhatsApp account.
+    assert.ok(!/require.*whatsapp|whatsapp.*required/i.test(session), 'webchat must not require WhatsApp')
   })
 })
 
@@ -554,7 +586,7 @@ describe('D — channel routing invariants', () => {
   it('decideReplyChannel replies on inbound channel when operational', async () => {
     // Pure channel logic: without SMTP env, EMAIL is NOT operational → falls back gracefully
     // We just test the shape, not the env-dependent truthiness
-    const decision = await decideReplyChannel('WHATSAPP', { whatsapp: '+8801327100297', email: 'a@b.com' })
+    const decision = await decideReplyChannel('WHATSAPP', { whatsapp: '+10000000000', email: 'a@b.com' })
     assert.ok(decision.replyChannel === 'WHATSAPP' || decision.replyChannel === null, 'must return a channel decision')
     assert.ok(decision.reason.length > 10)
   })

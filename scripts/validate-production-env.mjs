@@ -48,6 +48,13 @@ for (const name of ["APP_PUBLIC_URL", "APP_ORIGIN"]) {
   }
 }
 
+// Preview-only SQLite must never be active in production. The runtime adapter
+// (src/lib/preview-db.ts) also throws, but refusing here means the process does
+// not start at all rather than failing on the first query.
+if (process.env.PREVIEW_SQLITE_URL?.trim()) {
+  errors.push("PREVIEW_SQLITE_URL (development-only; unset it and use a mysql:// DATABASE_URL)");
+}
+
 const aiOpsDriver = process.env.AI_OPS_DRIVER?.trim().toLowerCase();
 if (aiOpsDriver && !["on", "off"].includes(aiOpsDriver)) {
   errors.push("AI_OPS_DRIVER (must be on or off)");

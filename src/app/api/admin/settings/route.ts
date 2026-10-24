@@ -75,6 +75,26 @@ export async function PUT(req: NextRequest) {
 
   // ---- Payment gateways ----
   if (body.gateways && typeof body.gateways === 'object') {
+    // A gateway whose checkout adapter does not exist can never be switched
+    // ON. Refusing at the mutation (not only at payment time) means the
+    // platform cannot even be configured to look like it accepts PayPal or
+    // SSLCommerz money. See docs/PAYMENT_INTEGRATION_POLICY.md.
+    const unbuilt = GATEWAY_DEFINITIONS.filter((d) => d.settlement === 'GATEWAY_CHECKOUT' && d.code !== 'STRIPE').map((d) => d.code)
+    for (const [k, v] of Object.entries(body.gateways)) {
+      if (!validGatewayCodes.has(k) || !v || typeof v !== 'object') continue
+      if (unbuilt.includes(k as GatewayCode) && Boolean((v as { enabled?: unknown }).enabled)) {
+        return Response.json(
+          {
+            error: `${k} checkout is not implemented (INTEGRATION_NOT_BUILT) and cannot be enabled.`,
+            code: 'GATEWAY_NOT_BUILT',
+            detail:
+              'Setting the credential variables or enabling the switch does not create an integration. ' +
+              'PayPal and SSLCommerz must be implemented and provider-verified before they can accept money.',
+          },
+          { status: 409 },
+        )
+      }
+    }
     const overrides: Partial<Record<GatewayCode, { enabled?: boolean; mode?: GatewayMode }>> = {}
     for (const [k, v] of Object.entries(body.gateways)) {
       if (!validGatewayCodes.has(k) || !v || typeof v !== 'object') continue

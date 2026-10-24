@@ -15,10 +15,14 @@ export const COMPANY = {
   address: '117 S Lexington St Ste 100, Harrisonville, MO 64701, USA',
   email: PUBLIC_CONTACT.email,
   phone: '+1 (816) 380-8660',
-  /** Public contact — single source of truth (Requirement H). */
+  /**
+   * Public contact — single source of truth.
+   * Owner decision 2026-10-24: no public WhatsApp number or wa.me link is
+   * published anywhere. Public enquiries arrive by webchat, the contact form
+   * and email only.
+   */
   publicEmail: PUBLIC_CONTACT.email,
-  publicWhatsApp: PUBLIC_CONTACT.whatsappE164,
-  publicWhatsAppLink: PUBLIC_CONTACT.whatsappLink,
+
   founded: 2021,
 } as const
 

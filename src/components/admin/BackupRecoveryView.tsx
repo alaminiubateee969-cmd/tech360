@@ -1,6 +1,6 @@
 'use client'
 
-import { DatabaseBackup, HardDriveDownload, RefreshCw, ShieldAlert, XCircle } from 'lucide-react'
+import { Clock, DatabaseBackup, HardDriveDownload, RefreshCw, ShieldAlert, Terminal, XCircle } from 'lucide-react'
 
 import { useApi } from '@/lib/admin-client'
 import { EmptyState, KpiCard, PageHeader, SectionCard } from './shared/cards'
@@ -39,6 +39,44 @@ type BackupResponse = {
     detail: string
   }
   database: { engine: string; urlConfigured: boolean; note: string }
+  runner: {
+    healthy: boolean
+    reason: string
+    lastRun: {
+      status?: string
+      code?: string
+      file?: string
+      sizeBytes?: number
+      sha256?: string
+      tables?: number
+      database?: string
+      finishedAt?: string
+      durationSec?: number
+      offsite?: string
+      retention?: { kept?: number; deleted?: number }
+      directory: string
+      ageHours: number
+    } | null
+    lastDrill: {
+      status?: string
+      code?: string
+      targetDatabase?: string
+      dump?: string
+      restoredTables?: number
+      finishedAt?: string
+      directory: string
+      ageHours: number
+    } | null
+    schedule: {
+      script: string
+      restoreDrill: string
+      trigger: string
+      documentedSchedule: string
+      offsiteConfigured: boolean
+      alertWebhookConfigured: boolean
+    }
+    note: string
+  }
 }
 
 function fmtBytes(bytes: number): string {
@@ -85,13 +123,87 @@ export default function BackupRecoveryView() {
           sub={data?.restoreEvidence.detail ?? ''}
         />
         <KpiCard
-          label="Freshness target"
-          value={data ? `${data.freshnessTargetHours}h` : '—'}
-          icon={HardDriveDownload}
-          tone="slate"
+          label="Automation"
+          value={data ? (data.runner?.healthy ? 'VERIFIED' : 'UNVERIFIED') : '—'}
+          icon={Clock}
+          tone={data?.runner?.healthy ? 'green' : 'amber'}
           loading={loading}
-          sub="newest artefact age limit"
+          sub={data?.runner?.reason ?? 'scheduled runner evidence'}
         />
+      </div>
+
+      <SectionCard
+        title="Scheduled runner"
+        description="What the backup automation itself recorded — the only trustworthy evidence that the job ran."
+      >
+        <div className={CARD + ' p-4'}>
+          <p className={data?.runner?.healthy ? 'text-sm text-emerald-300' : 'text-sm text-amber-300'}>
+            {data?.runner?.reason ?? 'Loading…'}
+          </p>
+
+          <dl className="mt-3 grid gap-2 text-[11px] sm:grid-cols-2">
+            <div className="flex justify-between gap-2">
+              <dt className="text-slate-500">Last run status</dt>
+              <dd className={MONO}>{data?.runner?.lastRun ? `${data.runner.lastRun.status}${data.runner.lastRun.code ? ` (${data.runner.lastRun.code})` : ''}` : 'never recorded'}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-slate-500">Last successful run</dt>
+              <dd className={MONO}>{data?.runner?.lastRun?.finishedAt ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-slate-500">Recorded size / tables</dt>
+              <dd className={MONO}>
+                {data?.runner?.lastRun?.sizeBytes ? fmtBytes(data.runner.lastRun.sizeBytes) : '—'} · {data?.runner?.lastRun?.tables ?? '—'} tables
+              </dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-slate-500">SHA-256</dt>
+              <dd className={MONO}>{data?.runner?.lastRun?.sha256 ? `${data.runner.lastRun.sha256.slice(0, 16)}…` : '—'}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-slate-500">Off-server copy</dt>
+              <dd className={MONO}>{data?.runner?.lastRun?.offsite ?? (data?.runner?.schedule.offsiteConfigured ? 'configured' : 'not configured')}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-slate-500">Retention (kept / deleted)</dt>
+              <dd className={MONO}>
+                {data?.runner?.lastRun?.retention
+                  ? `${data.runner.lastRun.retention.kept ?? 0} / ${data.runner.lastRun.retention.deleted ?? 0}`
+                  : '—'}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-slate-500">Last restore drill</dt>
+              <dd className={MONO}>
+                {data?.runner?.lastDrill
+                  ? `${data.runner.lastDrill.status} · ${data.runner.lastDrill.targetDatabase ?? ''} · ${data.runner.lastDrill.restoredTables ?? '?'} tables`
+                  : 'never recorded'}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-slate-500">Documented schedule</dt>
+              <dd className={MONO}>{data?.runner?.schedule.documentedSchedule ?? '—'}</dd>
+            </div>
+          </dl>
+
+          <div className="mt-3 space-y-1 text-[11px] text-slate-500">
+            <p className="flex items-center gap-1.5">
+              <Terminal className="size-3" aria-hidden="true" />
+              <span className={MONO}>{data?.runner?.schedule.script ?? 'scripts/backup/mysql-backup.sh'}</span>
+            </p>
+            <p className="flex items-center gap-1.5">
+              <Terminal className="size-3" aria-hidden="true" />
+              <span className={MONO}>{data?.runner?.schedule.restoreDrill ?? 'scripts/backup/mysql-restore-drill.sh'}</span>
+            </p>
+            <p>Trigger: {data?.runner?.schedule.trigger ?? 'host scheduler'}</p>
+            <p>{data?.runner?.note ?? ''}</p>
+          </div>
+        </div>
+      </SectionCard>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-2">
+        <KpiCard label="Freshness target" value={data ? `${data.freshnessTargetHours}h` : '—'} icon={HardDriveDownload} tone="slate" loading={loading} sub="newest artefact age limit" />
+        <KpiCard label="Artefact directory" value={data?.runner?.lastRun?.directory ? 'FOUND' : '—'} icon={DatabaseBackup} tone="slate" loading={loading} sub={data?.runner?.lastRun?.directory ?? 'no runner record'} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

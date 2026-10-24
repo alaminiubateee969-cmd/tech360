@@ -54,6 +54,13 @@ There is exactly **one** Next.js application (App Router). Everything is served 
 | **Super Admin console** | `/#/admin` | Staff login (role-based) + optional TOTP | CRM, pipeline, communications, projects, finance, AI workforce, factory, growth, logs, settings |
 | **Design kit** | `/#/design-kit` | none | Live design system: tokens, buttons, diagrams, infographics, mockups |
 
+> **Public contact channels (owner decision 2026-10-24).** The platform publishes **no WhatsApp
+> number and no chat deep link**. Public enquiries arrive through three routes only: the on-site AI
+> assistant / webchat (no phone number needed), the `#/contact` enquiry form, and email
+> `info@bdtech360.com`. Private CRM messaging over the WhatsApp Cloud API still exists as a business
+> integration — it is never advertised as a public contact route. Enforced by
+> `src/lib/site-contact.ts` and pinned by `tests/tech360-messaging-repair.test.ts`.
+
 Deep links are real URLs, not only hashes: `/services/<slug>`, `/industries/<slug>`, `/blog/<slug>`,
 `/legal/<policy>` are resolved by the catch-all route (`src/app/[...path]/page.tsx`) through
 `src/lib/public-route-catalog.ts`, which also drives `sitemap.xml` and `rss.xml`.
@@ -186,9 +193,34 @@ Pull request → GitHub Actions CI (Node 22 + npm + disposable MySQL)
 There is **no** SSH/VPS/PM2/rsync path. The legacy Cloud Run, Cloud Build, Dockerfile and
 `deployment/deploy.sh` helpers are retired and fail fast; do not use them.
 
-> **Known limitation carried forward:** whether hPanel actually invokes the npm lifecycle (and therefore the
-> `prestart` environment validation) is **NOT VERIFIED** in this repository. Confirm it in hPanel and in
-> the first deploy's runtime log. If it does not, the app still boots but you lose the fail-closed config check.
+> **Startup validation is now independent of the process manager.** `npm start` runs
+> `scripts/start-production.mjs`, which validates the environment, refuses preview-only SQLite, prints a
+> redacted summary and only then boots the standalone server — so even a host that skips the npm
+> `prestart` lifecycle still gets the fail-closed check, provided the configured start command is
+> `npm start` (or `node scripts/start-production.mjs`).
+>
+> What is still **NOT VERIFIED** is *which command hPanel actually runs*. If someone typed
+> `node .next/standalone/server.js` into the start-command field, the wrapper is bypassed. Confirm the
+> field value in hPanel and record it here (§3.4 step 3 and the startup evidence block below).
+
+### 3.1a Startup evidence (what has been verified, and what has not)
+
+| Claim | Status | Evidence |
+|---|---|---|
+| The production entry point validates configuration and refuses unsafe settings | **VERIFIED (local)** | `npm run start:check` + `tests/production-startup.test.ts` (10 tests) |
+| Secrets are never printed by the startup path | **VERIFIED (local)** | the same tests assert no secret value appears in stdout/stderr |
+| Preview-only SQLite is refused in production | **VERIFIED (local)** | `attachPreviewAdapter` throws; `validate-production-env.mjs` adds an error; both covered by tests |
+| The standalone server boots from the wrapper | **NOT VERIFIED** | requires a completed `npm run build`, which needs the Prisma engine download (blocked in the audit sandbox; covered by CI) |
+| hPanel runs `npm start` | **NOT VERIFIED** | requires hPanel access. Operator action: screenshot the start-command field and paste the runtime log lines into this table |
+
+Record the actual command here once confirmed:
+
+```
+hPanel runtime command (observed): ______________________
+build command (observed):          ______________________
+Node version (observed):           ______________________
+first boot log timestamp:          ______________________
+```
 
 ### 3.2 Build and start commands
 
@@ -197,7 +229,8 @@ There is **no** SSH/VPS/PM2/rsync path. The legacy Cloud Run, Cloud Build, Docke
 | `npm ci --no-audit --no-fund` | reproducible install (`.npmrc` forces `include=dev`, which the build needs) |
 | `npm run build` | prisma generate → `migrate deploy` → `next build` → copies `.next/static` and `public` into standalone |
 | `npm run prestart` | `scripts/validate-production-env.mjs` — refuses to start on bad/missing production config |
-| `npm start` | `NODE_ENV=production node .next/standalone/server.js` |
+| `npm start` | `NODE_ENV=production node scripts/start-production.mjs` — validates (again, in-process), refuses preview SQLite, prints a redacted summary, then boots `.next/standalone/server.js` |
+| `npm run start:check` | validates the production environment and exits without starting the server |
 | `npm run lint` / `typecheck` / `test` | quality gates (see §13.1) |
 | `npm run db:seed` | first-boot data: super admin, departments, 44 agents, 26 workflows, prompt templates, blog |
 | `npm run db:verify` | read-only database verification |
@@ -216,6 +249,8 @@ Additional enforced rules in `validate-production-env.mjs`:
 - `IDENTITY_HASH_SECRET` is required when a WhatsApp credential is present (identity lookups must stay
   resolvable across deploys — do **not** rotate it casually).
 - `AI_OPS_DRIVER` ∈ {`on`,`off`}; `ZAI_BASE_URL` must be an absolute HTTP(S) URL with no userinfo/query.
+- `PREVIEW_SQLITE_URL` is **refused**: it is a development-only switch for the offline preview database
+  (`src/lib/preview-db.ts`). Production must use a `mysql://` `DATABASE_URL`.
 
 The complete variable list is in `.env.example` (78 names) and Chapter 15.1.
 
@@ -223,7 +258,8 @@ The complete variable list is in `.env.example` (78 names) and Chapter 15.1.
 
 1. Create the Hostinger Node.js Web App, attach the repository, branch `main`, Node 22.
 2. Add **every** required environment variable in hPanel (never in the repo).
-3. Set the build command to `npm run build` and the start command to `npm start`.
+3. Set the build command to `npm run build` and the **start command to `npm start`**. Do not enter
+   `node .next/standalone/server.js` — that bypasses the startup validation wrapper.
 4. Point `DATABASE_URL` at the Hostinger MySQL database; confirm the DB user has DDL rights for migrations.
 5. Deploy. The build applies committed migrations (`prisma migrate deploy`) — it does **not** seed.
 6. Seed once, deliberately: `npm run db:seed` with `ADMIN_EMAIL` and a strong `ADMIN_PASSWORD`.
@@ -326,10 +362,25 @@ troubleshooting — never as production storage.
 | `#/work` | case studies | owner | gated by `case_studies` flag |
 | `#/blog`, `#/blog/<slug>` | database `BlogPost` | marketing | `blog` flag; only `PUBLISHED` + past `publishedAt` |
 | `#/careers` | static | owner | |
-| `#/contact` | form → `/api/contact` | sales | creates a real lead with consent evidence |
+| `#/contact` | form → `/api/contact` | sales | creates a real lead with consent evidence; the visitor's own phone/WhatsApp **preference** is optional and is never a published company channel |
 | `#/legal`, `#/legal/<policy>` | policy documents on the company pad | owner | prints on official letterhead |
 | `#/faq` | static | owner | |
 | `#/design-kit` | live components | design | public showcase |
+
+### 5.1a Public contact channels (locked policy)
+
+| Channel | Where | Notes |
+|---|---|---|
+| AI assistant / webchat | every page (widget) | no phone number or WhatsApp account needed; records consent |
+| Enquiry form | `#/contact` | creates the lead + Client ID |
+| Email | `info@bdtech360.com` | the canonical formal channel |
+
+**No public WhatsApp number and no chat deep link are published.** Verify after any change:
+
+```bash
+grep -rn "8801327100297\|wa\.me" src/components/site src/lib/site-contact.ts src/lib/constants.ts src/data/site.ts
+# expected: no output (the generic WhatsAppLink component only renders when a caller passes an explicit number)
+```
 
 ### 5.2 Content changes (no deploy needed)
 
@@ -918,29 +969,45 @@ no secrets in the client bundle · server-side settlement only.
 | Uploaded files | per contract | quarantined files 30 days |
 | Error / automation logs | 90 days | export before pruning |
 
-### 12.4 Backup
+### 12.4 Backup (implemented — see `docs/BACKUP_AND_RESTORE.md`)
 
-The Backup & Recovery view reports **only evidence it can verify**: files that exist, their size and age,
-and whether a restore was ever proven. It will not claim "backups are running".
+Automation lives in two scripts; the full procedure, scheduling and limitations are in
+**`docs/BACKUP_AND_RESTORE.md`**.
 
-Recommended standing procedure:
+| Piece | What it does |
+|---|---|
+| `scripts/backup/mysql-backup.sh` | consistent `mysqldump --single-transaction`, gzip, SHA-256, integrity + completion-marker verification, retention, optional off-server copy, `last-run.json` evidence |
+| `scripts/backup/mysql-restore-drill.sh` | restores into an isolated `tech360_drill_*` database, compares row counts with production, writes `last-drill.json` |
+| hPanel cron (recommended `15 2 * * *`) | the trigger; the application cannot schedule shell commands on Hostinger |
+| `#/admin` → System → **Backup & Recovery** | reads the two evidence files; shows `VERIFIED` only when the last run succeeded *and* a drill passed |
 
-1. Hostinger/hosting-level MySQL dump, daily, off-site.
-2. Record: timestamp, size, checksum, who ran it.
-3. Keep 7 daily + 4 weekly + 3 monthly copies.
-4. `BACKUP_DIR` tells the console where to look for artifacts.
-5. A backup is **unproven** until a restore succeeds (§12.5).
+```bash
+# daily (cron), from a mode-600 env file:
+bash scripts/backup/mysql-backup.sh
+# monthly drill, isolated target mandatory:
+bash scripts/backup/mysql-restore-drill.sh --target-database "tech360_drill_$(date +%Y%m%d)"
+```
 
-### 12.5 Restore drill (monthly)
+Retention default: 7 daily, 4 weekly, 3 monthly. Backups are written outside the web root with
+directory mode `700` and file mode `600`; the database password never touches a command line.
+
+**Current status: implementation verified by 15 automated wrapper tests; a real backup and a real
+restore drill have NOT yet been recorded on the host — treat backup status as UNVERIFIED until §6 of
+`docs/BACKUP_AND_RESTORE.md` is executed and its output logged.**
+
+### 12.5 Restore drill (monthly, isolated)
 
 ```
-1. Create a scratch database (never the production name).
-2. Restore the newest dump into it.
-3. Point a non-production app instance at it.
-4. Verify: row counts for Client, Project, Invoice, Payment, AiAgent; open one invoice; open the portal.
-5. Record the drill: date, backup used, restore duration, result.
-6. Destroy the scratch database.
+1. bash scripts/backup/mysql-restore-drill.sh --target-database tech360_drill_<date>
+   (the script refuses any target that is not prefixed tech360_drill_ or that matches production)
+2. It verifies SHA-256 + gzip, restores, and compares table + row counts for
+   User, Client, Project, Invoice, Payment, ApprovalRequest, AiAgent.
+3. PASS → last-drill.json + Setting backup.restore_test → console shows "restore proven".
+4. FAIL → exit 4, evidence recorded, nothing in production touched.
+5. Record duration and result in the operations log (that number is your measured RTO).
 ```
+
+Never restore over production to "test" it. Never drop a database you might still need to recover.
 
 ### 12.6 Exports
 
@@ -978,6 +1045,7 @@ CI runs these against disposable MySQL. A green CI is **not** a deployment — v
 
 | Symptom | Most likely cause | Check | Fix |
 |---|---|---|---|
+| Production process exits immediately at start | environment validation failed (missing/weak secret, non-mysql URL, preview SQLite) | the `[startup-config]` lines on stderr | fix the named variables — values are never printed |
 | Site returns 500 on every page | `DATABASE_URL` wrong or MySQL down | `/api/health` database status | restore DB access; verify credentials |
 | App redirects to `bdtech360.com` unexpectedly | `x-forwarded-proto: http` from a proxy | request headers | fix proxy/TLS; do not edit the redirect |
 | Admin login returns 401 for a correct password | account locked or `isActive=false` | `User.failedLogins`, `lockedUntil` | wait 15 min or Super Admin unlocks |
@@ -995,6 +1063,9 @@ CI runs these against disposable MySQL. A green CI is **not** a deployment — v
 | Agent run times out | provider latency / `AGENT_RUN_TIMEOUT_MS` | execution row | raise timeout or reduce work |
 | Ops loop `OFFLINE` | driver off / scheduler not calling | `AI_OPS_DRIVER`, heartbeat | enable driver or scheduler |
 | Newsletter says sent but zero opens | no real send / pixel blocked | campaign + comms rows | confirm provider; treat zeros as truth |
+| Backup & Recovery shows UNVERIFIED | no `last-run.json`, the last run failed, or no drill passed | the panel's "Scheduled runner" block | run §6 of `docs/BACKUP_AND_RESTORE.md`; check the cron job in hPanel |
+| Settings refuses to enable PayPal/SSLCommerz (409) | `INTEGRATION_NOT_BUILT` — by design | `docs/PAYMENT_INTEGRATION_POLICY.md` | implement + provider-verify before enabling; record manual payments as `MANUAL` |
+| Public site shows a WhatsApp number | regression | `grep -rn '8801327100297' src` | must be empty; contact routes are webchat, form, email |
 | Prisma `EACCES` on build | engine lost its executable bit | build log | `scripts/prisma.mjs` repairs it; re-run build |
 | Slow pages / timeouts | DB indexes, large exports, AI latency | error log + timing | use indexes, paginate, queue |
 

@@ -4,7 +4,11 @@
 **Repository:** `alaminiubateee969-cmd/tech360` · branch `arena/7fc398c7-tech360` (from `main` @ `1007764`)
 **Application version:** 0.2.1
 **Auditor:** Arena agent (automated code review + live runtime verification)
-**Companion document:** [`OPERATIONS_GUIDEBOOK.md`](./OPERATIONS_GUIDEBOOK.md)
+**Companions:** [`OPERATIONS_GUIDEBOOK.md`](./OPERATIONS_GUIDEBOOK.md) ·
+[`BACKUP_AND_RESTORE.md`](./BACKUP_AND_RESTORE.md) ·
+[`PAYMENT_INTEGRATION_POLICY.md`](./PAYMENT_INTEGRATION_POLICY.md)
+**Revision:** 2 — post-audit remediation (2026-10-24). Sections 10–13 record what changed, what was
+re-verified, and what is still blocked.
 
 ---
 
@@ -23,7 +27,7 @@ state, and destructive actions are gated by human approvals.
 |---|---|---|
 | Lint | `npm run lint` | **PASS** — 0 errors |
 | Type check | `npm run typecheck` | **PASS** — 0 errors (against a generated Prisma client) |
-| Unit / policy tests | `npm test` | **915 / 918 PASS**, 3 blocked (MySQL-only, no local MySQL) |
+| Unit / policy tests | `npm test` | **951 / 954 PASS**, 3 blocked (MySQL-only, no local MySQL). Revision 2 added 36 tests |
 | Dependency install | `npm ci` | **PASS** — 862 packages |
 | Runtime boot | `next dev` + health | **PASS** — `/api/health` → `healthy`, `database: UP`, 44 agents |
 | Public site | `GET /` | **PASS** — HTTP 200, server-rendered HTML |
@@ -102,7 +106,7 @@ Everything below distinguishes **verified** from **reported by documentation** f
 
 Severity: **P0** production-blocking · **P1** material risk · **P2** quality/hygiene · **P3** nice-to-have.
 
-### F-01 · P1 · Public WhatsApp contact contradicts the recorded owner decision
+### F-01 · P1 · ~~Public WhatsApp contact contradicts the recorded owner decision~~ → **RESOLVED (rev. 2)**
 **Evidence (verified):** `src/lib/site-contact.ts` defines `PUBLIC_CONTACT.whatsappE164 = '+8801327100297'`
 with a `wa.me` deep link; `src/components/site/SiteFooter.tsx:111-117` renders that link and number;
 `src/lib/constants.ts` and `src/data/site.ts` re-export it. Meanwhile `README.md` states the latest owner
@@ -111,17 +115,25 @@ decision is *"no public WhatsApp number/action; AI support is the public contact
 
 **Risk:** the site publishes a channel the owner believes is gone, and inbound WhatsApp traffic that
 nobody is watching. This is a compliance/expectation risk, not a code defect.
-**Action:** owner decision required. Either (a) remove the footer link and keep the number internal, or
-(b) keep it and correct README/KNOWN_ISSUES. Do not leave both.
+**Resolution (rev. 2):** option (a), on owner instruction. The number, its `wa.me` link and every
+helper that produced them were removed from `src/lib/site-contact.ts`, `src/lib/constants.ts`,
+`src/data/site.ts`, `SiteFooter`, the generic `WhatsAppLink` component (no shared fallback any more),
+the portal sign-in copy, the service CTA and three legal-policy paragraphs. Webchat, the enquiry form
+and email were verified working afterwards (`TECH-2026-000107` and `-108` created in the live run).
+Pinned by 4 rewritten tests. See §10.
 
-### F-02 · P1 · Hostinger start command / preflight invocation is unverified
+### F-02 · P1 · Hostinger start command / preflight invocation is unverified → **MITIGATED (rev. 2), hosting side still open**
 **Evidence (documented, not verified):** `npm start` runs `prestart` (env validation) then
 `.next/standalone/server.js`. Hostinger's Next.js preset manages the server process; whether it invokes the
 npm lifecycle is **not verified** in the repository.
 **Risk:** if `prestart` never runs, a misconfigured production environment boots "successfully" and fails
 later in confusing ways (or worse, runs with a weak secret).
-**Action:** confirm in hPanel/startup logs during the first deploy; if it does not run, move the validation
-into `server.js` bootstrap or an entry script.
+**Mitigation (rev. 2):** `npm start` now runs `scripts/start-production.mjs`, which validates the
+environment, refuses `PREVIEW_SQLITE_URL`, prints a redacted summary and only then boots the standalone
+server — so the check no longer depends on npm lifecycle support. 10 tests cover it, including "no secret
+value is printed". **Still open:** which command hPanel actually runs is not verifiable from this
+repository; if the field contains `node .next/standalone/server.js` the wrapper is bypassed. Operator
+must confirm and record it (guidebook §3.1a).
 
 ### F-03 · P1 · Documentation drift across 57 docs
 **Evidence (verified):** `MASTER_PROJECT_AUDIT.md` describes SQLite + 43 models + SSH VPS deployment
@@ -132,12 +144,15 @@ overlaps `docs/architecture/DATABASE_ARCHITECTURE.md`.
 **Action:** mark superseded documents at the top (as `MASTER_PROJECT_AUDIT.md` already does) and point to
 `OPERATIONS_GUIDEBOOK.md` + `docs/PROJECT_STATE_REPORT.md` as the only current sources.
 
-### F-04 · P2 · Payment gateways that cannot be enabled are still documented as configurable
+### F-04 · P2 · Payment gateways that cannot be enabled are still documented as configurable → **RESOLVED (rev. 2)**
 **Evidence (verified):** `.env.example` lists `PAYPAL_*` and `SSLCOMMERZ_*`; the platform marks both
 `INTEGRATION_NOT_BUILT`. Settings refuses to make them live.
 **Risk:** a non-technical operator sets the variables and assumes card/SSLCommerz payments work.
-**Action:** add an explicit "not implemented" note next to those variables in `.env.example` (the
-guidebook already states it).
+**Resolution (rev. 2):** `.env.example` now states that PayPal/SSLCommerz adapters are not implemented;
+`PUT /api/admin/settings` refuses to enable either with **409 `GATEWAY_NOT_BUILT`** before persisting
+(verified live); `docs/PAYMENT_INTEGRATION_POLICY.md` defines the four conditions for "operational" and
+the requirements a real adapter must meet. 10 tests pin the behaviour, including signature, replay,
+amount/currency mismatch and duplicate settlement.
 
 ### F-05 · P2 · Database-backed tests cannot run without MySQL
 **Evidence (verified):** `tests/database-workflows.test.ts`, `tests/governance-db.test.ts`,
@@ -149,12 +164,18 @@ security, governance and API-contract suites.
 **Risk:** the CRM→closure lifecycle is only covered in CI.
 **Action:** keep CI as the gate; optionally add a preview-mode variant that runs those three against SQLite.
 
-### F-06 · P2 · No automated backup job inside the product
+### F-06 · P2 · No automated backup job inside the product → **IMPLEMENTED (rev. 2), live run BLOCKED**
 **Evidence (verified):** `/api/admin/backup` reports artifacts it can see (`BACKUP_DIR`); the legacy
 `deployment/backup.sh` is retired and fails fast; no cron/scheduler is shipped.
 **Risk:** the console can honestly report "no backup", but nothing creates one.
-**Action:** schedule a MySQL dump at the hosting layer (see Guidebook §12.4) and run the monthly restore
-drill.
+**Delivered (rev. 2):** `scripts/backup/mysql-backup.sh` (consistent dump, checksum, integrity and
+completion-marker verification, retention 7/4/3, optional rclone/scp off-server copy, flock overlap
+guard, redacted failure alerting, `last-run.json`) and `scripts/backup/mysql-restore-drill.sh` (hard
+`tech360_drill_` prefix rail, refuses the production name, read-only on production, row-count
+comparison, `last-drill.json`). The admin Backup & Recovery view now reads that evidence and shows
+`VERIFIED` only when the last run succeeded **and** a drill passed. 15 behavioural tests pin the
+wrapper. **Blocked:** executing a real dump/restore needs the production MySQL server and host access;
+until then backup status is **UNVERIFIED** (see §12).
 
 ### F-07 · P2 · Ops loop depends on an external trigger or the in-process driver
 **Evidence (verified):** `AI_OPS_DRIVER` defaults to on (in-process); `/api/ops/cycle` requires
@@ -305,3 +326,172 @@ until those adapters are built and provider-tested.
 - Statements about provider behaviour are based on this repository's adapters and documented contracts,
   not on live provider calls.
 - "Verified" in this document means *executed in this sandbox on this date* with the exact commands shown.
+
+---
+
+# Part II — Post-audit remediation (revision 2, same date)
+
+This part records the remediation pass requested after revision 1. Every claim below is either
+**executed in this sandbox** (commands shown) or explicitly **BLOCKED** with the missing access named.
+Nothing is marked production-ready because a preview works.
+
+## 10. Task 1 — public WhatsApp channel removed
+
+**Status: PASS (verified).**
+
+Removed the published number and every public chat deep link:
+
+| File | Change |
+|---|---|
+| `src/lib/site-contact.ts` | `whatsappE164`, `whatsappDisplay`, `whatsappDigits`, `whatsappLink` deleted; owner decision documented; `channels: ['webchat','enquiry-form','email']` added |
+| `src/lib/constants.ts` | `COMPANY.publicWhatsApp` / `publicWhatsAppLink` deleted |
+| `src/data/site.ts` | `COMPANY.publicWhatsApp` / `whatsappLink` deleted; the number removed from three legal-policy contact paragraphs (privacy, payment, handover) |
+| `src/components/site/SiteFooter.tsx` | WhatsApp anchor removed; email + AI-chat entry remain |
+| `src/components/site/buttons.tsx` | `WhatsAppLink` no longer falls back to a shared number — it renders nothing unless a caller passes an explicit number |
+| `src/components/site/PortalView.tsx` | "or message us on WhatsApp" replaced with email + chat |
+| `src/components/site/ServiceDetailView.tsx` | CTA copy no longer promises a WhatsApp engineer |
+| `src/components/site/DesignKitView.tsx` | showcase note matches reality |
+| `src/components/site/ChatWidget.tsx` | "WhatsApp is optional" → "A phone number is optional" |
+| `tests/tech360-messaging-repair.test.ts` | the four contact tests rewritten to assert **absence** (number, `wa.me`, shared fallback) and presence of webchat + email |
+
+Deliberately preserved: the visitor's own *preferred contact* option in the enquiry form and the private
+WhatsApp Cloud API adapter (inbound webhook, outbound agent channel, OTP channel). Neither publishes a
+TECH360 number.
+
+**Verification (live run against the preview database):**
+
+```
+GET /                                        → 200;  "8801327100297" occurrences: 0;  "wa.me": 0;  info@bdtech360.com: 5
+POST /api/chat/session  (email + consent)    → 201; Client ID TECH-2026-000107 issued
+POST /api/chat/message                        → 201; honest AI-unavailable reply, no phone required
+POST /api/contact       (consent + details)   → 200; Client ID TECH-2026-000108 issued
+tsx --test tests/tech360-messaging-repair.test.ts → 56/56 pass
+```
+
+## 11. Task 2 — automated MySQL backups
+
+**Status: IMPLEMENTED + wrapper-tested (PASS); real backup/restore on the host: BLOCKED (no MySQL, no
+host access). Backup status therefore remains UNVERIFIED.**
+
+| File | Purpose |
+|---|---|
+| `scripts/backup/mysql-backup.sh` | consistent dump, gzip, sha256, integrity + completion-marker checks, retention, optional off-site, flock, redacted alerts, `last-run.json` |
+| `scripts/backup/mysql-restore-drill.sh` | isolated restore with mandatory `tech360_drill_` prefix, read-only on production, row-count comparison, `last-drill.json` |
+| `tests/backup-tooling.test.ts` | 15 behavioural tests (see below) |
+| `src/app/api/admin/backup/route.ts` | reads the evidence files; adds `runner` (health, last run, last drill, schedule) |
+| `src/components/admin/BackupRecoveryView.tsx` | "Scheduled runner" panel + `Automation: VERIFIED/UNVERIFIED` |
+| `docs/BACKUP_AND_RESTORE.md` | schedule, retention, off-site, drill, recovery, limitations |
+| `.env.example` | `BACKUP_DIR`, `TECH360_BACKUP_DIR`, `TECH360_BACKUP_OFFSITE`, `TECH360_BACKUP_ALERT_WEBHOOK`, `BACKUP_SCHEDULE`, `BACKUP_SCHEDULE_NOTE` |
+
+Safety properties proven by the tests (stubbed MySQL binaries — wrapper logic only):
+
+```
+ok 1 syntax and safety        — bash -n; non-mysql URL refused; web-root path refused; dry run
+ok 2 a successful run         — .sql.gz + .sha256 + last-run.json; dir 700 / file 600; VERIFY_OK
+                              — password absent from stdout, stderr, argv and every artefact
+                              — failed dump → exit 3 + status FAILED; empty dump refused; corruption → exit 4
+ok 3 overlap and retention    — second concurrent run exits 75; expired artefacts pruned, newest kept
+ok 4 restore drill            — refuses target without the prefix; refuses the production name;
+                              — restores into the isolated DB, records PASS, only DROP/CREATE on the drill DB;
+                              — corrupted dump fails with exit 4, source untouched
+15/15 pass
+```
+
+**Operator actions still required (in this order):**
+
+1. Confirm hPanel → Advanced → Cron Jobs can run a shell command for the account.
+2. Create `~/.tech360-backup.env` (mode 600) with `DATABASE_URL`, `TECH360_BACKUP_DIR`, optionally
+   `TECH360_BACKUP_OFFSITE` / `TECH360_BACKUP_ALERT_WEBHOOK`.
+3. Add the daily job (`15 2 * * *`) as described in `docs/BACKUP_AND_RESTORE.md` §4.2/§4.4.
+4. Run `bash scripts/backup/mysql-backup.sh` once by hand; paste `last-run.json` into the operations log.
+5. Run the drill once into `tech360_drill_<date>`; paste `last-drill.json`.
+6. Only then does the console's `Automation` card read `VERIFIED`.
+
+**Why it cannot be done here:** this sandbox has no MySQL server, no `mysqldump`, and no access to the
+Hostinger account; the scripts were exercised only against stubbed binaries, which proves the wrapper and
+not MySQL itself.
+
+## 12. Task 3 — Hostinger production startup
+
+**Status: MITIGATED + locally VERIFIED; hosting verification BLOCKED (no hPanel access).**
+
+Changes:
+
+* `scripts/start-production.mjs` (new): refuses `PREVIEW_SQLITE_URL`, runs the canonical
+  `validate-production-env.mjs`, prints a name-only summary, then boots `.next/standalone/server.js`
+  in-process. Works whether or not the host runs the npm `prestart` lifecycle.
+* `package.json`: `start` → `node scripts/start-production.mjs`; new `start:check`.
+* `scripts/validate-production-env.mjs`: added the explicit `PREVIEW_SQLITE_URL` refusal.
+
+Verified locally (`npm run start:check` and 10 tests):
+
+```
+complete config                         → exit 0, "required production environment checks passed"
+no secret value in output               → PASS (asserted for all four secrets + DB password + AI key)
+missing SESSION_SECRET                  → exit 1, named in the error
+weak OPS_SECRET                         → exit 1, "at least 32 characters"
+identical secrets                       → exit 1, "must be distinct secrets"
+DATABASE_URL=file:./dev.db              → exit 1, must be mysql://
+APP_ORIGIN=https://staging…             → exit 1, canonical origin required
+PREVIEW_SQLITE_URL=file:/tmp/preview.db → exit 1, refused in production
+```
+
+**BLOCKED and needing the owner:** the value of the hPanel "start command" field, the build log of the
+next deploy, and the first runtime log. If the field is not `npm start`, change it (documented rollback:
+set it back to the previous value; the deployed artefact is unchanged, so the app keeps running).
+Record the observed values in guidebook §3.1a.
+
+Also **BLOCKED here:** starting the real standalone server requires `npm run build`, which stops at
+`prisma generate` because `binaries.prisma.sh` is unreachable from this sandbox (the EACCES hardening
+runs first and is fine). CI covers the build against disposable MySQL.
+
+## 13. Task 4 — incomplete payment integrations remain safe
+
+**Status: PASS (hardened + verified).**
+
+* New gate: `PUT /api/admin/settings` returns **409 `GATEWAY_NOT_BUILT`** for PayPal/SSLCommerz *before
+  persisting anything*. Verified live:
+  `{"error":"PAYPAL checkout is not implemented (INTEGRATION_NOT_BUILT) and cannot be enabled.","code":"GATEWAY_NOT_BUILT"}`.
+* Confirmed no regression: `STRIPE` can still be toggled (it has a real adapter); gateways then report
+  `CONFIGURATION_REQUIRED` until keys exist — never `ACTIVE` on the strength of a switch.
+* `docs/PAYMENT_INTEGRATION_POLICY.md` defines "operational" (adapter + credentials + switch + server-side
+  settlement evidence) and the nine requirements a real adapter must satisfy before going live.
+* 10 tests pin: registry definitions, code-derived `checkoutBuilt`, the settings refusal ordering,
+  "no settlement from a success URL", signature verification (valid / wrong key / tampered), replay
+  outside tolerance, malformed headers, exact amount + currency matching, duplicate delivery.
+* No live financial transaction was initiated, and none may be without explicit authorisation.
+
+## 14. Task 5 — verification summary (revision 2)
+
+| Gate | Command | Result |
+|---|---|---|
+| Lint | `npx eslint .` | **PASS** — 0 errors |
+| Types | `npx tsc --noEmit` | **PASS** — 0 errors |
+| Tests | `npx tsx --test --experimental-test-module-mocks tests/**/*.test.ts` | **951 / 954 PASS**, 3 BLOCKED (MySQL-native client) |
+| Startup gate | `node scripts/start-production.mjs --check` + tests | **PASS** (10 tests) |
+| Backup wrapper | `tests/backup-tooling.test.ts` | **PASS** (15 tests) |
+| Payment safety | `tests/payment-integration-safety.test.ts` | **PASS** (10 tests) |
+| Public contact | `tests/tech360-messaging-repair.test.ts` | **PASS** (56 tests) |
+| Live runtime | `/api/health`, `/`, 12 admin APIs, webchat, enquiry form, settings gate | **PASS** |
+| Production build | `npm run build` | **BLOCKED** — Prisma engine download (`binaries.prisma.sh` unreachable here); CI covers it |
+| MySQL-dependent tests (3) | `tests/database-workflows|governance-db|governance-outbound-db` | **BLOCKED** — need a MySQL-native Prisma engine + server |
+| Real backup + restore drill | `scripts/backup/*.sh` on the host | **BLOCKED** — no MySQL/host access |
+| hPanel start command | hPanel console | **BLOCKED** — owner access required |
+
+Added tests: 36 (10 startup, 15 backup, 10 payment, 1 wiring). Total suite 954.
+
+**Secret/access review of the change set:** no credential added to the repo; the new env names are
+placeholders only; the backup scripts read secrets from a mode-600 file and never print them (asserted by
+test); no route guard was weakened (the settings gate only got stricter); no migration was added or
+altered; no data was deleted; the only database written in testing was the throwaway preview SQLite file
+and the isolated stubbed drill target.
+
+### Remaining production risks (unchanged unless noted)
+
+1. Backup automation is unproven until the host run and drill are recorded (§11).
+2. hPanel start command unverified; the wrapper is bypassed if it is not `npm start` (§12).
+3. Production build/start not executed in this environment (§14).
+4. PayPal/SSLCommerz remain unimplemented — now impossible to enable accidentally (§13).
+5. Provider integrations (Stripe live keys, WhatsApp, SMTP, SMS, social, AI) still need credentials and
+   acceptance evidence; the app reports them `NOT_CONFIGURED`.
+6. Documentation drift F-03 and repo hygiene F-08 remain open (no behavioural risk).
