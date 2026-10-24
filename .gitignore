@@ -75,3 +75,8 @@ tool-results/
 *.pem
 *.key
 .e2e-tmp/
+
+.engine-mirror/
+
+.sqlite-work/
+.preview/
