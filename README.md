@@ -17,6 +17,26 @@ The official **company letterhead** (owner-provided pad + logo) drives every doc
 
 ---
 
+## 0. Operating the platform
+
+Read **[`docs/OPERATIONS_GUIDEBOOK.md`](docs/OPERATIONS_GUIDEBOOK.md)** — the complete operating manual:
+deployment, daily/weekly/monthly checklists, website, CRM, delivery, finance, portal, AI workforce,
+governance, data, troubleshooting and incident runbooks. The latest code audit is
+**[`docs/FULL_PROJECT_CODE_AUDIT_2026-10-24.md`](docs/FULL_PROJECT_CODE_AUDIT_2026-10-24.md)**.
+
+### Review the whole product without a MySQL server
+
+```bash
+npm ci
+npm i --no-save @prisma/adapter-libsql @libsql/client   # preview-only adapter
+npm run preview:setup                                   # builds + seeds .preview/demo.db
+PREVIEW_SQLITE_URL=file:$PWD/.preview/demo.db npm run dev
+```
+
+Then open `/#/` (website), `/#/portal` (client portal) and `/#/admin` (Super Admin console,
+`admin@tech360.local` / `Tech360-Demo-2026!`). Preview mode is refused when `NODE_ENV=production`
+(`src/lib/preview-db.ts`) and `.preview/` is git-ignored — it is never production storage.
+
 ## 1. Local setup
 
 The application uses **Node.js 22.x, npm, and MySQL**. Use a disposable/development MySQL database here—never point local commands at production.

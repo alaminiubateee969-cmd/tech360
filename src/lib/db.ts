@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { attachPreviewAdapter } from './preview-db'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -23,8 +24,14 @@ const globalForPrisma = globalThis as unknown as {
 // parameter values, which would write customer PII and credentials into the
 // server log.
 function createClient(): PrismaClient {
+  // Preview mode (development only) swaps the native query engine for the
+  // pure-JS libSQL adapter against a throwaway SQLite file — see
+  // src/lib/preview-db.ts. In production this returns undefined and the
+  // client is built exactly as before.
+  const preview = attachPreviewAdapter()
   return new PrismaClient({
     log: process.env.NODE_ENV === 'production' ? ['warn', 'error'] : ['query', 'warn', 'error'],
+    ...(preview ?? {}),
   })
 }
 
