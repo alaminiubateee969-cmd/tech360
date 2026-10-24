@@ -23,6 +23,7 @@ import { PUBLIC_CONTACT } from '@/lib/site-contact'
 import { loadDiscoveryState, saveDiscoveryState, nextQuestion, buildSummary, DISCOVERY_FIELDS, type DiscoveryFieldKey } from '@/lib/discovery'
 import { loadCommState, recordInbound, recordOutbound } from '@/lib/conversation-state'
 import { sendCommunication } from '@/lib/comms'
+import { screenAiReply } from '@/lib/ai-reply-guard'
 
 export type OrchestratorResult = {
   ok: boolean
@@ -199,8 +200,23 @@ export async function handleCustomerMessage(input: {
       emailInMessage,
     })
     if (aiResult.ok && aiResult.output) {
-      aiReply = aiResult.output
-      wasAiGenerated = true
+      // Output guardrail: a reply that quotes a price, confirms a payment, decides a
+      // refund or contract, releases source code, or claims completion is withheld.
+      // The honest fallback escalates it to a human instead.
+      const screened = screenAiReply(aiResult.output)
+      if (screened.ok) {
+        aiReply = aiResult.output
+        wasAiGenerated = true
+      } else {
+        aiError = `AI reply withheld by output guardrail (${screened.reason})`
+        const { logError } = await import('@/lib/security')
+        await logError({
+          source: 'CHAT_ORCHESTRATOR',
+          code: 'AI_REPLY_WITHHELD',
+          message: `Client ${client.clientId}: ${screened.reason}`,
+          clientId: client.clientId,
+        }).catch(() => null)
+      }
     } else {
       aiError = aiResult.error ?? 'AI provider unavailable'
       // Record failure honestly

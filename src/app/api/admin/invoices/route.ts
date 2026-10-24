@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { acceptedMethodsPhrase } from '@/lib/features'
 import { nextInvoiceNumber } from '@/lib/ids'
+import { createHash } from 'node:crypto'
+import { GovernanceDeniedError, ensureGovernedApproval, executeGoverned, findApprovedGovernedApproval } from '@/lib/governance/enforce'
 import {
   computeInvoiceSettlement,
   computeInvoiceTotals,
@@ -269,43 +271,95 @@ export async function POST(req: NextRequest) {
   const billingCountry = sanitizeText(raw.billingCountry, 80) || client.country || null
   const methodsSnapshot = (await acceptedMethodsPhrase()) || 'Not Configured — Payment setup required'
 
-  const number = await nextInvoiceNumber()
-  const invoice = await db.invoice.create({
-    data: {
-      number,
+  // A client-facing invoice is a consequential financial document. It is created
+  // only with a Super Admin approval bound to this exact content: client,
+  // project, currency, totals, line items, scope version, billing and due date.
+  // The approval is consumed in the same transaction as the insert, so a
+  // refused or replayed request creates no invoice and burns no invoice number.
+  const contentHash = createHash('sha256')
+    .update(JSON.stringify({ clientId: client.id, projectId, currency: calc.currency, totalMinor: calc.totalMinor, lineItems: calc.lineItems, scopeVersion, billingName, billingEmail, dueAt: dueAt ?? null }), 'utf8')
+    .digest('hex')
+  const resourceKey = `invoice:${client.id}:${contentHash}`
+  const approvalId = sanitizeText(raw.approvalId, 40) || (await findApprovedGovernedApproval('invoice.generate', resourceKey))
+  const created = await executeGoverned(
+    {
+      action: 'invoice.generate',
+      actor: { type: 'HUMAN', id: g.user.id, role: g.user.role },
+      resourceKey,
+      amountMinor: calc.totalMinor,
+      approvalId,
       clientId: client.id,
       projectId,
-      scopeVersion,
-      currency: calc.currency,
-      amount: calc.totalMajor,
-      subtotalMinor: calc.subtotalMinor,
-      discountMinor: calc.discountMinor,
-      discountReason,
-      taxRateBps: calc.taxRateBps,
-      taxLabel: calc.taxLabel,
-      taxMinor: calc.taxMinor,
-      totalMinor: calc.totalMinor,
-      description,
-      lineItems: JSON.stringify(calc.lineItems),
-      billingName,
-      billingBusiness,
-      billingEmail,
-      billingAddress,
-      billingCountry,
-      paymentTerms,
-      paymentMethodsSnapshot: methodsSnapshot,
-      internalNotes,
-      customerNotes,
-      notes: customerNotes,
-      termsVersion,
-      status: initialStatus,
-      dueAt,
     },
-    include: {
-      client: { select: { id: true, clientId: true, name: true, businessName: true, email: true, country: true } },
-      project: { select: { id: true, code: true, name: true } },
+    async (tx) => {
+      const number = await nextInvoiceNumber()
+      const invoice = await tx.invoice.create({
+      data: {
+        number,
+        clientId: client.id,
+        projectId,
+        scopeVersion,
+        currency: calc.currency,
+        amount: calc.totalMajor,
+        subtotalMinor: calc.subtotalMinor,
+        discountMinor: calc.discountMinor,
+        discountReason,
+        taxRateBps: calc.taxRateBps,
+        taxLabel: calc.taxLabel,
+        taxMinor: calc.taxMinor,
+        totalMinor: calc.totalMinor,
+        description,
+        lineItems: JSON.stringify(calc.lineItems),
+        billingName,
+        billingBusiness,
+        billingEmail,
+        billingAddress,
+        billingCountry,
+        paymentTerms,
+        paymentMethodsSnapshot: methodsSnapshot,
+        internalNotes,
+        customerNotes,
+        notes: customerNotes,
+        termsVersion,
+        status: initialStatus,
+        dueAt,
+      },
+      include: {
+        client: { select: { id: true, clientId: true, name: true, businessName: true, email: true, country: true } },
+        project: { select: { id: true, code: true, name: true } },
+      },
+        })
+      return { invoice }
     },
-  })
+  ).then(
+    (value) => ({ ok: true as const, value }),
+    (error: unknown) => ({ ok: false as const, error }),
+  )
+  if (!created.ok) {
+    const error = created.error
+    if (error instanceof GovernanceDeniedError && error.code === 'APPROVAL_REQUIRED') {
+      const pendingId = await ensureGovernedApproval({
+        action: 'invoice.generate',
+        requestedBy: g.user.id,
+        resourceKey,
+        amountMinor: calc.totalMinor,
+        clientId: client.id,
+        projectId,
+        title: `Create invoice for ${client.clientId}`,
+        description: 'A client invoice needs an independent Super Admin approval for this exact content before it is created.',
+        extraPayload: { currency: calc.currency, lineItemCount: calc.lineItems.length },
+      })
+      return Response.json(
+        { ok: false, status: 'APPROVAL_REQUIRED', approvalId: pendingId, error: 'This invoice needs a Super Admin approval before it can be created. The approval has been requested; no invoice was created.' },
+        { status: 409 },
+      )
+    }
+    if (error instanceof GovernanceDeniedError) {
+      return Response.json({ ok: false, status: 'GOVERNANCE_DENIED', code: error.code, error: 'This invoice was refused by governance. No invoice was created.' }, { status: 409 })
+    }
+    throw error
+  }
+  const invoice = created.value.invoice
 
   await audit({
     userId: g.user.id,

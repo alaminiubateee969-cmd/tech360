@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         if (!payment || payment.clientId !== client.id) {
           return Response.json({ error: 'Payment not found for this client.' }, { status: 404 })
         }
-        const r9 = await verifyPayment(paymentId, g.user.id)
+        const r9 = await verifyPayment(paymentId, { type: 'HUMAN', id: g.user.id, role: g.user.role }, sanitizeText(payload.approvalId, 40) || null)
         result = r9 as unknown as Record<string, unknown>
         message = 'Payment verified. Project activated if this was the first verified payment.'
         break

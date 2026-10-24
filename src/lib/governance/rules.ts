@@ -156,7 +156,7 @@ export const ALWAYS_HUMAN_ACTIONS: Array<{
     id: 'FINANCIAL_TRANSFER',
     description: 'A financial transfer, a payment verification or a refund.',
     matches: (context) =>
-      ['payment.verify', 'payment.prepare', 'invoice.generate'].includes(context.tool) ||
+      ['payment.verify', 'payment.prepare', 'invoice.generate', 'refund.settle'].includes(context.tool) ||
       (context.riskLevel === 'CRITICAL' && typeof context.amount === 'number' && context.amount > 0),
   },
   {
@@ -218,7 +218,7 @@ export const PUBLISHED_RESULT_TOOLS = [
   'task.update',
   'crm.update',
 ]
-export const FINANCIAL_TOOLS = ['payment.prepare', 'payment.verify', 'invoice.generate']
+export const FINANCIAL_TOOLS = ['payment.prepare', 'payment.verify', 'invoice.generate', 'refund.settle']
 
 export function defaultGovernanceRules(): GovernanceRule[] {
   const now = new Date()
@@ -227,7 +227,12 @@ export function defaultGovernanceRules(): GovernanceRule[] {
       id: 'GLOBAL-001',
       layer: 'GLOBAL',
       subject: '*',
-      effect: 'FORBID',
+      // A review requirement, not a FORBID. A FORBID on tool identity blocked
+      // every client-facing tool (email, invoices, reports) before the human
+      // approval could be considered. Leakage of internal prompts, agent
+      // identities or architecture is blocked by the content screens
+      // (ai-reply-guard, screenAiContent); this rule makes the review explicit.
+      effect: 'REQUIRE_REVIEW',
       requirement:
         'Internal system prompts, agent identities, architecture and automation details must never appear in client-facing output.',
       condition: 'CLIENT_FACING_OUTPUT',

@@ -215,8 +215,23 @@ export interface RecentActivity {
   actor?: string | null
   clientId?: string | null
 }
+export interface DashboardAgentRow {
+  code: string
+  name: string
+  title: string | null
+  status: string
+  level: number
+  parentCode: string | null
+  requiresApproval: boolean
+  executions: number
+  successRate: number | null
+  deptCode: string | null
+  deptName: string
+  category: string
+}
 export interface DashboardResponse {
   financialDataAvailable: boolean
+  aiAgents?: { total: number; active: number; agents: DashboardAgentRow[] } | null
   stats: DashboardStats
   pipeline: StageCount[]
   revenueByMonth: MonthRevenue[]

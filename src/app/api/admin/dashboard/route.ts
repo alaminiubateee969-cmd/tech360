@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { canViewFinancialDashboard } from '@/lib/access-policy'
+import { canViewFinancialDashboard, hasRole } from '@/lib/access-policy'
 import { guard, isResponse } from '@/lib/api-guard'
 
 export const dynamic = 'force-dynamic'
@@ -83,8 +83,43 @@ export async function GET(req: NextRequest) {
     return { month: key, paid: revenueMap.get(key) ?? 0 }
   }) : []
 
+  // AI workforce roster for ADMIN and SUPER_ADMIN. Identity and status only:
+  // system prompts, tool and data permissions, memory and run controls stay
+  // SUPER_ADMIN-only (see src/lib/ai-workforce-policy.ts). STAFF and MANAGER
+  // never receive this payload.
+  const aiAgents = hasRole(g.user, 'ADMIN')
+    ? await db.aiAgent.findMany({
+        orderBy: [{ level: 'asc' }, { code: 'asc' }],
+        select: {
+          code: true, name: true, title: true, status: true, level: true, parentCode: true,
+          requiresApproval: true, executionCount: true, successCount: true,
+          department: { select: { code: true, name: true, category: true } },
+        },
+      })
+    : null
+
   return Response.json({
     financialDataAvailable: canViewFinancials,
+    aiAgents: aiAgents
+      ? {
+          total: aiAgents.length,
+          active: aiAgents.filter((a) => a.status === 'ACTIVE').length,
+          agents: aiAgents.map((a) => ({
+            code: a.code,
+            name: a.name,
+            title: a.title,
+            status: a.status,
+            level: a.level,
+            parentCode: a.parentCode,
+            requiresApproval: a.requiresApproval,
+            executions: a.executionCount,
+            successRate: a.executionCount > 0 ? Math.round((a.successCount / a.executionCount) * 100) : null,
+            deptCode: a.department?.code ?? null,
+            deptName: a.department?.name ?? 'Unassigned',
+            category: a.department?.category ?? 'OPERATIONS',
+          })),
+        }
+      : null,
     stats: {
       totalLeads, newLeads, newLeadsWeek, qualifiedLeads, clients, activeProjects,
       projectsAwaitingApproval: awaitingApprovalProjects, paymentPending, paidProjects,

@@ -101,6 +101,10 @@ export type RetryDecision = {
  * (`not a valid phone number`, provider `message`, `HTTP <status>`).
  */
 const PERMANENT_PATTERNS: ReadonlyArray<{ pattern: RegExp; reason: string }> = [
+  // The provider may already have accepted the message (timeout after send,
+  // HTTP 5xx). Automatic re-sending could duplicate a customer email, so the
+  // outbox parks it for an operator to verify in the Sent folder first.
+  { pattern: /AMBIGUOUS_PROVIDER_OUTCOME/, reason: 'Provider outcome is unknown — verify the Sent folder before a manual retry to avoid a duplicate email' },
   { pattern: /not a valid (phone number|email|recipient)/i, reason: 'Recipient is not a valid address — retrying cannot fix it' },
   { pattern: /invalid (recipient|phone|email|address|login|credentials|token)/i, reason: 'Credentials or recipient rejected by the provider' },
   { pattern: /recipient.{0,20}(not|isn'?t).{0,20}(whatsapp|registered|allowed)/i, reason: 'Recipient is not reachable on this channel' },
