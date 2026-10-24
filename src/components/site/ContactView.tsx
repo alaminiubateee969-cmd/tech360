@@ -104,12 +104,20 @@ export default function ContactView() {
     },
   });
 
+  const { subscribe } = form;
+
   useEffect(() => {
-    const subscription = form.watch(() => {
-      requestIdRef.current = null;
+    // `watch()` is intentionally not used here: React Hook Form's `watch()`
+    // cannot be memoized safely by the React Compiler. `subscribe()` gives us
+    // the same "reset the idempotency key when the visitor edits the form"
+    // behaviour without a memoization-incompatible API.
+    return subscribe({
+      formState: { values: true },
+      callback: () => {
+        requestIdRef.current = null;
+      },
     });
-    return () => subscription.unsubscribe();
-  }, [form]);
+  }, [subscribe]);
 
   const onSubmit = async (values: ContactFormValues) => {
     setSubmitting(true);
