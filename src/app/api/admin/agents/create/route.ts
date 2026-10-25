@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto'
-import { AI_WORKFORCE_MIN_ROLE, AGENT_TOOLS } from '@/lib/ai-workforce-policy'
+import { AI_OPERATOR_MIN_ROLE, AGENT_TOOLS } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -110,7 +110,7 @@ async function auditBlockedDecision(user: { id: string; email: string }, departm
  */
 export async function POST(req: NextRequest) {
   const guarded = await guard(req, {
-    minRole: AI_WORKFORCE_MIN_ROLE,
+    minRole: AI_OPERATOR_MIN_ROLE,
     limit: { max: 3, windowMs: 60_000 },
   })
   if (isResponse(guarded)) return guarded

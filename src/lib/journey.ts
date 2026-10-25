@@ -1,3 +1,4 @@
+import { parseScopeDecision, parsePreviewDecision } from '@/lib/pipeline/decision-policy'
 import { db } from '@/lib/db'
 import { nextClientId, nextProjectCode, nextInvoiceNumber, publicToken } from '@/lib/ids'
 import { runAgent, rememberMemory } from '@/lib/agents/engine'
@@ -331,7 +332,7 @@ export async function intakeLead(input: {
         const businessRun = await detectBusiness(clientRow.id, input.message, { advanceStage: true })
         if (businessRun.ok && businessRun.json) {
           const scopeRun = await askScopeQuestions(clientRow.id)
-          stage2Sent = scopeRun.sent.status !== 'AWAITING_APPROVAL'
+          stage2Sent = scopeRun.sent.deliveries.some((delivery) => delivery.ok)
           await stepLog(log.id, 'stage2_business_type', {
             businessType: businessRun.json.businessType ?? null,
             status: scopeRun.sent.status,
@@ -600,6 +601,9 @@ export function formatScopeForClient(content: Record<string, unknown>, clientId:
 // STEP 7 — Client decision on scope (approve / revision / meeting)
 // ------------------------------------------------------------
 export async function clientScopeDecision(clientRowId: string, decision: 'APPROVED' | 'REVISION_REQUESTED' | 'CLARIFICATION_REQUESTED', notes?: string) {
+  const validatedDecision = parseScopeDecision(decision)
+  if (!validatedDecision) throw new Error('Explicit valid scope decision required')
+  decision = validatedDecision
   const client = await db.client.findUnique({ where: { id: clientRowId }, include: { scopes: true } })
   if (!client) throw new Error('Client not found')
   const finalScope = client.scopes.filter((s) => s.status === 'FINAL').sort((a, b) => b.version - a.version)[0]
@@ -861,6 +865,9 @@ export async function recordPreviewDecision(
   decision: 'APPROVED' | 'REVISION_REQUESTED',
   notes?: string,
 ) {
+  const validatedDecision = parsePreviewDecision(decision)
+  if (!validatedDecision) throw new Error('Explicit valid preview decision required')
+  decision = validatedDecision
   const client = await db.client.findUnique({ where: { id: clientRowId } })
   if (!client) throw new Error('Client not found')
 

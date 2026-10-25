@@ -81,7 +81,7 @@ export const PIPELINE_LABELS: Record<string, string> = {
   CLOSED: 'Closed',
 }
 
-export const COMM_CHANNELS = ['WHATSAPP', 'EMAIL', 'SMS', 'FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'X', 'WEB', 'PORTAL'] as const
+export const COMM_CHANNELS = ['WHATSAPP', 'EMAIL', 'SMS', 'FACEBOOK', 'MESSENGER', 'INSTAGRAM', 'LINKEDIN', 'X', 'WEB', 'PORTAL'] as const
 export type CommChannel = (typeof COMM_CHANNELS)[number]
 
 export const SENSITIVE_APPROVAL_TYPES = [

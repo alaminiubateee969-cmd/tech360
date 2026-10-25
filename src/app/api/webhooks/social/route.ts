@@ -45,8 +45,8 @@ export async function POST(req: NextRequest) {
   }
 
   const channel = sanitizeText(raw.channel, 20).toUpperCase()
-  if (!['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'X'].includes(channel)) {
-    return Response.json({ error: 'channel must be FACEBOOK|INSTAGRAM|LINKEDIN|X' }, { status: 400 })
+  if (!['FACEBOOK', 'MESSENGER', 'INSTAGRAM', 'LINKEDIN', 'X'].includes(channel)) {
+    return Response.json({ error: 'channel must be FACEBOOK|MESSENGER|INSTAGRAM|LINKEDIN|X' }, { status: 400 })
   }
   const sender = sanitizeText(raw.sender, 200)
   const message = sanitizeText(raw.message, 4000)

@@ -1,4 +1,4 @@
-import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
+import { AI_OPERATOR_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -40,7 +40,7 @@ async function currentDcc(client: Pick<typeof db, 'departmentCapabilityAssessmen
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  const guarded = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
+  const guarded = await guard(req, { minRole: AI_OPERATOR_MIN_ROLE })
   if (isResponse(guarded)) return guarded
   const { code } = await params
   const clean = sanitizeText(code, 20).toUpperCase()
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
 /** Explicit human activation/pause for DB-backed dynamic drafts. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   const guarded = await guard(req, {
-    minRole: AI_WORKFORCE_MIN_ROLE,
+    minRole: AI_OPERATOR_MIN_ROLE,
     limit: { max: 5, windowMs: 60_000 },
   })
   if (isResponse(guarded)) return guarded

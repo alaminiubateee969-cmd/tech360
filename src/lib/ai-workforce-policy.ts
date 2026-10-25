@@ -1,22 +1,21 @@
 /**
  * TECH360 — AI Employee workforce access policy.
  *
- * The AI Employee workforce is an INTERNAL operational system. It is not a
- * public feature and it is not a general staff feature: the registry, system
- * prompts, memory, execution history, failures, tool permissions, knowledge
- * sources and workflow definitions are all Super Admin material.
- *
- * This module is the single source of truth for that boundary. The API guard
- * and the admin navigation both read it, and `tests/ai-workforce-rbac.test.ts`
- * asserts that every protected route file actually declares it — so a new
- * route cannot quietly ship with a weaker role.
+ * Admin and Super Admin may operate agents and the command center.
+ * Private memory, knowledge, logs, department certification and infrastructure
+ * remain Super Admin-only. Operator routes explicitly use AI_OPERATOR_MIN_ROLE;
+ * private routes use AI_WORKFORCE_MIN_ROLE. Commands cannot bypass private
+ * data boundaries simply because the operator console is visible.
  */
+
+/** Admins may operate agents and commands; infrastructure remains Super Admin-only. */
+export const AI_OPERATOR_MIN_ROLE = 'ADMIN' as const
 
 export const AI_WORKFORCE_MIN_ROLE = 'SUPER_ADMIN' as const
 
 /**
  * API path prefixes that expose AI Employee internals.
- * Every route under these prefixes must guard with AI_WORKFORCE_MIN_ROLE.
+ * Routes use AI_WORKFORCE_MIN_ROLE except the explicit agents/command operator surfaces.
  */
 export const AI_WORKFORCE_API_PREFIXES = [
   '/api/admin/agents',    // registry, profiles, prompts, execution, export

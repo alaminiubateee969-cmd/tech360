@@ -47,7 +47,7 @@ function routeFiles(dir: string): string[] {
   return out
 }
 
-describe('AI workforce: every protected route is SUPER_ADMIN only', () => {
+describe('AI workforce: protected routes declare private or explicit operator policy', () => {
   const protectedDirs = AI_WORKFORCE_API_PREFIXES.map((p) =>
     join(ROOT, 'src/app', p.replace(/^\/api/, 'api')),
   )
@@ -59,29 +59,30 @@ describe('AI workforce: every protected route is SUPER_ADMIN only', () => {
 
   for (const file of files) {
     const rel = file.slice(ROOT.length + 1)
-    it(`${rel} requires SUPER_ADMIN`, () => {
+    it(`${rel} declares the required workforce boundary`, () => {
       const src = readFileSync(file, 'utf8')
       const guards = src.match(/guard\(\s*req\s*(?:,\s*\{[\s\S]*?\})?\s*\)/g) ?? []
       assert.ok(guards.length > 0, `${rel} does not call guard() at all`)
       for (const g of guards) {
         const declaresPolicy =
-          g.includes('AI_WORKFORCE_MIN_ROLE') || g.includes("minRole: 'SUPER_ADMIN'")
+          g.includes('AI_WORKFORCE_MIN_ROLE') || g.includes("minRole: 'SUPER_ADMIN'") ||
+          ((rel.startsWith('src/app/api/admin/agents/') || rel.startsWith('src/app/api/admin/command/')) && g.includes('AI_OPERATOR_MIN_ROLE'))
         assert.ok(
           declaresPolicy,
-          `${rel} has a guard without SUPER_ADMIN — AI Employee internals would leak:\n${g}`,
+          `${rel} has a guard without the required private/operator policy:\n${g}`,
         )
       }
     })
   }
 })
 
-describe('AI workforce: no non-SUPER_ADMIN role can reach the workforce', () => {
+describe('AI workforce: private internals remain SUPER_ADMIN only', () => {
   it('denies CLIENT, STAFF, MANAGER and ADMIN', () => {
     for (const role of ['CLIENT', 'GUEST', 'STAFF', 'MANAGER', 'ADMIN', 'PROJECT_MEMBER']) {
       assert.equal(
         hasRole(user(role), AI_WORKFORCE_MIN_ROLE),
         false,
-        `${role} must not reach the AI Employee command center`,
+        `${role} must not reach private workforce internals`,
       )
     }
   })

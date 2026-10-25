@@ -1,4 +1,4 @@
-import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
+import { AI_OPERATOR_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -8,7 +8,7 @@ import { AGENT_HANDLER, AGENT_REGISTRY_VERSION } from '@/lib/agents/registry'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
+  const g = await guard(req, { minRole: AI_OPERATOR_MIN_ROLE })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const query = sanitizeText(url.searchParams.get('query') ?? '', 60)
