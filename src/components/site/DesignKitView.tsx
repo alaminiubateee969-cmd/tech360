@@ -67,6 +67,8 @@ function Showcase({ label, children, note }: { label: string; children: React.Re
   )
 }
 
+import { DiagramGallery } from './DiagramGallery'
+
 export default function DesignKitView() {
   return (
     <main id="main-content" className="bg-[#F7FAFC] px-5 pb-20 pt-28 sm:px-8">
@@ -128,6 +130,7 @@ export default function DesignKitView() {
           title="Accessible diagram set"
           description="Diagrams are drawn as real SVG with a text alternative, a title band, numbered steps and a legend — readable by screen readers and legible in print. Each one carries a border, a surface and a caption, never colour alone."
         >
+          <DiagramGallery />
           <Showcase label="Sequence · portal sign-in">
             <div className="w-full"><PortalSignInSequence /></div>
           </Showcase>

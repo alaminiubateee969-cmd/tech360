@@ -51,6 +51,7 @@ export function MarketingDashboardView() {
   const [lastPlan, setLastPlan] = useState<GenerateResponse | null>(null)
   const [openSetup, setOpenSetup] = useState<string | null>(null)
   const [mediaDraft, setMediaDraft] = useState<Record<string, string>>({})
+  const [scheduleDraft, setScheduleDraft] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     try { setOverview(await fetchJson<Overview>('/api/admin/marketing')) }
@@ -72,12 +73,12 @@ export function MarketingDashboardView() {
     } catch { toast.error('Generation failed — drafts were not created') } finally { setBusy(null) }
   }
 
-  const act = async (id: string, action: 'approve' | 'reject' | 'publish' | 'media') => {
+  const act = async (id: string, action: 'approve' | 'reject' | 'publish' | 'media' | 'schedule') => {
     setBusy(`${action}:${id}`)
     try {
       const res = await fetchJson<{ ok: boolean; result?: { status: string; error?: string } }>(`/api/admin/marketing/posts/${id}`, {
         method: 'PATCH',
-        body: action === 'media' ? { action, mediaUrl: mediaDraft[id] ?? '' } : { action },
+        body: action === 'media' ? { action, mediaUrl: mediaDraft[id] ?? '' } : action === 'schedule' ? { action, scheduledAt: scheduleDraft[id] ?? '' } : { action },
       })
       if (action === 'publish') {
         if (res.ok) toast.success('Published — platform confirmed the post')
@@ -182,6 +183,12 @@ export function MarketingDashboardView() {
       </SectionCard>
 
       <SectionCard title="Post queue — review, approve, publish">
+        <div className="mb-3">
+          <Button size="sm" variant="outline" disabled={busy === 'due'} onClick={async () => { setBusy('due'); try { const r = await fetchJson<{ processed: number }>('/api/admin/marketing/publish-due', { method: 'POST', body: {} }); toast.success(`Processed ${r.processed} due scheduled post(s)`); await load() } catch { toast.error('Publish-due run failed') } finally { setBusy(null) } }}>
+            Publish due scheduled posts
+          </Button>
+          <span className="ml-2 text-[11px] text-slate-500">Idempotent — already-published posts are never re-sent.</span>
+        </div>
         <div className="space-y-3">
           {(overview?.posts ?? []).length === 0 && <p className="text-xs text-slate-500">No posts yet. Generate a campaign above.</p>}
           {(overview?.posts ?? []).map((post) => (
@@ -202,6 +209,12 @@ export function MarketingDashboardView() {
                 {post.status === 'DRAFT' && <Button size="sm" disabled={busy === `approve:${post.id}`} onClick={() => void act(post.id, 'approve')}><CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Approve</Button>}
                 {post.status === 'APPROVED' && <Button size="sm" variant="outline" disabled={busy === `reject:${post.id}`} onClick={() => void act(post.id, 'reject')}><XCircle className="mr-1 h-3.5 w-3.5" /> Back to draft</Button>}
                 {post.status === 'APPROVED' && <Button size="sm" disabled={busy === `publish:${post.id}`} onClick={() => void act(post.id, 'publish')}><Send className="mr-1 h-3.5 w-3.5" /> Publish now</Button>}
+                {post.status === 'APPROVED' && (
+                  <>
+                    <input type="datetime-local" aria-label="Schedule publish time" className={cn(INPUT, 'min-h-8 w-52 text-[11px]')} value={scheduleDraft[post.id] ?? ''} onChange={(e) => setScheduleDraft((m) => ({ ...m, [post.id]: e.target.value }))} />
+                    <Button size="sm" variant="outline" disabled={busy === `schedule:${post.id}`} onClick={() => void act(post.id, 'schedule')}>Schedule</Button>
+                  </>
+                )}
               </div>
             </div>
           ))}

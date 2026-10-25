@@ -36,6 +36,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const updated = await db.socialPost.update({ where: { id }, data: { mediaUrl: mediaUrl || null } })
     return Response.json({ ok: true, post: updated })
   }
+  if (action === 'schedule') {
+    if (post.status !== 'APPROVED') return Response.json({ error: 'Post must be APPROVED before scheduling' }, { status: 400 })
+    const when = new Date(sanitizeText(raw.scheduledAt, 40))
+    if (Number.isNaN(when.getTime()) || when.getTime() < Date.now() - 60_000) {
+      return Response.json({ error: 'scheduledAt must be a valid future time' }, { status: 400 })
+    }
+    const updated = await db.socialPost.update({ where: { id }, data: { scheduledAt: when } })
+    await audit({ actor: g.user.email, action: 'SOCIAL_POST_SCHEDULED', userId: g.user.id, entityId: id, details: { platform: post.platform, scheduledAt: when.toISOString() } })
+    return Response.json({ ok: true, post: updated })
+  }
   if (action === 'publish') {
     if (post.status !== 'APPROVED') return Response.json({ error: 'Post must be APPROVED before publishing' }, { status: 400 })
     const result = await publishPost({
