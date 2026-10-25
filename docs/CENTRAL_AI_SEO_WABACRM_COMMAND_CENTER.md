@@ -124,3 +124,15 @@ The first central command-center MVP has now been added to this feature branch:
 The dashboard's brand cards are currently descriptive placeholders, not connected website records. The draft form stores a reviewable content record but does not call an AI model. Approving content does not publish it. Template listing requires `WHATSAPP_TOKEN`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, and a token with the relevant Meta permissions. Configure `META_GRAPH_API_VERSION` to a currently supported Graph API version for the Meta app. No credentials were committed.
 
 This branch has not been typechecked, linted, built, or tested in a local checkout by this tool session. Treat it as implementation-in-progress until CI and staging validation pass.
+
+
+### 7. Unified client portal, communications ledger, and AI document vault
+- Every communication from an authorized channel must be attached to a stable CRM Client ID.
+- A verified inbound WhatsApp message from an unknown number must create a Client + Lead automatically, then save the inbound event idempotently. Ambiguous identity matches must be reviewed, not merged blindly.
+- Every attachment must become a pending, auditable document record. Download media through the official provider API, scan/quarantine it, hash it, and store it in private object storage. A placeholder message is not considered a saved document.
+- The client portal must provide authenticated, client-scoped access to communications and documents. Receiving a WhatsApp message alone must never grant portal login access.
+- AI may classify, OCR/extract, summarize, compare document versions, and suggest missing/expired records. Preserve originals, show confidence/source references, and require human review before a document becomes verified or a newer version becomes canonical.
+- Detect exact duplicates with SHA-256 and propose similar-document matches without discarding uploads or communication events.
+- Protect communications, document versions, and audit events from ordinary deletion. Use archive/void/supersede states, server-side RBAC, append-only audit events, private storage, and a separately approved/legal-compliant retention exception process. Do not promise absolute immutability where privacy law requires a lawful erasure path.
+- The detailed workflow and acceptance criteria are in [CLIENT_COMMUNICATION_DOCUMENT_VAULT.md](./CLIENT_COMMUNICATION_DOCUMENT_VAULT.md).
+
