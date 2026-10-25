@@ -230,8 +230,8 @@ ${padMeta([
     <p style="margin-top:8px">Sign in with your console email + password. Your <b>role</b> — assigned to your account, never chosen on the login screen — decides what you can see and do. Accounts are forced to change their seed / temporary password on first login, can enrol in two-factor authentication, lock after repeated failed attempts, and every sign-in is audit-logged.</p>
   </div>
   <div style="display:flex;gap:12px;flex-wrap:wrap">
-    <div class="card" style="flex:1;min-width:230px"><h3>Super Admin</h3><p>Full control: team &amp; role management, settings, feature &amp; payment-gateway switches, AI workforce &amp; command center, final approvals, official documents, audit logs.</p></div>
-    <div class="card" style="flex:1;min-width:230px"><h3>Admin</h3><p>Operations: clients, projects, content studio, software factory, reports, media &amp; feeds. Cannot change roles, governance switches, or gateway credentials.</p></div>
+    <div class="card" style="flex:1;min-width:230px"><h3>Super Admin</h3><p>Full control: team &amp; role management, settings, feature &amp; payment-gateway switches, internal operations, final approvals, official documents, audit logs.</p></div>
+    <div class="card" style="flex:1;min-width:230px"><h3>Admin</h3><p>Operations: clients, projects, content studio, delivery tools, reports, media &amp; feeds. Cannot change roles, governance switches, or gateway credentials.</p></div>
   </div>
   <div class="note"><b>Need access?</b> A Super Admin creates accounts in the console under <b>Team → Create user</b> (a one-time temporary password is shown once). The first Super Admin + Admin accounts are seeded from the server environment (<code>ADMIN_EMAIL</code> / <code>ADMIN_PASSWORD</code> and <code>STAFF_ADMIN_EMAIL</code> / <code>STAFF_ADMIN_PASSWORD</code>) — passwords are never printed on official documents.</div>
 

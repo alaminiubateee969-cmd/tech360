@@ -2,7 +2,8 @@
  * TECH360 — AI Employee workforce security tests.
  *
  * The workforce is an internal system: registry, prompts, memory, execution
- * history, failures, knowledge and workflow definitions are Super Admin only.
+ * history, failures, knowledge and workflow definitions are controlled ONLY
+ * from the Super Admin and Admin dashboards (governance stays SUPER_ADMIN).
  *
  * These tests are deliberately static/unit level so they run in CI without a
  * live server. The route test walks the real filesystem, so a NEW route added
@@ -47,7 +48,7 @@ function routeFiles(dir: string): string[] {
   return out
 }
 
-describe('AI workforce: every protected route is SUPER_ADMIN only', () => {
+describe('AI workforce: every protected route requires ADMIN or SUPER_ADMIN', () => {
   const protectedDirs = AI_WORKFORCE_API_PREFIXES.map((p) =>
     join(ROOT, 'src/app', p.replace(/^\/api/, 'api')),
   )
@@ -59,25 +60,27 @@ describe('AI workforce: every protected route is SUPER_ADMIN only', () => {
 
   for (const file of files) {
     const rel = file.slice(ROOT.length + 1)
-    it(`${rel} requires SUPER_ADMIN`, () => {
+    it(`${rel} requires ADMIN+ (or SUPER_ADMIN governance)`, () => {
       const src = readFileSync(file, 'utf8')
       const guards = src.match(/guard\(\s*req\s*(?:,\s*\{[\s\S]*?\})?\s*\)/g) ?? []
       assert.ok(guards.length > 0, `${rel} does not call guard() at all`)
       for (const g of guards) {
         const declaresPolicy =
-          g.includes('AI_WORKFORCE_MIN_ROLE') || g.includes("minRole: 'SUPER_ADMIN'")
+          g.includes('AI_WORKFORCE_MIN_ROLE') ||
+          g.includes('AI_WORKFORCE_GOVERNANCE_ROLE') ||
+          g.includes("minRole: 'SUPER_ADMIN'")
         assert.ok(
           declaresPolicy,
-          `${rel} has a guard without SUPER_ADMIN — AI Employee internals would leak:\n${g}`,
+          `${rel} has a guard below ADMIN — AI Employee internals would leak:\n${g}`,
         )
       }
     })
   }
 })
 
-describe('AI workforce: no non-SUPER_ADMIN role can reach the workforce', () => {
-  it('denies CLIENT, STAFF, MANAGER and ADMIN', () => {
-    for (const role of ['CLIENT', 'GUEST', 'STAFF', 'MANAGER', 'ADMIN', 'PROJECT_MEMBER']) {
+describe('AI workforce: only Super Admin and Admin can reach the workforce', () => {
+  it('denies CLIENT, STAFF and MANAGER', () => {
+    for (const role of ['CLIENT', 'GUEST', 'STAFF', 'MANAGER', 'PROJECT_MEMBER']) {
       assert.equal(
         hasRole(user(role), AI_WORKFORCE_MIN_ROLE),
         false,
@@ -86,9 +89,16 @@ describe('AI workforce: no non-SUPER_ADMIN role can reach the workforce', () => 
     }
   })
 
-  it('allows only SUPER_ADMIN', () => {
+  it('allows SUPER_ADMIN and ADMIN only', () => {
     assert.equal(hasRole(user('SUPER_ADMIN'), AI_WORKFORCE_MIN_ROLE), true)
+    assert.equal(hasRole(user('ADMIN'), AI_WORKFORCE_MIN_ROLE), true)
     assert.equal(isSuperAdmin(user('SUPER_ADMIN')), true)
+    assert.equal(isSuperAdmin(user('ADMIN')), false)
+  })
+
+  it('governance (create / export / settings) stays SUPER_ADMIN only', () => {
+    assert.equal(hasRole(user('SUPER_ADMIN'), 'SUPER_ADMIN'), true)
+    assert.equal(hasRole(user('ADMIN'), 'SUPER_ADMIN'), false)
   })
 
   it('denies anonymous requests', () => {

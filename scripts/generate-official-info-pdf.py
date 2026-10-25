@@ -139,7 +139,7 @@ def main():
              "on the login screen - decides access. Forced password change on first login, optional 2FA,\n"
              "lockout after failed attempts, full audit log. Passwords are never printed on official documents.")
     y = card(page, y, "Super Admin  |  Admin",
-             "SUPER ADMIN: full control - team & roles, settings, feature/payment switches, AI workforce,\n"
+             "SUPER ADMIN: full control - team & roles, settings, feature/payment switches, internal ops,\n"
              "final approvals, official documents, audit logs.\n"
              "ADMIN: operations - clients, projects, content studio, software factory, reports, media & feeds.\n"
              "Cannot change roles, governance switches, or gateway credentials.\n"

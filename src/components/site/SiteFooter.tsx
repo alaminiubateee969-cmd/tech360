@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, Loader2, Mail, MapPin } from "lucide-react";
+import { MessageCircle, Loader2, Mail, MapPin } from "lucide-react";
 import { COMPANY, SERVICES, INDUSTRIES, LEGAL_DOCS } from "@/data/site";
 
 /**
@@ -111,11 +111,11 @@ export default function SiteFooter() {
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
-                aria-label="Chat with the Tech360 AI assistant"
+                aria-label="Chat with Tech360 Support"
                 className="inline-flex min-h-11 items-center gap-2.5 text-left outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm"
               >
-                <Bot className="size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />
-                AI assistant — 24/7 chat
+                <MessageCircle className="size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />
+                Live support — 24/7 chat
               </button>
               <address className="inline-flex items-start gap-2.5 not-italic">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />

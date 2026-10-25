@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { Bot, Menu } from "lucide-react";
+import { MessageCircle, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -127,14 +127,14 @@ export default function SiteHeader({ currentHash }: { currentHash?: string }) {
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
-            aria-label="Chat with the Tech360 AI assistant"
+            aria-label="Chat with Tech360 Support"
             className={cn(
               "hidden min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#009FE3] xl:inline-flex",
               solid ? "text-[#063B8F] hover:text-[#009FE3]" : "text-white/85 hover:text-white"
             )}
           >
-            <Bot className="size-4" aria-hidden="true" />
-            AI Assistant
+            <MessageCircle className="size-4" aria-hidden="true" />
+            Live Support
           </button>
           <Button
             asChild
@@ -221,7 +221,7 @@ export default function SiteHeader({ currentHash }: { currentHash?: string }) {
                 onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
                 className="focus-visible:outline-none"
               >
-                Chat with our AI assistant
+                Chat with our team
               </button>
             </Button>
           </div>

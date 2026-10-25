@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: '%s | Tech360',
   },
   description: 'Tech360 (TECH360 LLC) builds enterprise-grade websites, eCommerce platforms, custom CRMs, WhatsApp automation, n8n workflows and AI systems. HTML Preview Before Payment. US-registered LLC delivering worldwide.',
-  keywords: ['software company', 'enterprise software', 'web development', 'eCommerce development', 'CRM development', 'WhatsApp automation', 'n8n automation', 'AI agents', 'Google Cloud', 'digital transformation', 'Tech360', 'bdtech360'],
+  keywords: ['software company', 'enterprise software', 'web development', 'eCommerce development', 'CRM development', 'WhatsApp automation', 'n8n automation', 'business automation', 'Google Cloud', 'digital transformation', 'Tech360', 'bdtech360'],
   applicationName: 'Tech360',
   authors: [{ name: 'TECH360 LLC' }],
   creator: 'TECH360 LLC',

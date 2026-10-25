@@ -200,7 +200,7 @@ export function TechStackDiagram() {
     { t: "Application", tech: "Node.js · Laravel · Python · REST & webhook APIs", c: BLUE },
     { t: "Data", tech: "PostgreSQL · MySQL · Prisma ORM · Redis cache", c: NAVY },
     { t: "Infrastructure", tech: "Google Cloud Run · Cloud SQL · Secret Manager", c: GREEN },
-    { t: "Automation", tech: "n8n · WhatsApp Cloud API · LLM agent runtime", c: SLATE },
+    { t: "Automation", tech: "n8n · WhatsApp Cloud API · automation runtime", c: SLATE },
   ];
   return (
     <Wrap
@@ -352,14 +352,14 @@ export function SecurityArchitectureDiagram() {
 export function AutomationWorkflowDiagram() {
   const steps = [
     { t: "Trigger", d: "Event, schedule or form" },
-    { t: "AI agent", d: "Classify, draft, decide" },
+    { t: "Automation", d: "Classify, draft, route" },
     { t: "Guardrails", d: "Approvals, quotas, RBAC" },
     { t: "Channel", d: "Email, SMS, chat, web" },
     { t: "Record", d: "Logged to the Client ID" },
   ];
   return (
     <Wrap
-      label="Automation workflow diagram: trigger, AI agent, guardrails, channel and record — every run is logged and verified"
+      label="Automation workflow diagram: trigger, automation step, guardrails, channel and record — every run is logged and verified"
       title="Automation flow — every run recorded"
       titleIcon={
         <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
@@ -413,7 +413,7 @@ export function FeaturesModulesDiagram() {
   const modules = [
     { t: "Website", d: "Public presence & content" },
     { t: "CRM", d: "Leads, clients, pipeline" },
-    { t: "Automation", d: "Workflows & AI agents" },
+    { t: "Automation", d: "Workflows & integrations" },
     { t: "Payments", d: "Invoices & milestones" },
     { t: "Portal", d: "Client self-service" },
     { t: "Analytics", d: "Reports & dashboards" },

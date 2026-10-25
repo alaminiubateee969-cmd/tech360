@@ -5,7 +5,7 @@ import { AIAssistantLink, PrimaryLink } from "./buttons";
 
 /**
  * Closing call-to-action band used across views: deep gradient,
- * one message, two honest next steps (project form / AI assistant chat).
+ * one message, two honest next steps (project form / live support chat).
  */
 export function CtaBand({
   title = "Ready to see your project before you pay for it?",

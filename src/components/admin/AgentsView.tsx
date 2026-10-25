@@ -27,6 +27,7 @@ import {
   type AgentsResponse,
   type DepartmentRow,
   type ExecutionRecord,
+  type MeResponse,
 } from '@/lib/admin-client'
 import { EmptyState, KpiCard, PageHeader } from './shared/cards'
 import { JsonView } from './shared/JsonView'
@@ -64,6 +65,10 @@ function chipList(v: string | string[] | null | undefined): string[] {
 }
 
 export function AgentsView() {
+  // Governance (create / evidence export) is Super Admin only; Admin
+  // accounts control day-to-day automation (view + run) from here.
+  const { data: meData } = useApi<MeResponse>('/api/auth/me')
+  const isSuperAdmin = meData?.user?.role === 'SUPER_ADMIN'
   const { data, loading, error, refresh } = useApi<AgentsResponse>('/api/admin/agents')
   const agents = data?.agents ?? []
   const departments = data?.departments ?? []
@@ -172,6 +177,7 @@ export function AgentsView() {
             >
               <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
             </Button>
+            {isSuperAdmin ? (
             <a
               href="/api/admin/agents/export"
               download
@@ -181,9 +187,12 @@ export function AgentsView() {
             >
               <Download className="size-4" aria-hidden="true" /> Evidence CSV
             </a>
+            ) : null}
+            {isSuperAdmin ? (
             <Button size="sm" onClick={() => setCreateOpen(true)} className="font-semibold" style={{ background: ACCENT }}>
               <Plus className="size-4" aria-hidden="true" /> Create Agent
             </Button>
+            ) : null}
           </>
         }
       />
