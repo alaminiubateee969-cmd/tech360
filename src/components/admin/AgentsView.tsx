@@ -64,11 +64,31 @@ function chipList(v: string | string[] | null | undefined): string[] {
   return []
 }
 
+interface TrainingResponse {
+  sourceCount: number
+  knowledgeApproved: number
+  memoryEntries: number
+  qualifiedDepartments: number
+  note: string
+  categories: Array<{
+    category: string
+    agents: number
+    qualified: number
+    operational: number
+    skills: string[]
+    gaps: string[]
+    sources: Array<{ name: string; url: string; teaches: string }>
+    months: Array<{ month: number; title: string; focus: string; exitCriteria: string }>
+  }>
+  agents: Array<{ code: string; maturity: string }>
+}
+
 export function AgentsView() {
   // Governance (create / evidence export) is Super Admin only; Admin
   // accounts control day-to-day automation (view + run) from here.
   const { data: meData } = useApi<MeResponse>('/api/auth/me')
   const isSuperAdmin = meData?.user?.role === 'SUPER_ADMIN'
+  const { data: training } = useApi<TrainingResponse>('/api/admin/agents/training')
   const { data, loading, error, refresh } = useApi<AgentsResponse>('/api/admin/agents')
   const agents = data?.agents ?? []
   const departments = data?.departments ?? []
@@ -209,6 +229,37 @@ export function AgentsView() {
         <KpiCard label="Active" value={stats.active} icon={Bot} tone="green" loading={loading} sub="Ready to execute" />
         <KpiCard label="Total Executions" value={stats.executions.toLocaleString()} icon={Play} tone="slate" loading={loading} />
       </section>
+
+      {training ? (
+        <section aria-label="Training curriculum and 3-month roadmap" className="mb-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-100">Training — backup sources, gaps &amp; 3-month roadmap</h2>
+            <p className="text-[11px] text-slate-500">
+              {training.sourceCount} backup sources · {training.knowledgeApproved} approved knowledge docs · {training.memoryEntries} memory entries · {training.qualifiedDepartments} qualified departments
+            </p>
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{training.note}</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {training.categories.filter((c) => c.agents > 0).map((c) => (
+              <div key={c.category} className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+                <p className="text-xs font-semibold text-slate-200">{prettify(c.category)} <span className="font-normal text-slate-500">· {c.agents} agents · {c.qualified} qualified · {c.operational} operational</span></p>
+                <p className="mt-1.5 text-[11px] text-slate-400"><span className="text-slate-500">Skills:</span> {c.skills.join(', ')}</p>
+                <p className="mt-1 text-[11px] text-amber-300/80"><span className="text-slate-500">Gaps:</span> {c.gaps.join(' · ')}</p>
+                <p className="mt-1 text-[11px] text-slate-400"><span className="text-slate-500">Learns from:</span> {c.sources.map((src) => src.name).join(' · ')}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            {(training.categories[0]?.months ?? []).map((m) => (
+              <div key={m.month} className="rounded-lg border border-[#009FE3]/20 bg-[#009FE3]/5 p-3">
+                <p className="text-xs font-semibold text-[#009FE3]">Month {m.month} — {m.title}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-400">{m.focus}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500"><span className="text-slate-400">Exit:</span> {m.exitCriteria}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <div className="relative min-w-0 flex-1 sm:max-w-xs">

@@ -193,6 +193,37 @@ design-kit tokens), cline.bot (#131), openrouter.ai (#132 + agent-loop
 tutorial #133 — now wired as the free-model provider,
 `src/lib/agents/model-provider.ts`).
 
+## Owner references added 2026-10-26 (round 3 — GitHub API live check)
+
+Checked via the GitHub REST API on 2026-10-26; all registered in
+`scripts/verify-reference-links.mjs` (159 references total). These are the
+**backup training sources** for our own agents — see
+`src/lib/agents/training.ts` and `docs/AI_AGENT_TRAINING_ROADMAP.md`.
+
+| # | Reference | Live state | ★ | License | Disposition |
+| --- | --- | --- | ---: | --- | --- |
+| 146 | [ToolJet/ToolJet](https://github.com/ToolJet/ToolJet) | EXISTS | 41,125 | AGPL-3.0 | Training source (DELIVERY admin-surface patterns); not vendored |
+| 147 | [huggingface/education-toolkit](https://github.com/huggingface/education-toolkit) | ARCHIVED | 389 | Apache-2.0 | Training source (education content structure) |
+| 148 | [mohamed11sk/Email-markting](https://github.com/mohamed11sk/Email-markting) | EXISTS | 0 | — | Training reference (newsletter shape) |
+| 149 | [knsoftic/Email_Markting](https://github.com/knsoftic/Email_Markting) | EXISTS | 0 | — | Training reference (email campaigns) |
+| 150 | [FoundationAgents/MetaGPT](https://github.com/FoundationAgents/MetaGPT) | EXISTS | 71,013 | MIT | **Key training source** — multi-agent SOP structure (EXECUTIVE/DELIVERY tracks) |
+| 151 | [songguoxs/gpt4o-image-prompts](https://github.com/songguoxs/gpt4o-image-prompts) | EXISTS | 3,860 | — | Training source (image prompt library for Media briefs) |
+| 152 | [ramon-victor/freegpt-webui](https://github.com/ramon-victor/freegpt-webui) | ARCHIVED | 5,599 | GPL-3.0 | NOT_APPLICABLE — free access is OpenRouter, never scraped UIs |
+| 153 | [Lin-jun-xiang/docGPT-langchain](https://github.com/Lin-jun-xiang/docGPT-langchain) | EXISTS | 261 | MIT | Training source (docs-chat retrieval for Knowledge) |
+| 154 | [teremterem/claude-code-gpt-5-codex](https://github.com/teremterem/claude-code-gpt-5-codex) | EXISTS | 239 | MIT | Dev-workstation backup only |
+| 155 | [GetGoAPI/Free-GPT-Grok-Gemini-Claude-API](https://github.com/GetGoAPI/Free-GPT-Grok-Gemini-Claude-API) | EXISTS | 216 | MIT | Backup reference only — unverified gateway, NOT a dependency |
+| 156 | [zai-org/GLM-5](https://github.com/zai-org/GLM-5) | EXISTS | 7,390 | Apache-2.0 | Model reference; Month-3 fine-tune decision input |
+| 157 | [ unorouter/unorouter](https://github.com/unorouter/unorouter) | EXISTS | 21 | AGPL-3.0 | Backup router reference; not vendored |
+| 158 | [GAIR-NLP/LiveTalk](https://github.com/GAIR-NLP/LiveTalk) | EXISTS | 353 | NOASSERTION | Research training source (SUPPORT conversations) |
+| 159 | [tinystruct/smalltalk](https://github.com/tinystruct/smalltalk) | EXISTS | 354 | — | Training reference (chat module shape) |
+
+Full re-audit this round: of the 139 repos in the owner's list, **125 were
+already registered** (rounds 1–2 + generated matrix) and 14 are added above;
+every website link was already registered in round 2. Remaining functional
+gaps are implemented, not just documented: discrete agent skills + training
+curriculum (`training.ts`), free-model chain, and the dashboard Training
+panel (Agents view).
+
 ## How to re-run
 
 ```bash
