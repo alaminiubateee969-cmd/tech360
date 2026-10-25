@@ -23,6 +23,7 @@ type Overview = {
 type ContentItem = { id: string; type: string; language: string; title: string; content: string; status: string; createdAt: string; updatedAt: string }
 type Thread = { id: string; clientId: string | null; contactName: string; phone: string; lastMessagePreview: string; lastMessageAt: string | null; lastMessageStatus: string | null; canSendFreeform: boolean }
 type InboxResponse = { threads: Thread[]; note?: string }
+type WhatsAppTemplate = { id: string; name: string; status: string; category: string | null; language: string | null; rejectedReason: string | null }
 
 function csrfHeaders(): HeadersInit {
   const token = document.cookie.split('; ').find((part) => part.startsWith('t360_csrf='))?.split('=').slice(1).join('=')
@@ -41,6 +42,8 @@ export default function CommandCenterPage() {
   const [overview, setOverview] = useState<Overview | null>(null)
   const [items, setItems] = useState<ContentItem[]>([])
   const [threads, setThreads] = useState<Thread[]>([])
+  const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
+  const [templatesConfigured, setTemplatesConfigured] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [tab, setTab] = useState<'overview' | 'content' | 'whatsapp'>('overview')
@@ -54,10 +57,11 @@ export default function CommandCenterPage() {
   const refresh = useCallback(async () => {
     setBusy(true)
     try {
-      const [o, c, w] = await Promise.all([
+      const [o, c, w, t] = await Promise.all([
         fetch('/api/admin/command-center/overview', { cache: 'no-store' }),
         fetch('/api/admin/command-center/content?perPage=30', { cache: 'no-store' }),
         fetch('/api/admin/whatsapp/inbox?perPage=20', { cache: 'no-store' }),
+        fetch('/api/admin/whatsapp/templates', { cache: 'no-store' }),
       ])
       if (o.status === 401 || c.status === 401 || w.status === 401) {
         setNotice('Please sign in to the Tech360 admin dashboard, then reload this page.')
@@ -66,6 +70,7 @@ export default function CommandCenterPage() {
       if (o.ok) setOverview(await o.json())
       if (c.ok) setItems((await c.json()).items ?? [])
       if (w.ok) setThreads((await w.json() as InboxResponse).threads ?? [])
+      if (t.ok) { const templateData = await t.json(); setTemplates(templateData.templates ?? []); setTemplatesConfigured(Boolean(templateData.configured)) }
       if (!o.ok || !c.ok) setNotice('Some dashboard data could not load. Check API permissions and server logs.')
       else setNotice('')
     } catch {
@@ -264,6 +269,15 @@ export default function CommandCenterPage() {
             </form>}
           </article>)}
           {!threads.length && <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-sm text-slate-400">No WhatsApp threads found in the current communications ledger.</div>}
+          <div className="mt-8 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Meta message templates</h3><span className="text-xs text-slate-500">{templatesConfigured ? 'Connected to Meta' : 'Provider credentials missing'}</span></div>
+            {!templatesConfigured && <p className="text-sm text-slate-400">Set WHATSAPP_TOKEN and WHATSAPP_BUSINESS_ACCOUNT_ID in the server environment to read template status.</p>}
+            {templates.map((template) => <article key={template.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <div><p className="text-sm font-medium">{template.name}</p><p className="mt-1 text-xs text-slate-500">{template.language ?? 'language unknown'} · {template.category ?? 'category unknown'}</p>{template.rejectedReason && <p className="mt-1 text-xs text-rose-300">{template.rejectedReason}</p>}</div>
+              <span className={template.status === 'APPROVED' ? 'rounded-full bg-emerald-300/10 px-2 py-1 text-xs text-emerald-300' : 'rounded-full bg-amber-300/10 px-2 py-1 text-xs text-amber-200'}>{template.status}</span>
+            </article>)}
+            {templatesConfigured && !templates.length && <p className="text-sm text-slate-500">No templates returned by Meta, or none are available to this account.</p>}
+          </div>
         </section>}
 
         <footer className="flex flex-col gap-2 border-t border-white/10 pt-4 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
