@@ -1,4 +1,4 @@
-import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
+import { AI_OPERATOR_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText } from '@/lib/security'
 import { AgentJobDecisionConflict, AgentJobInputError, decideAgentJob } from '@/lib/agents/jobs'
@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
+  const g = await guard(req, { minRole: AI_OPERATOR_MIN_ROLE })
   if (isResponse(g)) return g
   const { id } = await params
   const raw = await readJson(req).catch(() => ({} as Record<string, unknown>))

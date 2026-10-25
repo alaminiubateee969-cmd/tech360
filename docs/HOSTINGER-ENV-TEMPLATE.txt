@@ -1,0 +1,173 @@
+# HOSTINGER REFERENCE TEMPLATE — NOT READY TO DEPLOY AS-IS.
+# Replace every REPLACE_* value. Set only integrations you actually use.
+# Empty optional values should normally be omitted from hPanel.
+# No real passwords, tokens or generated secrets are stored in this file.
+
+# TECH360 production environment variable names only.
+# Set values in Hostinger -> Node.js Web App -> Environment Variables.
+# This file intentionally contains no sample URLs, credentials, or secrets.
+
+# Core runtime (required)
+DATABASE_URL=mysql://REPLACE_DB_USER:REPLACE_URL_ENCODED_PASSWORD@REPLACE_DB_HOST:3306/REPLACE_DB_NAME
+APP_PUBLIC_URL=https://bdtech360.com
+APP_ORIGIN=https://bdtech360.com
+NODE_ENV=production
+
+# Independent random secrets (at least 32 characters each)
+SESSION_SECRET=REPLACE_WITH_UNIQUE_RANDOM_SECRET
+OPS_SECRET=REPLACE_WITH_ANOTHER_RANDOM_SECRET
+PORTAL_SECRET=REPLACE_WITH_ANOTHER_RANDOM_SECRET
+# HMAC key for verified identity lookup; preserve it across deploys or identity links cannot be resolved.
+IDENTITY_HASH_SECRET=REPLACE_WITH_STABLE_DISTINCT_RANDOM_SECRET
+
+# Optional integrations (blank disables the integration)
+NOTIFY_RELAY_TOKEN=
+NOTIFY_RELAY_URL=
+
+# First-boot Super Admin bootstrap only; remove ADMIN_PASSWORD after seeding
+ADMIN_EMAIL=info@bdtech360.com
+ADMIN_PASSWORD=
+
+# AI provider (required for production AI execution; never commit values)
+# ZAI_BASE_URL must be the provider's absolute HTTP(S) API base, typically ending in /v1.
+ZAI_BASE_URL=https://REPLACE_WITH_COMPATIBLE_PROVIDER_API_BASE/v1
+ZAI_API_KEY=REPLACE_WITH_PROVIDER_KEY
+
+# ---------------------------------------------------------------------
+# PRIVATE MODEL SERVICE (self-hosted, CPU-only inference)
+# ---------------------------------------------------------------------
+# The private model service is LOCAL by default. Only a loopback or
+# private-network upstream is accepted; a public model endpoint would
+# expose company data, so the app refuses to start with one.
+LOCAL_MODEL_BASE_URL=
+LOCAL_MODEL_CHAT_MODEL=
+LOCAL_MODEL_EMBED_MODEL=
+LOCAL_MODEL_API_KEY=
+# Optional directory for on-host verified model manifests.
+LOCAL_MODEL_MANIFEST_DIR=
+LOCAL_MODEL_TIMEOUT_MS=
+# Optional second local backend speaking the OpenAI shape
+# (llama.cpp `server`, vLLM, LM Studio).
+LOCAL_OPENAI_BASE_URL=
+LOCAL_OPENAI_CHAT_MODEL=
+LOCAL_OPENAI_EMBED_MODEL=
+LOCAL_OPENAI_API_KEY=
+LOCAL_OPENAI_TIMEOUT_MS=
+# Provider preference chain, most-preferred first.
+AI_PROVIDER_ORDER=
+# Bearer key for the private /api/model/v1/* gateway. At least 32
+# characters. Without it the private gateway is DISABLED (503).
+MODEL_API_KEY=
+# Optional directory for on-host verified model manifests.
+# Blank values use safe application defaults: timeout 60000ms, driver on.
+# Set AI_OPS_DRIVER=off only when explicitly disabling in-process AI operations.
+AGENT_RUN_TIMEOUT_MS=60000
+AI_OPS_DRIVER=on
+
+# Operations and business settings
+OPS_INTERVAL_SEC=90
+PLATFORM_URL=
+PREVIEW_TTL_DAYS=30
+# Optional; blank keeps TECH-YYYY-NNNNNN client identifiers.
+CLIENT_ID_PREFIX=TECH-
+
+# Payments
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+BANK_TRANSFER_DETAILS=
+MANUAL_PAYMENT_INSTRUCTIONS=
+BKASH_MERCHANT_NUMBER=
+NAGAD_MERCHANT_NUMBER=
+# PayPal and SSLCommerz adapters are NOT IMPLEMENTED (INTEGRATION_NOT_BUILT).
+# Setting these variables does not enable those gateways; Settings refuses to
+# mark them live. Use Stripe, bank transfer, bKash or Nagad in production.
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_WEBHOOK_ID=
+SSLCOMMERZ_STORE_ID=
+SSLCOMMERZ_STORE_PASSWORD=
+
+# Communications
+# PRIVATE CRM MESSAGING ONLY. TECH360 publishes no public WhatsApp number or
+# chat link (owner decision 2026-10-24); these credentials power the private
+# inbound/outbound adapter, never a public contact route.
+WHATSAPP_TOKEN=
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_APP_SECRET=
+WHATSAPP_VERIFY_TOKEN=
+SMTP_HOST=REPLACE_WITH_MAILBOX_SMTP_HOST
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=info@bdtech360.com
+SMTP_PASS=REPLACE_WITH_MAILBOX_PASSWORD
+SMTP_FROM=info@bdtech360.com
+# Dedicated inbound email hook key; send raw-body HMAC or x-email-webhook-secret.
+EMAIL_WEBHOOK_SECRET=REPLACE_WITH_DISTINCT_RANDOM_SECRET
+HTTPSMS_API_KEY=
+HTTPSMS_FROM=
+HTTPSMS_BASE_URL=
+# Production always requires OTP; PORTAL_OTP=off is honored only outside production.
+PORTAL_OTP=on
+PORTAL_OTP_CHANNEL=email
+SMS_API_URL=
+SMS_API_KEY=
+SMS_SENDER=
+FACEBOOK_PAGE_TOKEN=
+INSTAGRAM_TOKEN=
+LINKEDIN_TOKEN=
+X_TOKEN=
+SOCIAL_WEBHOOK_SECRET=
+
+# ---------------------------------------------------------------------
+# DATABASE BACKUP (scripts/backup/*.sh — see docs/BACKUP_AND_RESTORE.md)
+# These are consumed by the scheduled backup job, not by the web app,
+# except BACKUP_DIR / TECH360_BACKUP_DIR which the admin console reads
+# to report artefacts and the last runner evidence.
+# ---------------------------------------------------------------------
+# Directory for backup artefacts. MUST be outside the web root; the script
+# creates it with mode 700 and refuses paths under public/ or .next/.
+BACKUP_DIR=
+TECH360_BACKUP_DIR=
+# Optional off-server copy: "rclone:remote:path" or "scp:user@host:/path".
+TECH360_BACKUP_OFFSITE=
+# Optional failure alert endpoint (receives JSON, never credentials or data).
+TECH360_BACKUP_ALERT_WEBHOOK=
+# Documented schedule shown in the console (the actual trigger is the host cron).
+BACKUP_SCHEDULE=
+BACKUP_SCHEDULE_NOTE=
+
+# n8n bridge
+N8N_WEBHOOK_SECRET=
+N8N_WEBHOOK_BASE=
+
+# Media Studio providers (blank = honest NOT_CONFIGURED / RENDER_NOT_CONFIGURED)
+MEDIA_RENDER_PROVIDER=
+MEDIA_RENDER_API_KEY=
+TTS_PROVIDER_URL=
+TTS_API_KEY=
+MUSIC_PROVIDER_URL=
+
+# Call & SMS centre (device gateway / Twilio / SIP softphone)
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=
+SIP_DOMAIN=
+
+# Communication pipeline — the booking link a client uses to take a
+# scope-explaining call (stage 5A of the client journey).
+# Defaults to https://bdtech360.com/#contact when blank.
+MEETING_BOOKING_URL=https://bdtech360.com/#contact
+
+# Hostinger Mail API (optional). Email stays on SMTP unless HOSTINGER_MAIL_ENABLED=true.
+# With it set, every variable below must validate or email sends are refused (never silent SMTP fallback).
+# Values are never committed. Create the token in hPanel with the narrowest scope; do not reuse other tokens.
+HOSTINGER_MAIL_ENABLED=false
+HOSTINGER_MAIL_API_TOKEN=
+HOSTINGER_MAILBOX_RESOURCE_ID=
+HOSTINGER_MAIL_FROM_ADDRESS=
+# Optional. Only the one-time secret that Hostinger returns when a webhook is configured by an authorized person.
+HOSTINGER_MAIL_WEBHOOK_SECRET=
+
+# Optional: zero-price OpenRouter assistant in Admin / Super Admin Command Center.
+# Server only. Never use NEXT_PUBLIC_ for this key. Free routes still have quotas.
+OPENROUTER_API_KEY=

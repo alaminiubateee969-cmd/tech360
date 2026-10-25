@@ -62,6 +62,15 @@ function deliver(body: Record<string, unknown>, headers: Record<string, string> 
 const message = { channel: 'FACEBOOK', messageId: 'fb-msg-1', sender: 'Ada', email: 'ada@example.test', message: 'Need a website' }
 
 describe('social webhook idempotency', () => {
+  it('accepts Messenger, preserving its source and provider id with deduplication', async () => {
+    const payload = { channel: 'MESSENGER', messageId: 'msg-1', sender: 'Ada', message: 'Need CRM' }
+    assert.equal((await deliver(payload)).status, 200)
+    assert.equal(intakeCalls[0].source, 'MESSENGER')
+    assert.equal(intakeCalls[0].providerMessageId, 'MESSENGER:msgid:msg-1')
+    assert.equal((await (await deliver(payload)).json() as { duplicate?: boolean }).duplicate, true)
+    assert.equal(intakeCalls.length, 1)
+  })
+
   it('a redelivery of the same provider message creates one intake, not two', async () => {
     const first = await deliver(message)
     assert.equal(first.status, 200)

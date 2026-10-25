@@ -1,4 +1,4 @@
-import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
+import { AI_OPERATOR_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText } from '@/lib/security'
 import { db } from '@/lib/db'
@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
+  const g = await guard(req, { minRole: AI_OPERATOR_MIN_ROLE })
   if (isResponse(g)) return g
 
   const url = new URL(req.url)

@@ -1,3 +1,4 @@
+import { parseScopeDecision, parsePreviewDecision } from '@/lib/pipeline/decision-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { hasCapability } from '@/lib/access-policy'
@@ -54,8 +55,9 @@ export async function POST(req: NextRequest) {
         break
       }
       case 'CLIENT_SCOPE_DECISION': {
-        const decision = sanitizeText(payload.decision, 40).toUpperCase() as 'APPROVED' | 'REVISION_REQUESTED' | 'CLARIFICATION_REQUESTED'
-        const r5 = await clientScopeDecision(client.id, decision || 'APPROVED', sanitizeText(payload.notes, 4000))
+        const decision = parseScopeDecision(payload.decision)
+        if (!decision) return Response.json({ error: 'Explicit scope decision required: APPROVED, REVISION_REQUESTED or CLARIFICATION_REQUESTED.' }, { status: 400 })
+        const r5 = await clientScopeDecision(client.id, decision, sanitizeText(payload.notes, 4000))
         result = r5 as unknown as Record<string, unknown>
         message = `Client decision recorded. Next: ${r5.next}`
         break
@@ -84,7 +86,8 @@ export async function POST(req: NextRequest) {
         if (!hasCapability(g.user, 'preview.manage')) {
           return Response.json({ error: 'Forbidden — requires preview.manage capability.' }, { status: 403 })
         }
-        const decision = sanitizeText(payload.decision, 40).toUpperCase() === 'REVISION_REQUESTED' ? 'REVISION_REQUESTED' : 'APPROVED'
+        const decision = parsePreviewDecision(payload.decision)
+        if (!decision) return Response.json({ error: 'Explicit preview decision required: APPROVED or REVISION_REQUESTED.' }, { status: 400 })
         const r7b = await recordPreviewDecision(client.id, decision, sanitizeText(payload.notes, 4000))
         result = r7b as unknown as Record<string, unknown>
         message = decision === 'APPROVED'

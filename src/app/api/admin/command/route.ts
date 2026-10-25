@@ -1,4 +1,6 @@
-import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
+import { hasRole } from '@/lib/access-policy'
+import { commandRequiresSuperAdmin } from '@/lib/pipeline/command-policy'
+import { AI_OPERATOR_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -44,7 +46,7 @@ const CAPABILITIES = `Available actions (choose exactly ONE):
 - none — ask a short clarifying question (use when the client or time is ambiguous)`
 
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE, limit: { max: 30, windowMs: 60_000 } })
+  const g = await guard(req, { minRole: AI_OPERATOR_MIN_ROLE, limit: { max: 30, windowMs: 60_000 } })
   if (isResponse(g)) return g
   const correlationId = newCorrelationId()
 
@@ -56,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   await db.agentMessage.create({ data: { sessionId, userId: g.user.id, role: 'user', content: message } })
 
-  const history = await db.agentMessage.findMany({ where: { sessionId }, orderBy: { createdAt: 'asc' }, take: 20 })
+  const history = await db.agentMessage.findMany({ where: { sessionId, userId: g.user.id }, orderBy: { createdAt: 'asc' }, take: 20 })
   const recent = history.slice(-8).map((m) => `${m.role === 'user' ? 'Admin' : 'Oracle'}: ${m.content}`).join('\n')
 
   const [newLeads, pendingApprovals, unpaid, failedComms, clientDir, upcomingMeetings] = await Promise.all([
@@ -106,6 +108,11 @@ ${CAPABILITIES}`
     reply = run.output
   } else if (run.error) {
     reply = `Command agent failed: ${run.error}`
+  }
+
+  if (commandRequiresSuperAdmin(action) && !hasRole(g.user, 'SUPER_ADMIN')) {
+    await audit({ actor: g.user.email, action: 'COMMAND_DENIED', userId: g.user.id, details: { action, correlationId } })
+    return Response.json({ error: 'This command accesses Super Admin-only workforce internals.' }, { status: 403 })
   }
 
   let data: Record<string, unknown> | Array<Record<string, unknown>> | { report: string } | null = null

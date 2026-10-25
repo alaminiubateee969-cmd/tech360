@@ -1,4 +1,4 @@
-import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
+import { AI_OPERATOR_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { featureEnabled } from "@/lib/features"
 import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 // REAL agent execution from the admin console (logged, governed)
 export async function POST(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
+  const g = await guard(req, { minRole: AI_OPERATOR_MIN_ROLE })
   if (isResponse(g)) return g
   // feature-gate: AI agents switch (Super Admin) — refuses execution,
   // including from the autonomous ops loop trigger path

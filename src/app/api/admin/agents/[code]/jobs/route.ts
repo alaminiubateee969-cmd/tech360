@@ -1,4 +1,4 @@
-import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
+import { AI_OPERATOR_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { featureEnabled } from '@/lib/features'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText } from '@/lib/security'
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 /** Queue an idempotent inference request or a narrowly allowlisted internal tool call. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
+  const g = await guard(req, { minRole: AI_OPERATOR_MIN_ROLE })
   if (isResponse(g)) return g
   if (!(await featureEnabled('ai_agents'))) {
     return Response.json({ error: 'AI agent execution is currently disabled by Super Admin.' }, { status: 503 })
