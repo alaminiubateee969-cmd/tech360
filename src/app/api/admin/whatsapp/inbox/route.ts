@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
       canSendFreeform: Boolean(expiresAt && expiresAt.getTime() > now),
       messages: thread.messages,
     }
-  }).sort((a, b) => new Date(b.lastMessageAt ?? 0).getTime() - new Date(a.lastMessageAt ?? 0).getTime())
+  }).sort((a, b) => (b.lastMessageAt?.getTime() ?? 0) - (a.lastMessageAt?.getTime() ?? 0))
 
   const start = (page - 1) * perPage
   return Response.json({
