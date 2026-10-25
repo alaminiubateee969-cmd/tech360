@@ -19,12 +19,15 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     // React rules
     "react-hooks/exhaustive-deps": "off",
     "react-hooks/purity": "off",
+<<<<<<< HEAD
     // React 19 compiler-advisory rules are intentionally not CI gates. This
     // app does not enable the React Compiler; these rules flag established,
     // working effect/ref patterns rather than correctness or security defects.
     "react-hooks/set-state-in-effect": "off",
     "react-hooks/refs": "off",
     "react-hooks/immutability": "off",
+=======
+>>>>>>> upload/tech360-production-final
     "react/no-unescaped-entities": "off",
     "react/display-name": "off",
     "react/prop-types": "off",
@@ -50,11 +53,15 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
+<<<<<<< HEAD
   ignores: [
     "deployment/*.cjs",
     ".zscripts/**",
     "mini-services/**",
     "n8n/**","node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
+=======
+  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "upload/**", "tests/**", "scripts/**"]
+>>>>>>> upload/tech360-production-final
 }];
 
 export default eslintConfig;

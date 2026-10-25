@@ -1,0 +1,12 @@
+.git
+node_modules
+.next
+db
+storage
+upload
+tool-results
+*.log
+*.md
+scripts
+tests
+skills

@@ -1,0 +1,59 @@
+{
+  "name": "Tech360 - 05 Scope Generation",
+  "nodes": [
+    {
+      "parameters": {"path": "scope-gen", "responseMode": "responseNode"},
+      "id": "trigger",
+      "name": "Scope Gen Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.TECH360_API_URL}}/api/ai-workforce/agents/crm-and-automation-lead-scoring-agent/execute",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name": "X-API-Key", "value": "={{$env.TECH360_API_KEY}}"}, {"name": "Content-Type", "value": "application/json"}]},
+        "sendBody": true,
+        "bodyParameters": {"parameters": [{"name": "request", "value": "Generate scope questions for client {{$json.body.clientId}}"}]}
+      },
+      "id": "ai-scope",
+      "name": "AI Generate Questions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.TECH360_API_URL}}/api/clients/{{$json.body.clientId}}/journey-step",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name": "X-API-Key", "value": "={{$env.TECH360_API_KEY}}"}, {"name": "Content-Type", "value": "application/json"}]},
+        "sendBody": true,
+        "bodyParameters": {"parameters": [{"name": "stepName", "value": "scope-questions"}, {"name": "stepOrder", "value": 4}]}
+      },
+      "id": "journey",
+      "name": "Record Journey",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ { success: true, questions: $('AI Generate Questions').item.json.output } }}"},
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [660, 0]
+    }
+  ],
+  "connections": {
+    "Scope Gen Trigger": {"main": [[{"node": "AI Generate Questions", "type": "main", "index": 0}]]},
+    "AI Generate Questions": {"main": [[{"node": "Record Journey", "type": "main", "index": 0}]]},
+    "Record Journey": {"main": [[{"node": "Respond", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "tags": [{"name": "tech360-production"}]
+}

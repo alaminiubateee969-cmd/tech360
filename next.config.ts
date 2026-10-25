@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+<<<<<<< HEAD
 const CANONICAL_ORIGIN = "https://bdtech360.com";
 
 const nextConfig: NextConfig = {
@@ -55,6 +56,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+=======
+const nextConfig: NextConfig = {
+  output: "standalone",
+  /* config options here */
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  reactStrictMode: false,
+>>>>>>> upload/tech360-production-final
 };
 
 export default nextConfig;

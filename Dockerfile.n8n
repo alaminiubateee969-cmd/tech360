@@ -1,0 +1,23 @@
+# =====================================================================
+# Tech360 n8n sidecar Dockerfile
+# Runs n8n with persistent Postgres DB on Cloud Run
+# =====================================================================
+FROM n8nio/n8n:latest
+
+# Switch to root to install extra OS packages
+USER root
+RUN apk add --no-cache curl
+
+# Drop back to node user
+USER node
+
+WORKDIR /home/node
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:5678/healthz || exit 1
+
+EXPOSE 5678
+
+# n8n reads its config from env vars (set in cloudbuild.yaml)
+CMD ["n8n", "start"]
