@@ -1,7 +1,7 @@
 # Known Issues and Blockers
 
-**Updated:** 2026-10-03
-**Branch:** `arena/01a1006a-tech360`
+**Updated:** 2026-10-26
+**Branch:** `arena/828dc591-tech360`
 
 ## Production/deployment blockers
 
@@ -15,6 +15,8 @@
 | B-006 | BLOCKED | External provider success paths are not certified | SMTP, SMS, Meta/WhatsApp/social, payment, AI-provider, and malware-scanning credentials/services are not available or were not exercised. | Configure secrets only in provider/Hostinger settings, enable integrations individually, and retain approved sandbox/real acceptance evidence before claiming they are live. |
 | B-007 | DEPENDENCY AUDIT PASS; CURRENT BRANCH CI PENDING | The scoped glob override avoids the current unpatched advisory without downgrading Next or suppressing audit results | Prisma/client 6.19.3 and scoped `deepmerge-ts` 8.0.2 override remain in the lockfile; `tinyglobby@0.2.17` is scoped to `@next/eslint-plugin-next`. Local full and production audits report zero vulnerabilities; the scoped `globSync` API check passes locally. Main CI run 37078930321 passed its then-current audits; this branch adds an explicit API regression step which has not run in GitHub Actions yet. Local Prisma engine download remains blocked by TLS. | Preserve explicit versions/scoped override; do not use `npm audit fix --force`. Run the updated branch workflow and review its actual result before merge. |
 | B-008 | NOT VERIFIED | Cannot confirm that `main` requires review or passing CI checks | GitHub’s branch endpoint currently returns `protected: false`; branch-protection/ruleset API access previously returned 403 (“Resource not accessible by integration” / plan-access restriction), so required review/status-check policy cannot be certified from this session. | A repository owner/admin must inspect the `main` branch rules/rulesets UI and confirm or configure required reviews and passing CI. |
+
+| B-009 | CONFIGURED IN CODE; KEY NOT SET | Free-model runtime is optional until the owner adds a key | `src/lib/agents/model-provider.ts` tries OpenRouter free models (`openrouter/free` + `:free` chain) when `OPENROUTER_API_KEY` is set, else the platform SDK. No key has been supplied in this session, so no free-model call has been exercised live. | Owner creates a free OpenRouter key, sets `OPENROUTER_API_KEY` (and optionally `OPENROUTER_MODELS`) in hPanel env, then runs one agent from the Admin dashboard and checks the execution record. |
 
 ## Quality and security follow-up
 
@@ -44,4 +46,4 @@
 3. Never print or commit production secret values.
 4. Never mutate production or delete ignored/tracked database, upload, archive, or application assets as a deployment shortcut.
 5. Keep production on MySQL; do not run destructive Prisma commands against the production database.
-6. Continue only on `arena/01a1006a-tech360`; push only to that fixed Arena session branch, not to `main`.
+6. Continue only on `arena/828dc591-tech360`; push only to that fixed Arena session branch, not to `main`.

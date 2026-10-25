@@ -163,6 +163,36 @@ even when the site is healthy; those were fetched independently through the plat
 - `https://github.com/engralaminn-collab/alo-education-uk-final` — NOT_FOUND (HTTP 404)
   - GitHub returns 404 to the authenticated owner token: the repository is private to another account or was renamed/removed. It is not publicly verifiable, so nothing is claimed about its contents; the capabilities it stands for are implemented in TECH360 as listed in the disposition column.
 
+## Owner references added 2026-10-26 (round 2 — fetched live, platform browser)
+
+These were supplied after the generated run above; evidence was captured by
+fetching each site on 2026-10-26. They are registered in
+`scripts/verify-reference-links.mjs` so the next authenticated run verifies
+them automatically. Full build-pattern analysis:
+`docs/REFERENCE_BUILD_ANALYSIS.md`.
+
+| # | Reference | Live state | Disposition / where it lands in TECH360 |
+| --- | --- | --- | --- |
+| 135 | [enerpize.com](https://www.enerpize.com) | EXISTS · platform-fetch | ADOPTED IN PART — ERP module/industry packaging (Sales, Accounting, Inventory, HR, CRM) mirrors CRM + invoices + payments + projects + industries; full accounting/POS/payroll ERP NOT built, never claimed. |
+| 136 | [aipraktor.com](https://www.aipraktor.com) | EXISTS · platform-fetch | ADOPTED IN PART — BD Messenger/WhatsApp order journey (catalog → size/stock → order → courier → review) = journey engine + comms shape; courier/image-matching stay provider-gated. |
+| 137 | [supercool.com](https://supercool.com) | EXISTS · platform-fetch | NOT_APPLICABLE as a product — voice/video "Humanoid"; honest analogue is Calls & SMS with real provider states. |
+| 138 | [join.supercool.com](https://join.supercool.com) | EXISTS · platform-fetch | NOT_APPLICABLE as a product — story-to-movie maker; Media Studio plans only, `RENDER_NOT_CONFIGURED`. |
+| 139 | [hatchable.com](https://hatchable.com) | EXISTS · platform-fetch | ADOPTED analogue — free AI app builder/host (own AI via MCP + managed DB/auth/email/hosting); our delivery factory generates real source (ZIP), no hosted runtime simulated. |
+| 140 | [hetrixtools.com](https://hetrixtools.com) | EXISTS · platform-fetch | ADOPTED IN PART — Ops Monitor is the in-product analogue; free-tier external uptime (15) / blacklist (32) monitoring is an operator add-on, no code needed. |
+| 141 | [mat3ra.com](https://mat3ra.com) | EXISTS · platform-fetch | NOT_APPLICABLE — materials R&D cloud (Webflow marketing site). |
+| 142 | [platform.mat3ra.com](https://platform.mat3ra.com) | EXISTS · platform-fetch | NOT_APPLICABLE — materials simulation workspace. |
+| 143 | [refine.ink](https://www.refine.ink) | EXISTS · platform-fetch | ADOPTED analogue — verify-before-trust: content review, SEO audit (42 checks), scope review, approval gates. |
+| 144 | [larksuite.com](https://www.larksuite.com) | EXISTS · platform-fetch | NOT_APPLICABLE as a product. ADOPTED analogue — portal + communications + meetings in one workspace. |
+| 145 | [cline/cline (GitHub)](https://github.com/cline/cline) | EXISTS (row 81) | Developer-side only: free open-source coding agent (Apache-2.0) that can run entirely on OpenRouter **free models** — see the free-model stack in `docs/REFERENCE_BUILD_ANALYSIS.md`. Never a client-facing feature. |
+
+Also re-checked this round (already in the generated table): buffer.com (#126),
+coder.qwen.ai (#127), stackoverflow.com (#128), mureka.ai (#129 — music
+provider; Media Studio keeps a music *brief*, no fake audio),
+astryx.atmeta.com (#130 — Meta design system; pattern source for the
+design-kit tokens), cline.bot (#131), openrouter.ai (#132 + agent-loop
+tutorial #133 — now wired as the free-model provider,
+`src/lib/agents/model-provider.ts`).
+
 ## How to re-run
 
 ```bash

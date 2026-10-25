@@ -54,6 +54,16 @@ const PLATFORM_VERIFIED = {
   'https://openrouter.ai': 'Fetched 200 — "The Unified Interface For Every Model"; 500+ models, OpenAI-compatible gateway.',
   'https://openrouter.ai/blog/tutorials/build-tool-calling-agent-loop': 'Fetched 200 — "Build a Reliable Tool-Calling Agent Loop on OpenRouter" (9/17/2026), the loop shape adopted in src/lib/agents/engine.ts.',
   'https://developer.meta.com/ai': 'Domain answers to automated clients with HTTP 403 (bot protection); the Meta AI developer portal is reachable in a browser.',
+  'https://www.enerpize.com': 'Fetched 200 (2026-10-26) — cloud ERP: Sales/Invoicing/POS, Accounting, Inventory, HRM/Payroll, CRM, Operations; per-industry packaging, 14-day free trial.',
+  'https://www.aipraktor.com': 'Fetched 200 (2026-10-26) — Bangladeshi Messenger/Instagram/WhatsApp commerce agent (Bengali-first): catalog cards, size/stock answers, order + receipt, Steadfast/Pathao courier updates, review requests; no monthly fee, free AI credits.',
+  'https://supercool.com': 'Fetched 200 (2026-10-26) — "Humanoid" voice/video AI that does work on-screen, joins meetings, has its own phone number; paid plans.',
+  'https://join.supercool.com': 'Fetched 200 (2026-10-26) — SuperCool System: story-to-movie/TV maker in one chat (script, scenes, voices, music, trailer, poster); from $8.',
+  'https://hatchable.com': 'Fetched 200 (2026-10-26) — free AI app builder/host: bring your own AI (ChatGPT/Claude/Cursor via MCP), platform provides Postgres, passwordless auth, email, storage, cron, domains; apps stay operable by the AI after launch.',
+  'https://hetrixtools.com': 'Fetched 200 (2026-10-26) — uptime + blacklist monitoring; 1-min checks from 12 locations, free forever tiers (15 uptime / 32 blacklist monitors), status pages, MCP server.',
+  'https://mat3ra.com': 'Fetched 200 (2026-10-26) — Materials R&D Cloud marketing site (Webflow CDN assets observed); 9,165+ simulation workflows, materials simulation/AI models.',
+  'https://platform.mat3ra.com': 'Fetched via mat3ra.com (2026-10-26) — the Mat3ra platform app (register / shared-externally open access); materials simulation workspace, not a business-ops product.',
+  'https://www.refine.ink': 'Fetched 200 (2026-10-26) — independent AI verification for technical documents (Next.js/Vercel image CDN observed); multi-model verifiers + deterministic checkers, SOC 2 / ISO 27001.',
+  'https://www.larksuite.com': 'Fetched 200 (2026-10-26) — Lark productivity superapp: chat, meetings, docs, Base, approvals, wiki, OKR, AI meeting notes; ByteDance SaaS.',
 }
 
 function platformVerified(url) {
@@ -217,6 +227,16 @@ const REFERENCES = [
   ['https://openrouter.ai', 'Model gateway', 'NOT_APPLICABLE — model access is provided by the server-side SDK; no self-hosted gateway is required.'],
   ['https://openrouter.ai/blog/tutorials/build-tool-calling-agent-loop', 'Agent-loop tutorial', 'ADOPTED — the tool-calling loop with strict JSON, retries and execution records is implemented in `src/lib/agents/engine.ts`.'],
   ['https://developer.meta.com/ai', 'Meta AI dev', 'NOT_APPLICABLE — Meta developer platform docs; WhatsApp Cloud API is the implemented Meta integration.'],
+  ['https://www.enerpize.com', 'Cloud ERP', 'ADOPTED IN PART — module/industry packaging pattern (Sales, Accounting, Inventory, HR, CRM per industry) mirrors our CRM + invoices + payments + projects + industries; full accounting/POS/payroll ERP is NOT built and is never claimed.'],
+  ['https://www.aipraktor.com', 'Commerce agent (BD)', 'ADOPTED IN PART — the Messenger/WhatsApp order journey (catalog -> size/stock -> order -> courier update -> review request) is the shape of our journey engine + comms adapters; image product-matching and courier APIs stay provider-gated (honest NOT_CONFIGURED until credentials exist).'],
+  ['https://supercool.com', 'AI humanoid', 'NOT_APPLICABLE as a product — voice/video humanoids are not shipped; the honest analogue is Calls & SMS (Telephony view) with provider states, never a simulated person.'],
+  ['https://join.supercool.com', 'AI film maker', 'NOT_APPLICABLE as a product — Media Studio plans shots/scripts/captions and reports RENDER_NOT_CONFIGURED; it does not claim to render films.'],
+  ['https://hatchable.com', 'AI app builder/host', 'ADOPTED analogue — the internal delivery factory generates real Next.js/Prisma source from a brief (ZIP handover); managed hosting/auth/DB-per-app runtime is Hatchable\'s model, not ours, and is not simulated.'],
+  ['https://hetrixtools.com', 'Uptime monitoring', 'ADOPTED IN PART — the Ops Monitor (heartbeat, cycle evidence, failure alerts) is the in-product analogue; external uptime/blacklist monitoring can be added free-tier by the operator without code (see docs/REFERENCE_BUILD_ANALYSIS.md).'],
+  ['https://mat3ra.com', 'Materials R&D', 'NOT_APPLICABLE — materials-science simulation domain; no Tech360 capability mapping.'],
+  ['https://platform.mat3ra.com', 'Materials R&D app', 'NOT_APPLICABLE — materials-science simulation workspace; no Tech360 capability mapping.'],
+  ['https://www.refine.ink', 'AI verification', 'ADOPTED analogue — deterministic verification before trust: content review pass, SEO audit (42 checks), scope review and approval gates; a trained multi-model verifier product is not claimed.'],
+  ['https://www.larksuite.com', 'Productivity suite', 'NOT_APPLICABLE as a product. ADOPTED analogue — client portal + communications + meetings in one workspace; no chat/docs suite is simulated.'],
 ]
 
 function ghHeaders() {

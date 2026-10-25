@@ -1,4 +1,5 @@
 import ZAI from 'z-ai-web-dev-sdk'
+import { completeWithFreeModels, openRouterConfigured, type ChatMessage } from './model-provider'
 import { db } from '@/lib/db'
 import { newCorrelationId, logError } from '@/lib/security'
 import { authorizeAgentTool, agentMayAccessClient, type AgentTool } from '@/lib/ai-workforce-policy'
@@ -138,14 +139,21 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
 
   const started = Date.now()
   try {
-    const zai = await getZai()
     const userContent = (run.contextNote ? `${run.contextNote}\n\n` : '') + run.input
     const messages: Array<{ role: 'assistant' | 'user'; content: string }> = [
       { role: 'assistant', content: agent.systemPrompt },
       { role: 'user', content: userContent.slice(0, 24000) },
     ]
-    const completion = await zai.chat.completions.create({ messages, thinking: { type: 'disabled' } })
-    const output = completion.choices[0]?.message?.content ?? ''
+    // Free models first (OpenRouter, when keyed); otherwise the platform SDK.
+    let output: string
+    if (openRouterConfigured()) {
+      const done = await completeWithFreeModels(messages as ChatMessage[])
+      output = done.output
+    } else {
+      const zai = await getZai()
+      const completion = await zai.chat.completions.create({ messages, thinking: { type: 'disabled' } })
+      output = completion.choices[0]?.message?.content ?? ''
+    }
     if (!output.trim()) throw new Error('Empty response from model')
 
     const json = run.expectJson ? extractJson(output) : null
