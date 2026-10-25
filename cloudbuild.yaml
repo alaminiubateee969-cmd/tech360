@@ -1,0 +1,25 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/tech360:$SHORT_SHA', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/tech360:$SHORT_SHA']
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'tech360'
+      - '--image=gcr.io/$PROJECT_ID/tech360:$SHORT_SHA'
+      - '--region=asia-southeast1'
+      - '--platform=managed'
+      - '--port=3000'
+      - '--allow-unauthenticated'
+      - '--memory=2Gi'
+      - '--cpu=2'
+      - '--min-instances=1'
+      - '--max-instances=10'
+      - '--set-env-vars=NODE_ENV=production'
+      - '--set-secrets=DATABASE_URL=tech360-db-url:latest,NEXTAUTH_SECRET=tech360-nextauth-secret:latest,JWT_SECRET=tech360-jwt-secret:latest,OPENAI_API_KEY=tech360-openai-key:latest,RESEND_API_KEY=tech360-resend-key:latest,WHATSAPP_ACCESS_TOKEN=tech360-whatsapp-token:latest,WHATSAPP_PHONE_NUMBER_ID=tech360-whatsapp-phone:latest,WHATSAPP_WEBHOOK_VERIFY_TOKEN=tech360-whatsapp-verify:latest'
+images: ['gcr.io/$PROJECT_ID/tech360:$SHORT_SHA']
+options:
+  logging: CLOUD_LOGGING_ONLY
