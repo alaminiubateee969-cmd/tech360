@@ -1,13 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { KeyRound, Loader2, Lock, LogIn, Mail, ShieldCheck } from 'lucide-react'
+import { Crown, FileText, KeyRound, Loader2, Lock, LogIn, Mail, ShieldCheck, UserCog } from 'lucide-react'
 
 import { api, ApiError } from '@/lib/admin-client'
+import { ADMIN_ROLES, OFFICIAL_INFO } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+/**
+ * Super Admin & Admin login — one endpoint, role decides access.
+ * Framed on the official company pad: logo + CONNECT·INNOVATE·GROW
+ * header, legal identity, and the pad ADDRESS / PHONE / WEBSITE /
+ * EMAIL footer, with downloads for the official letterhead PDF and
+ * the Official Information Sheet. No credentials are ever shown.
+ */
 export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLoggedIn: () => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -59,30 +67,68 @@ export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLogg
           backgroundSize: '32px 32px',
         }}
       />
-      <div className="relative w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <img
-            src="/brand/tech360-logo-original.jpg"
-            alt="Tech360 LLC logo"
-            className="h-14 w-auto rounded-lg"
-            width={56}
-            height={56}
-          />
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-100">Super Admin Console</h1>
-            <p className="mt-1 text-xs text-slate-500">AI Command Center — Tech360 LLC</p>
+      <div className="relative w-full max-w-md">
+        {/* — Official pad header — */}
+        <div className="mb-5 overflow-hidden rounded-xl bg-white shadow-2xl shadow-black/40">
+          <div className="flex items-center justify-between gap-4 px-5 pt-4">
+            <img
+              src="/brand/tech360-logo-original.jpg"
+              alt="TECH360 LLC — official letterhead"
+              className="h-11 w-auto"
+              width={44}
+              height={44}
+            />
+            <div className="text-right">
+              <p className="text-[15px] font-black tracking-[0.14em] text-[#0B1F33]">TECH360</p>
+              <p className="text-[9px] font-bold tracking-[0.22em] text-[#009FE3]">{OFFICIAL_INFO.tagline}</p>
+              <p className="text-[9px] text-slate-500">{OFFICIAL_INFO.servicesLine}</p>
+            </div>
           </div>
+          <p className="px-5 pt-2 text-right text-[10px] leading-relaxed text-slate-500">
+            <b className="tracking-wide text-[#0B1F33]">{OFFICIAL_INFO.legalName}</b> · Missouri LLC {OFFICIAL_INFO.missouriLLC} · EIN {OFFICIAL_INFO.ein}
+            <br />
+            {OFFICIAL_INFO.address}
+          </p>
+          <div className="mx-5 mb-3 mt-3 h-[5px] rounded bg-gradient-to-r from-[#063B8F] via-[#009FE3] to-[#18B83A]" aria-hidden="true" />
+          <div className="flex justify-between border-t border-slate-100 px-5 pb-3 pt-1.5 text-[9px] uppercase tracking-[0.16em] text-slate-400">
+            <span>Official company document</span>
+            <span>Admin Access</span>
+          </div>
+        </div>
+
+        <div className="mb-5 text-center">
+          <h1 className="text-lg font-bold tracking-tight text-slate-100">Super Admin &amp; Admin Login</h1>
+          <p className="mt-1 text-xs text-slate-500">
+            One secure login for both roles — your account role decides what you can access. New accounts are created by a Super Admin (Team → Create user) and must change their temporary password on first login.
+          </p>
+        </div>
+
+        {/* — Role cards — */}
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {ADMIN_ROLES.map((r) => (
+            <div key={r.role} className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                {r.role === 'SUPER_ADMIN' ? (
+                  <Crown className="size-4 text-[#009FE3]" aria-hidden="true" />
+                ) : (
+                  <UserCog className="size-4 text-[#18B83A]" aria-hidden="true" />
+                )}
+                {r.label}
+              </p>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">{r.summary}</p>
+            </div>
+          ))}
         </div>
 
         <form
           onSubmit={submit}
           className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/40 backdrop-blur"
-          aria-label="Login form"
+          aria-label="Super Admin and Admin login form"
         >
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="login-email" className="text-xs font-medium text-slate-400">
-                Email
+                Email (Super Admin or Admin)
               </Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-600" aria-hidden="true" />
@@ -168,6 +214,34 @@ export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLogg
           </div>
         </form>
 
+        {/* — Official downloads (pad documents) — */}
+        <div className="mt-4 flex flex-wrap justify-center gap-2 text-[11px]">
+          <a
+            href={OFFICIAL_INFO.officialInfoDoc}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-300 hover:text-white"
+          >
+            <FileText className="size-3.5" aria-hidden="true" /> Official Info Sheet
+          </a>
+          <a
+            href={OFFICIAL_INFO.officialInfoPdf}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-300 hover:text-white"
+          >
+            <FileText className="size-3.5" aria-hidden="true" /> Official Info PDF
+          </a>
+          <a
+            href={OFFICIAL_INFO.letterheadPdf}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-300 hover:text-white"
+          >
+            <FileText className="size-3.5" aria-hidden="true" /> Official Letterhead PDF
+          </a>
+        </div>
+
         <div className="mt-5 flex items-center justify-between gap-3 text-[11px] text-slate-600">
           <p className="flex items-center gap-1.5">
             <ShieldCheck className="size-3.5" aria-hidden="true" />
@@ -181,10 +255,33 @@ export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLogg
             Back to website
           </button>
         </div>
-        <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-slate-700">
-          <KeyRound className="size-3" aria-hidden="true" />
-          Session cookies are HttpOnly · CSRF-protected mutations
-        </p>
+
+        {/* — Pad footer: ADDRESS / PHONE / WEBSITE / EMAIL — */}
+        <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4 text-[10.5px] leading-relaxed text-slate-500">
+          <div className="mb-3 h-1 rounded bg-gradient-to-r from-[#18B83A] via-[#009FE3] to-[#063B8F]" aria-hidden="true" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#009FE3]">Address</p>
+              <p>{OFFICIAL_INFO.addressLines[0]}<br />{OFFICIAL_INFO.addressLines[1]}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#009FE3]">Phone</p>
+              <p>{OFFICIAL_INFO.padPhone}<br />{OFFICIAL_INFO.phone}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#009FE3]">Website</p>
+              <p>{OFFICIAL_INFO.padWebsite}<br />www.{OFFICIAL_INFO.website}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#009FE3]">Email</p>
+              <p>{OFFICIAL_INFO.padEmail}<br />{OFFICIAL_INFO.email}</p>
+            </div>
+          </div>
+          <p className="mt-3 flex items-center gap-1.5 text-[10px] text-slate-600">
+            <KeyRound className="size-3" aria-hidden="true" />
+            Session cookies are HttpOnly · CSRF-protected mutations · WhatsApp {OFFICIAL_INFO.whatsapp}
+          </p>
+        </div>
       </div>
     </div>
   )

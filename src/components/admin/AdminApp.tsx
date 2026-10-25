@@ -10,6 +10,7 @@ import {
   Clapperboard,
   ExternalLink,
   FileBarChart,
+  FileText,
   FolderKanban,
   LayoutDashboard,
   Loader2,
@@ -71,6 +72,7 @@ import { ReportsView } from './ReportsView'
 import { ReviewsView } from './ReviewsView'
 import { SettingsView } from './SettingsView'
 import { TeamView } from './TeamView'
+import { OfficialInfoView } from './OfficialInfoView'
 import { ACCENT } from './shared/styles'
 import { Button } from '@/components/ui/button'
 import {
@@ -88,7 +90,7 @@ import { cn } from '@/lib/utils'
 type ViewId =
   | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
   | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
-  | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
+  | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team' | 'official'
   | 'factory' | 'media' | 'feeds' | 'telephony'
 
 // Minimum console role required to see (and use) each view. Mirrors the
@@ -120,6 +122,7 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   reports: 'MANAGER',
   settings: 'SUPER_ADMIN',
   team: 'SUPER_ADMIN',
+  official: 'ADMIN',
   factory: 'ADMIN',
   media: 'STAFF',
   feeds: 'STAFF',
@@ -194,6 +197,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'n8n', label: 'n8n Workflows', icon: Workflow },
       { id: 'reports', label: 'Reports', icon: FileBarChart },
       { id: 'team', label: 'Team', icon: Users },
+      { id: 'official', label: 'Official Info', icon: FileText },
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -225,6 +229,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   reports: 'Reports',
   settings: 'Settings',
   team: 'Team',
+  official: 'Official Info',
   factory: 'AI Software Factory',
   media: 'Media Studio',
   feeds: 'Feed Hub',
@@ -609,6 +614,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <ReportsView />
               ) : view === 'team' ? (
                 <TeamView />
+              ) : view === 'official' ? (
+                <OfficialInfoView />
               ) : (
                 <SettingsView />
               )}

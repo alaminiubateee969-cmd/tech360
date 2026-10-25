@@ -152,6 +152,48 @@ async function main() {
   })
   console.log(`  ✓ Super Admin: ${adminEmail} (password from ADMIN_PASSWORD${isProduction ? '' : ' or dev fallback'}; must change on first login)`)
 
+  // 1b) Admin (operations) account — the second console login.
+  // Same rule as the Super Admin: the credential only ever comes from the
+  // environment (STAFF_ADMIN_EMAIL / STAFF_ADMIN_PASSWORD), never from a
+  // literal in this file. Optional: when the env vars are absent the account
+  // is simply not seeded (a Super Admin can also create Admin accounts later
+  // from Team → Create user, which issues a one-time temporary password).
+  const staffAdminEmail = process.env.STAFF_ADMIN_EMAIL?.trim().toLowerCase() ?? ''
+  const staffAdminPassword = process.env.STAFF_ADMIN_PASSWORD
+  if (staffAdminEmail) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffAdminEmail)) {
+      console.error('REFUSING TO SEED: STAFF_ADMIN_EMAIL must be a valid email address.')
+      process.exit(1)
+    }
+    if (staffAdminEmail === adminEmail) {
+      console.error('REFUSING TO SEED: STAFF_ADMIN_EMAIL must differ from ADMIN_EMAIL (Super Admin).')
+      process.exit(1)
+    }
+    if (isProduction && !staffAdminPassword) {
+      console.error('REFUSING TO SEED: STAFF_ADMIN_EMAIL is set but STAFF_ADMIN_PASSWORD is not.')
+      process.exit(1)
+    }
+    if (isProduction && staffAdminPassword && staffAdminPassword.length < 12) {
+      console.error('REFUSING TO SEED: STAFF_ADMIN_PASSWORD is shorter than 12 characters.')
+      process.exit(1)
+    }
+    await db.user.upsert({
+      where: { email: staffAdminEmail },
+      update: {},
+      create: {
+        email: staffAdminEmail,
+        name: 'Tech360 Admin',
+        role: 'ADMIN',
+        title: 'Administrator',
+        passwordHash: hashPassword(staffAdminPassword ?? 'dev-only-change-me'),
+        mustChangePassword: true,
+      },
+    })
+    console.log(`  ✓ Admin: ${staffAdminEmail} (password from STAFF_ADMIN_PASSWORD${isProduction ? '' : ' or dev fallback'}; must change on first login)`)
+  } else {
+    console.log('  • Admin account skipped (set STAFF_ADMIN_EMAIL / STAFF_ADMIN_PASSWORD to seed one)')
+  }
+
   // 2) Departments (110)
   for (const d of DEPARTMENTS) {
     await db.department.upsert({ where: { code: d.code }, update: {}, create: d })
