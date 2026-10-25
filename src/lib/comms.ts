@@ -57,7 +57,7 @@ async function sendWhatsApp(to: string, body: string): Promise<SendResult> {
   try {
     const phone = to.replace(/[^\d]/g, '')
     const graphVersion = (process.env.META_GRAPH_API_VERSION ?? 'v26.0').replace(/^v?/, 'v')
-    const res = await fetch(`https://graph.facebook.com/${graphVersion}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    const res = await fetch(`https://graph.facebook.com/${graphVersion}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
