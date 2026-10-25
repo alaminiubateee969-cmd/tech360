@@ -1,0 +1,94 @@
+{
+  "name": "Tech360 - 01 Lead Intake",
+  "nodes": [
+    {
+      "parameters": {"path": "lead-intake", "responseMode": "responseNode"},
+      "id": "webhook-trigger",
+      "name": "Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.TECH360_API_URL}}/api/leads",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name": "X-API-Key", "value": "={{$env.TECH360_API_KEY}}"}, {"name": "Content-Type", "value": "application/json"}]},
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "name", "value": "={{$json.body.name}}"},
+            {"name": "email", "value": "={{$json.body.email}}"},
+            {"name": "phone", "value": "={{$json.body.phone}}"},
+            {"name": "company", "value": "={{$json.body.company}}"},
+            {"name": "source", "value": "={{$json.body.source || 'WEBSITE'}}"},
+            {"name": "message", "value": "={{$json.body.message}}"}
+          ]
+        }
+      },
+      "id": "create-lead",
+      "name": "Create Lead in CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.TECH360_API_URL}}/api/clients",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name": "X-API-Key", "value": "={{$env.TECH360_API_KEY}}"}, {"name": "Content-Type", "value": "application/json"}]},
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{"name": "leadId", "value": "={{$json.id}}"}]
+        }
+      },
+      "id": "create-client",
+      "name": "Create Client + Client ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.TECH360_API_URL}}/api/clients/{{$json.id}}/journey-step",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name": "X-API-Key", "value": "={{$env.TECH360_API_KEY}}"}, {"name": "Content-Type", "value": "application/json"}]},
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "stepName", "value": "lead-created"},
+            {"name": "stepOrder", "value": 1}
+          ]
+        }
+      },
+      "id": "journey-step",
+      "name": "Record Journey Step",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, clientId: $json.clientId, message: 'Lead created and client onboarded' } }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [880, 0]
+    }
+  ],
+  "connections": {
+    "Lead Webhook": {"main": [[{"node": "Create Lead in CRM", "type": "main", "index": 0}]]},
+    "Create Lead in CRM": {"main": [[{"node": "Create Client + Client ID", "type": "main", "index": 0}]]},
+    "Create Client + Client ID": {"main": [[{"node": "Record Journey Step", "type": "main", "index": 0}]]},
+    "Record Journey Step": {"main": [[{"node": "Respond", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "tags": [{"name": "tech360-production"}]
+}
