@@ -1,6 +1,7 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Activity, BookOpenText, CheckCircle2, Globe2, MessageCircle, RefreshCw, Send, Sparkles, Users } from 'lucide-react'
 
 type Overview = {
@@ -48,6 +49,7 @@ export default function CommandCenterPage() {
   const [brand, setBrand] = useState('ALO Education')
   const [language, setLanguage] = useState('EN')
   const [audience, setAudience] = useState('Bangladesh students planning to study abroad')
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
 
   const refresh = useCallback(async () => {
     setBusy(true)
@@ -117,6 +119,29 @@ export default function CommandCenterPage() {
       await refresh()
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Review action failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function sendReply(thread: Thread) {
+    const body = (replyDrafts[thread.id] ?? '').trim()
+    if (!body || !thread.clientId) return
+    setBusy(true)
+    setNotice('')
+    try {
+      const response = await fetch('/api/admin/whatsapp/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+        body: JSON.stringify({ clientId: thread.clientId, body }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error ?? 'WhatsApp reply failed')
+      setReplyDrafts((current) => ({ ...current, [thread.id]: '' }))
+      setNotice(data.status === 'SENT' ? 'WhatsApp reply accepted by Meta. Delivery status will update from webhook events.' : 'Message status: ' + data.status)
+      await refresh()
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'WhatsApp reply failed')
     } finally {
       setBusy(false)
     }
@@ -233,6 +258,10 @@ export default function CommandCenterPage() {
             <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{thread.contactName}</p><p className="mt-1 text-xs text-slate-400">{thread.phone} {thread.clientId ? `· ${thread.clientId}` : ''}</p></div><span className="text-xs text-slate-500">{dateLabel(thread.lastMessageAt)}</span></div>
             <p className="mt-3 text-sm text-slate-300">{thread.lastMessagePreview || 'Media message'}</p>
             <p className="mt-2 text-xs text-slate-500">{thread.canSendFreeform ? 'Customer service window appears open' : 'Template may be required outside the service window'} · {thread.lastMessageStatus ?? 'status unavailable'}</p>
+            {thread.canSendFreeform && thread.clientId && <form onSubmit={(event) => { event.preventDefault(); void sendReply(thread) }} className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input aria-label={'Reply to ' + thread.contactName} value={replyDrafts[thread.id] ?? ''} onChange={(event) => setReplyDrafts((current) => ({ ...current, [thread.id]: event.target.value }))} maxLength={4000} placeholder="Write a WhatsApp reply…" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm" />
+              <button disabled={busy || !(replyDrafts[thread.id] ?? '').trim()} className="rounded-lg bg-emerald-300 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">Send reply</button>
+            </form>}
           </article>)}
           {!threads.length && <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-sm text-slate-400">No WhatsApp threads found in the current communications ledger.</div>}
         </section>}
