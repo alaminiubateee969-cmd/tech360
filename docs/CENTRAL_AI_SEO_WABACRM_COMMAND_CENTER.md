@@ -103,3 +103,24 @@ One cross-brand overview plus per-brand drill-down:
 - Outrank Next.js subfolder guide: https://www.outrank.so/free-blog/guides/nextjs
 - WabaCRM feature reference for parity planning: https://wabacrm.com/features
 - Use official Meta WhatsApp Business Platform APIs for message delivery; do not automate WhatsApp Web.
+
+
+## Implementation status in this branch (2026-10-25)
+
+The first central command-center MVP has now been added to this feature branch:
+
+- `src/app/admin/command-center/page.tsx`: central overview, brand cards, content draft form, content review queue, WhatsApp inbox preview/reply composer, and Meta template status list.
+- `src/app/api/admin/command-center/overview/route.ts`: live database counts for leads, contacts, WhatsApp communications, content states, approvals, and failed automations.
+- `src/app/api/admin/command-center/content/route.ts`: RBAC-protected content asset list and draft creation using the existing `ContentAsset` table.
+- `src/app/api/admin/command-center/content/[id]/route.ts`: manager-only approve/return-to-draft actions with audit events.
+- `src/app/api/admin/whatsapp/inbox/route.ts`: bounded read-only thread aggregation over the current communications ledger.
+- `src/app/api/admin/whatsapp/reply/route.ts`: manager-only free-form replies fail closed outside the 24-hour service window.
+- `src/app/api/admin/whatsapp/templates/route.ts`: reads template statuses from Meta server-side without exposing access tokens.
+- `src/lib/comms.ts`: WhatsApp Graph API version is configurable through `META_GRAPH_API_VERSION`.
+- `.env.example`: documents `WHATSAPP_BUSINESS_ACCOUNT_ID` and `META_GRAPH_API_VERSION`.
+
+**Not yet implemented / not yet verified:** persisted website registry and publishing connections; AI provider-backed draft generation; Outrank/native website publishing; scheduling and live publishing; WhatsApp assignment, unread tracking, departments, tags/groups/custom fields, CSV import, template creation, campaign recipients/queues/pause/cancel, drip campaigns, keyword bots, visual flow builder, greeting/away/follow-up automation, multi-number onboarding, API-token management, signed outbound webhook delivery, quality/token-health polling, social inbox, calling, mobile app, and end-to-end tests.
+
+The dashboard's brand cards are currently descriptive placeholders, not connected website records. The draft form stores a reviewable content record but does not call an AI model. Approving content does not publish it. Template listing requires `WHATSAPP_TOKEN`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, and a token with the relevant Meta permissions. Configure `META_GRAPH_API_VERSION` to a currently supported Graph API version for the Meta app. No credentials were committed.
+
+This branch has not been typechecked, linted, built, or tested in a local checkout by this tool session. Treat it as implementation-in-progress until CI and staging validation pass.
