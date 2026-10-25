@@ -1,5 +1,6 @@
 import ZAI from 'z-ai-web-dev-sdk'
 import { completeWithFreeModels, openRouterConfigured, type ChatMessage } from './model-provider'
+import { gatewayComplete, gatewayConfigured } from '@/lib/ai-gateway/client'
 import { db } from '@/lib/db'
 import { newCorrelationId, logError } from '@/lib/security'
 import { authorizeAgentTool, agentMayAccessClient, type AgentTool } from '@/lib/ai-workforce-policy'
@@ -144,9 +145,14 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
       { role: 'assistant', content: agent.systemPrompt },
       { role: 'user', content: userContent.slice(0, 24000) },
     ]
-    // Free models first (OpenRouter, when keyed); otherwise the platform SDK.
+    // Shared AI Gateway first when AgentOS is registered with it
+    // (opt-in via AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN);
+    // then free models (OpenRouter, when keyed); otherwise the SDK.
     let output: string
-    if (openRouterConfigured()) {
+    if (gatewayConfigured()) {
+      const done = await gatewayComplete(messages as ChatMessage[])
+      output = done.output
+    } else if (openRouterConfigured()) {
       const done = await completeWithFreeModels(messages as ChatMessage[])
       output = done.output
     } else {

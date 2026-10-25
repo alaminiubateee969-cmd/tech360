@@ -54,6 +54,11 @@ server.log
 /skills/
 # allow the safe template through (placeholders only)
 !.env.example
+!.env.ai-gateway.example
+
+# Real gateway environment must never be committed
+.env.ai-gateway
+ai-gateway.env
 
 # QA tooling artifacts
 tool-results/

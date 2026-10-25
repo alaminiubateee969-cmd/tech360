@@ -43,7 +43,7 @@ export function openRouterConfigured(env: Record<string, string | undefined> = p
 
 export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 
-async function openRouterComplete(apiKey: string, model: string, messages: ChatMessage[]): Promise<string> {
+export async function openRouterComplete(apiKey: string, model: string, messages: ChatMessage[]): Promise<string> {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
