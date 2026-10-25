@@ -23,6 +23,7 @@ import {
   ScrollText,
   Search,
   Settings,
+  Send,
   ShieldCheck,
   Star,
   Terminal,
@@ -64,6 +65,7 @@ import { MemoryView } from './MemoryView'
 import { NewsletterView } from './NewsletterView'
 import { SeoAuditView } from './SeoAuditView'
 import { MarketingKitView } from './MarketingKitView'
+import { MarketingDashboardView } from './MarketingDashboardView'
 import { N8nView } from './N8nView'
 import { OpsView } from './OpsView'
 import { PaymentsView } from './PaymentsView'
@@ -89,7 +91,7 @@ import { cn } from '@/lib/utils'
 
 type ViewId =
   | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
-  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
+  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing' | 'marketingos'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team' | 'official'
   | 'factory' | 'media' | 'feeds' | 'telephony'
 
@@ -113,6 +115,7 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   newsletter: 'MANAGER',
   seo: 'MANAGER',
   marketing: 'STAFF',
+  marketingos: 'ADMIN',
   knowledge: 'ADMIN',
   content: 'ADMIN',
   blog: 'MANAGER',
@@ -177,6 +180,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
       { id: 'seo', label: 'SEO Audit', icon: Search },
       { id: 'marketing', label: 'Marketing Kit', icon: Megaphone },
+      { id: 'marketingos', label: 'Marketing Dashboard', icon: Send },
     ],
   },
   {
@@ -220,6 +224,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   newsletter: 'Newsletter',
   seo: 'SEO Audit',
   marketing: 'Marketing Kit',
+  marketingos: 'Marketing Dashboard',
   knowledge: 'Knowledge Base',
   content: 'Content Studio',
   blog: 'Blog Studio',
@@ -590,6 +595,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <SeoAuditView />
               ) : view === 'marketing' ? (
                 <MarketingKitView />
+              ) : view === 'marketingos' ? (
+                <MarketingDashboardView />
               ) : view === 'knowledge' ? (
                 <KnowledgeView />
               ) : view === 'factory' ? (
