@@ -66,7 +66,8 @@ export function attachPreviewAdapter(): PrismaClientOptions | undefined {
   } catch {
     throw new Error(
       `${PREVIEW_ENV_VAR} is set but @prisma/adapter-libsql is not installed. ` +
-        'Run `npm run preview:setup` (it installs the preview-only adapter).',
+        'Install it with `npm i --no-save @prisma/adapter-libsql@6.19.3 @libsql/client@0.15.15` ' +
+        '(the version must match @prisma/client), then run `npm run preview:setup`.',
     )
   }
 
