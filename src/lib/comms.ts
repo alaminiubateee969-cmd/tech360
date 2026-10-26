@@ -48,7 +48,7 @@ export function channelStatuses() {
 }
 
 // ------------------------------------------------------------
-// WhatsApp Cloud API (Graph v21)
+// WhatsApp Cloud API (Graph version is configurable for safe provider upgrades)
 // ------------------------------------------------------------
 async function sendWhatsApp(to: string, body: string): Promise<SendResult> {
   if (!channelConfigured('WHATSAPP')) {
@@ -56,7 +56,8 @@ async function sendWhatsApp(to: string, body: string): Promise<SendResult> {
   }
   try {
     const phone = to.replace(/[^\d]/g, '')
-    const res = await fetch(`https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    const graphVersion = (process.env.META_GRAPH_API_VERSION ?? 'v26.0').replace(/^v?/, 'v')
+    const res = await fetch(`https://graph.facebook.com/${graphVersion}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,

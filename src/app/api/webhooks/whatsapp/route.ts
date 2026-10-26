@@ -71,6 +71,19 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < messages.length; i++) {
       const m = messages[i]
+
+      // Meta may retry webhook deliveries. Avoid creating a second CRM
+      // communication for an inbound provider message already processed.
+      // This read-side guard is best-effort; a unique database constraint is
+      // still recommended as part of the next reviewed schema migration.
+      if (m.id) {
+        const alreadyProcessed = await db.communication.findFirst({
+          where: { providerMessageId: m.id, channel: 'WHATSAPP', direction: 'IN' },
+          select: { id: true },
+        })
+        if (alreadyProcessed) continue
+      }
+
       const phone = sanitizePhone(m.from ?? '')
       const name = contacts[i]?.profile?.name ?? ''
       const text = sanitizeText(m.text?.body ?? `[${m.type ?? 'media'} message]`, 4000)
