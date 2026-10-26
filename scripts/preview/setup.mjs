@@ -18,11 +18,14 @@
  * PREVIEW_SQLITE_URL when NODE_ENV=production.
  *
  * Usage:
- *   npm i --no-save @prisma/adapter-libsql @libsql/client
+ *   npm i --no-save @prisma/adapter-libsql@6.19.3 @libsql/client@0.15.15
  *   node scripts/preview/setup.mjs [--skip-generate] [--keep-data]
  *
+ * The adapter packages must match @prisma/client (6.19.3); 7.x renames the
+ * PrismaLibSQL export and preview mode fails to construct the adapter.
+ *
  * Then:
- *   PREVIEW_SQLITE_URL=file:$PWD/.preview/demo.db npm run dev
+ *   PREVIEW_SQLITE_URL=file:$PWD/.preview/demo.db PORTAL_OTP=off npm run dev
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -59,7 +62,7 @@ try {
 } catch {
   console.error(
     'Preview mode needs two optional packages. Install them with:\n\n' +
-      '  npm i --no-save @prisma/adapter-libsql @libsql/client\n',
+      '  npm i --no-save @prisma/adapter-libsql@6.19.3 @libsql/client@0.15.15\n',
   )
   process.exit(1)
 }
@@ -167,7 +170,7 @@ console.log(`
 Preview database ready.
 
   Start the app:
-    PREVIEW_SQLITE_URL=file:$PWD/.preview/demo.db npm run dev
+    PREVIEW_SQLITE_URL=file:$PWD/.preview/demo.db PORTAL_OTP=off npm run dev
 
   Super Admin console:  http://localhost:3000/#/admin
     admin@tech360.local      / Tech360-Demo-2026!
@@ -176,8 +179,9 @@ Preview database ready.
 
   Client portal:        http://localhost:3000/#/portal
     Client IDs: TECH-2026-000101 … TECH-2026-000106
-    (production requires a one-time code; in development the contact-match
-     step is available, so any contact value on the record works)
+    (production always requires a one-time code; PORTAL_OTP=off in the
+     start command above enables the development contact-match step, so any
+     contact value on the record works. Without it sign-in fails closed 503.)
 
   Preview storage only — never point a production deployment at this file.
 `)

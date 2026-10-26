@@ -288,10 +288,14 @@ The repository ships a preview mode so the whole product can be reviewed without
 
 ```bash
 npm ci
-npm i --no-save @prisma/adapter-libsql @libsql/client     # preview-only adapter
+npm i --no-save @prisma/adapter-libsql@6.19.3 @libsql/client@0.15.15  # pin to @prisma/client
 node scripts/preview/setup.mjs                            # builds + seeds .preview/demo.db
-PREVIEW_SQLITE_URL=file:$PWD/.preview/demo.db npm run dev
+PREVIEW_SQLITE_URL=file:$PWD/.preview/demo.db PORTAL_OTP=off npm run dev
 ```
+
+`PORTAL_OTP=off` is the development-only portal sign-in path (contact match instead of a delivered
+code); without it the portal returns `503` because no delivery channel is configured.
+The adapter packages must match `@prisma/client` (6.19.3) — 7.x renames the export to `PrismaLibSql`.
 
 `PREVIEW_SQLITE_URL` swaps Prisma's native engine for the pure-JS libSQL adapter
 (`src/lib/preview-db.ts`). It is **refused in production** and refuses non-`file:` URLs. Nothing else in

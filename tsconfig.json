@@ -37,21 +37,11 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-<<<<<<< HEAD
     "deployment",
     "examples",
+    "legacy",
     "mini-services",
     "n8n",
     "node_modules"
   ]
 }
-=======
-    "upload/**",
-    "examples/**",
-    "scripts/**",
-    "tests/**",
-    "node_modules",
-    "node_modules"
-  ]
-}
->>>>>>> upload/tech360-production-final
