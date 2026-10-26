@@ -126,3 +126,32 @@ standalone server boots on `0.0.0.0:3100`, `GET /` → 200, and with MySQL absen
 - The quarantined prototype is preserved but **not** part of the product; it
   cannot be revived in this tree without its own schema, dependencies and root
   route.
+
+## 7. Continuous integration (independent proof for the MySQL-only paths)
+
+Pushed as `arena/e56c843a-tech360` → **PR #41**. GitHub Actions ran both jobs and
+**both passed**:
+
+| Job | Duration | Result |
+|---|---|---|
+| Generate + prove the MySQL baseline | 1m11s | ✅ |
+| Validate against MySQL | 4m28s | ✅ |
+
+The `Validate against MySQL` job executed, among others:
+
+`Secret scan` · `npm ci` · `Verify production start fails closed on missing configuration` ·
+`Verify retired deployment paths fail closed` · `npm audit` · `Prisma schema is in sync with the MySQL type map` ·
+`Committed migrations reproduce the schema (no drift)` · `Apply migrations to the disposable MySQL` ·
+`Baseline must leave zero schema drift` · `Lint` · `Typecheck` ·
+**`Business and database isolation tests (MySQL)`** · `Verify production seed bootstrap is idempotent` ·
+`Database integrity (MySQL, read-only)` · `Production build` · `Validate standalone server and static/public output` ·
+`Smoke-test the generated production server`.
+
+This closes the one gap left by the sandbox: the three suites that cannot run
+without MySQL (`database-workflows`, `governance-db`, `governance-outbound-db`)
+pass against a disposable MySQL server, and the migration baseline still shows
+zero drift.
+
+**Summary: install, lint, typecheck, the full test suite (including the MySQL
+paths), the production build, the standalone server and the runtime HTTP flows
+are all verified. The platform is real, and the checks are reproducible.**
