@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,7 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
   // so the clip never blocks first paint.
   useEffect(() => {
     let cancelled = false;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const start = () => {
       if (!cancelled) setVideoReady(true);
     };
@@ -806,11 +807,11 @@ export default function HomeView({
   onNavigate?: (hash: string) => void;
 }) {
   return (
+   <MotionConfig reducedMotion="user">
     <main id="main-content">
       <Hero onNavigate={onNavigate} />
       <TrustRow />
       <SolutionsGrid />
-      <FlagshipServices />
       <PlatformGrid />
       <WhyTech360 />
       <IndustriesPreview />
@@ -820,13 +821,15 @@ export default function HomeView({
       <ProcessStrip />
       <IntegrationsGrid />
       <BenefitsGrid />
+      <FlagshipServices />
       <SelectedWork />
-      <ClientReviews />
-      <StatsBand />
       <PricingSection />
       <LatestInsights />
       <ResourcesGrid />
-      <CtaBand />
+      <ClientReviews />
+      <StatsBand />
+      <CtaBand title="Ready to Make Your Business Work Smarter?" description="Discover how Tech360 can help connect your tools, streamline operations, and put AI to work across your business." primaryLabel="Book a Demo" />
     </main>
+   </MotionConfig>
   );
 }
