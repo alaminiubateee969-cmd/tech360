@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 // One brief form in, one reviewed Next.js + Prisma + Tailwind project out,
 // stored file-by-file so it can be reviewed, exported and handed over.
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'ADMIN' })
   if (isResponse(g)) return g
 
   const url = new URL(req.url)

@@ -194,7 +194,7 @@ export function AdminDashboardConcept() {
             { l: "Active projects", v: "12", c: "#009FE3" },
             { l: "Revenue (30d)", v: "$18.4k", c: "#18B83A" },
             { l: "Open tickets", v: "5", c: "#063B8F" },
-            { l: "Agent runs", v: "1,455", c: "#526173" },
+            { l: "Workflow runs", v: "1,455", c: "#526173" },
           ].map((k) => (
             <div key={k.l} className="rounded-lg border border-[#E2E8F0] bg-white p-2.5">
               <div className="text-[8px] font-bold uppercase tracking-wider text-[#526173]">{k.l}</div>

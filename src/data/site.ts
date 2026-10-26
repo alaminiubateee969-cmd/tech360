@@ -372,7 +372,7 @@ export const SERVICES: Service[] = [
     problem:
       "\"AI agents\" on most dashboards are theater: icons that simulate activity. Real automation requires agents that read and write your actual systems, keep records of every action, and stop for human approval when the action matters.",
     solution:
-      "We build production agent systems: each agent with a defined job, tool permissions, execution history and approval gates for sensitive actions. Output is stored, auditable and reproducible — an AI workforce you can govern.",
+      "We build production agent systems: each agent with a defined job, tool permissions, execution history and approval gates for sensitive actions. Output is stored, auditable and reproducible — a governed automation system for your business.",
     features: [
       "Agents with defined roles, tools and permissions",
       "Every execution recorded — input, output, duration, errors",
@@ -390,7 +390,7 @@ export const SERVICES: Service[] = [
       "Approval-gate tuning, documentation and handover",
     ],
     example:
-      "A company automating first-response drafting and scope-question generation for inbound enquiries, with human approval before anything reaches a client.",
+      "A logistics company automating document intake and status updates across three internal systems, with staff approval before anything reaches a customer.",
   },
   {
     slug: "ai-business-automation",
@@ -1338,7 +1338,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "How do we start working together?",
-    a: "Send one message — through the contact form or a chat with our AI assistant. You receive a Client ID for all future communication, we run discovery on your business, and you get a written scope and then an HTML preview before any payment decision. Starting costs you nothing but the message.",
+    a: "Send one message — through the contact form or a live chat with our team. You receive a Client ID for all future communication, we run discovery on your business, and you get a written scope and then an HTML preview before any payment decision. Starting costs you nothing but the message.",
   },
   {
     q: "What technologies do you build with?",
@@ -1553,7 +1553,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "7. Governing terms and contact",
         body: [
           "These Terms are governed by the laws applicable to contracts formed in the State of Missouri, USA, without regard to conflict-of-law principles. Disputes will first be addressed through good-faith negotiation; unresolved disputes shall be brought in the courts of competent jurisdiction for Cass County, Missouri.",
-          "Questions about these Terms: info@bdtech360.com or 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA — or start a chat with our AI assistant from any page.",
+          "Questions about these Terms: info@bdtech360.com or 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA — or start a live chat with our team from any page.",
         ],
       },
     ],

@@ -1,6 +1,7 @@
 import { createHash } from 'crypto'
 import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { featureEnabled } from '@/lib/features'
 import { runAgent } from '@/lib/agents/engine'
 import { audit, readJson, sanitizeText } from '@/lib/security'
@@ -92,7 +93,7 @@ function validateReview(raw: Record<string, unknown> | null): ReviewResult | nul
 }
 
 export async function POST(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
 
   if (!(await featureEnabled('ai_agents'))) {

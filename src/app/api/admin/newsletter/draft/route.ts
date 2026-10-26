@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { readJson, sanitizeText } from '@/lib/security'
 import { runAgent } from '@/lib/agents/engine'
 import { featureEnabled } from '@/lib/features'
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic'
 // The result fills the composer; the admin still reviews and saves.
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   if (!(await featureEnabled('ai_agents'))) {
     return Response.json({ error: 'AI agents are switched OFF by Super Admin — newsletter drafting unavailable.' }, { status: 403 })

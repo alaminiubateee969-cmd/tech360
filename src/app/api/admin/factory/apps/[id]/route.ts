@@ -20,7 +20,7 @@ const TRANSITIONS: Record<string, { stage: Stage; status: Status; note: string; 
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'ADMIN' })
   if (isResponse(g)) return g
   const { id } = await params
 
@@ -51,7 +51,7 @@ function safeParse(value: string): unknown {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: 'ADMIN' })
   if (isResponse(g)) return g
   const { id } = await params
 

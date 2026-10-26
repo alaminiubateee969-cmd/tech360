@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { readJson, sanitizeText, audit } from '@/lib/security'
 import { runAgent } from '@/lib/agents/engine'
 import { featureEnabled } from '@/lib/features'
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic'
 // NO campaign row is created.
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
 
   if (!(await featureEnabled('ai_agents'))) {

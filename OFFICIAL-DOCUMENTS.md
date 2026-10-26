@@ -15,3 +15,10 @@ is applied by `src/lib/letterhead.ts` — the single letterhead engine:
    Release record + payment verification + client responsibilities + signatures.
 4. **Legal policies** (public, print) — every `#/legal/*` page prints with the
    pad letterhead (logo, legal identity, brand rule) via print-only blocks.
+5. **Official Information Sheet** (public) — `/api/official-info`
+   Every official fact on the pad (legal identity, pad + platform contacts,
+   services, Super Admin / Admin login routing — never passwords).
+   Shareable PDF: `/official/TECH360-Official-Info.pdf`; owner-issued pad:
+   `/official/TECH360_Official_A4_Letterhead.pdf`. Also shown on the
+   `/#/admin` login screen and in the console under System → Official Info.
+   See `docs/ADMIN_ACCESS_AND_OFFICIAL_INFO.md`.
