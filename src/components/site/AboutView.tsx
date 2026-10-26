@@ -268,22 +268,17 @@ export default function AboutView() {
               align="left"
             />
             <Reveal className="mt-8">
-              <dl className="divide-y divide-[#E2E8F0] overflow-hidden rounded-xl border border-[#E2E8F0] bg-[#F8FCFF]">
-                {(
-                  [
-                    { term: "Brand", detail: COMPANY.brand },
-                    { term: "Website", detail: COMPANY.domain, href: `https://${COMPANY.domain}` },
-                    { term: "US legal entity", detail: COMPANY.legalName },
-                    { term: "US registration jurisdiction", detail: COMPANY.registrationJurisdiction },
-                    { term: "Missouri LLC number", detail: COMPANY.missouriLLC },
-                    { term: "EIN", detail: COMPANY.ein },
-                    { term: "Registered address", detail: COMPANY.address },
-                    { term: "Founded in Bangladesh", detail: COMPANY.bangladeshFoundedYear },
-                    { term: "US LLC registration", detail: COMPANY.usRegistrationYear },
-                    { term: "Service coverage", detail: COMPANY.serviceCoverage },
-                    { term: "Email", detail: COMPANY.email, href: `mailto:${COMPANY.email}` },
-                  ] as const
-                ).map((row) => (
+              <dl className="divide-y divide-[#E2E8F0] rounded-xl border border-[#E2E8F0] bg-[#F8FCFF]">
+                {[
+                  { term: "Legal name", detail: COMPANY.legalName },
+                  { term: "Brand", detail: `${COMPANY.brand} · ${COMPANY.domain}` },
+                  { term: "Missouri LLC number", detail: COMPANY.missouriLLC },
+                  { term: "EIN", detail: COMPANY.ein },
+                  { term: "Registered address", detail: COMPANY.address },
+                  { term: "Email", detail: COMPANY.email },
+                  { term: "Contact", detail: "Live support chat — on every page" },
+                  { term: "Founded", detail: COMPANY.founded },
+                ].map((row) => (
                   <div
                     key={row.term}
                     className="flex flex-col gap-1 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
@@ -325,8 +320,8 @@ export default function AboutView() {
                   scope: "Responsible for delivery direction, software architecture, engineering standards, and technical accountability.",
                 },
                 {
-                  role: "Head of Automation & AI",
-                  scope: "Responsible for automation architecture, AI system governance, and integration reliability.",
+                  role: "Head of Automation",
+                  scope: "Automation backbone, systems governance, integration reliability.",
                 },
                 {
                   role: "Head of Client Delivery",

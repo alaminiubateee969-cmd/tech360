@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Bot, CheckCircle2, Loader2, Mail, MapPin, Phone, Send } from "lucide-react";
+import { MessageCircle, CheckCircle2, Loader2, Mail, MapPin, Phone, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -151,8 +151,11 @@ export default function ContactView() {
         | null;
       if (!res.ok || !data?.ok) {
         // Honest error handling: show what we know, no fake success.
-        const baseError = data?.error ?? data?.message ?? `The request could not be submitted (HTTP ${res.status}). Please try again — or start a chat with our AI assistant.`;
-        setApiError(data?.requestRef ? `${baseError} Support reference: ${data.requestRef} (not an authentication secret).` : baseError);
+        setApiError(
+          data?.error ??
+            data?.message ??
+            `The request could not be submitted (HTTP ${res.status}). Please try again — or start a live chat with our team.`
+        );
         return;
       }
       requestIdRef.current = null;
@@ -163,7 +166,7 @@ export default function ContactView() {
       });
     } catch {
       setApiError(
-        "Network error — the request never left your browser. Check your connection and try again, or start a chat with our AI assistant."
+        "Network error — the request never left your browser. Check your connection and try again, or start a live chat with our team."
       );
     } finally {
       setSubmitting(false);
@@ -235,8 +238,8 @@ export default function ContactView() {
                             onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
                             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#18B83A] px-5 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#16A433] focus-visible:ring-2 focus-visible:ring-[#18B83A] focus-visible:ring-offset-2"
                           >
-                            <Bot className="size-4" aria-hidden="true" />
-                            Chat with our AI assistant
+                            <MessageCircle className="size-4" aria-hidden="true" />
+                            Chat with our team
                           </button>
                           <a
                             href="#/process"
@@ -606,10 +609,10 @@ export default function ContactView() {
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
                       <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#18B83A]/10 text-[#18B83A]">
-                        <Bot className="size-5" aria-hidden="true" />
+                        <MessageCircle className="size-5" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-[#0B1F33]">AI assistant — live chat</h3>
+                        <h3 className="text-sm font-semibold text-[#0B1F33]">Live support chat</h3>
                         <button
                           type="button"
                           onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
@@ -618,9 +621,9 @@ export default function ContactView() {
                           Open the chat now
                         </button>
                         <p className="mt-2 text-xs leading-relaxed text-[#526173]">
-                          Start with a short requirement and email. Messages are
-                          saved to the conversation; a Client ID is linked only
-                          after identity can be handled safely.
+                          Fastest first response — our support team replies
+                          quickly, brings in specialists when needed, and every message lands
+                          on your client record.
                         </p>
                       </div>
                     </div>

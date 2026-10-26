@@ -162,7 +162,7 @@ export default function LegalView({ slug }: { slug: string }) {
                     >
                       {COMPANY.email}
                     </a>{" "}
-                    or start a chat with our AI assistant (on any page) quoting your
+                    or start a live chat with our team (on any page) quoting your
                     Client ID. Policy questions are answered by the
                     team that wrote the policy.
                   </p>

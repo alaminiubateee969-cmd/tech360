@@ -1,4 +1,4 @@
-import { AI_OPERATOR_MIN_ROLE } from '@/lib/ai-workforce-policy'
+import { AI_WORKFORCE_GOVERNANCE_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
@@ -17,7 +17,7 @@ function csvCell(value: unknown, max = 400): string {
 // GET /api/admin/agents/export — machine-readable PROOF of real agent work:
 // every AI agent execution with inputs, outputs, status, duration, correlation.
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: AI_OPERATOR_MIN_ROLE })
+  const g = await guard(req, { minRole: AI_WORKFORCE_GOVERNANCE_ROLE })
   if (isResponse(g)) return g
 
   const url = new URL(req.url)

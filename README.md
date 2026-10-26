@@ -10,7 +10,7 @@ One codebase, three surfaces:
 |---|---|---|
 | **Public website** | `/` (hash routes `#/services`, `#/industries`, `#/work`, `#/blog`, …) | Marketing site, blog, case studies, contact intake → real lead in the CRM |
 | **Client portal** | `/#/portal` (Client ID + email/WhatsApp) | Projects, milestones, meetings, files, previews, approvals, payments, invoices, handover |
-| **Super Admin console** | `/#/admin` (role-based login) | CRM, projects, payments, invoices (official pad documents), 44-agent AI workforce, NL Command Center, **AI Software Factory**, **Media Studio**, **Feed Hub**, **Calls & SMS**, engagement-tracked newsletter (open pixel + click redirect, honest zeros until real sends), knowledge base with real PDF/DOCX/CSV/TXT upload + extraction, curated image-prompt library, governance switches, ops loop monitor, analytics, logs |
+| **Super Admin console** | `/#/admin` (role-based login) | CRM, projects, payments, invoices (official pad documents), internal automation & delivery tools (**dashboard-only — never mentioned on the public website**, see `docs/AI_VISIBILITY_POLICY.md`), **Media Studio**, **Feed Hub**, **Calls & SMS**, governance switches, ops monitor, analytics, logs |
 | **Design kit** | `/#/design-kit` | The live design system: buttons, accessibly-labelled sequence/funnel/swimlane diagrams, infographics, interface mockups and tokens — the same components the site and generated client apps use |
 
 The official **company letterhead** (owner-provided pad + logo) drives every document the platform issues — SOW previews, tax invoices, the handover & acceptance certificate, printed legal policies (`src/lib/letterhead.ts`, see `OFFICIAL-DOCUMENTS.md`).
@@ -116,18 +116,18 @@ Hostinger settings and environment requirements are documented in `docs/HOSTINGE
 
 ## 6. Payments & governance
 
-- **Super Admin → Settings → Feature Management**: 13 switches that change *real backend behavior* (portal sessions, payments, invoices, blog, contact intake, comms channels, AI agents, n8n, maintenance mode).
+- **Super Admin → Settings → Feature Management**: 13 switches that change *real backend behavior* (portal sessions, payments, invoices, blog, contact intake, comms channels, internal automation, n8n, maintenance mode).
 - **Super Admin → Settings → Payment Gateways**: per-gateway ON/OFF + sandbox/production. Disabled gateways are rejected server-side and never printed as accepted on invoices.
 - Stripe: real REST checkout + HMAC-verified webhook (see `PAYMENT.md`).
 
 ## 7. Repository contents
 
-- `src/` — the complete application (public site, admin console, client portal, ~45 API route groups, AI agent engine, journey/CRM engine, ops loop, letterhead engine, security libs).
+- `src/` — the complete application (public site, admin console, client portal, ~45 API route groups, automation engine, journey/CRM engine, ops loop, letterhead engine, security libs).
 - `prisma/` — the MySQL Prisma schema, reviewed migration baseline, and seed. Any local `db/` data is ignored and is not production storage.
 - `public/` — brand assets (owner's original logo + company pad designs in `public/brand/`).
 - `mini-services/` — ai-ops (:3031) + notify-relay (:3032).
 - `deployment/` — legacy Google Cloud Run/Docker templates and scheduler samples. They are not part of Tech360's supported production path; the current production target is the Hostinger Node.js Web App documented above.
-- `src/lib/factory/blueprint.ts` — the AI Software Factory engine: brief → blueprint → real Next.js/Prisma source tree → ZIP delivery package (see `docs/AI_SOFTWARE_FACTORY.md`).
+- `src/lib/factory/blueprint.ts` — the internal delivery-factory engine: brief → blueprint → real Next.js/Prisma source tree → ZIP delivery package (see `docs/AI_SOFTWARE_FACTORY.md`).
 - `src/lib/media/studio.ts`, `src/lib/feeds/parse.ts`, `src/lib/telephony.ts` — Media Studio planning + captions, hardened RSS/Atom/JSON parsing, and the honest call/SMS adapters.
 - `scripts/verify-reference-links.mjs` — checks every owner-supplied reference against the live network and writes `docs/REFERENCE_VERIFICATION_MATRIX.md`.
 - `n8n/` — 26 workflow definitions (W26 = free lead enrichment, regenerate with `node deployment/generate-n8n-lead-enrichment.cjs`).

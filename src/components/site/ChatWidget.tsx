@@ -174,8 +174,8 @@ export default function ChatWidget() {
       if (nowHidden) setOpen(false)
     }
     window.addEventListener('hashchange', onHash)
-    // External "AI assistant" CTAs (AIAssistantLink and header chips) open the
-    // chat through this event — the AI agent is the site's contact channel.
+    // External "Live Support" CTAs (AIAssistantLink and header chips) open the
+    // chat through this event — live chat is the site's contact channel.
     const onOpenChat = () => {
       if (!isHashRouteHidden()) setOpen(true)
     }
@@ -539,7 +539,7 @@ export default function ChatWidget() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold leading-tight">TECH360 Support</p>
                 <p className="mt-0.5 text-[11px] leading-tight text-white/85">
-                  {aiStatus === 'checking' ? 'Checking assistant status…' : aiStatus === 'ready' ? 'Assistant available' : aiStatus === 'unavailable' ? 'Assistant unavailable — email info@bdtech360.com' : 'Send a message or email info@bdtech360.com'}
+                  We reply fast — and a specialist joins when needed
                 </p>
               </div>
               <button

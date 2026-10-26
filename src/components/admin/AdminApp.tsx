@@ -10,6 +10,7 @@ import {
   Clapperboard,
   ExternalLink,
   FileBarChart,
+  FileText,
   FolderKanban,
   LayoutDashboard,
   Loader2,
@@ -23,6 +24,7 @@ import {
   ScrollText,
   Search,
   Settings,
+  Send,
   ShieldCheck,
   Sparkles,
   Star,
@@ -81,6 +83,7 @@ import { NewsletterView } from './NewsletterView'
 import { PromptLibraryView } from './PromptLibraryView'
 import { SeoAuditView } from './SeoAuditView'
 import { MarketingKitView } from './MarketingKitView'
+import { MarketingDashboardView } from './MarketingDashboardView'
 import { N8nView } from './N8nView'
 import { OpsView } from './OpsView'
 import { PaymentsView } from './PaymentsView'
@@ -89,6 +92,7 @@ import { ReportsView } from './ReportsView'
 import { ReviewsView } from './ReviewsView'
 import { SettingsView } from './SettingsView'
 import { TeamView } from './TeamView'
+import { OfficialInfoView } from './OfficialInfoView'
 import { ACCENT } from './shared/styles'
 import { Button } from '@/components/ui/button'
 import {
@@ -105,18 +109,16 @@ import { cn } from '@/lib/utils'
 
 type ViewId =
   | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
-  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
-  | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
-  | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts'
-  | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
-  | 'workforce' | 'pipeline'
+  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing' | 'marketingos'
+  | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team' | 'official'
+  | 'factory' | 'media' | 'feeds' | 'telephony'
 
 // Minimum console role required to see (and use) each view. Mirrors the
 // server-side minRole on the backing API routes — the nav never advertises
 // a view whose data the role cannot actually load.
 const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN'> = {
   dashboard: 'STAFF',
-  ops: 'SUPER_ADMIN',
+  ops: 'ADMIN',
   leads: 'STAFF',
   clients: 'STAFF',
   approvals: 'MANAGER',
@@ -127,22 +129,23 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   reviews: 'MANAGER',
   agents: 'ADMIN',
   command: 'ADMIN',
-  memory: 'SUPER_ADMIN',
+  memory: 'ADMIN',
   newsletter: 'MANAGER',
   seo: 'MANAGER',
   marketing: 'STAFF',
-  prompts: 'STAFF',
-  knowledge: 'SUPER_ADMIN',
+  marketingos: 'ADMIN',
+  knowledge: 'ADMIN',
   content: 'ADMIN',
   blog: 'MANAGER',
   analytics: 'MANAGER',
-  logs: 'SUPER_ADMIN',
-  n8n: 'SUPER_ADMIN',
+  logs: 'ADMIN',
+  n8n: 'ADMIN',
   reports: 'MANAGER',
   settings: 'SUPER_ADMIN',
   team: 'SUPER_ADMIN',
+  official: 'ADMIN',
   factory: 'ADMIN',
-  media: 'STAFF',
+  media: 'ADMIN',
   feeds: 'STAFF',
   telephony: 'STAFF',
   models: 'SUPER_ADMIN',
@@ -206,7 +209,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
       { id: 'seo', label: 'SEO Audit', icon: Search },
       { id: 'marketing', label: 'Marketing Kit', icon: Megaphone },
-      { id: 'prompts', label: 'Prompt Library', icon: Sparkles },
+      { id: 'marketingos', label: 'Marketing Dashboard', icon: Send },
     ],
   },
   {
@@ -234,8 +237,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'n8n', label: 'n8n Workflows', icon: Workflow },
       { id: 'reports', label: 'Reports', icon: FileBarChart },
       { id: 'team', label: 'Team', icon: Users },
-      { id: 'integrations', label: 'CRM Integrations', icon: Plug },
-      { id: 'backup', label: 'Backup & Recovery', icon: DatabaseBackup },
+      { id: 'official', label: 'Official Info', icon: FileText },
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -258,7 +260,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   newsletter: 'Newsletter',
   seo: 'SEO Audit',
   marketing: 'Marketing Kit',
-  prompts: 'Prompt Library',
+  marketingos: 'Marketing Dashboard',
   knowledge: 'Knowledge Base',
   models: 'AI Model Management',
   skills: 'Skill Registry',
@@ -278,6 +280,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   reports: 'Reports',
   settings: 'Settings',
   team: 'Team',
+  official: 'Official Info',
   factory: 'AI Software Factory',
   media: 'Media Studio',
   feeds: 'Feed Hub',
@@ -682,8 +685,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <SeoAuditView />
               ) : view === 'marketing' ? (
                 <MarketingKitView />
-              ) : view === 'prompts' ? (
-                <PromptLibraryView />
+              ) : view === 'marketingos' ? (
+                <MarketingDashboardView />
               ) : view === 'knowledge' ? (
                 <KnowledgeView />
               ) : view === 'factory' ? (
@@ -708,6 +711,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <ReportsView />
               ) : view === 'team' ? (
                 <TeamView />
+              ) : view === 'official' ? (
+                <OfficialInfoView />
               ) : (
                 <SettingsView />
               )}

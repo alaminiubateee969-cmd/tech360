@@ -10,7 +10,7 @@ const TEXT_FORMATS = ['srt', 'vtt', 'script', 'composition'] as const
 type TextFormat = (typeof TEXT_FORMATS)[number]
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'ADMIN' })
   if (isResponse(g)) return g
   const { id } = await params
 
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'ADMIN' })
   if (isResponse(g)) return g
   const { id } = await params
 

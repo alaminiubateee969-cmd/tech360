@@ -75,9 +75,9 @@ export function OutlineLink({
   );
 }
 
-/** Opens the on-site AI assistant (ChatWidget) — the primary contact channel. */
+/** Opens the on-site live support chat (ChatWidget) — the primary contact channel. */
 export function AIAssistantLink({
-  label = "Chat with our AI assistant",
+  label = "Chat with our team",
   className,
   compact = false,
 }: {
@@ -91,7 +91,7 @@ export function AIAssistantLink({
       onClick={() =>
         window.dispatchEvent(new CustomEvent("tech360:open-chat"))
       }
-      aria-label="Open the Tech360 AI assistant chat"
+      aria-label="Open the Tech360 live support chat"
       className={cn(
         BASE,
         "bg-[#18B83A] text-white shadow-[0_1px_2px_rgba(6,59,143,0.2)] hover:bg-[#16A433] hover:shadow-[0_4px_14px_rgba(24,184,58,0.35)]",

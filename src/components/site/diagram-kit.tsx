@@ -376,7 +376,7 @@ export function ProjectSwimlane() {
     <SwimlaneDiagram
       eyebrow="Delivery · Swimlane"
       title="Who does what, in order"
-      lanes={["Client", "AI workforce", "Tech360 team"]}
+      lanes={["Client", "Tech360 delivery", "Tech360 team"]}
       cols={7}
       steps={[
         { lane: 0, col: 0, label: "Sends first message" },

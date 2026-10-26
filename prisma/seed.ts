@@ -78,9 +78,9 @@ const BLOG_POSTS = [
   {
     slug: 'ai-agents-that-actually-execute',
     title: 'AI Agents That Actually Execute (Not Just Chat)',
-    excerpt: 'A dashboard that shows "agents" without database-backed execution is theater. Here is how real agent execution is built, logged and governed.',
+    excerpt: 'A dashboard that shows automation without database-backed execution is theater. Here is how real, logged and governed automation is built for a business.',
     category: 'AI Systems',
-    content: `# AI Agents That Actually Execute\n\nThe term "AI agent" has drifted into decoration: icons on a dashboard that simulate activity. A real agent has a job, tools, permissions, a persistent record of every execution, and an approval gate when the action is sensitive.\n\n## The anatomy of a real agent\n\n1. **Identity and purpose** — a unique code, a department, a single clear responsibility.\n2. **A system prompt** — its operating instructions, including rules it cannot break.\n3. **Tools and permissions** — what it may read, what it may write, what it may never touch.\n4. **Execution records** — every run stored: input, output, duration, tokens, errors.\n5. **Governance** — actions that send money, source code or legal communication require human approval before execution.\n\n## Why logging is the difference\n\nWhen an agent drafts a scope of work, the draft, the review notes and the approval are stored against the client's ID. If a client asks "why did the timeline change?" the answer is a query, not a memory.\n\n## The constitutional layer\n\nOur agents operate under non-negotiable rules: never claim an action that did not happen, never release source code before payment verification, never expose client data, always escalate uncertainty to a human. An AI workforce you cannot audit is a liability, not an asset.`,
+    content: `# AI Agents That Actually Execute\n\nThe term "AI agent" has drifted into decoration: icons on a dashboard that simulate activity. A real agent has a job, tools, permissions, a persistent record of every execution, and an approval gate when the action is sensitive.\n\n## The anatomy of a real agent\n\n1. **Identity and purpose** — a unique code, a department, a single clear responsibility.\n2. **A system prompt** — its operating instructions, including rules it cannot break.\n3. **Tools and permissions** — what it may read, what it may write, what it may never touch.\n4. **Execution records** — every run stored: input, output, duration, tokens, errors.\n5. **Governance** — actions that send money, source code or legal communication require human approval before execution.\n\n## Why logging is the difference\n\nWhen a system processes a document, the output, the review notes and the approval are stored against the record it belongs to. If anyone asks "why did this change?" the answer is a query, not a memory.\n\n## The constitutional layer\n\nWell-built systems operate under non-negotiable rules: never claim an action that did not happen, never expose business data, and always escalate uncertainty to a person. Automation you cannot audit is a liability, not an asset.`,
   },
   {
     slug: 'n8n-workflow-automation-for-sme-growth',
@@ -152,10 +152,68 @@ async function main() {
   })
   console.log(`  ✓ Super Admin: ${adminEmail} (password from ADMIN_PASSWORD${isProduction ? '' : ' or dev fallback'}; must change on first login)`)
 
-  // 2) Canonical AI workforce registry (idempotent and shared with admin bootstrap).
-  const registry = await ensureAgentRegistry(db)
-  console.log(`  ✓ ${registry.departments} departments`)
-  console.log(`  ✓ ${registry.agents} AI agents`)
+  // 1b) Admin (operations) account — the second console login.
+  // Same rule as the Super Admin: the credential only ever comes from the
+  // environment (STAFF_ADMIN_EMAIL / STAFF_ADMIN_PASSWORD), never from a
+  // literal in this file. Optional: when the env vars are absent the account
+  // is simply not seeded (a Super Admin can also create Admin accounts later
+  // from Team → Create user, which issues a one-time temporary password).
+  const staffAdminEmail = process.env.STAFF_ADMIN_EMAIL?.trim().toLowerCase() ?? ''
+  const staffAdminPassword = process.env.STAFF_ADMIN_PASSWORD
+  if (staffAdminEmail) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffAdminEmail)) {
+      console.error('REFUSING TO SEED: STAFF_ADMIN_EMAIL must be a valid email address.')
+      process.exit(1)
+    }
+    if (staffAdminEmail === adminEmail) {
+      console.error('REFUSING TO SEED: STAFF_ADMIN_EMAIL must differ from ADMIN_EMAIL (Super Admin).')
+      process.exit(1)
+    }
+    if (isProduction && !staffAdminPassword) {
+      console.error('REFUSING TO SEED: STAFF_ADMIN_EMAIL is set but STAFF_ADMIN_PASSWORD is not.')
+      process.exit(1)
+    }
+    if (isProduction && staffAdminPassword && staffAdminPassword.length < 12) {
+      console.error('REFUSING TO SEED: STAFF_ADMIN_PASSWORD is shorter than 12 characters.')
+      process.exit(1)
+    }
+    await db.user.upsert({
+      where: { email: staffAdminEmail },
+      update: {},
+      create: {
+        email: staffAdminEmail,
+        name: 'Tech360 Admin',
+        role: 'ADMIN',
+        title: 'Administrator',
+        passwordHash: hashPassword(staffAdminPassword ?? 'dev-only-change-me'),
+        mustChangePassword: true,
+      },
+    })
+    console.log(`  ✓ Admin: ${staffAdminEmail} (password from STAFF_ADMIN_PASSWORD${isProduction ? '' : ' or dev fallback'}; must change on first login)`)
+  } else {
+    console.log('  • Admin account skipped (set STAFF_ADMIN_EMAIL / STAFF_ADMIN_PASSWORD to seed one)')
+  }
+
+  // 2) Departments (110)
+  for (const d of DEPARTMENTS) {
+    await db.department.upsert({ where: { code: d.code }, update: {}, create: d })
+  }
+  console.log(`  ✓ ${DEPARTMENTS.length} departments`)
+
+  // 3) Agents (44)
+  for (const a of CORE_AGENTS) {
+    const dept = await db.department.findUnique({ where: { code: a.dept } })
+    await db.aiAgent.upsert({
+      where: { code: a.code },
+      update: {},
+      create: {
+        code: a.code, name: a.name, title: a.title, purpose: a.purpose, systemPrompt: a.systemPrompt,
+        departmentId: dept?.id ?? null, tools: JSON.stringify(a.tools), permissions: JSON.stringify(a.permissions),
+        requiresApproval: a.requiresApproval ?? false, level: a.level ?? 3, parentCode: a.parentCode ?? null,
+      },
+    })
+  }
+  console.log(`  ✓ ${CORE_AGENTS.length} AI agents`)
 
   // 3) Prompt templates
   for (const t of PROMPT_TEMPLATES) {
@@ -238,7 +296,7 @@ async function main() {
 
   // 6) Company memory
   const memories: Array<{ scope: string; key: string; content: string; importance: number }> = [
-    { scope: 'COMPANY', key: 'identity', content: `${COMPANY.legalName} (brand: Tech360), Missouri LLC ${COMPANY.missouriLLC}, EIN ${COMPANY.ein}. Address: ${COMPANY.address}. Domain ${COMPANY.domain}. Primary email ${COMPANY.email}. Contact channel: AI assistant chat at ${COMPANY.url}.`, importance: 10 },
+    { scope: 'COMPANY', key: 'identity', content: `${COMPANY.legalName} (brand: Tech360), Missouri LLC ${COMPANY.missouriLLC}, EIN ${COMPANY.ein}. Address: ${COMPANY.address}. Domain ${COMPANY.domain}. Primary email ${COMPANY.email}. Contact channel: live support chat at ${COMPANY.url}.`, importance: 10 },
     { scope: 'BRAND', key: 'voice', content: 'Professional, warm, confident, business-first. Never mention AI generation to clients. Sign messages "Team Tech360". No emojis in formal email.', importance: 9 },
     { scope: 'SERVICES', key: 'portfolio', content: 'Business/Enterprise Websites, eCommerce, Custom CRM, Client Portals, Dashboards, WhatsApp Automation, Email/SMS Automation, n8n Automation, AI Agent Systems, API Integrations, Database Systems, Cloud Deployment (Google Cloud, cPanel/StackCP), Maintenance & Support, Digital Transformation.', importance: 9 },
     { scope: 'PRICING', key: 'policy', content: 'Payment policy: advance / milestone / final split per scope (commonly 40/30/30). HTML Preview Before Payment. Source Code After Full Payment. Scope changes after approval may require additional cost/time.', importance: 10 },

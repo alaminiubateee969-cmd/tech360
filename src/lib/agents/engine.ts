@@ -1,3 +1,6 @@
+import ZAI from 'z-ai-web-dev-sdk'
+import { completeWithFreeModels, openRouterConfigured, type ChatMessage } from './model-provider'
+import { gatewayComplete, gatewayConfigured } from '@/lib/ai-gateway/client'
 import { db } from '@/lib/db'
 import { createZaiClient, ZaiProviderError } from '@/lib/ai-provider'
 import { withTimeout, resolveAgentTimeoutMs, isTransientRunError, MAX_RETRY_ATTEMPTS, RunTimeoutError } from '@/lib/agents/resilience'
@@ -223,20 +226,27 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
   let completion: Awaited<ReturnType<ReturnType<typeof createZaiClient>['chat']['completions']['create']>> | null = null
 
   try {
-    for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt += 1) {
-      try {
-        const client = createZaiClient()
-        completion = await withTimeout(
-          (signal) => client.chat.completions.create({ messages, thinking: { type: 'disabled' } }, { signal }),
-          timeoutMs,
-        )
-        break
-      } catch (error) {
-        lastError = error
-        if (!isTransientRunError(error) || attempt === MAX_RETRY_ATTEMPTS - 1) throw error
-        await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)))
-      }
+    const userContent = (run.contextNote ? `${run.contextNote}\n\n` : '') + run.input
+    const messages: Array<{ role: 'assistant' | 'user'; content: string }> = [
+      { role: 'assistant', content: agent.systemPrompt },
+      { role: 'user', content: userContent.slice(0, 24000) },
+    ]
+    // Shared AI Gateway first when AgentOS is registered with it
+    // (opt-in via AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN);
+    // then free models (OpenRouter, when keyed); otherwise the SDK.
+    let output: string
+    if (gatewayConfigured()) {
+      const done = await gatewayComplete(messages as ChatMessage[])
+      output = done.output
+    } else if (openRouterConfigured()) {
+      const done = await completeWithFreeModels(messages as ChatMessage[])
+      output = done.output
+    } else {
+      const zai = await getZai()
+      const completion = await zai.chat.completions.create({ messages, thinking: { type: 'disabled' } })
+      output = completion.choices[0]?.message?.content ?? ''
     }
+    if (!output.trim()) throw new Error('Empty response from model')
 
     const output = completion?.choices[0]?.message?.content ?? ''
     if (!output.trim()) throw new ZaiProviderError('INVALID_PROVIDER_RESPONSE', 'Provider returned empty output')

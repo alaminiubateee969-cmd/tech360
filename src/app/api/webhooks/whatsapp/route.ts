@@ -72,87 +72,39 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    for (const m of messages) {
-      // Meta message ids are the replay/idempotency key. Do not create CRM
-      // records for an event that cannot be durably deduplicated.
-      if (!m.id) continue
-      const claim = await claimInboundWebhookEvent({ provider: 'WHATSAPP', providerEventId: m.id, eventType: 'MESSAGE' })
-      if (!claim.claimed || !claim.receiptId || !claim.claimToken) continue
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i]
 
-      try {
-        const phone = toE164(m.from ?? '')
-        if (!phone) {
-          await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: false, errorCode: 'INVALID_PHONE' })
-          continue
-        }
-        const contact = contacts.find((item) => item.wa_id === m.from) ?? contacts[0]
-        const name = sanitizeText(contact?.profile?.name ?? '', 200)
-        const text = sanitizeText(m.text?.body ?? `[${m.type ?? 'media'} message]`, 4000)
-        const proof: VerifiedIdentityProof = { type: 'PHONE', value: phone, verificationSource: 'WHATSAPP_SIGNATURE' }
+      // Meta may retry webhook deliveries. Avoid creating a second CRM
+      // communication for an inbound provider message already processed.
+      // This read-side guard is best-effort; a unique database constraint is
+      // still recommended as part of the next reviewed schema migration.
+      if (m.id) {
+        const alreadyProcessed = await db.communication.findFirst({
+          where: { providerMessageId: m.id, channel: 'WHATSAPP', direction: 'IN' },
+          select: { id: true },
+        })
+        if (alreadyProcessed) continue
+      }
 
-        // Only a correctly signed provider event establishes a verified phone
-        // identity. Raw website form fields remain unverified contact data.
-        const existing = await resolveVerifiedClientIdentity(proof)
-        if (existing) {
-          const duplicate = await db.communication.findFirst({ where: { providerMessageId: m.id }, select: { id: true } })
-          if (!duplicate) {
-            await db.communication.create({
-              data: {
-                clientId: existing.id,
-                channel: 'WHATSAPP',
-                direction: 'IN',
-                sender: phone,
-                body: text,
-                providerMessageId: m.id,
-                status: 'RECEIVED',
-                messageType: m.type === 'text' ? 'TEXT' : 'MEDIA',
-              },
-            })
-          }
-          if (existing.name === 'Unknown Contact' && name) {
-            await db.client.update({ where: { id: existing.id }, data: { name } })
-          }
-          // Update comm state: inbound record for follow-up machine (Requirement G)
-          const { recordInbound } = await import('@/lib/conversation-state')
-          await recordInbound(existing.id, existing.clientId, text, 'WHATSAPP').catch(() => null)
+      const phone = sanitizePhone(m.from ?? '')
+      const name = contacts[i]?.profile?.name ?? ''
+      const text = sanitizeText(m.text?.body ?? `[${m.type ?? 'media'} message]`, 4000)
+      if (!phone) continue
 
-          await audit({ actor: 'webhook:WHATSAPP', action: 'INBOUND_MESSAGE', clientId: existing.clientId, ip })
-
-          // --- Contextual AI response (Requirement B.3, C, D) ---
-          // Previously messages were merely stored; now we generate a contextual
-          // reply via the orchestrator and send it on the same channel (or email
-          // if that is canonical and WhatsApp is only for notifications).
-          try {
-            await handleWhatsAppReply({ client: existing, phone, text, providerMessageId: m.id })
-          } catch (replyError) {
-            const { logError: logErr } = await import('@/lib/security')
-            await logErr({ source: 'WEBHOOK', code: 'WA_REPLY_FAILED', message: replyError instanceof Error ? replyError.message : String(replyError), workflow: 'WHATSAPP_REPLY' }).catch(() => null)
-            // Never silently ignore — we already logged; we do not throw to WhatsApp
-          }
-
-          await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: existing.id })
-        } else {
-          // First signed message creates and atomically links the canonical
-          // client identity. Concurrent first contacts converge on that row.
-          const result = await intakeLead({
-            source: 'WHATSAPP',
-            name: name || 'WhatsApp Contact',
-            whatsapp: phone,
-            message: `WhatsApp first message: ${text}`,
-            providerMessageId: m.id,
-            verifiedIdentities: [proof],
-          })
-          await audit({ actor: 'webhook:WHATSAPP', action: 'NEW_LEAD_FROM_WHATSAPP', clientId: result.clientId, ip })
-          await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: result.clientRowId })
-        }
-      } catch (error) {
-        await finishInboundWebhookEvent({
-          receiptId: claim.receiptId,
-          claimToken: claim.claimToken,
-          success: false,
-          errorCode: error instanceof Error ? error.name : 'PROCESSING_FAILED',
-        }).catch(() => false)
-        throw error
+      // find existing client by whatsapp number
+      const existing = await db.client.findFirst({ where: { whatsapp: phone, deletedAt: null } })
+      if (existing) {
+        await db.communication.create({
+          data: { clientId: existing.id, channel: 'WHATSAPP', direction: 'IN', sender: phone, body: text, providerMessageId: m.id ?? null, status: 'RECEIVED', messageType: (m.type ?? 'TEXT').toUpperCase() },
+        })
+        await db.client.update({ where: { id: existing.id }, data: { name: existing.name === 'Unknown Contact' && name ? name : existing.name } })
+        await audit({ actor: `whatsapp:${phone}`, action: 'INBOUND_MESSAGE', clientId: existing.clientId, ip })
+      } else {
+        // first message from this number → full intake journey
+        const result = await intakeLead({ source: 'WHATSAPP', name: name || 'WhatsApp Contact', whatsapp: phone, message: `WhatsApp first message: ${text}` })
+        await db.communication.updateMany({ where: { clientId: result.clientRowId, channel: 'WHATSAPP', direction: 'IN' }, data: { providerMessageId: m.id ?? null } })
+        await audit({ actor: `whatsapp:${phone}`, action: 'NEW_LEAD_FROM_WHATSAPP', clientId: result.clientId, ip })
       }
     }
     return Response.json({ ok: true })

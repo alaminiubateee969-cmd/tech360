@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX, MessageCircle, Mail, Smartphone, CreditCard, Workflow, Github, Layers, Bot, ShieldCheck, Globe, Users, Megaphone, FolderKanban } from "lucide-react";
+import { motion, MotionConfig } from "framer-motion";
+import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,14 @@ import { StatChip } from "./StatChip";
 import { CtaBand } from "./CtaBand";
 import { ImageView } from "./ImageView";
 import { FeaturesModulesDiagram } from "./diagrams";
+import { TrustRow, SolutionsGrid, PlatformGrid, HowItWorks, FeaturesGrid, DashboardShowcase, IntegrationsGrid, BenefitsGrid, PricingSection, ResourcesGrid } from "./PremiumSections";
 import { PrimaryLink, OutlineLink, AIAssistantLink, LinkArrow } from "./buttons";
 
 /* ------------------------------------------------------------------ */
 /* Buffer-grade hero — spec §4 headline                               */
 /* ------------------------------------------------------------------ */
 
-const HERO_WORDS_NEW = ["One Platform.", "Your Entire Business.", "Powered by AI."] as const;
+const HERO_WORDS = ["Build a Smarter", "Business with AI."];
 
 function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -36,6 +37,7 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
   // so the clip never blocks first paint.
   useEffect(() => {
     let cancelled = false;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const start = () => {
       if (!cancelled) setVideoReady(true);
     };
@@ -150,15 +152,7 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
           transition={{ duration: 0.6, delay: 0.85 }}
           className="mt-6 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg"
         >
-          Manage customers, conversations, marketing, projects, automation and delivery from one intelligent workspace.
-        </motion.p>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.95 }}
-          className="mt-3 max-w-2xl text-sm leading-relaxed text-white/60"
-        >
-          {COMPANY.subline}
+          Unify intelligent automation, business operations, customer engagement, and AI-powered workflows in one connected platform.
         </motion.p>
 
         <motion.div
@@ -167,20 +161,12 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
           transition={{ duration: 0.6, delay: 1.05 }}
           className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4"
         >
-          <PrimaryLink
-            href="#/contact"
-            onClick={(e) => {
-              if (onNavigate) {
-                e.preventDefault();
-                onNavigate("#/contact");
-              }
-            }}
-          >
-            Start Your Project
+          <PrimaryLink href="#/services">
+            Explore AI Solutions
             <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-1" aria-hidden="true" />
           </PrimaryLink>
-          <OutlineLink href="#/about" dark>
-            Explore TECH360
+          <OutlineLink href="#/contact" dark>
+            Book a Demo
           </OutlineLink>
           <AIAssistantLink label="Talk to Tech360" />
         </motion.div>
@@ -1028,20 +1014,29 @@ export default function HomeView({
   onNavigate?: (hash: string) => void;
 }) {
   return (
+   <MotionConfig reducedMotion="user">
     <main id="main-content">
       <Hero onNavigate={onNavigate} />
-      <IntegrationShowcase />
-      <TrustByNumbers />
-      <IndustriesServedStrip />
-      <FlagshipServices />
+      <TrustRow />
+      <SolutionsGrid />
+      <PlatformGrid />
       <WhyTech360 />
       <IndustriesPreview />
+      <HowItWorks />
+      <FeaturesGrid />
+      <DashboardShowcase />
       <ProcessStrip />
+      <IntegrationsGrid />
+      <BenefitsGrid />
+      <FlagshipServices />
       <SelectedWork />
+      <PricingSection />
+      <LatestInsights />
+      <ResourcesGrid />
       <ClientReviews />
       <StatsBand />
-      <LatestInsights />
-      <CtaBand />
+      <CtaBand title="Ready to Make Your Business Work Smarter?" description="Discover how Tech360 can help connect your tools, streamline operations, and put AI to work across your business." primaryLabel="Book a Demo" />
     </main>
+   </MotionConfig>
   );
 }

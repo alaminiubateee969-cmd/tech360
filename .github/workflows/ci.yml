@@ -124,6 +124,9 @@ jobs:
       - name: Verify retired deployment paths fail closed
         run: node tests/retired-deployment-paths.mjs
 
+      - name: Reject unresolved merge-conflict markers
+        run: node scripts/check-conflict-markers.mjs
+
       - name: Verify the scoped Next ESLint glob API
         run: |
           node <<'NODE'

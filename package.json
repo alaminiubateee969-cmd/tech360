@@ -23,12 +23,7 @@
     "schema:drift": "node scripts/check-schema-drift.mjs",
     "start:bun": "NODE_ENV=production bun .next/standalone/server.js",
     "hostinger:build": "npm run build",
-    "eval:generate": "node scripts/eval/generate-dataset.mjs",
-    "eval:run": "node scripts/eval/run-eval.mjs",
-    "bench:models": "node scripts/benchmark-local-models.mjs",
-    "bench:workforce": "tsx scripts/benchmark/workforce.ts --json docs/testing/workforce-benchmark.json",
-    "models:verify": "node scripts/verify-local-models.mjs",
-    "preview:setup": "node scripts/preview/setup.mjs"
+    "check:conflicts": "node scripts/check-conflict-markers.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

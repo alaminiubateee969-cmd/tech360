@@ -355,7 +355,7 @@ export default function PortalView() {
                 <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#18B83A]" /> Scope changes require written approval</li>
               </ul>
               <Separator className="my-4 bg-white/15" />
-              <p className="text-xs text-slate-300">Questions? <a className="font-semibold text-white underline underline-offset-2" href={`mailto:${data.policy.supportContact}`}>{data.policy.supportContact}</a> · Live chat with our AI assistant — bottom-right of any page</p>
+              <p className="text-xs text-slate-300">Questions? <a className="font-semibold text-white underline underline-offset-2" href={`mailto:${data.policy.supportContact}`}>{data.policy.supportContact}</a> · Live chat with our team — bottom-right of any page</p>
             </CardContent>
           </Card>
 

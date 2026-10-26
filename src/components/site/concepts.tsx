@@ -189,10 +189,10 @@ export function AdminDashboardConcept() {
         <div className="h-3 w-32 rounded bg-[#063B8F]" />
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
-            { l: "Active projects", v: "—", c: "#009FE3" },
-            { l: "Revenue (30d)", v: "—", c: "#18B83A" },
-            { l: "Open tickets", v: "—", c: "#063B8F" },
-            { l: "Agent runs", v: "—", c: "#526173" },
+            { l: "Active projects", v: "12", c: "#009FE3" },
+            { l: "Revenue (30d)", v: "$18.4k", c: "#18B83A" },
+            { l: "Open tickets", v: "5", c: "#063B8F" },
+            { l: "Workflow runs", v: "1,455", c: "#526173" },
           ].map((k) => (
             <div key={k.l} className="rounded-lg border border-[#E2E8F0] bg-white p-2.5">
               <div className="text-[8px] font-bold uppercase tracking-wider text-[#526173]">{k.l}</div>
