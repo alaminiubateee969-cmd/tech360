@@ -1,6 +1,10 @@
 'use client'
 
-import { BarChart3, Layers, Palette, Ruler, Type as TypeIcon } from 'lucide-react'
+import { useState } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { BarChart3, Calendar, Layers, MessageCircle, Palette, Ruler, Search, Type as TypeIcon } from 'lucide-react'
 
 import { LeadFunnel, PortalSignInSequence, ProjectSwimlane } from './diagram-kit'
 import {
@@ -117,7 +121,7 @@ export default function DesignKitView() {
           </Showcase>
           <Showcase
             label="Honest-by-default components"
-            note="The WhatsApp action renders nothing at all unless a number is supplied — the owner removed the public WhatsApp route, so no dead button is shown."
+            note="No WhatsApp number or chat deep link is published (owner decision, 2026-10-24). The action renders nothing unless a caller supplies an explicit number, so the public site can never show a dead or stale button."
           >
             <WhatsAppLink number="" />
             <span className="text-xs text-slate-500">Rendered output: nothing (component returns null while unconfigured).</span>
@@ -166,8 +170,17 @@ export default function DesignKitView() {
         </Section>
 
         <Section
+          id="playground"
+          numbered="04 · Playground"
+          title="Component playground — realistic business contexts"
+          description="The same primitives in real jobs: CRM board, inbox bubbles and marketing calendar — plus empty, loading and error states. All components support light and dark themes and are keyboard-accessible."
+        >
+          <PlaygroundTabs />
+        </Section>
+
+        <Section
           id="tokens"
-          numbered="04 · Foundations"
+          numbered="05 · Foundations"
           title="Colour, type and spacing tokens"
           description="Tokens are shared between the marketing site and the client platforms so a generated application inherits the same visual language the day it is handed over."
         >

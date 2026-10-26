@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -42,19 +42,24 @@ import { Reveal } from "./Reveal";
 /* ------------------------------------------------------------------ */
 
 const contactSchema = z.object({
-  name: z.string().min(2, "Please enter your full name."),
+  name: z.string().optional().refine((value) => !value || value.trim().length >= 2, "Enter at least two characters, or leave the name blank."),
   businessName: z.string().optional(),
-  businessType: z.string().min(1, "Select your business type."),
+  businessType: z.string().optional(),
   email: z.email("Enter a valid email address."),
-  whatsapp: z
-    .string()
-    .min(7, "Enter a reachable phone or WhatsApp number including country code."),
-  country: z.string().min(1, "Select your country."),
-  projectType: z.string().min(1, "Select the type of project."),
-  budgetRange: z.string().min(1, "Select a budget range (or the guidance option)."),
+  whatsapp: z.string().trim().refine(
+    (value) => {
+      if (value === "") return true;
+      const digits = value.replace(/\D/g, "");
+      return value.startsWith("+") && /^[+\d\s().-]+$/.test(value) && digits.length >= 8 && digits.length <= 15;
+    },
+    "If you share a number, use international format (for example +880 1XXXXXXXXX) or leave it blank.",
+  ),
+  country: z.string().optional(),
+  projectType: z.string().optional(),
+  budgetRange: z.string().optional(),
   details: z
     .string()
-    .min(30, "Please describe your project in at least 30 characters — the more specific, the sharper the scope."),
+    .min(20, "Please describe the project in at least 20 characters."),
   preferredContact: z.string().min(1, "Select your preferred contact method."),
   consent: z.boolean().refine((v) => v === true, {
     message: "Please agree to the Privacy Policy so we can respond to you.",
@@ -67,10 +72,20 @@ type ContactFormValues = z.infer<typeof contactSchema>;
 /* View                                                                */
 /* ------------------------------------------------------------------ */
 
+function newClientRequestId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+}
+
 export default function ContactView() {
   const [submitting, setSubmitting] = useState(false);
+  const requestIdRef = useRef<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ clientId: string; message: string } | null>(null);
+  const [success, setSuccess] = useState<{
+    clientId: string;
+    message: string;
+    emailDeliveryStatus: 'ACCEPTED_BY_PROVIDER' | 'NOT_CONFIRMED' | 'NOT_ATTEMPTED';
+  } | null>(null);
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
@@ -89,14 +104,31 @@ export default function ContactView() {
     },
   });
 
+  const { subscribe } = form;
+
+  useEffect(() => {
+    // `watch()` is intentionally not used here: React Hook Form's `watch()`
+    // cannot be memoized safely by the React Compiler. `subscribe()` gives us
+    // the same "reset the idempotency key when the visitor edits the form"
+    // behaviour without a memoization-incompatible API.
+    return subscribe({
+      formState: { values: true },
+      callback: () => {
+        requestIdRef.current = null;
+      },
+    });
+  }, [subscribe]);
+
   const onSubmit = async (values: ContactFormValues) => {
     setSubmitting(true);
     setApiError(null);
+    requestIdRef.current ??= newClientRequestId();
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          requestId: requestIdRef.current,
           name: values.name,
           businessName: values.businessName ?? "",
           businessType: values.businessType,
@@ -115,7 +147,7 @@ export default function ContactView() {
         }),
       });
       const data = (await res.json().catch(() => null)) as
-        | { ok?: boolean; clientId?: string; message?: string; error?: string }
+        | { ok?: boolean; clientId?: string; message?: string; error?: string; requestRef?: string | null; emailDeliveryStatus?: 'ACCEPTED_BY_PROVIDER' | 'NOT_CONFIRMED' | 'NOT_ATTEMPTED' }
         | null;
       if (!res.ok || !data?.ok) {
         // Honest error handling: show what we know, no fake success.
@@ -126,11 +158,11 @@ export default function ContactView() {
         );
         return;
       }
+      requestIdRef.current = null;
       setSuccess({
         clientId: data.clientId ?? "—",
-        message:
-          data.message ??
-          "Your enquiry has been received. Our team will respond within one business day.",
+        message: data.message ?? "Your enquiry has been received.",
+        emailDeliveryStatus: data.emailDeliveryStatus ?? 'NOT_ATTEMPTED',
       });
     } catch {
       setApiError(
@@ -146,7 +178,7 @@ export default function ContactView() {
       <PageHero
         eyebrow="Contact"
         title="Start your project — the scoped way"
-        description="One form. You receive a Client ID immediately, a written scope after discovery, and an HTML preview before any payment decision."
+        description="Share your email and a short project description first. Name, company, location, budget, and contact preferences can be added when relevant; a Client ID is issued only when the record can be safely matched."
         breadcrumb={[{ label: "Contact" }]}
       />
 
@@ -159,9 +191,7 @@ export default function ContactView() {
                 Project enquiry form
               </h2>
               <p className="mt-3 text-base leading-relaxed text-[#526173]">
-                Fields marked with an asterisk are required. Your details go
-                into our delivery system against a Client ID — never into a
-                mailing list.
+                Only email and a short project description are needed to start; profile details are optional. We use this enquiry for service-related follow-up, not as marketing consent. A Client ID is issued or linked only after a safe identity check.
               </p>
             </Reveal>
 
@@ -180,6 +210,15 @@ export default function ContactView() {
                         <p className="mt-2 text-sm leading-relaxed text-[#526173]">
                           {success.message}
                         </p>
+                        {success.emailDeliveryStatus === 'ACCEPTED_BY_PROVIDER' ? (
+                          <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-800">
+                            The mail service accepted the initial email; delivery to your inbox is not confirmed.
+                          </p>
+                        ) : (
+                          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                            Email delivery was not confirmed. You can reach us directly at <a href="mailto:info@bdtech360.com" className="font-semibold underline">info@bdtech360.com</a>.
+                          </p>
+                        )}
                         <div className="mt-5 rounded-xl border border-[#063B8F]/20 bg-[#F4FAFF] p-5">
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#526173]">
                             Your reference ID
@@ -226,7 +265,7 @@ export default function ContactView() {
                             name="name"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[#0B1F33]">Name *</FormLabel>
+                                <FormLabel className="text-[#0B1F33]">Name (optional)</FormLabel>
                                 <FormControl>
                                   <Input
                                     placeholder="Your full name"
@@ -285,18 +324,19 @@ export default function ContactView() {
                             name="whatsapp"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[#0B1F33]">Phone / WhatsApp number *</FormLabel>
+                                <FormLabel className="text-[#0B1F33]">Phone / WhatsApp number (optional)</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="tel"
                                     inputMode="tel"
-                                    placeholder="+880 1XXX-XXXXXX"
+                                    placeholder="+8801XXXXXXXXX (optional)"
                                     autoComplete="tel"
                                     className="min-h-11 border-[#E2E8F0] focus-visible:ring-[#009FE3]/40"
                                     {...field}
                                   />
                                 </FormControl>
                                 <FormMessage />
+                                <p className="text-xs leading-relaxed text-[#64748B]">Email is the primary contact channel. We use this number only if you select Phone or WhatsApp.</p>
                               </FormItem>
                             )}
                           />
@@ -308,7 +348,7 @@ export default function ContactView() {
                             name="businessType"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[#0B1F33]">Business type *</FormLabel>
+                                <FormLabel className="text-[#0B1F33]">Business type (optional)</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
@@ -332,7 +372,7 @@ export default function ContactView() {
                             name="country"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[#0B1F33]">Country *</FormLabel>
+                                <FormLabel className="text-[#0B1F33]">Country (optional)</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
@@ -359,7 +399,7 @@ export default function ContactView() {
                             name="projectType"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[#0B1F33]">Project type *</FormLabel>
+                                <FormLabel className="text-[#0B1F33]">Project type (optional)</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
@@ -383,7 +423,7 @@ export default function ContactView() {
                             name="budgetRange"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[#0B1F33]">Budget range *</FormLabel>
+                                <FormLabel className="text-[#0B1F33]">Budget range (optional)</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
@@ -413,7 +453,7 @@ export default function ContactView() {
                               <FormControl>
                                 <Textarea
                                   rows={6}
-                                  placeholder="What are you building? What problem should it solve? Any deadline or existing system we should know about? (minimum 30 characters)"
+                                  placeholder="What would you like to build or improve? A short description is enough to start (minimum 20 characters)."
                                   className="min-h-32 border-[#E2E8F0] focus-visible:ring-[#009FE3]/40"
                                   {...field}
                                 />
@@ -429,7 +469,7 @@ export default function ContactView() {
                             name="preferredContact"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="text-[#0B1F33]">Preferred contact method *</FormLabel>
+                                <FormLabel className="text-[#0B1F33]">Preferred contact method (optional)</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger className="min-h-11 w-full border-[#E2E8F0] focus-visible:ring-[#009FE3]/40">
@@ -450,9 +490,10 @@ export default function ContactView() {
                           />
                           <div className="flex items-end">
                             <p className="text-xs leading-relaxed text-[#526173]">
-                              Response within one business day. Your enquiry
-                              creates a Client ID immediately — every follow-up
-                              is tracked against it.
+                              Email is the primary contact channel. A Client ID
+                              is issued or linked only when identity can be
+                              handled safely; otherwise, the enquiry goes to
+                              review without exposing another record.
                             </p>
                           </div>
                         </div>
@@ -472,9 +513,7 @@ export default function ContactView() {
                                   />
                                 </FormControl>
                                 <Label className="text-sm font-normal leading-relaxed text-[#526173]">
-                                  I agree that TECH360 LLC may process the
-                                  information above to respond to my enquiry,
-                                  as described in the{" "}
+                                  I consent to TECH360 LLC storing this enquiry and using my email (and the contact method I select, if any) to respond and send service-related updates about this request. Marketing messages require a separate opt-in. See the{" "}
                                   <a
                                     href="#/legal/privacy"
                                     className="font-semibold text-[#009FE3] underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm outline-none"
@@ -516,8 +555,8 @@ export default function ContactView() {
                           )}
                         </Button>
                         <p className="text-xs text-[#526173]">
-                          No payment, no commitment — the next step is a
-                          written scope you approve.
+                          Under the default policy, no payment request is made
+                          before preview approval. You decide whether to proceed.
                         </p>
                       </form>
                     </Form>
@@ -534,9 +573,9 @@ export default function ContactView() {
                 Direct channels
               </h2>
               <p className="mt-3 text-base leading-relaxed text-[#526173]">
-                Prefer to start the conversation outside the form? Every
-              channel below reaches the same team — and the same Client ID
-              record.
+                Prefer to start outside the form? Email is primary. A Client ID
+                is used only when a record can be safely issued or linked; an
+                unverified email is never used to merge customer records.
               </p>
             </Reveal>
 
@@ -622,10 +661,10 @@ export default function ContactView() {
                   </h3>
                   <ol className="mt-4 space-y-3">
                     {[
-                      "Your Client ID is issued immediately and shown on screen.",
-                      "Discovery questions arrive within one business day.",
-                      "A written scope follows — then an HTML preview for your approval.",
-                      "Payment is discussed only after you approve the preview.",
+                      "Start with your email and a short project description; profile details are optional.",
+                      "We issue or link a Client ID only when we can do so safely; possible identity collisions go to review.",
+                      "If you proceed, the project scope is documented and a preview is provided for approval.",
+                      "Under the default policy, no payment request is made before the applicable preview is approved.",
                     ].map((step, i) => (
                       <li key={step} className="flex items-start gap-3 text-sm leading-relaxed text-[#526173]">
                         <span

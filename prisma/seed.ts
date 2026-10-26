@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../src/lib/auth'
-import { DEPARTMENTS, CORE_AGENTS } from '../src/lib/agents/registry'
+import { ensureAgentRegistry } from '../src/lib/agents/bootstrap'
 import { COMPANY } from '../src/lib/constants'
 
 const db = new PrismaClient()
@@ -215,7 +215,7 @@ async function main() {
   }
   console.log(`  ✓ ${CORE_AGENTS.length} AI agents`)
 
-  // 4) Prompt templates
+  // 3) Prompt templates
   for (const t of PROMPT_TEMPLATES) {
     await db.promptTemplate.upsert({
       where: { code: t.code },
@@ -224,6 +224,65 @@ async function main() {
     })
   }
   console.log(`  ✓ ${PROMPT_TEMPLATES.length} prompt templates`)
+
+  // 3b) The AI-EOS workforce prompts.
+  //
+  // The live prompt library is 70,400 slots and is MATERIALISED on
+  // demand by the retriever, not stored. What is persisted here is a
+  // representative, real binding for every department and every role
+  // archetype, with the retrieval metadata the retriever scores on.
+  // The panel shows the live library index next to these rows.
+  const { buildPromptsForBinding } = await import('../src/lib/prompts/library')
+  const { ROLE_ARCHETYPES } = await import('../src/lib/agents/catalogue')
+  const { DEPARTMENTS } = await import('../src/lib/agents/registry')
+  const STORED_STAGES = ['TASK_EXECUTION'] as const
+  let promptCount = 0
+  for (const department of DEPARTMENTS) {
+    for (const role of ROLE_ARCHETYPES) {
+      const records = buildPromptsForBinding({
+        departmentCode: department.code,
+        roleSlug: role.slug,
+        roleTitle: role.title,
+      })
+      for (const record of records) {
+        if (!STORED_STAGES.includes(record.stage as (typeof STORED_STAGES)[number])) continue
+        if (record.language !== 'en') continue
+        await db.promptTemplate.upsert({
+          where: { code: record.code },
+          update: {},
+          create: {
+            code: record.code,
+            name: record.name,
+            category: department.category,
+            agentCode: null,
+            template: record.template,
+            variables: JSON.stringify(record.variables),
+            stage: record.stage,
+            priority: record.priority,
+            quality: record.quality,
+            language: record.language,
+            version: record.version,
+            role: role.slug,
+            departmentCode: department.code,
+            status: 'ACTIVE',
+          },
+        })
+        promptCount += 1
+      }
+    }
+  }
+  console.log(`  ✓ ${promptCount} workforce prompt bindings`)
+
+  // 3c) The structural knowledge graph.
+  //
+  // The organisation, the procedures and the tools are true by
+  // construction, so their edges are asserted with confidence 1 and
+  // marked verified. Nothing is fabricated: the graph is derived from
+  // the live registries.
+  const { buildStructuralGraph, graphStats } = await import('../src/lib/knowledge/graph')
+  const graph = await buildStructuralGraph({ assertedBy: 'prisma/seed.ts' })
+  const graphState = await graphStats()
+  console.log(`  ✓ knowledge graph: ${graph.entities} entities, ${graph.relations} relations (${graphState.entities} total)`)
 
   // 5) n8n workflow registry
   for (const w of N8N_WORKFLOWS) {
@@ -247,6 +306,30 @@ async function main() {
   for (const m of memories) {
     const existing = await db.aiMemory.findFirst({ where: { scope: m.scope, key: m.key } })
     if (!existing) await db.aiMemory.create({ data: m })
+  }
+  // The communication pipeline policy is upserted, so an existing
+  // installation receives the current wording on the next seed.
+  const pipelineMemories: Array<{ scope: string; key: string; content: string; importance: number }> = [
+    {
+      scope: 'WORKFLOW',
+      key: 'communication-pipeline',
+      content: 'Communication pipeline (11 stages): 1 first message received (save Client ID + message) → 2 business type received (detect industry, recommend plan, ask the eight scope questions, send WhatsApp + email) → 3 scope details received (save scope, draft SOW, ADMIN REVIEW REQUIRED before the final scope is sent) → 4 final scope approved (send final SOW + HTML-preview policy + payment policy, ask the client to review, offer a meeting link) → 5A meeting needed (send meeting link, save request, create task) / 5B scope approved (save approval, send confirmation, prepare HTML preview) → 6 preview sent (send preview link, ask Approved / Need revision / Need meeting) → 7A revision (save revision, notify admin, create task) / 7B preview approved (save approval, payment instruction only after admin approval) → 8 payment received (save payment, notify admin and team, unlock delivery) → 9 delivery ready (send notice; source code NOT released unless payment confirmed; admin approval required for the file links) → 10 delivery completed (save delivery, ask password-change confirmation, ask the client to confirm) → 11 client confirms (close project, request review, request optional recommendation).',
+      importance: 10,
+    },
+    {
+      scope: 'POLICIES',
+      key: 'communication-policy',
+      content: 'Communication policy. AI CAN AUTO SEND: first reply, business-type request, recommended plan, scope questions, meeting link, HTML-preview notification, revision acknowledgement, payment-received acknowledgement, review request. AI MUST WAIT FOR ADMIN APPROVAL BEFORE SENDING: final Scope of Work, payment instruction with amount, invoice, legal/refund response, source-code handover, final delivery file links, dispute response. AI MUST ALWAYS SAVE: incoming message, outgoing message, email body, WhatsApp body, SMS body, client ID, status change, timestamp, admin approval, payment proof, delivery proof. FINAL RULES: no source code before payment confirmation; no final legal message without admin approval; no payment-specific message without admin approval; no sensitive files in public AI content; HTML Preview Before Payment; Source Code After Full Payment. The AI agent must NEVER mention a phone number in website-facing content. Client IDs use the format TECH-2026-000001.',
+      importance: 10,
+    },
+  ]
+  for (const m of pipelineMemories) {
+    const existing = await db.aiMemory.findFirst({ where: { scope: m.scope, key: m.key } })
+    if (existing) {
+      await db.aiMemory.update({ where: { id: existing.id }, data: { content: m.content, importance: m.importance } })
+    } else {
+      await db.aiMemory.create({ data: m })
+    }
   }
   console.log(`  ✓ company memory`)
 

@@ -8,26 +8,39 @@ import { Reveal } from "./Reveal";
  * A qualitative differentiator chip — value + label + honest note.
  * Deliberately avoids fabricated counters; notes are verifiable facts.
  *
- * When the value is a clean number (or number + "+"), it animates with a
- * count-up on first view (IntersectionObserver + rAF, easeOutCubic). Text
- * values ("US LLC", ranges) render statically. prefers-reduced-motion is
- * respected — the count jumps to the final value on the first frame.
+ * When the value is a clean number (or number + "+"), the REAL value is
+ * what renders first — in the server HTML too, so crawlers, link previews
+ * and no-JS visitors always see the true figure. After hydration, a
+ * 0→value count-up plays once when the chip scrolls into view
+ * (IntersectionObserver + rAF, easeOutCubic). Text values ("US LLC",
+ * ranges) render statically. prefers-reduced-motion is respected — no
+ * count-up plays, the value simply stays.
  */
 
 const EASE_OUT = (t: number) => 1 - Math.pow(1 - t, 3);
 
 function useCountUp(target: number, active: boolean, durationMs = 1200) {
-  const [value, setValue] = useState(0);
+  // SSR/hydration-safe count-up: the FIRST render (server HTML, pre-hydration
+  // clients, crawlers, link previews, no-JS visitors) shows the REAL final
+  // value — never zero. The 0→target animation is a post-hydration
+  // enhancement that starts only when the element actually enters the
+  // viewport. (This fixes the homepage showing "0 internal departments /
+  // 0 automated workflow stages" to every non-JS consumer.)
+  const [value, setValue] = useState(target);
   useEffect(() => {
-    if (!active) return;
+    if (!active || target <= 0) return;
     const reduced =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const duration = reduced ? 0 : durationMs;
+    if (reduced || durationMs <= 0) {
+      setValue(target);
+      return;
+    }
+    setValue(0);
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {
-      const t = duration <= 0 ? 1 : Math.min(1, (now - start) / duration);
+      const t = Math.min(1, (now - start) / durationMs);
       setValue(Math.round(EASE_OUT(t) * target));
       if (t < 1) raf = requestAnimationFrame(tick);
     };

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText } from '@/lib/security'
+import { AI_CHAT_ANON_PREFIX } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,12 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url)
   const status = sanitizeText(url.searchParams.get('status') ?? 'OPEN', 20).toUpperCase()
-  const where = status === 'CLOSED' ? { status: 'CLOSED' } : { status: 'OPEN' }
+  const statusWhere = status === 'CLOSED' ? { status: 'CLOSED' } : { status: 'OPEN' }
+  // The console's own AI conversations live in the same table under a
+  // namespaced anon id. They are NOT visitor conversations, so they are
+  // excluded from the live-chat inbox and from its counts.
+  const notConsole = { anonId: { not: { startsWith: AI_CHAT_ANON_PREFIX } } }
+  const where = { ...statusWhere, ...notConsole }
 
   const [conversations, openCount, closedCount] = await Promise.all([
     db.chatConversation.findMany({
@@ -23,8 +29,8 @@ export async function GET(req: NextRequest) {
       take: 100,
       include: { _count: { select: { messages: true } } },
     }),
-    db.chatConversation.count({ where: { status: 'OPEN' } }),
-    db.chatConversation.count({ where: { status: 'CLOSED' } }),
+    db.chatConversation.count({ where: { status: 'OPEN', ...notConsole } }),
+    db.chatConversation.count({ where: { status: 'CLOSED', ...notConsole } }),
   ])
 
   // agentEmail of the last admin reply per conversation (single grouped query)
@@ -52,6 +58,7 @@ export async function GET(req: NextRequest) {
       subject: c.subject,
       lastMessagePreview: c.lastMessagePreview,
       lastMessageAt: c.lastMessageAt,
+      lastSender: c.lastSender,
       unreadCount: c.unreadCount,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,

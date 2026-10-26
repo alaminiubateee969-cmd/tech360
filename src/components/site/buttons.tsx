@@ -240,8 +240,13 @@ export function GhostLink({
 }
 
 /**
- * Click-to-chat button using the public wa.me deep link (free, no API).
- * Renders nothing unless a number is supplied, so the site never shows a dead button.
+ * Click-to-chat button for an EXPLICITLY supplied number.
+ *
+ * Owner decision 2026-10-24: TECH360 publishes no public chat number and no
+ * public chat deep link. There is therefore no shared fallback number any
+ * more — the component renders nothing unless a caller deliberately passes
+ * one (for example a generated client app that has the client's own number).
+ * This guarantees the public site can never resurrect the old number.
  */
 export function WhatsAppLink({
   number,

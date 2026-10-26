@@ -93,6 +93,21 @@ export function SeoAuditView() {
                 </label>
               </div>
             </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {groups.map((g) => {
+                const gc = result.checks.filter((c) => c.group === g)
+                const gPass = gc.filter((c) => c.status === 'pass').length
+                const pct = gc.length ? Math.round((gPass / gc.length) * 100) : 0
+                const tone = pct >= 80 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : pct >= 55 ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-red-500/30 bg-red-500/10 text-red-300'
+                return (
+                  <div key={g} className={`rounded-lg border p-3 ${tone}`}>
+                    <p className="text-xs font-bold uppercase tracking-wide">{g}</p>
+                    <p className="mt-1 text-lg font-bold">{pct}<span className="text-xs">/100</span></p>
+                    <p className="text-[11px] opacity-80">{gPass}/{gc.length} checks passed</p>
+                  </div>
+                )
+              })}
+            </div>
           </SectionCard>
 
           {groups.map((g) => {

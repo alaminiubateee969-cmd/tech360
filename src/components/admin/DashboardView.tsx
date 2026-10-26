@@ -5,20 +5,43 @@ import {
   Activity,
   AlertOctagon,
   BadgeCheck,
+  BarChart3,
+  BookOpen,
   Bot,
+  Boxes,
   Building2,
   CheckCircle2,
+  Clapperboard,
   Clock,
   CreditCard,
   DollarSign,
+  FileBarChart,
   FileClock,
+  FileText,
   FolderKanban,
   ListTodo,
+  LucideIcon,
+  Mail,
+  Megaphone,
   MessageSquare,
+  MessagesSquare,
+  Newspaper,
+  PhoneCall,
+  Radar,
   RefreshCw,
+  Rss,
   Rocket,
+  ScrollText,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Terminal,
   UserPlus,
   Users,
+  Wallet,
+  Workflow,
   Zap,
 } from 'lucide-react'
 import {
@@ -39,6 +62,7 @@ import {
   num,
   prettify,
   useApi,
+  type DashboardAgentRow,
   type DashboardResponse,
   type RecentLead,
 } from '@/lib/admin-client'
@@ -203,7 +227,120 @@ function AiOpsCard({ loading }: { loading: boolean }) {
   )
 }
 
-export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => void }) {
+// ============================================================
+// MODULE DIRECTORY — every operating module reachable from the
+// dashboard in one click (Enerpize-style modular-ERP overview).
+// Ids mirror the sidebar routes in AdminApp exactly.
+// ============================================================
+const MODULE_DIRECTORY: Array<{ section: string; items: Array<{ id: string; label: string; blurb: string; icon: LucideIcon }> }> = [
+  {
+    section: 'Operations',
+    items: [
+      { id: 'ops', label: 'Ops Monitor', blurb: 'Heartbeats, queues and retries', icon: Radar },
+      { id: 'chat', label: 'Live Chat Inbox', blurb: 'Visitor threads and conversions', icon: MessagesSquare },
+      { id: 'approvals', label: 'Approvals', blurb: 'Client decisions waiting on you', icon: ShieldCheck },
+      { id: 'projects', label: 'Projects', blurb: 'Delivery board and artifacts', icon: FolderKanban },
+    ],
+  },
+  {
+    section: 'Relationships',
+    items: [
+      { id: 'leads', label: 'Leads', blurb: 'Inquiries before qualification', icon: UserPlus },
+      { id: 'clients', label: 'Clients', blurb: 'Records and journey stages', icon: Building2 },
+      { id: 'communications', label: 'Communications', blurb: 'Follow-ups and outreach', icon: MessageSquare },
+      { id: 'telephony', label: 'Calls & SMS', blurb: 'Voice and text activity', icon: PhoneCall },
+    ],
+  },
+  {
+    section: 'Finance & Production',
+    items: [
+      { id: 'payments', label: 'Payments', blurb: 'Milestones and verification', icon: Wallet },
+      { id: 'factory', label: 'App Factory', blurb: 'Conversations into scoped builds', icon: Boxes },
+      { id: 'media', label: 'Media Studio', blurb: 'Generated media and assets', icon: Clapperboard },
+      { id: 'blog', label: 'Blog Studio', blurb: 'Write, schedule, publish', icon: Newspaper },
+    ],
+  },
+  {
+    section: 'Growth & Intelligence',
+    items: [
+      { id: 'reviews', label: 'Reviews & Referrals', blurb: 'Moderate client feedback', icon: Star },
+      { id: 'newsletter', label: 'Newsletter', blurb: 'Campaigns and subscribers', icon: Mail },
+      { id: 'feeds', label: 'Feed Hub', blurb: 'Tech and industry updates', icon: Rss },
+      { id: 'seo', label: 'SEO Audit', blurb: 'Site health and keywords', icon: Search },
+      { id: 'marketing', label: 'Marketing Kit', blurb: 'Reusable collateral', icon: Megaphone },
+      { id: 'prompts', label: 'Prompt Library', blurb: 'Curated prompt recipes', icon: Sparkles },
+      { id: 'agents', label: 'AI Workforce', blurb: 'Registry, runs, approvals', icon: Bot },
+      { id: 'command', label: 'Command Center', blurb: 'Ask the Oracle in plain English', icon: Terminal },
+      { id: 'memory', label: 'AI Memory', blurb: 'What the AI remembers', icon: BookOpen },
+      { id: 'knowledge', label: 'Knowledge Base', blurb: 'Documents powering answers', icon: BookOpen },
+      { id: 'content', label: 'Content Studio', blurb: 'AI drafts under review', icon: Clapperboard },
+      { id: 'analytics', label: 'Analytics', blurb: 'Traffic and funnels', icon: BarChart3 },
+    ],
+  },
+  {
+    section: 'System',
+    items: [
+      { id: 'logs', label: 'Logs', blurb: 'Immutable audit trail', icon: ScrollText },
+      { id: 'n8n', label: 'n8n Workflows', blurb: 'External integrations', icon: Workflow },
+      { id: 'reports', label: 'Reports', blurb: 'Scheduled and on-demand', icon: FileBarChart },
+      { id: 'team', label: 'Team', blurb: 'Roles and sessions', icon: Users },
+      { id: 'settings', label: 'Settings', blurb: 'Flags and integrations', icon: Settings },
+    ],
+  },
+]
+
+function AgentRosterCard({ data, loading, isSuperAdmin, onNavigate }: {
+  data: DashboardResponse['aiAgents'] | undefined
+  loading: boolean
+  isSuperAdmin: boolean
+  onNavigate: (id: string) => void
+}) {
+  const groups = new Map<string, DashboardAgentRow[]>()
+  for (const a of data?.agents ?? []) {
+    const key = a.deptName
+    groups.set(key, [...(groups.get(key) ?? []), a])
+  }
+  const statusTone = (s: string) =>
+    s === 'ACTIVE' ? 'bg-emerald-500/15 text-emerald-400' : s === 'PAUSED' ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-700/60 text-slate-400'
+  return (
+    <SectionCard
+      title="AI Workforce roster"
+      description={data ? `${data.active} active of ${data.total} registered AI agents. Identity and status only.` : 'Every registered AI agent'}
+      actions={isSuperAdmin ? <Button size="sm" variant="outline" onClick={() => onNavigate('agents')}>Open AI Workforce</Button> : undefined}
+    >
+      {loading && !data ? (
+        <Skeleton className="h-40 w-full" />
+      ) : data && data.agents.length > 0 ? (
+        <div className={`max-h-[420px] space-y-4 overflow-y-auto pr-1 ${SCROLL_THIN}`} aria-label="All registered AI agents">
+          {[...groups.entries()].map(([dept, rows]) => (
+            <div key={dept}>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{dept} · {rows.length}</p>
+              <ul className="divide-y divide-slate-800/70 rounded-lg border border-slate-800/70">
+                {rows.map((a) => (
+                  <li key={a.code} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[12px]">
+                    <span className="font-mono text-[10.5px] text-slate-500">{a.code}</span>
+                    <span className="font-medium text-slate-100">{a.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-slate-400">{a.title ?? '—'}</span>
+                    <span className="text-[10px] text-slate-500">L{a.level}</span>
+                    {a.requiresApproval ? <span className="text-[10px] text-amber-400">approval</span> : null}
+                    <span className="text-[10px] tabular-nums text-slate-500">{a.executions} runs</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${statusTone(a.status)}`}>{a.status}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="No AI agents registered" description="Agents appear here once the workforce is bootstrapped." />
+      )}
+    </SectionCard>
+  )
+}
+
+export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { role?: string; onOpenClient: (id: string) => void; onNavigate: (id: string) => void }) {
+  const isSuperAdmin = role === 'SUPER_ADMIN'
+  const canSeeRoster = role === 'ADMIN' || role === 'SUPER_ADMIN'
   const { data, loading, error, refresh } = useApi<DashboardResponse>('/api/admin/dashboard')
   const stats = data?.stats
   const pipeline = (data?.pipeline ?? []).map((p) => ({
@@ -213,6 +350,11 @@ export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => 
   const revenue = (data?.revenueByMonth ?? []).map((r) => ({ month: r.month, paid: num(r.paid) }))
   const recentLeads = data?.recentLeads ?? []
   const activity = data?.recentActivity ?? []
+  const financialValue = (value: unknown, currency = false): string | number => {
+    if (!data) return '—'
+    if (!data.financialDataAvailable) return 'Restricted'
+    return currency ? fmtMoney(num(value)) : num(value)
+  }
 
   const leadColumns: Column<RecentLead>[] = [
     { key: 'clientId', header: 'Client ID', cell: (r) => <span className="font-mono text-xs text-[#009FE3]">{r.clientId}</span> },
@@ -228,16 +370,23 @@ export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => 
         title="Command Dashboard"
         description="Live operational snapshot — every number below is queried from the platform database."
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refresh}
-            disabled={loading}
-            className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
-            aria-label="Refresh dashboard"
-          >
-            <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {data?.financialDataAvailable ? (
+              <Button onClick={() => onNavigate('payments')} className="gap-2 font-semibold" style={{ background: '#009FE3' }} aria-label="Create invoice draft">
+                <FileText className="size-4" aria-hidden="true" /> Create Invoice / ইনভয়েস তৈরি করুন
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refresh}
+              disabled={loading}
+              className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
+              aria-label="Refresh dashboard"
+            >
+              <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
+            </Button>
+          </div>
         }
       />
 
@@ -248,26 +397,72 @@ export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => 
         </div>
       ) : null}
 
-      {/* 14 KPI cards */}
+      {/* Database-backed CRM and operations indicators */}
       <section aria-label="Key performance indicators" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <KpiCard label="Total Leads" value={num(stats?.totalLeads)} icon={Users} tone="accent" loading={loading} sub="All inquiries captured" />
-        <KpiCard label="New Leads" value={num(stats?.newLeads)} icon={UserPlus} tone="green" loading={loading} sub="Awaiting first contact" />
+        <KpiCard label="New Leads" value={num(stats?.newLeads)} icon={UserPlus} tone="green" loading={loading} sub="Created in the last 24 hours" />
         <KpiCard label="Qualified Leads" value={num(stats?.qualifiedLeads)} icon={BadgeCheck} tone="green" loading={loading} sub="Intent confirmed" />
         <KpiCard label="Clients" value={num(stats?.clients)} icon={Building2} tone="accent" loading={loading} sub="With Client ID" />
-        <KpiCard label="Active Projects" value={num(stats?.activeProjects)} icon={Rocket} tone="accent" loading={loading} sub={`${num(stats?.projectsAwaitingApproval)} awaiting approval`} />
-        <KpiCard label="Payment Pending" value={num(stats?.paymentPending)} icon={CreditCard} tone="amber" loading={loading} sub="Payments to verify" />
-        <KpiCard label="Paid Projects" value={num(stats?.paidProjects)} icon={CheckCircle2} tone="green" loading={loading} sub="Fully settled" />
-        <KpiCard label="Outstanding" value={fmtMoney(num(stats?.outstandingReceivables))} icon={DollarSign} tone="red" loading={loading} sub="Receivables" />
+        <KpiCard label="Active Projects" value={num(stats?.activeProjects)} icon={Rocket} tone="accent" loading={loading} sub="Development through handover" />
+        <KpiCard label="Payment Pending" value={num(stats?.paymentPending)} icon={CreditCard} tone="amber" loading={loading} sub="Clients at payment-pending pipeline stage" />
+        <KpiCard label="Paid Projects" value={financialValue(stats?.paidProjects)} icon={CheckCircle2} tone="green" loading={loading} sub="Finance view: Manager+" />
+        <KpiCard label="Outstanding" value={financialValue(stats?.outstandingReceivables, true)} icon={DollarSign} tone="red" loading={loading} sub="Finance view: Manager+" />
         <KpiCard label="Completed" value={num(stats?.completedProjects)} icon={CheckCircle2} tone="green" loading={loading} sub="Projects delivered" />
         <KpiCard label="Open Tasks" value={num(stats?.openTasks)} icon={ListTodo} tone="slate" loading={loading} sub="Across projects" />
-        <KpiCard label="Unread Comms" value={num(stats?.unreadCommunications)} icon={MessageSquare} tone="accent" loading={loading} sub="Inbound messages" />
+        <KpiCard label="Inbound Messages" value={num(stats?.unreadCommunications)} icon={MessageSquare} tone="accent" loading={loading} sub="Received inbound communications" />
         <KpiCard label="Failed Automations" value={num(stats?.failedAutomations)} icon={AlertOctagon} tone="red" loading={loading} sub="Need attention" />
-        <KpiCard label="Pending Approvals" value={num(stats?.pendingAdminApprovals)} icon={FileClock} tone="amber" loading={loading} sub="Super Admin queue" />
-        <KpiCard label="Projects / Approval" value={num(stats?.projectsAwaitingApproval)} icon={Clock} tone="amber" loading={loading} sub="Client-side stage" />
+        <KpiCard label="Pending Approvals" value={num(stats?.pendingAdminApprovals)} icon={FileClock} tone="amber" loading={loading} sub="Pending admin approval records" />
+        <KpiCard label="Payment Verification" value={financialValue(stats?.pendingPaymentVerifications)} icon={CreditCard} tone="amber" loading={loading} sub="Payment records in PENDING state" />
+        <KpiCard label="Overdue Tasks" value={num(stats?.overdueTasks)} icon={AlertOctagon} tone="red" loading={loading} sub="Open tasks past due date" />
+        <KpiCard label="Deadlines (7 days)" value={num(stats?.upcomingDeadlines)} icon={Clock} tone="amber" loading={loading} sub="Open tasks due this week" />
+        <KpiCard label="Refunds Pending" value={financialValue(stats?.pendingRefunds)} icon={Wallet} tone="amber" loading={loading} sub="Awaiting authorized decision" />
+        <KpiCard label="Refunds Approved" value={financialValue(stats?.approvedRefunds)} icon={BadgeCheck} tone="slate" loading={loading} sub="Approval records; not proof of processing" />
+        <KpiCard label="Email Queue" value={num(stats?.emailQueued)} icon={Mail} tone="accent" loading={loading} sub="Awaiting send processing" />
+        <KpiCard label="Emails Sent" value={num(stats?.emailSent)} icon={Mail} tone="green" loading={loading} sub="Recorded SENT state; not delivery confirmation" />
+        <KpiCard label="Email Failures" value={num(stats?.emailFailed)} icon={AlertOctagon} tone="red" loading={loading} sub="Failed or dead-letter records" />
+        <KpiCard label="Verified Emails" value={num(stats?.verifiedEmailIdentities)} icon={ShieldCheck} tone="green" loading={loading} sub="Verified email identity records" />
+        <KpiCard label="Handovers: Payment" value={num(stats?.handoversAwaitingPayment)} icon={FolderKanban} tone="amber" loading={loading} sub="Waiting payment verification" />
+        <KpiCard label="Handovers: Confirm" value={num(stats?.handoversAwaitingConfirmation)} icon={CheckCircle2} tone="amber" loading={loading} sub="Released/downloaded; awaiting confirmation" />
       </section>
 
-      {/* LIVE AI operations evidence strip */}
-      <AiOpsCard loading={loading} />
+      {/* LIVE AI operations evidence strip — ops-status is SUPER_ADMIN only */}
+      {isSuperAdmin ? <AiOpsCard loading={loading} /> : null}
+
+      {/* Every registered AI agent — ADMIN and SUPER_ADMIN */}
+      {canSeeRoster ? <AgentRosterCard data={data?.aiAgents} loading={loading} isSuperAdmin={isSuperAdmin} onNavigate={onNavigate} /> : null}
+
+      {/* Module directory — one click to any operating module */}
+      <SectionCard
+        title="Modules"
+        description="Every operating module of the platform, one click away."
+        contentClassName="p-4"
+      >
+        <nav aria-label="Platform modules" className="space-y-4">
+          {MODULE_DIRECTORY.map((group) => (
+            <div key={group.section}>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{group.section}</p>
+              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {group.items.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(m.id)}
+                      className="flex w-full items-start gap-2.5 rounded-lg border border-slate-700/70 bg-slate-800/40 p-2.5 text-left transition hover:border-[#009FE3]/60 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#009FE3]"
+                      aria-label={`Open ${m.label} — ${m.blurb}`}
+                    >
+                      <m.icon className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-semibold text-slate-200">{m.label}</span>
+                        <span className="block truncate text-[10.5px] text-slate-500">{m.blurb}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </SectionCard>
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
@@ -312,6 +507,8 @@ export function DashboardView({ onOpenClient }: { onOpenClient: (id: string) => 
           <SectionCard title="Revenue by Month" description="Verified payments, month by month" contentClassName="p-2 sm:p-4">
             {loading ? (
               <Skeleton className="h-[220px] w-full bg-slate-800/50" />
+            ) : data?.financialDataAvailable === false ? (
+              <EmptyState title="Restricted" description="Finance metrics require Manager or higher access in the current role model." />
             ) : revenue.length === 0 ? (
               <EmptyState title="No payments yet" description="Revenue appears here once payments are recorded and verified." />
             ) : (

@@ -78,6 +78,17 @@ describe('ops endpoints are secret-protected in constant time', () => {
   }
 })
 
+describe('the inbound email webhook fails closed with its dedicated credential', () => {
+  const src = code('src/app/api/webhooks/email/route.ts')
+  it('authenticates the raw request before parsing or processing the event', () => {
+    assert.ok(src.includes('EMAIL_WEBHOOK_SECRET'))
+    assert.ok(src.includes('verifyEmailWebhookAuth'))
+    assert.match(src, /NOT_CONFIGURED[\s\S]*?503|status === 503/)
+    assert.ok(!src.includes('SOCIAL_WEBHOOK_SECRET'))
+    assert.ok(!src.includes('N8N_WEBHOOK_SECRET'))
+  })
+})
+
 describe('the WhatsApp webhook verifies the Meta signature', () => {
   const src = read('src/app/api/webhooks/whatsapp/route.ts')
   it('reads the raw body (re-serialising would break the HMAC)', () => {

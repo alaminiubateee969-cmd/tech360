@@ -13,10 +13,8 @@ import { WebsiteConceptMockup } from "./concepts";
 import { CardLinkAffordance, PrimaryLink } from "./buttons";
 
 /**
- * Expanded case-study detail — the card opens this dialog so an example
- * engagement reads like real work: full narrative, the standard 7-phase
- * delivery pattern applied to this industry, stack, and next steps.
- * Still honestly labelled a representative pattern (NDA policy unchanged).
+ * Expanded illustrative scenario detail — not an audited customer case study
+ * or a claim that a particular engagement, stack, or outcome occurred.
  */
 function CaseStudyDialog({
   study,
@@ -37,20 +35,20 @@ function CaseStudyDialog({
   if (!study || !open) return null;
 
   const phases = [
-    { t: "Discovery", d: `Business context gathered — ${study.industry.toLowerCase()} specifics first.` },
-    { t: "Written scope", d: "Deliverables, milestones and payment policy fixed in writing." },
-    { t: "Design & build", d: "Version-controlled sprints with weekly progress updates." },
-    { t: "Preview gate", d: "You approve a working preview before payment is due." },
-    { t: "Verify", d: "Quality, security and performance checks run together." },
-    { t: "Launch & handover", d: "Deploy, transfer source + credentials, document everything." },
-    { t: "Support", d: "Maintenance window with response-time commitments." },
+    { t: "Discovery", d: `Confirm business context and ${study.industry.toLowerCase()} constraints.` },
+    { t: "Written scope", d: "Agree deliverables, milestones, and payment terms in writing." },
+    { t: "Design & build", d: "Plan implementation iterations and progress reporting." },
+    { t: "Preview gate", d: "Review and approve the agreed preview before payment milestones." },
+    { t: "Verify", d: "Define and run the quality and security checks in the scope." },
+    { t: "Launch & handover", d: "Plan deployment, ownership transfer, and documentation." },
+    { t: "Support", d: "Set any post-launch support terms in a separate agreement." },
   ];
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`${study.title} — engagement detail`}
+      aria-label={`${study.title} — illustrative scenario detail`}
       className="fixed inset-0 z-[70] flex items-end justify-center bg-[#0B1F33]/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"
       onClick={onClose}
     >
@@ -62,7 +60,7 @@ function CaseStudyDialog({
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[#E2E8F0] bg-white/95 px-5 py-4 backdrop-blur sm:px-7">
           <div>
             <Badge className="rounded-md bg-[#063B8F]/10 text-xs font-medium text-[#063B8F] hover:bg-[#063B8F]/10">
-              {study.industry} · representative pattern
+              {study.industry} · illustrative scenario
             </Badge>
             <h3 className="mt-2 text-lg font-bold leading-snug text-[#0B1F33] sm:text-xl">
               {study.title}
@@ -71,7 +69,7 @@ function CaseStudyDialog({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close engagement detail"
+            aria-label="Close scenario detail"
             className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#E2E8F0] text-[#526173] outline-none transition-colors hover:bg-[#F4FAFF] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
           >
             <X className="size-4" aria-hidden="true" />
@@ -84,7 +82,7 @@ function CaseStudyDialog({
             {[
               ["Challenge", study.challenge, "#B4472A", CircleAlert],
               ["Approach", study.approach, "#063B8F", Compass],
-              ["Outcome", study.outcome, "#18B83A", CheckCircle2],
+              ["Intended outcome (illustrative)", study.outcome, "#18B83A", CheckCircle2],
             ].map(([label, text, color, IconC]) => {
               const IconComp = IconC as typeof CircleAlert;
               return (
@@ -108,10 +106,9 @@ function CaseStudyDialog({
 
           {/* Delivery pattern */}
           <div className="mt-8 rounded-xl border border-[#E2E8F0] bg-[#F8FCFF] p-5">
-            <h4 className="text-sm font-bold text-[#0B1F33]">How this engagement runs</h4>
+            <h4 className="text-sm font-bold text-[#0B1F33]">Possible delivery checkpoints</h4>
             <p className="mt-1 text-xs leading-relaxed text-[#526173]">
-              Every project — this pattern included — follows the same seven-phase
-              discipline. Two gates protect you: preview approval and verified delivery.
+              A real project may use checkpoints like these. Scope, approvals, timing, and support are agreed for each engagement; this example is not evidence of a completed delivery.
             </p>
             <ol className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {phases.map((p, i) => (
@@ -130,7 +127,7 @@ function CaseStudyDialog({
 
           {/* Stack */}
           <div className="mt-6">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#526173]">Stack</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#526173]">Possible technology examples</h4>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {study.stack.map((tech) => (
                 <span
@@ -146,8 +143,8 @@ function CaseStudyDialog({
           {/* CTA */}
           <div className="mt-8 flex flex-col gap-3 rounded-xl bg-gradient-to-br from-[#063B8F] to-[#0B1F33] p-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm leading-relaxed text-white/85">
-              <span className="font-semibold text-white">Want the real references?</span>{" "}
-              Under NDA we connect you with clients whose situation matches this pattern.
+              <span className="font-semibold text-white">Discuss a similar requirement.</span>{" "}
+              We will assess fit and scope; any client reference requires explicit permission and may not be available.
             </p>
             <PrimaryLink href="#/contact" className="shrink-0">
               Start your version
@@ -161,9 +158,8 @@ function CaseStudyDialog({
 }
 
 /**
- * Honest showcase: a hand-coded illustrative design concept of the calibre
- * of website Tech360 delivers. Real client work ships under NDA — so we show
- * a labelled concept, never a claimed client screenshot.
+ * Honest showcase: a hand-coded illustrative design concept, not a customer
+ * website, client screenshot, or evidence of a completed engagement.
  */
 function ConceptShowcase() {
   return (
@@ -192,6 +188,7 @@ interface PublicReviewItem {
  */
 function WorkReviews() {
   const [reviews, setReviews] = useState<PublicReviewItem[] | null>(null);
+  const [reviewLoadError, setReviewLoadError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -202,7 +199,10 @@ function WorkReviews() {
         if (active) setReviews(Array.isArray(json.reviews) ? json.reviews : []);
       })
       .catch(() => {
-        if (active) setReviews([]);
+        if (active) {
+          setReviews([]);
+          setReviewLoadError(true);
+        }
       });
     return () => {
       active = false;
@@ -222,9 +222,9 @@ function WorkReviews() {
       <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <SectionHeading
           id="reviews-heading"
-          eyebrow="Client reviews"
-          title="Verified client feedback"
-          description="Reviews are submitted by clients in their portal after delivery and published only with explicit consent — we never write them ourselves."
+          eyebrow="Client feedback"
+          title="Reviews approved for public display"
+          description="The public feed includes reviews marked approved, published, and consented in the review system. The underlying live review records were not independently inspected in this audit."
         />
 
         {reviews === null ? (
@@ -240,15 +240,23 @@ function WorkReviews() {
               </Card>
             ))}
           </div>
+        ) : reviewLoadError ? (
+          <Reveal>
+            <div className="mx-auto mt-10 flex max-w-2xl items-start gap-3 rounded-xl border border-amber-200 bg-white p-5">
+              <CircleAlert className="mt-0.5 size-5 shrink-0 text-amber-600" aria-hidden="true" />
+              <p className="text-sm leading-relaxed text-[#526173]">
+                <span className="font-semibold text-[#0B1F33]">Client feedback could not be loaded.</span>{" "}
+                No conclusion about published reviews can be made until the review service is available.
+              </p>
+            </div>
+          </Reveal>
         ) : reviews.length === 0 ? (
           <Reveal>
             <div className="mx-auto mt-10 flex max-w-2xl items-start gap-3 rounded-xl border border-[#E2E8F0] bg-white p-5">
               <Star className="mt-0.5 size-5 shrink-0 text-amber-400" aria-hidden="true" />
               <p className="text-sm leading-relaxed text-[#526173]">
-                <span className="font-semibold text-[#0B1F33]">No published reviews yet.</span>{" "}
-                Reviews appear here only after a client submits one in their portal and consents
-                to public display — we do not fabricate testimonials. NDA client references are
-                available on request in the meantime.
+                <span className="font-semibold text-[#0B1F33]">No approved public reviews are available right now.</span>{" "}
+                The feed displays only approved, published, consented reviews. Private or unpublished records, if any, are not shown here.
               </p>
             </div>
           </Reveal>
@@ -307,29 +315,27 @@ export default function WorkView() {
   return (
     <main id="main-content">
       <PageHero
-        eyebrow="Our work"
-        title="Representative engagements"
-        description="Anonymised delivery patterns from real client work across eight sectors. Click any engagement to read the full story. We do not publish client names or fabricated metrics — client references are available on request under NDA."
+        eyebrow="Illustrative scenarios"
+        title="Example project scenarios"
+        description="These hypothetical examples show possible approaches across several industries. They are not verified client engagements, audited case studies, or measured outcomes."
         breadcrumb={[{ label: "Work" }]}
       />
 
-      <section aria-labelledby="cases-heading" className="bg-[#F4FAFF]">
+      <section aria-labelledby="scenarios-heading" className="bg-[#F4FAFF]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <Reveal>
             <div className="mb-10 flex items-start gap-3 rounded-xl border border-[#E2E8F0] bg-white p-5">
               <Compass className="mt-0.5 size-5 shrink-0 text-[#009FE3]" aria-hidden="true" />
               <p className="text-sm leading-relaxed text-[#526173]">
                 <span className="font-semibold text-[#0B1F33]">How to read these:</span>{" "}
-                representative project patterns; references available on
-                request under NDA. Outcomes are described qualitatively — we
-                report what changed, not invented numbers.
+                hypothetical scenarios with possible approaches and intended outcomes. No client relationship, implementation, technology deployment, reference, or result is asserted. Actual scope, integrations, and outcomes require validation for each engagement.
               </p>
             </div>
           </Reveal>
 
           <ConceptShowcase />
 
-          <h2 id="cases-heading" className="sr-only">Case study list</h2>
+          <h2 id="scenarios-heading" className="sr-only">Illustrative scenario list</h2>
           <RevealList className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {CASE_STUDIES.map((study) => (
               <RevealItem key={study.slug} className="h-full">
@@ -337,12 +343,12 @@ export default function WorkView() {
                   <button
                     type="button"
                     onClick={() => setActiveStudy(study)}
-                    aria-label={`Read the full engagement: ${study.title}`}
+                    aria-label={`Read the illustrative scenario: ${study.title}`}
                     className="flex h-full flex-col rounded-xl p-6 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] sm:p-7"
                   >
                     <div className="flex flex-wrap items-center gap-3">
                       <Badge className="rounded-md bg-[#063B8F]/10 text-xs font-medium text-[#063B8F] hover:bg-[#063B8F]/10">
-                        {study.industry}
+                        {study.industry} · illustrative scenario
                       </Badge>
                     </div>
                     <h3 className="mt-4 text-xl font-semibold leading-snug text-[#0B1F33]">
@@ -376,7 +382,7 @@ export default function WorkView() {
                         <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-wider text-[#526173]">
-                            Outcome
+                            Intended outcome (illustrative)
                           </p>
                           <p className="mt-1 text-sm leading-relaxed text-[#526173]">
                             {study.outcome}
@@ -401,7 +407,7 @@ export default function WorkView() {
                       )}
                     </div>
                     <CardLinkAffordance className="mt-4">
-                      Read the full engagement
+                      Read scenario
                     </CardLinkAffordance>
                   </button>
                 </Card>
@@ -419,9 +425,9 @@ export default function WorkView() {
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
           <SectionHeading
             id="next-heading"
-            eyebrow="From pattern to project"
-            title="Your engagement follows the same discipline"
-            description="Every representative pattern above was delivered through the same governed process — written scope, preview approval, verified milestones, full handover."
+            eyebrow="Planning a project"
+            title="Start with requirements and evidence"
+            description="A real engagement begins by confirming your requirements, available systems, provider constraints, scope, and acceptance criteria. The examples above are not records of prior deliveries."
           />
           <RevealList className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
             {SERVICES.slice(0, 3).map((service) => (
@@ -445,8 +451,8 @@ export default function WorkView() {
       </section>
 
       <CtaBand
-        title="Ask for references — then start your own"
-        description="Under NDA we connect you with clients whose situation matches yours. And when you are ready, your project starts with the same preview-before-payment standard."
+        title="Discuss a project requirement"
+        description="Tell us about the problem and constraints. We will confirm what can be delivered, which providers need setup, and how success will be measured before making outcome claims."
       />
 
       {/* Expanded engagement detail */}

@@ -84,7 +84,7 @@ describe('AI workforce: only Super Admin and Admin can reach the workforce', () 
       assert.equal(
         hasRole(user(role), AI_WORKFORCE_MIN_ROLE),
         false,
-        `${role} must not reach the AI Employee command center`,
+        `${role} must not reach private workforce internals`,
       )
     }
   })

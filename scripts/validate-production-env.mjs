@@ -8,8 +8,10 @@ const REQUIRED = [
   "SESSION_SECRET",
   "PORTAL_SECRET",
   "OPS_SECRET",
+  "ZAI_BASE_URL",
+  "ZAI_API_KEY",
 ];
-const SECRET_NAMES = ["SESSION_SECRET", "PORTAL_SECRET", "OPS_SECRET"];
+const SECRET_NAMES = ["SESSION_SECRET", "PORTAL_SECRET", "OPS_SECRET", "IDENTITY_HASH_SECRET", "EMAIL_WEBHOOK_SECRET"];
 const errors = [];
 
 if (process.env.NODE_ENV !== "production") {
@@ -18,6 +20,10 @@ if (process.env.NODE_ENV !== "production") {
 
 for (const name of REQUIRED) {
   if (!process.env[name]?.trim()) errors.push(`${name} (required)`);
+}
+
+if ((process.env.WHATSAPP_APP_SECRET?.trim() || process.env.WHATSAPP_TOKEN?.trim()) && !process.env.IDENTITY_HASH_SECRET?.trim()) {
+  errors.push("IDENTITY_HASH_SECRET (required when a WhatsApp integration is configured)");
 }
 
 function isCanonicalHttpsOrigin(value) {
@@ -39,6 +45,30 @@ for (const name of ["APP_PUBLIC_URL", "APP_ORIGIN"]) {
   const value = process.env[name];
   if (value && !isCanonicalHttpsOrigin(value)) {
     errors.push(`${name} (must be the canonical HTTPS origin https://bdtech360.com)`);
+  }
+}
+
+// Preview-only SQLite must never be active in production. The runtime adapter
+// (src/lib/preview-db.ts) also throws, but refusing here means the process does
+// not start at all rather than failing on the first query.
+if (process.env.PREVIEW_SQLITE_URL?.trim()) {
+  errors.push("PREVIEW_SQLITE_URL (development-only; unset it and use a mysql:// DATABASE_URL)");
+}
+
+const aiOpsDriver = process.env.AI_OPS_DRIVER?.trim().toLowerCase();
+if (aiOpsDriver && !["on", "off"].includes(aiOpsDriver)) {
+  errors.push("AI_OPS_DRIVER (must be on or off)");
+}
+
+const zaiBaseUrl = process.env.ZAI_BASE_URL;
+if (zaiBaseUrl) {
+  try {
+    const parsed = new URL(zaiBaseUrl);
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password || parsed.search || parsed.hash) {
+      errors.push("ZAI_BASE_URL (must be an absolute HTTP(S) URL without credentials or query data)");
+    }
+  } catch {
+    errors.push("ZAI_BASE_URL (invalid URL)");
   }
 }
 

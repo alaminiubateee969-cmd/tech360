@@ -13,10 +13,20 @@ export async function GET() {
   // (the ops loop also does this with an admin notification — belt & braces)
   await publishDueBlogPosts().catch(() => 0)
 
-  const posts = await db.blogPost.findMany({
-    where: { status: 'PUBLISHED', publishedAt: { lte: new Date() } },
-    orderBy: { publishedAt: 'desc' },
-    select: { slug: true, title: true, excerpt: true, category: true, author: true, publishedAt: true, coverImage: true },
-  })
+  let posts
+  try {
+    posts = await db.blogPost.findMany({
+      where: { status: 'PUBLISHED', publishedAt: { lte: new Date() } },
+      orderBy: { publishedAt: 'desc' },
+      select: { slug: true, title: true, excerpt: true, category: true, author: true, publishedAt: true, coverImage: true },
+    })
+  } catch {
+    // honest degradation: the database did not answer — an empty list with
+    // the reason, never a crash and never fabricated posts.
+    return Response.json(
+      { posts: [], error: 'The blog is temporarily unavailable — the database did not answer.' },
+      { status: 503 },
+    )
+  }
   return Response.json({ posts })
 }

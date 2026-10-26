@@ -1,5 +1,7 @@
 # Tech360 deployment verification matrix
 
+> **Historical deployment audit dated 2026-10-03.** The detailed matrix below preserves the source and Hostinger evidence recorded at that time; it is not a current branch snapshot. For current source/build status see [`TECH360_FINAL_IMPLEMENTATION_INVENTORY.md`](./TECH360_FINAL_IMPLEMENTATION_INVENTORY.md). As of the latest check on 2026-10-11, PR #23 is merged at `889941e82b2b14edff856c271d3480122a102c63`, main CI run [38139298962](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38139298962) passed, and follow-up PR #24 is open with passing disposable-MySQL CI [38139924671](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38139924671). The operator-supplied Hostinger build remains historical at `286c433`; neither it nor the CI runs verifies the current live deployment or domain.
+
 **Status: PRODUCTION VERIFICATION REQUIRED.** This matrix separates repository evidence from Hostinger/account state. It is not a production success certificate.
 
 ## GitHub/source snapshot

@@ -158,6 +158,66 @@ export type AgentSeed = {
   requiresApproval?: boolean
   level?: number
   parentCode?: string
+  /** All core agents use the same governed execution boundary. */
+  handler?: 'runAgent'
+  version?: string
+}
+
+export const AGENT_HANDLER = 'runAgent' as const
+export const AGENT_REGISTRY_VERSION = '44-agents.110-departments.v1' as const
+
+export type RegistryValidation = {
+  valid: boolean
+  agentCount: number
+  departmentCount: number
+  duplicateAgentCodes: string[]
+  duplicateDepartmentCodes: string[]
+  invalidDepartmentMappings: Array<{ code: string; dept: string }>
+  invalidHandlers: string[]
+  incompleteAgents: string[]
+}
+
+function duplicateCodes(codes: string[]): string[] {
+  const seen = new Set<string>()
+  const duplicates = new Set<string>()
+  for (const code of codes) {
+    if (seen.has(code)) duplicates.add(code)
+    seen.add(code)
+  }
+  return [...duplicates].sort()
+}
+
+export function validateAgentRegistry(): RegistryValidation {
+  const departments = new Set(DEPARTMENTS.map((department) => department.code))
+  const agentCodes = CORE_AGENTS.map((agent) => agent.code)
+  const departmentCodes = DEPARTMENTS.map((department) => department.code)
+  const invalidDepartmentMappings = CORE_AGENTS
+    .filter((agent) => !departments.has(agent.dept))
+    .map((agent) => ({ code: agent.code, dept: agent.dept }))
+  const invalidHandlers = CORE_AGENTS
+    .filter((agent) => (agent.handler ?? AGENT_HANDLER) !== AGENT_HANDLER)
+    .map((agent) => agent.code)
+  const incompleteAgents = CORE_AGENTS
+    .filter((agent) => !agent.code || !agent.name || !agent.title || !agent.purpose || !agent.systemPrompt)
+    .map((agent) => agent.code || '(missing code)')
+  const duplicateAgentCodes = duplicateCodes(agentCodes)
+  const duplicateDepartmentCodes = duplicateCodes(departmentCodes)
+  return {
+    valid: agentCodes.length === 44
+      && departmentCodes.length === 110
+      && duplicateAgentCodes.length === 0
+      && duplicateDepartmentCodes.length === 0
+      && invalidDepartmentMappings.length === 0
+      && invalidHandlers.length === 0
+      && incompleteAgents.length === 0,
+    agentCount: agentCodes.length,
+    departmentCount: departmentCodes.length,
+    duplicateAgentCodes,
+    duplicateDepartmentCodes,
+    invalidDepartmentMappings,
+    invalidHandlers,
+    incompleteAgents,
+  }
 }
 
 const COMMON_RULES = `\nCONSTITUTIONAL RULES (non-negotiable):\n${CONSTITUTION.map((r, i) => `${i + 1}. ${r}`).join('\n')}\nRespond as a professional Tech360 team member. Never mention being an AI to clients. Keep output concise and actionable.`
@@ -478,4 +538,4 @@ export const CORE_AGENTS: AgentSeed[] = [
     tools: ['automation.run', 'automation.retry'],
     permissions: ['write:automationlogs'],
   },
-]
+].map((agent) => ({ ...agent, handler: AGENT_HANDLER, version: AGENT_REGISTRY_VERSION }))

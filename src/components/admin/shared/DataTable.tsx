@@ -25,6 +25,7 @@ interface DataTableProps<T> {
   empty?: ReactNode
   maxHeightClass?: string
   'aria-label'?: string
+  filterPills?: Array<{ label: string; onClear: () => void }>
 }
 
 export function DataTable<T>({
@@ -37,16 +38,28 @@ export function DataTable<T>({
   empty,
   maxHeightClass = 'max-h-[70vh]',
   'aria-label': ariaLabel,
+  filterPills,
 }: DataTableProps<T>) {
   const skeletonCount = loading ? loadingRows : 0
   const showEmpty = !loading && (!rows || rows.length === 0)
   return (
-    <div
-      className={cn('relative w-full overflow-auto rounded-lg border border-slate-800', maxHeightClass, SCROLL_THIN)}
-      role="region"
-      aria-label={ariaLabel}
-      tabIndex={0}
-    >
+    <div className="space-y-2">
+      {filterPills && filterPills.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1.5 px-1" aria-label="Active filters">
+          {filterPills.map((pill, i) => (
+            <span key={i} className="inline-flex items-center gap-1 rounded-full border border-[#009FE3]/30 bg-[#009FE3]/10 px-2.5 py-1 text-xs text-[#009FE3]">
+              {pill.label}
+              <button type="button" onClick={pill.onClear} aria-label={`Clear filter ${pill.label}`} className="ml-0.5 rounded-full p-0.5 hover:bg-[#009FE3]/20">×</button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div
+        className={cn('relative w-full overflow-auto rounded-lg border border-slate-800', maxHeightClass, SCROLL_THIN)}
+        role="region"
+        aria-label={ariaLabel}
+        tabIndex={0}
+      >
       <Table className="min-w-[640px]">
         <TableHeader className="sticky top-0 z-10 bg-[#0d1526]">
           <TableRow className="hover:bg-transparent border-slate-800">
@@ -111,6 +124,7 @@ export function DataTable<T>({
           )}
         </TableBody>
       </Table>
+    </div>
     </div>
   )
 }

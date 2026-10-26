@@ -79,3 +79,18 @@ tool-results/
 /public/downloads/
 *.pem
 *.key
+.e2e-tmp/
+
+# Database backups and dumps must never be committed (they contain personal data).
+/backups/
+/tech360-backups/
+*.sql.gz
+*.sql.gz.sha256
+last-run.json
+last-drill.json
+last-failure.json
+
+.engine-mirror/
+
+.sqlite-work/
+.preview/

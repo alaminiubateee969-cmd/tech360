@@ -46,9 +46,11 @@ import {
   type ApprovalItem,
   type ApprovalsResponse,
   type ClientDetailResponse,
+  type CommunicationRecord,
   type DocumentRecord,
   type MeetingRecord,
   type PaymentRecord,
+  type ProjectSummary,
 } from '@/lib/admin-client'
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { DataTable, type Column } from './shared/DataTable'
@@ -87,7 +89,19 @@ export function ClientDetailView({
 }) {
   const { data, loading, error, refresh } = useApi<ClientDetailResponse>(`/api/admin/clients/${encodeURIComponent(clientId)}`)
   const approvalsApi = useApi<ApprovalsResponse>('/api/admin/approvals')
+  const mergeApi = useApi<{
+    ok: boolean
+    duplicates: Array<{
+      client: { id: string; clientId: string; name: string; businessName?: string | null; email?: string | null; whatsapp?: string | null; status: string }
+      reasons: string[]
+      confidenceScore: number
+    }>
+    mergedChildren: Array<{ id: string; clientId: string; name: string; email?: string | null; updatedAt?: string }>
+  }>(`/api/admin/clients/${encodeURIComponent(clientId)}/merge`)
   const client = data?.client
+  const [mergeTargetSource, setMergeTargetSource] = useState<{ clientId: string; name: string } | null>(null)
+  const [mergeReason, setMergeReason] = useState('')
+  const [mergeBusy, setMergeBusy] = useState(false)
 
   const [dialog, setDialog] = useState<JourneyDialog | null>(null)
   const [busy, setBusy] = useState(false)
@@ -395,6 +409,108 @@ export function ClientDetailView({
         }
       />
 
+      {/* Duplicate Detection & Auditable Merge Banner */}
+      {((mergeApi.data?.duplicates?.length ?? 0) > 0 || (mergeApi.data?.mergedChildren?.length ?? 0) > 0) ? (
+        <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+          {(mergeApi.data?.duplicates?.length ?? 0) > 0 ? (
+            <div className="space-y-1.5">
+              <p className="font-semibold text-amber-300">
+                Potential Duplicate Client Records Detected ({mergeApi.data?.duplicates.length}) — Manual Review Required
+              </p>
+              <div className="space-y-1">
+                {mergeApi.data?.duplicates.map((dup) => (
+                  <div key={dup.client.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-500/20 bg-slate-950/60 px-2.5 py-1.5">
+                    <div>
+                      <span className="font-mono font-semibold text-[#009FE3]">{dup.client.clientId}</span> ·{' '}
+                      <span className="font-medium text-slate-200">{dup.client.name}</span>
+                      {dup.client.email ? <span className="text-slate-400"> · {dup.client.email}</span> : null}
+                      <span className="ml-2 text-[10px] text-amber-300">({dup.reasons.join(', ')})</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setMergeTargetSource({ clientId: dup.client.clientId, name: dup.client.name })
+                        setMergeReason('')
+                      }}
+                      className="h-7 border-amber-500/40 bg-amber-500/15 px-2.5 text-[11px] text-amber-200 hover:bg-amber-500/25"
+                    >
+                      Merge into {client.clientId}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {(mergeApi.data?.mergedChildren?.length ?? 0) > 0 ? (
+            <p className="text-[11px] text-slate-300">
+              Preserved Merged Client IDs:{' '}
+              {mergeApi.data?.mergedChildren.map((m) => `${m.clientId} (${m.name})`).join(', ')}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Dialog open={mergeTargetSource !== null} onOpenChange={(open) => { if (!open) setMergeTargetSource(null) }}>
+        <DialogContent className="max-w-md border-slate-800 bg-slate-950">
+          <DialogHeader>
+            <DialogTitle className="text-slate-100">
+              Merge {mergeTargetSource?.clientId} into {client.clientId}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Transfers all messages, scopes, projects, invoices, payments, receipts, and files from{' '}
+              <strong>{mergeTargetSource?.clientId}</strong> ({mergeTargetSource?.name}) into{' '}
+              <strong>{client.clientId}</strong> while permanently preserving both canonical Client IDs in the audit log.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2 text-xs">
+            <Label htmlFor="merge-reason" className="text-slate-300">Audit Reason (10–1000 characters) *</Label>
+            <Textarea
+              id="merge-reason"
+              value={mergeReason}
+              onChange={(e) => setMergeReason(e.target.value)}
+              rows={3}
+              placeholder="Explain why these client records belong to the same verified customer..."
+              className="border-slate-800 bg-slate-900/60 text-slate-200"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setMergeTargetSource(null)} disabled={mergeBusy} className="text-slate-400">
+              Cancel
+            </Button>
+            <Button
+              disabled={mergeBusy || mergeReason.trim().length < 10}
+              onClick={async () => {
+                if (!mergeTargetSource) return
+                setMergeBusy(true)
+                try {
+                  await fetchJson(`/api/admin/clients/${encodeURIComponent(client.clientId)}/merge`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      sourceClientId: mergeTargetSource.clientId,
+                      reason: mergeReason.trim(),
+                    }),
+                  })
+                  toast.success(`Merged ${mergeTargetSource.clientId} into ${client.clientId} with full history preserved.`)
+                  setMergeTargetSource(null)
+                  refresh()
+                  mergeApi.refresh()
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : 'Client merge failed.')
+                } finally {
+                  setMergeBusy(false)
+                }
+              }}
+              className="gap-2 font-semibold"
+              style={{ background: '#009FE3' }}
+            >
+              {mergeBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+              Confirm Merge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Stage stepper (20 stages) */}
       <section className={CARD} aria-label="Pipeline progress">
         <div className="border-b border-slate-800 px-4 py-3">
@@ -593,6 +709,8 @@ export function ClientDetailView({
             ['meetings', `Meetings (${(data?.meetings ?? []).length})`],
             ['memory', `Memory (${(data?.memories ?? []).length})`],
             ['automation', `Automation (${(data?.automationLogs ?? []).length})`],
+            ...(Array.isArray(data?.agentJobs) ? [['agentJobs', `Agent Jobs (${data.agentJobs.length})`]] : []),
+            ...(Array.isArray(data?.verifiedIdentities) ? [['identities', `Verified identities (${data.verifiedIdentities.length})`]] : []),
             ['research', 'AI Research'],
           ].map(([v, label]) => (
             <TabsTrigger
@@ -632,43 +750,7 @@ export function ClientDetailView({
         </TabsContent>
 
         <TabsContent value="comms" className="mt-3">
-          <SectionCard title="Communications" description="Every message across channels — statuses are reported exactly as the providers returned them" contentClassName="p-0">
-            <DataTable
-              columns={[
-                { key: 'channel', header: 'Channel', cell: (c) => <span className="text-xs font-medium text-slate-300">{prettify(c.channel)}</span> },
-                {
-                  key: 'dir',
-                  header: 'Dir',
-                  cell: (c) =>
-                    (c.direction ?? '').toUpperCase() === 'IN' ? (
-                      <span className="text-[11px] font-semibold text-[#009FE3]">IN</span>
-                    ) : (
-                      <span className="text-[11px] font-semibold text-slate-500">OUT</span>
-                    ),
-                },
-                { key: 'recipient', header: 'Recipient', cell: (c) => <span className="text-xs text-slate-400">{c.recipient || c.sender || '—'}</span> },
-                {
-                  key: 'body',
-                  header: 'Message',
-                  className: 'max-w-[280px]',
-                  cell: (c) => (
-                    <div className="min-w-0">
-                      {c.subject ? <p className="truncate text-xs font-medium text-slate-300">{c.subject}</p> : null}
-                      <p className="truncate text-xs text-slate-500">{c.body || '—'}</p>
-                    </div>
-                  ),
-                },
-                { key: 'status', header: 'Status', cell: (c) => <StatusBadge status={c.status} title={c.error ?? undefined} /> },
-                { key: 'provider', header: 'Provider ID', cell: (c) => <span className="font-mono text-[11px] text-slate-600">{c.providerMessageId || '—'}</span> },
-                { key: 'date', header: 'Date', cell: (c) => <span className="text-xs text-slate-500">{fmtDate(c.sentAt ?? c.createdAt)}</span> },
-              ]}
-              rows={data?.communications}
-              rowKey={(c) => c.id}
-              empty={<EmptyState title="No communications yet" description="Messages sent and received for this client will appear here." />}
-              aria-label="Client communications"
-              maxHeightClass="max-h-[60vh]"
-            />
-          </SectionCard>
+          <ClientCommsInbox clientId={client?.id ?? ''} communications={data?.communications ?? []} />
         </TabsContent>
 
         <TabsContent value="scope" className="mt-3">
@@ -814,6 +896,7 @@ export function ClientDetailView({
           <DocumentsPanel
             clientId={client.clientId}
             documents={data?.documents ?? []}
+            projects={projects}
             onChanged={refresh}
           />
         </TabsContent>
@@ -864,6 +947,48 @@ export function ClientDetailView({
               aria-label="Automation logs"
               maxHeightClass="max-h-[60vh]"
             />
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="agentJobs" className="mt-3">
+          <SectionCard title="Durable AgentJob history" description="Super Admin-only inference and allowlisted internal tool ledger for this canonical client. A completed inference or task.create call does not prove QA, external delivery, or customer acceptance.">
+            {(data?.agentJobs ?? []).length === 0 ? (
+              <EmptyState title="No durable agent jobs" description="Queued inference and supported internal tool jobs linked to this client appear here with approval, retries, and terminal outcomes." />
+            ) : (
+              <ol className="space-y-2">
+                {(data?.agentJobs ?? []).map((job) => (
+                  <li key={job.id} className="rounded-md border border-slate-800 bg-slate-950/50 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge status={job.status} />
+                      <span className="font-mono text-xs text-slate-300">{job.agentCode ?? '—'}</span>
+                      <span className="text-[10px] text-slate-500">attempt {num(job.attempts)}/{num(job.maxAttempts)}</span>
+                      <span className="ml-auto text-[10px] text-slate-600">{fmtDate(job.completedAt ?? job.startedAt ?? job.createdAt)}</span>
+                    </div>
+                    <p className="mt-1 font-mono text-[10px] text-slate-600">{job.correlationId}{job.workflow ? ` · ${job.workflow}` : ''} · {job.taskType === 'TOOL_CALL' ? `tool ${job.toolName ?? 'unknown'}` : 'inference'} · {job.approvalState}</p>
+                    {job.lastError ? <p className="mt-2 text-xs text-red-400">{job.lastError}</p> : null}
+                    {job.output ? <details className="mt-2 rounded border border-slate-800 p-2"><summary className="cursor-pointer text-[10px] text-slate-500">View persisted job result</summary><div className="mt-2"><Markdownish text={job.output} /></div></details> : null}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="identities" className="mt-3">
+          <SectionCard title="Verified identities" description="Super Admin-only verification metadata. Raw identifiers and HMAC digests are not returned in this view.">
+            {(data?.verifiedIdentities ?? []).length === 0 ? (
+              <EmptyState title="No verified identities linked" description="Website contact fields are unverified claims. A signed WhatsApp event or an audited Super Admin verification is required before linking." />
+            ) : (
+              <ul className="space-y-2">
+                {(data?.verifiedIdentities ?? []).map((identity) => (
+                  <li key={identity.id} className="flex flex-wrap items-center gap-2 rounded-md border border-slate-800 bg-slate-950/50 p-3">
+                    <span className="rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-300">{identity.identityType}</span>
+                    <span className="text-xs text-slate-400">Verified via {prettify(identity.verificationSource)}</span>
+                    <span className="ml-auto text-[10px] text-slate-600">{fmtDate(identity.verifiedAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </SectionCard>
         </TabsContent>
 
@@ -970,7 +1095,7 @@ export function ClientDetailView({
 
 // ---------------- Documents hub panel (moderation + two-way sharing) ----------------
 const DOC_CLASSIFICATIONS = ['PUBLIC', 'PRIVATE', 'CONFIDENTIAL', 'HIGHLY_SENSITIVE'] as const
-const DOC_ACCEPT = '.pdf,.txt,.md,.csv,.json,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.webp'
+const DOC_ACCEPT = '.pdf,.txt,.md,.csv,.json,.doc,.docx,.xlsx,.png,.jpg,.jpeg,.webp,.js,.ts,.tsx,.jsx,.py,.css,.html,.sql,.yaml,.yml,.toml'
 
 function docScanTone(status: string): string {
   if (status === 'CLEAN') return 'bg-emerald-500/15 text-emerald-300'
@@ -988,16 +1113,20 @@ function fmtDocSize(n: number): string {
 function DocumentsPanel({
   clientId,
   documents,
+  projects,
   onChanged,
 }: {
   clientId: string
   documents: DocumentRecord[]
+  projects: ProjectSummary[]
   onChanged: () => void
 }) {
   const [shareOpen, setShareOpen] = useState(false)
   const [shareFile, setShareFile] = useState<File | null>(null)
   const [shareNote, setShareNote] = useState('')
   const [shareClass, setShareClass] = useState<string>('PRIVATE')
+  const [sharePurpose, setSharePurpose] = useState<'ADMIN_SHARE' | 'DELIVERY'>('ADMIN_SHARE')
+  const [shareProjectId, setShareProjectId] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [shareBusy, setShareBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -1009,11 +1138,14 @@ function DocumentsPanel({
     if (!shareFile) { toast.error('Choose a file first.'); return }
     setShareBusy(true)
     try {
-      const res = await api.docShare(clientId, shareFile, shareNote.trim(), shareClass)
-      toast.success(res.message ?? 'File shared with the client.')
+      if (sharePurpose === 'DELIVERY' && !shareProjectId) { toast.error('Select a project before attaching a handover artifact.'); return }
+      const res = await api.docShare(clientId, shareFile, shareNote.trim(), shareClass, sharePurpose === 'DELIVERY' ? shareProjectId : undefined)
+      toast.success(res.message ?? (sharePurpose === 'DELIVERY' ? 'Project artifact scanned and attached.' : 'File shared with the client.'))
       setShareOpen(false)
       setShareFile(null)
       setShareNote('')
+      setSharePurpose('ADMIN_SHARE')
+      setShareProjectId('')
       if (fileInputRef.current) fileInputRef.current.value = ''
       onChanged()
     } catch (e) {
@@ -1085,7 +1217,7 @@ function DocumentsPanel({
                         </span>
                       </div>
                       <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-slate-500">
-                        <span>{d.direction === 'SHARED' ? 'shared by Tech360' : 'client upload'}</span>
+                        <span>{d.relatedType === 'DELIVERY' ? `project handover artifact${d.projectId ? ` · ${d.projectId}` : ''}` : d.direction === 'SHARED' ? 'shared by Tech360' : 'client upload'}</span>
                         <span>· {fmtDocSize(d.size)}</span>
                         <span>· {d.downloads} dl</span>
                         <span>· {d.uploadedBy || '—'}</span>
@@ -1156,13 +1288,44 @@ function DocumentsPanel({
               <Paperclip className="size-4" aria-hidden="true" /> Share a file with {clientId}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              The file is scanned with the same engine as client uploads — flagged files are refused, never delivered.
-              Clean files become visible in the client portal instantly.
+              Files use deterministic signature and credential-pattern checks; external malware scanning is not configured. Never upload production credentials or customer data.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="share-file" className="text-xs text-slate-400">File (≤ 5MB · pdf, docx, xlsx, images, text)</Label>
+              <Label className="text-xs text-slate-400">Upload purpose</Label>
+              <Select value={sharePurpose} onValueChange={(value) => {
+                const purpose = value as 'ADMIN_SHARE' | 'DELIVERY'
+                setSharePurpose(purpose)
+                if (purpose === 'DELIVERY') setShareClass('PRIVATE')
+              }}>
+                <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Upload purpose">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                  <SelectItem value="ADMIN_SHARE">Share a client document</SelectItem>
+                  <SelectItem value="DELIVERY">Attach a project handover artifact</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {sharePurpose === 'DELIVERY' ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-400">Project</Label>
+                <Select value={shareProjectId} onValueChange={setShareProjectId}>
+                  <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Project for handover artifact">
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                    {projects.filter((project) => !['COMPLETED', 'CANCELLED'].includes(project.status ?? '')).map((project) => (
+                      <SelectItem key={project.id} value={project.id}>{project.code ?? project.id} · {project.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] leading-relaxed text-amber-300">Handover artifacts stay hidden from the client until a Super Admin approves the exact file list after payment verification. The download package contains the uploaded files unchanged.</p>
+              </div>
+            ) : null}
+            <div className="space-y-1.5">
+              <Label htmlFor="share-file" className="text-xs text-slate-400">File (≤ 5MB · approved documents and source text files)</Label>
               <input
                 ref={fileInputRef}
                 id="share-file"
@@ -1176,41 +1339,45 @@ function DocumentsPanel({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="share-note" className="text-xs text-slate-400">Note shown to the client</Label>
+              <Label htmlFor="share-note" className="text-xs text-slate-400">{sharePurpose === 'DELIVERY' ? 'Internal artifact note' : 'Note shown to the client'}</Label>
               <Input
                 id="share-note"
                 value={shareNote}
                 onChange={(e) => setShareNote(e.target.value)}
-                placeholder="e.g. Milestone 2 invoice — bank transfer copy"
+                placeholder={sharePurpose === 'DELIVERY' ? 'e.g. Approved release candidate 1.0' : 'e.g. Milestone 2 invoice — bank transfer copy'}
                 maxLength={300}
                 className="h-9 border-slate-800 bg-slate-950/60 text-slate-200"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Classification</Label>
-              <Select value={shareClass} onValueChange={setShareClass}>
-                <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Classification">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
-                  {DOC_CLASSIFICATIONS.map((c) => (
-                    <SelectItem key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {['CONFIDENTIAL', 'HIGHLY_SENSITIVE'].includes(shareClass) && (
-                <p className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">
-                  <ShieldAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-                  Sensitive classification — the client sees the label; the file stays bound to their Client ID and every download is audited.
-                </p>
-              )}
-            </div>
+            {sharePurpose === 'DELIVERY' ? (
+              <p className="rounded-md border border-slate-800 bg-slate-950/60 p-2 text-xs text-slate-400">Classification: PRIVATE. These files are not visible in the client document list; only the approved handover package contains them.</p>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-400">Classification</Label>
+                <Select value={shareClass} onValueChange={setShareClass}>
+                  <SelectTrigger className="h-9 border-slate-800 bg-slate-950/60 text-slate-200" aria-label="Classification">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-slate-800 bg-slate-900 text-slate-200">
+                    {DOC_CLASSIFICATIONS.map((c) => (
+                      <SelectItem key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {['CONFIDENTIAL', 'HIGHLY_SENSITIVE'].includes(shareClass) && (
+                  <p className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">
+                    <ShieldAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                    Sensitive classification — the client sees the label; the file stays bound to their Client ID and every download is audited.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShareOpen(false)} disabled={shareBusy} className="text-slate-400 hover:text-slate-200">Cancel</Button>
-            <Button onClick={share} disabled={shareBusy || !shareFile} className="font-semibold" style={{ background: ACCENT }}>
+            <Button onClick={share} disabled={shareBusy || !shareFile || (sharePurpose === 'DELIVERY' && !shareProjectId)} className="font-semibold" style={{ background: ACCENT }}>
               {shareBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}
-              Scan &amp; share
+              {sharePurpose === 'DELIVERY' ? 'Scan & attach artifact' : 'Scan & share'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1927,5 +2094,63 @@ function AiResearchPanel({ clientId, clientLabel }: { clientId: string; clientLa
         </>
       )}
     </div>
+  )
+}
+
+export function ClientCommsInbox({ clientId, communications }: { clientId: string; communications: CommunicationRecord[] }) {
+  const [mode, setMode] = useState<'table' | 'inbox'>('inbox')
+  // Defense in depth: the client-detail API already nests communications
+  // under the requested database client, and the view filters again so a
+  // malformed/stale response cannot render another client's messages.
+  const rows = communications.filter((communication) => communication.clientId === clientId)
+  if (rows.length === 0) return <SectionCard title="Communications" description="Every message across channels — bubble thread anchored to Client ID"><EmptyState title="No communications yet" description="Messages sent and received for this client will appear here — bubbles left (IN) slate, right (OUT) cyan with honest provider ticks." /></SectionCard>
+  const sorted = rows.slice().sort((a, b) => new Date(a.sentAt ?? a.createdAt ?? 0).getTime() - new Date(b.sentAt ?? b.createdAt ?? 0).getTime())
+  return (
+    <SectionCard
+      title="Communications — Unified thread"
+      description={`Client 360° bubbles — same rows as the global inbox, filtered to ${rows.length} message(s) for this Client ID. Identity: Client ID is the join key.`}
+      actions={
+        <div className="flex rounded-lg border border-slate-700 p-1">
+          <button type="button" onClick={() => setMode('table')} aria-pressed={mode === 'table'} className={`rounded-md px-2 py-1 text-xs font-semibold ${mode === 'table' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'}`}>Table</button>
+          <button type="button" onClick={() => setMode('inbox')} aria-pressed={mode === 'inbox'} className={`rounded-md px-2 py-1 text-xs font-semibold ${mode === 'inbox' ? 'bg-[#009FE3] text-white' : 'text-slate-500 hover:text-slate-300'}`}>Inbox</button>
+        </div>
+      }
+      contentClassName={mode === 'inbox' ? 'p-3' : 'p-0'}
+    >
+      {mode === 'table' ? (
+        <DataTable
+          columns={[
+            { key: 'channel', header: 'Channel', cell: (c: typeof rows[number]) => <span className="text-xs font-medium text-slate-300">{prettify(c.channel ?? '')}</span> },
+            { key: 'dir', header: 'Dir', cell: (c: typeof rows[number]) => ((c.direction ?? '').toUpperCase() === 'IN' ? <span className="text-[11px] font-semibold text-[#009FE3]">IN</span> : <span className="text-[11px] font-semibold text-slate-500">OUT</span>) },
+            { key: 'recipient', header: 'Recipient', cell: (c: typeof rows[number]) => <span className="text-xs text-slate-400">{(c.recipient || c.sender || '—') as string}</span> },
+            { key: 'body', header: 'Message', className: 'max-w-[280px]', cell: (c: typeof rows[number]) => (<div className="min-w-0">{c.subject ? <p className="truncate text-xs font-medium text-slate-300">{c.subject}</p> : null}<p className="truncate text-xs text-slate-500">{c.body || '—'}</p></div>) },
+            { key: 'status', header: 'Status', cell: (c: typeof rows[number]) => <StatusBadge status={c.status ?? ''} title={c.error ?? undefined} /> },
+            { key: 'provider', header: 'Provider ID', cell: (c: typeof rows[number]) => <span className="font-mono text-[11px] text-slate-600">{c.providerMessageId || '—'}</span> },
+            { key: 'date', header: 'Date', cell: (c: typeof rows[number]) => <span className="text-xs text-slate-500">{fmtDate((c.sentAt ?? c.createdAt) as string)}</span> },
+          ]}
+          rows={rows}
+          rowKey={(c) => c.id}
+          aria-label="Client communications table"
+          maxHeightClass="max-h-[60vh]"
+        />
+      ) : (
+        <ol className="space-y-2" aria-label={`Unified thread — ${rows.length} message(s)`}>
+          {sorted.map((c) => {
+            const inbound = (c.direction ?? '').toUpperCase() === 'IN'
+            const ticks = (c.status ?? '').toUpperCase() === 'SENT' ? '✓' : (c.status ?? '').toUpperCase() === 'DELIVERED' ? '✓✓' : (c.status ?? '').toUpperCase() === 'READ' ? '✓✓ (read)' : null
+            return (
+              <li key={c.id} className={`flex ${inbound ? 'justify-start' : 'justify-end'}`}>
+                <div className={`max-w-[78%] rounded-2xl px-3 py-2 ${inbound ? 'bg-slate-800 text-slate-100 rounded-bl-sm' : 'bg-[#009FE3] text-white rounded-br-sm'}`}>
+                  <p className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold opacity-80"><span className="rounded-full bg-black/15 px-1.5 py-0.5">{prettify(c.channel ?? '')}</span> {c.direction} · {fmtDate(c.sentAt ?? c.createdAt)} {ticks ? <span className="ml-1">{ticks}</span> : null}</p>
+                  {c.subject ? <p className="mt-1 text-xs font-semibold opacity-90">{c.subject}</p> : null}
+                  <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed">{c.body || '—'}</p>
+                  <p className="mt-1.5 flex flex-wrap gap-1 text-[11px] opacity-70"><StatusBadge status={c.status ?? ''} /> {c.providerMessageId ? <span className="font-mono">{c.providerMessageId}</span> : null} {c.error ? <span className="text-amber-300">{c.error}</span> : null}</p>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </SectionCard>
   )
 }

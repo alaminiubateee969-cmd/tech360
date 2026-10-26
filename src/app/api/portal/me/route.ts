@@ -1,6 +1,13 @@
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
+import { getCustomerPaymentReadiness } from '@/lib/features'
+import {
+  computeInvoiceSettlement,
+  isCustomerVisibleInvoiceStatus,
+  isPayableInvoiceStatus,
+  resolveInvoiceTotalMinor,
+} from '@/lib/invoice-policy'
 import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { formatScopeForClient } from '@/lib/journey'
@@ -23,8 +30,11 @@ export async function GET(req: NextRequest) {
       projects: { orderBy: { createdAt: 'desc' }, include: { tasks: { orderBy: { order: 'asc' } } } },
       scopes: { orderBy: { version: 'desc' } },
       previews: { orderBy: { createdAt: 'desc' } },
-      payments: { orderBy: { createdAt: 'desc' } },
-      invoices: { orderBy: { issuedAt: 'desc' } },
+      payments: { orderBy: { createdAt: 'desc' }, include: { receipt: { select: { receiptNumber: true } } } },
+      invoices: {
+        orderBy: { issuedAt: 'desc' },
+        include: { payments: { select: { amount: true, status: true } } },
+      },
       meetings: { orderBy: [{ scheduledAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }] },
     },
   })
@@ -38,8 +48,8 @@ export async function GET(req: NextRequest) {
   const previewsByAge = [...client.previews].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   const latestPreview = previewsByAge[0]
   const activePreview = previewsByAge.find((p) => !['EXPIRED'].includes(p.status))
-  const handover = project ? await db.handoverRecord.findFirst({ where: { projectId: project.id, type: 'SOURCE_CODE' } }) : null
-  const delivery = project ? await db.delivery.findFirst({ where: { projectId: project.id } }) : null
+  const handover = project ? await db.handoverRecord.findFirst({ where: { projectId: project.id, type: 'SOURCE_CODE' }, orderBy: { createdAt: 'desc' } }) : null
+  const delivery = project ? await db.delivery.findFirst({ where: { projectId: project.id }, orderBy: { updatedAt: 'desc' } }) : null
   // Review + referral state for the client feedback card (real records only)
   const reviewRow = await db.review.findFirst({ where: { clientId: client.id } })
   const referralRow = await db.referral.findFirst({ where: { clientId: client.id } })
@@ -58,6 +68,25 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: 'desc' },
     take: 50,
     select: { id: true, originalName: true, mimeType: true, size: true, note: true, scanStatus: true, relatedType: true, classification: true, createdAt: true },
+  })
+
+  // AI workforce activity feed (agent-driven delivery transparency) — a WORK
+  // LOG only: which agent, what kind of work, status and when. The input and
+  // output payloads stay internal (they can contain analysis the team has
+  // not chosen to share), so clients see the team at work, never drafts.
+  const workforceExecutions = await db.aiAgentExecution.findMany({
+    where: { clientId: client.id },
+    orderBy: { startedAt: 'desc' },
+    take: 8,
+    select: {
+      id: true,
+      status: true,
+      workflow: true,
+      startedAt: true,
+      completedAt: true,
+      durationMs: true,
+      agent: { select: { code: true, name: true, title: true } },
+    },
   })
 
   return Response.json({
@@ -97,17 +126,58 @@ export async function GET(req: NextRequest) {
       ? {
           status: handover.status,
           downloadLink: handover.status === 'RELEASED' || handover.status === 'DOWNLOADED' || handover.status === 'CONFIRMED' ? `/api/handover/${handover.packageToken}/download` : null,
-          confirmLink: handover.status === 'RELEASED' || handover.status === 'DOWNLOADED' ? `/api/handover/${handover.packageToken}/confirm` : null,
+          confirmLink: handover.status === 'DOWNLOADED' ? `/api/handover/${handover.packageToken}/confirm` : null,
           passwordChangeRequested: Boolean(handover.passwordChangeRequestedAt),
-          passwordChangeConfirmed: Boolean(handover.passwordChangeConfirmedAt),
+          passwordChangeConfirmed: handover.status === 'CONFIRMED' && Boolean(handover.passwordChangeConfirmedAt),
         }
       : null,
     delivery: delivery ? { status: delivery.status, confirmedAt: delivery.clientConfirmedAt } : null,
-    payments: client.payments.map((p) => ({ milestone: p.milestone, amount: p.amount, currency: p.currency, status: p.status, verifiedAt: p.verifiedAt })),
-    invoices: client.invoices.map((i) => ({ number: i.number, amount: i.amount, currency: i.currency, status: i.status, notes: i.notes })),
+    paymentReadiness: await getCustomerPaymentReadiness(),
+    payments: client.payments.map((p) => ({
+      id: p.id,
+      milestone: p.milestone,
+      amount: p.amount,
+      currency: p.currency,
+      status: p.status,
+      verifiedAt: p.verifiedAt,
+      receiptAvailable: Boolean(p.status === 'PAID' && p.verifiedAt && p.verifiedBy),
+      receiptNumber: p.receipt?.receiptNumber ?? null,
+    })),
+    invoices: client.invoices
+      .filter((i) => isCustomerVisibleInvoiceStatus(i.status))
+      .map((i) => {
+        const totalMinor = resolveInvoiceTotalMinor({ totalMinor: i.totalMinor, amount: i.amount })
+        const settlement = computeInvoiceSettlement({
+          invoiceAmount: i.amount,
+          invoiceTotalMinor: totalMinor,
+          currentStatus: i.status,
+          dueAt: i.dueAt,
+          payments: i.payments,
+        })
+        return {
+          number: i.number,
+          amount: i.amount,
+          remainingAmount: settlement.remainingAmount,
+          currency: i.currency,
+          status: i.status,
+          payable: isPayableInvoiceStatus(i.status) && settlement.remainingMinor > 0,
+          dueAt: i.dueAt,
+          // Strictly expose customer-facing notes only — never internalNotes!
+          notes: i.customerNotes ?? (i.internalNotes ? null : i.notes),
+        }
+      }),
     communications: communications.map((c) => ({
       channel: c.channel, direction: c.direction, subject: c.subject,
       preview: (c.body ?? '').slice(0, 160), status: c.status, at: c.createdAt,
+    })),
+    workforce: workforceExecutions.map((e) => ({
+      id: e.id,
+      agentName: e.agent?.name ?? 'AI agent',
+      agentTitle: e.agent?.title ?? null,
+      work: (e.workflow ?? 'general work').replace(/_/g, ' ').toLowerCase(),
+      status: e.status,
+      at: e.startedAt,
+      durationMs: e.completedAt ? e.durationMs : null,
     })),
     meetings: client.meetings.map((m) => ({
       id: m.id,

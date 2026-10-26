@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
+import { isValidRole } from '@/lib/access-policy'
 import { guard, isResponse } from '@/lib/api-guard'
-import { readJson, audit, logError, sanitizeText } from '@/lib/security'
+import { ROLES } from '@/lib/constants'
+import { readJson, audit, sanitizeText } from '@/lib/security'
 import { randomBytes } from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -13,8 +15,6 @@ export const dynamic = 'force-dynamic'
 //   POST /api/admin/team        → create user (must set password on first login)
 // The list never exposes hashes or 2FA secrets — only safe fields.
 // ============================================================
-
-const VALID_ROLES = new Set(['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'])
 
 export async function GET(req: NextRequest) {
   const g = await guard(req, { minRole: 'ADMIN' })
@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return Response.json({ error: 'A valid email is required.' }, { status: 400 })
   }
-  if (!VALID_ROLES.has(role)) {
-    return Response.json({ error: 'Role must be SUPER_ADMIN, ADMIN, MANAGER or STAFF.' }, { status: 400 })
+  if (!isValidRole(role)) {
+    return Response.json({ error: `Role must be one of: ${ROLES.join(', ')}.` }, { status: 400 })
   }
 
   const existing = await db.user.findUnique({ where: { email } })

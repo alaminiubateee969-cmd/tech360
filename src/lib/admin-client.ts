@@ -31,6 +31,7 @@ export class ApiError extends Error {
 export interface FetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
+  headers?: Record<string, string>
 }
 
 function extractError(data: unknown, status: number): string {
@@ -44,7 +45,7 @@ function extractError(data: unknown, status: number): string {
 
 export async function fetchJson<T>(url: string, opts: FetchOptions = {}): Promise<T> {
   const method = opts.method ?? 'GET'
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { ...(opts.headers ?? {}) }
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
   if (method !== 'GET') headers['x-csrf-token'] = getCsrf()
   const res = await fetch(url, {
@@ -174,13 +175,25 @@ export interface DashboardStats {
   activeProjects: number
   projectsAwaitingApproval: number
   paymentPending: number
-  paidProjects: number
-  outstandingReceivables: number
+  paidProjects: number | null
+  outstandingReceivables: number | null
+  totalPaidRevenue?: number | null
   completedProjects: number
   openTasks: number
   unreadCommunications: number
   failedAutomations: number
   pendingAdminApprovals: number
+  pendingPaymentVerifications?: number | null
+  overdueTasks?: number
+  upcomingDeadlines?: number
+  pendingRefunds?: number | null
+  approvedRefunds?: number | null
+  emailQueued?: number
+  emailSent?: number
+  emailFailed?: number
+  verifiedEmailIdentities?: number
+  handoversAwaitingPayment?: number
+  handoversAwaitingConfirmation?: number
 }
 export interface StageCount { stage: string; count: number }
 export interface MonthRevenue { month: string; paid: number }
@@ -202,7 +215,23 @@ export interface RecentActivity {
   actor?: string | null
   clientId?: string | null
 }
+export interface DashboardAgentRow {
+  code: string
+  name: string
+  title: string | null
+  status: string
+  level: number
+  parentCode: string | null
+  requiresApproval: boolean
+  executions: number
+  successRate: number | null
+  deptCode: string | null
+  deptName: string
+  category: string
+}
 export interface DashboardResponse {
+  financialDataAvailable: boolean
+  aiAgents?: { total: number; active: number; agents: DashboardAgentRow[] } | null
   stats: DashboardStats
   pipeline: StageCount[]
   revenueByMonth: MonthRevenue[]
@@ -458,18 +487,59 @@ export interface PaymentRecord {
   verifiedAt?: string | null
   notes?: string | null
   createdAt?: string | null
-  client?: { clientId?: string; name?: string } | string | null
+  client?: { clientId?: string; name?: string; businessName?: string | null } | string | null
   invoice?: { number?: string } | null
+  receipt?: { receiptNumber?: string; issuedAt?: string | null } | null
 }
 export interface InvoiceRecord {
   id: string
   number?: string | null
   amount?: number | null
+  subtotalMinor?: number | null
+  discountMinor?: number | null
+  taxRateBps?: number | null
+  taxLabel?: string | null
+  taxMinor?: number | null
+  totalMinor?: number | null
+  remainingAmount?: number | null
   currency?: string | null
   status?: string | null
+  description?: string | null
+  customerNotes?: string | null
+  internalNotes?: string | null
   notes?: string | null
+  scopeVersion?: number | null
+  revision?: number | null
+  supersedesInvoiceNumber?: string | null
   issuedAt?: string | null
   dueAt?: string | null
+  client?: { clientId?: string; name?: string; businessName?: string | null } | string | null
+  project?: { code?: string; name?: string } | null
+}
+export interface RefundCaseRecord {
+  id: string
+  caseNumber: string
+  kind: string
+  status: string
+  requestedAmountMinor: number
+  approvedAmountMinor: number
+  requestedAmount?: number
+  approvedAmount?: number
+  currency: string
+  reason: string
+  policyBasis?: string | null
+  resolutionNotes?: string | null
+  providerRefundRef?: string | null
+  requestedBy: string
+  reviewedBy?: string | null
+  reviewedAt?: string | null
+  settledAt?: string | null
+  revokeHandover: boolean
+  createdAt: string
+  client?: { id?: string; clientId?: string; name?: string } | null
+  project?: { id?: string; code?: string; name?: string } | null
+  invoice?: { id?: string; number?: string } | null
+  payment?: { id?: string; amount?: number; transactionId?: string | null } | null
 }
 export interface ProjectSummary {
   id: string
@@ -549,8 +619,34 @@ export interface TimelineEvent {
   type?: string | null
   text?: string | null
 }
+export interface ClientAgentJobRecord {
+  id: string
+  /** NULL for skill/workflow jobs that no LLM agent owns. */
+  agentCode: string | null
+  correlationId: string
+  workflow?: string | null
+  taskType?: string | null
+  toolName?: string | null
+  status: string
+  approvalState: string
+  attempts: number
+  maxAttempts: number
+  createdAt: string
+  startedAt?: string | null
+  completedAt?: string | null
+  lastError?: string | null
+  output?: string | null
+}
+export interface ClientVerifiedIdentityRecord {
+  id: string
+  identityType: 'EMAIL' | 'PHONE'
+  verificationSource: string
+  verifiedAt: string
+}
 export interface ClientDetailResponse {
   client: ClientRecord
+  agentJobs?: ClientAgentJobRecord[] | null
+  verifiedIdentities?: ClientVerifiedIdentityRecord[] | null
   lead?: LeadRecord | null
   communications?: CommunicationRecord[]
   scopes?: ScopeRecord[]
@@ -575,6 +671,8 @@ export interface DocumentRecord {
   scanStatus: string // CLEAN | QUARANTINED | REJECTED
   scanResult?: { verdict?: string; notes?: string[]; sha256?: string; releasedBy?: string; rejectedBy?: string } | null
   direction: 'UPLOADED' | 'SHARED'
+  relatedType?: string | null
+  projectId?: string | null
   uploadedBy?: string | null
   downloads: number
   at: string
@@ -627,11 +725,88 @@ export interface CommSendResponse {
 export interface PaymentsResponse {
   payments?: PaymentRecord[]
   invoices?: InvoiceRecord[]
+  paymentReadiness?: {
+    configured: boolean
+    status: 'ACTIVE' | 'NOT_CONFIGURED' | 'DISABLED'
+    message: string
+    stripeReady: boolean
+    activeMethods?: Array<{ code: string; name: string; settlement: string; mode: string }>
+  }
 }
 export interface PaymentMutationResponse {
   ok?: boolean
   payment?: PaymentRecord
   message?: string
+}
+
+export interface DccMetricRow {
+  key: string
+  label: string
+  threshold: number
+  comparator: 'MIN' | 'MAX'
+  value: number | null
+  source: string
+  note: string
+  numerator?: number
+  denominator?: number
+  sampleSize?: number
+  status: 'PASS' | 'FAIL' | 'NOT_MEASURED' | 'INVALID_EVIDENCE'
+}
+export interface DepartmentDccResponse {
+  source: 'PERSISTED_DATABASE'
+  persistedDepartmentCount: number
+  sourceDefinedDepartmentCount: number
+  thresholdVersion: string
+  limit: number
+  offset: number
+  departments: Array<{
+    id: string
+    code: string
+    name: string
+    category: string
+    persistedAgentCount: number
+    latestAssessment: null | {
+      id: string
+      thresholdVersion: string
+      status: string
+      sopCoverage: number | null
+      knowledgeCoverage: number | null
+      skillCoverage: number | null
+      testPassRate: number | null
+      kpiAchievement: number | null
+      securityCompliance: number | null
+      auditCompliance: number | null
+      selfRecoveryRate: number | null
+      humanEscalationRate: number | null
+      evidence: string
+      measurementStart: string | null
+      measurementEnd: string | null
+      assessedBy: string
+      assessedAt: string
+      expiresAt: string | null
+      certificationCurrent: boolean
+      evaluation: {
+        status: 'CERTIFIED' | 'BLOCKED' | 'UNDER_REVIEW'
+        certified: boolean
+        metrics: DccMetricRow[]
+        failed: string[]
+        missing: string[]
+      } | null
+    }
+  }>
+}
+export interface DepartmentDccAssessmentResponse {
+  department: { id: string; code: string; name: string }
+  assessment: { id: string; status: string; thresholdVersion: string; assessedBy: string; assessedAt: string; expiresAt: string | null }
+  evaluation: {
+    status: 'CERTIFIED' | 'BLOCKED' | 'UNDER_REVIEW'
+    certified: boolean
+    metrics: DccMetricRow[]
+    failed: string[]
+    missing: string[]
+  }
+  measurementWindow: { start: string; end: string }
+  message: string
 }
 
 export interface AgentRow {
@@ -644,6 +819,7 @@ export interface AgentRow {
   successRate?: number | null
   requiresApproval?: boolean | null
   level?: number | null
+  parentCode?: string | null
 }
 export interface DepartmentRow { code: string; name: string; category?: string | null }
 export interface AgentsResponse {
@@ -673,6 +849,37 @@ export interface ExecutionRecord {
   workflow?: string | null
   createdAt?: string | null
 }
+export interface AgentJobRow {
+  id: string
+  /** NULL for skill/workflow jobs that no LLM agent owns. */
+  agentCode: string | null
+  correlationId: string
+  clientId?: string | null
+  projectId?: string | null
+  workflow?: string | null
+  taskType?: string | null
+  toolName?: string | null
+  status: string
+  approvalState?: string | null
+  requestedBy?: string | null
+  approvedBy?: string | null
+  attempts?: number | null
+  maxAttempts?: number | null
+  availableAt?: string | null
+  startedAt?: string | null
+  completedAt?: string | null
+  createdAt?: string | null
+  lastError?: string | null
+  input?: string | null
+  output?: string | null
+  agent?: { name?: string | null } | null
+  client?: { clientId?: string | null; name?: string | null } | null
+  project?: { code?: string | null; name?: string | null } | null
+}
+export interface AgentJobsResponse { jobs?: AgentJobRow[] }
+export interface AgentJobResponse { job?: AgentJobRow & { checkpoint?: string | null; approvalNote?: string | null; payloadHash?: string | null } }
+export interface AgentJobEnqueueResponse { ok?: boolean; created?: boolean; job?: Pick<AgentJobRow, 'id' | 'status' | 'approvalState' | 'correlationId' | 'agentCode' | 'taskType' | 'toolName' | 'createdAt'>; message?: string }
+
 export interface AgentDetailResponse { agent: AgentFull; executions?: ExecutionRecord[] }
 export interface AgentRunResponse {
   ok?: boolean
@@ -837,6 +1044,47 @@ export const api = {
     }),
   sendCommunication: (body: { clientId: string; channel: string; subject?: string; body: string }) =>
     fetchJson<CommSendResponse>('/api/admin/communications/send', { method: 'POST', body }),
+  createInvoiceDraft: (body: {
+    clientId: string
+    projectId?: string
+    scopeVersion?: number
+    description?: string
+    amount?: string | number
+    currency: string
+    dueAt?: string
+    lineItems?: Array<{ description: string; quantity: number; unitPrice: number }>
+    discountAmount?: number
+    discountReason?: string
+    taxRatePercent?: number
+    taxLabel?: string
+    billingName?: string
+    billingBusiness?: string
+    billingEmail?: string
+    billingAddress?: string
+    billingCountry?: string
+    paymentTerms?: string
+    customerNotes?: string
+    internalNotes?: string
+    initialStatus?: 'DRAFT' | 'AWAITING_APPROVAL'
+  }) => fetchJson<{ ok?: boolean; message?: string; invoice?: InvoiceRecord; error?: string }>(
+    '/api/admin/invoices',
+    { method: 'POST', body },
+  ),
+  invoiceAction: (number: string, body: Record<string, unknown>) =>
+    fetchJson<{ ok?: boolean; invoice?: InvoiceRecord; error?: string }>(
+      `/api/admin/invoices/${encodeURIComponent(number)}`,
+      { method: 'PATCH', body },
+    ),
+  createRefundCase: (body: Record<string, unknown>) =>
+    fetchJson<{ ok?: boolean; refundCase?: RefundCaseRecord; error?: string }>(
+      '/api/admin/refunds',
+      { method: 'POST', body },
+    ),
+  decideRefundCase: (id: string, body: Record<string, unknown>) =>
+    fetchJson<{ ok?: boolean; refundCase?: RefundCaseRecord; handoverSuspended?: boolean; error?: string }>(
+      `/api/admin/refunds/${encodeURIComponent(id)}`,
+      { method: 'PATCH', body },
+    ),
   recordPayment: (body: {
     clientId: string
     amount: number
@@ -881,12 +1129,13 @@ export const api = {
       method: 'POST',
       body: { action },
     }),
-  docShare: (clientId: string, file: File, note: string, classification: string) => {
+  docShare: (clientId: string, file: File, note: string, classification: string, projectId?: string) => {
     const form = new FormData()
     form.append('file', file)
     form.append('clientId', clientId)
     if (note) form.append('note', note)
     form.append('classification', classification)
+    if (projectId) form.append('projectId', projectId)
     return fetch('/api/admin/documents', {
       method: 'POST',
       headers: { 'x-csrf-token': getCsrf() },
@@ -919,10 +1168,41 @@ export const api = {
       method: 'POST',
       body: { input, expectJson },
     }),
-  createAgent: (purpose: string, description: string) =>
-    fetchJson<{ ok?: boolean; message?: string }>('/api/admin/agents/create', {
+  agentJobs: (opts?: { status?: string; agentCode?: string; clientId?: string; limit?: number }) => {
+    const query = new URLSearchParams()
+    if (opts?.status) query.set('status', opts.status)
+    if (opts?.agentCode) query.set('agentCode', opts.agentCode)
+    if (opts?.clientId) query.set('clientId', opts.clientId)
+    if (opts?.limit) query.set('limit', String(opts.limit))
+    const serialized = query.toString()
+    return fetchJson<AgentJobsResponse>(`/api/admin/agents/jobs${serialized ? `?${serialized}` : ''}`)
+  },
+  agentJob: (id: string) => fetchJson<AgentJobResponse>(`/api/admin/agents/jobs/${encodeURIComponent(id)}`),
+  queueAgentJob: (code: string, input: string, idempotencyKey: string, opts?: { expectJson?: boolean; clientId?: string; projectId?: string; toolName?: string; toolArgs?: Record<string, unknown> }) =>
+    fetchJson<AgentJobEnqueueResponse>(`/api/admin/agents/${encodeURIComponent(code)}/jobs`, {
       method: 'POST',
-      body: { purpose, description },
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: { input, expectJson: opts?.expectJson ?? true, clientId: opts?.clientId, projectId: opts?.projectId, toolName: opts?.toolName, toolArgs: opts?.toolArgs },
+    }),
+  decideAgentJob: (id: string, decision: 'APPROVE' | 'REJECT', note?: string) =>
+    fetchJson<{ ok?: boolean; job?: { id: string; status: string; approvalState: string } }>(`/api/admin/agents/jobs/${encodeURIComponent(id)}/decision`, {
+      method: 'POST',
+      body: { decision, note },
+    }),
+  createAgent: (purpose: string, description: string, departmentCode: string, parentCode: string) =>
+    fetchJson<{ ok?: boolean; message?: string; agent?: { code: string; name: string; status: string } }>('/api/admin/agents/create', {
+      method: 'POST',
+      body: { purpose, description, departmentCode, parentCode },
+    }),
+  assessDepartmentDcc: (departmentCode: string) =>
+    fetchJson<DepartmentDccAssessmentResponse>('/api/admin/dcc', {
+      method: 'POST',
+      body: { departmentCode },
+    }),
+  updateAgentStatus: (code: string, status: 'ACTIVE' | 'PAUSED', reason: string, confirmation?: string) =>
+    fetchJson<{ ok?: boolean; message?: string; agent?: { code: string; status: string } }>(`/api/admin/agents/${encodeURIComponent(code)}`, {
+      method: 'PATCH',
+      body: { status, reason, confirmation },
     }),
   command: (sessionId: string, message: string) =>
     fetchJson<CommandResponse>('/api/admin/command', { method: 'POST', body: { sessionId, message } }),

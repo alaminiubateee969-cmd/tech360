@@ -14,8 +14,8 @@ import { PrimaryLink, AIAssistantLink, CardLinkAffordance } from "./buttons";
 
 /**
  * Optional illustrative interface concepts for specific services. These are
- * hand-coded concept mockups — never claimed client screenshots (client work
- * ships under NDA). Only services listed here render the visual band.
+ * hand-coded concept mockups, not customer screenshots or evidence of a
+ * completed engagement. Only services listed here render the visual band.
  */
 const SERVICE_VISUALS: Record<string, React.ReactNode> = {
   "custom-crm-development": <CrmConsoleConcept />,
@@ -191,9 +191,12 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
               <Card className="border-[#009FE3]/30 bg-[#F4FAFF]">
                 <CardContent className="p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#009FE3]">
-                    Example engagement
+                    Illustrative scenario
                   </p>
                   <p className="mt-3 text-sm leading-relaxed text-[#526173]">{service.example}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-[#64748B]">
+                    Hypothetical example only — not a verified client engagement or measured outcome. Actual scope, integrations, and results require validation.
+                  </p>
                 </CardContent>
               </Card>
             </Reveal>

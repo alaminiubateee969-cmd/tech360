@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
-import { issueOtp, verifyOtp, readChallenge, maskContact, OTP_TTL_MS } from '../src/lib/otp'
+import { issueOtp, verifyOtp, readChallenge, otpChallengeMatchesRecipient, maskContact, OTP_TTL_MS } from '../src/lib/otp'
 
 const S = 'unit-test-secret-value'
 
@@ -15,6 +15,15 @@ describe('portal OTP', () => {
     const { code, challenge } = issueOtp(S, 'TECH-2026-000001', 'EMAIL')
     assert.match(code, /^\d{6}$/)
     assert.equal(verifyOtp(S, challenge, code)?.sub, 'TECH-2026-000001')
+  })
+  it('binds verification to the normalized address that received the code', () => {
+    const { code, challenge } = issueOtp(S, 'TECH-2026-000001', 'EMAIL', Date.now(), ' User@Example.com ')
+    const payload = readChallenge(S, challenge)
+    assert.ok(payload)
+    assert.equal(verifyOtp(S, challenge, code)?.sub, 'TECH-2026-000001')
+    assert.equal(otpChallengeMatchesRecipient(S, payload, 'user@example.com'), true)
+    assert.equal(otpChallengeMatchesRecipient(S, payload, 'attacker@example.com'), false)
+    assert.equal(otpChallengeMatchesRecipient(S, payload, null), false)
   })
   it('does not leak the code inside the challenge', () => {
     const { code, challenge } = issueOtp(S, 'TECH-2026-000001', 'SMS')
@@ -41,6 +50,9 @@ describe('portal OTP', () => {
     const src = readFileSync(join(import.meta.dirname, '..', 'src/app/api/portal/login/route.ts'), 'utf8')
     assert.match(src, /storedBody:/)
     assert.ok(!/challenge[^\n]*sessionResponse/.test(src))
+    assert.match(src, /otpChallengeMatchesRecipient/)
+    assert.match(src, /recordVerifiedIdentityForClient/)
+    assert.match(src, /target\.to\)/)
   })
 })
 

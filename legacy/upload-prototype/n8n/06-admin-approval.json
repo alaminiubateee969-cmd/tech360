@@ -1,0 +1,43 @@
+{
+  "name": "Tech360 - 06 admin-approval",
+  "nodes": [
+    {
+      "parameters": {"path": "admin-approval", "responseMode": "responseNode"},
+      "id": "trigger",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.TECH360_API_URL}}/api/clients/{{$json.body.clientId}}/journey-step",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name": "X-API-Key", "value": "={{$env.TECH360_API_KEY}}"}, {"name": "Content-Type", "value": "application/json"}]},
+        "sendBody": true,
+        "bodyParameters": {"parameters": [{"name": "stepName", "value": "admin-approval"}, {"name": "stepOrder", "value": 06}]}
+      },
+      "id": "record-journey",
+      "name": "Record Journey Step",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ { success: true } }}"},
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [440, 0]
+    }
+  ],
+  "connections": {
+    "Trigger": {"main": [[{"node": "Record Journey Step", "type": "main", "index": 0}]]},
+    "Record Journey Step": {"main": [[{"node": "Respond", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "tags": [{"name": "tech360-production"}]
+}

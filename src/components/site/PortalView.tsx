@@ -1,5 +1,6 @@
 'use client'
 
+import { PUBLIC_CONTACT } from '@/lib/site-contact'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,7 @@ import {
   Download, KeyRound, Eye, Package, ArrowRight, CheckCircle2, Clock, Lock,
   Star, Handshake, LinkIcon, Undo2, Paperclip, Trash2, FileUp, FileCheck2,
   ShieldAlert, File as FileIcon, Upload, CalendarDays, Video, CalendarX, Send,
-  Receipt, Loader2, X,
+  Receipt, Loader2, X, Bot,
 } from 'lucide-react'
 
 type PortalData = {
@@ -32,9 +33,11 @@ type PortalData = {
   referral: { status: string; name: string | null; contact: string | null; createdAt: string } | null
   handover: { status: string; downloadLink: string | null; confirmLink: string | null; passwordChangeRequested: boolean; passwordChangeConfirmed: boolean } | null
   delivery: { status: string; confirmedAt: string | null } | null
-  payments: Array<{ milestone: string | null; amount: number; currency: string; status: string; verifiedAt: string | null }>
-  invoices: Array<{ number: string; amount: number; currency: string; status: string; notes: string | null }>
+  paymentReadiness?: { configured: boolean; status: 'ACTIVE' | 'NOT_CONFIGURED' | 'DISABLED'; message: string; stripeReady: boolean }
+  payments: Array<{ id?: string; milestone: string | null; amount: number; currency: string; status: string; verifiedAt: string | null; receiptAvailable?: boolean; receiptNumber?: string | null }>
+  invoices: Array<{ number: string; amount: number; remainingAmount?: number; currency: string; status: string; payable?: boolean; dueAt?: string | null; notes: string | null }>
   communications: Array<{ channel: string; direction: string; subject: string | null; preview: string; status: string; at: string }>
+  workforce: Array<{ id: string; agentName: string; agentTitle: string | null; work: string; status: string; at: string; durationMs: number | null }>
   meetings: Array<{ id: string; status: string; scheduledAt: string | null; reason: string | null; channel: string | null; bookingLink: string | null; notes: string | null; clientResponse: string | null; clientRespondedAt: string | null }>
   documents: Array<{ id: string; name: string; mimeType: string; size: number; note: string | null; scanStatus: string; direction: string; classification: string; at: string }>
   policy: { previewBeforePayment: boolean; sourceAfterFullPayment: boolean; supportContact: string; whatsapp: string }
@@ -184,8 +187,7 @@ export default function PortalView() {
         {/* Left column: project + scope + payments (min-w-0 lets cards shrink on mobile) */}
         <div className="min-w-0 space-y-6 lg:col-span-2">
           {/* Project */}
-          <SectionCard icon={<Package className="h-5 w-5" />} title="Your project">
-            {data.project ? (
+          <SectionCard icon={<Package className="h-5 w-5" />} title="Your project">            {data.project ? (
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -212,6 +214,9 @@ export default function PortalView() {
             )}
           </SectionCard>
 
+          {/* AI workforce at work (SuperCool-inspired delivery transparency) */}
+          <WorkforceCard entries={data.workforce} />
+
           {/* Scope */}
           <SectionCard icon={<FileText className="h-5 w-5" />} title={data.scope ? `Final Scope of Work (v${data.scope.version})` : 'Scope of Work'}>
             {data.scope ? (
@@ -227,31 +232,50 @@ export default function PortalView() {
           </SectionCard>
 
           {/* Payments */}
-          <SectionCard icon={<CreditCard className="h-5 w-5" />} title="Payments">
+          <SectionCard icon={<CreditCard className="h-5 w-5" />} title="Payments & Verified Receipts">
             {data.payments.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wide text-slate-400">
-                    <th className="py-2 pr-4 font-medium">Milestone</th><th className="py-2 pr-4 font-medium">Amount</th><th className="py-2 pr-4 font-medium">Status</th><th className="py-2 font-medium">Verified</th>
+                    <th className="py-2 pr-4 font-medium">Milestone</th><th className="py-2 pr-4 font-medium">Amount</th><th className="py-2 pr-4 font-medium">Status</th><th className="py-2 pr-4 font-medium">Verified</th><th className="py-2 text-right font-medium">Receipt</th>
                   </tr></thead>
                   <tbody>
                     {data.payments.map((p, i) => (
-                      <tr key={i} className="border-b border-slate-100 last:border-0">
+                      <tr key={p.id ?? i} className="border-b border-slate-100 last:border-0">
                         <td className="py-2.5 pr-4 text-slate-700">{p.milestone ?? 'Payment'}</td>
                         <td className="py-2.5 pr-4 font-semibold text-[#0B1F33]">{fmtMoney(p.amount, p.currency)}</td>
                         <td className="py-2.5 pr-4"><Badge variant={statusTone(p.status)} className="capitalize">{p.status.toLowerCase()}</Badge></td>
-                        <td className="py-2.5 text-xs text-slate-500">{p.verifiedAt ? fmtDate(p.verifiedAt) : 'pending verification'}</td>
+                        <td className="py-2.5 pr-4 text-xs text-slate-500">{p.verifiedAt ? fmtDate(p.verifiedAt) : 'pending verification'}</td>
+                        <td className="py-2.5 text-right text-xs">
+                          {p.receiptAvailable && p.id ? (
+                            <a
+                              href={`/api/portal/payments/${encodeURIComponent(p.id)}/receipt`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 font-semibold text-[#063B8F] underline-offset-2 hover:underline"
+                            >
+                              <Receipt className="h-3.5 w-3.5" aria-hidden="true" />
+                              {p.receiptNumber || 'Official Receipt'}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400">After verification</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <p className="mt-3 text-xs text-slate-400">Payments are marked paid only after verification by Tech360 — never automatically.</p>
+                <p className="mt-3 text-xs text-slate-400">Official receipts are generated only after server-verified settlement — never for pending, failed, or refunded entries.</p>
               </div>
             ) : <EmptyLine text="No payments recorded yet. Payment milestones appear here after you approve your preview." />}
           </SectionCard>
 
-          {/* Invoices — per-invoice payment allocation, Pay Now via the real Stripe checkout API */}
-          <InvoicesCard invoices={data.invoices} supportContact={data.policy.supportContact} />
+          {/* Invoices — per-invoice payment allocation, Pay Now only when Stripe is actively configured */}
+          <InvoicesCard
+            invoices={data.invoices}
+            supportContact={data.policy.supportContact}
+            paymentReadiness={data.paymentReadiness}
+          />
 
           {/* Communications */}
           <SectionCard icon={<MessageSquare className="h-5 w-5" />} title="Our communication history">
@@ -286,7 +310,7 @@ export default function PortalView() {
           <SectionCard icon={<Eye className="h-5 w-5" />} title="Project preview">
             {data.preview ? (
               <div>
-                <p className="text-sm text-slate-600">Preview v{data.preview.version} · status: <span className="font-semibold lowercase">{data.preview.status}</span></p>
+                <p className="text-sm text-slate-600">Preview v{data.preview.version} · status: <span className="font-semibold">{data.preview.status === 'SENT' ? 'provider accepted send request' : data.preview.status.toLowerCase()}</span></p>
                 <p className="mt-2 text-xs text-slate-500">Review everything before any payment decision. Approve or request changes right inside the preview.</p>
                 <Button asChild className="mt-4 w-full gap-2 bg-[#009FE3] hover:bg-[#063B8F]">
                   <a href={data.preview.link} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /> Open preview</a>
@@ -303,7 +327,7 @@ export default function PortalView() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   {data.handover.status === 'PENDING_APPROVAL' && <><Clock className="h-4 w-4 text-amber-500" /><span className="text-slate-600">Prepared — awaiting Tech360 release approval</span></>}
-                  {['RELEASED', 'DOWNLOADED', 'CONFIRMED'].includes(data.handover.status) && <><CheckCircle2 className="h-4 w-4 text-[#18B83A]" /><span className="text-slate-600">Released after full payment verification</span></>}
+                  {['RELEASED', 'DOWNLOADED', 'CONFIRMED'].includes(data.handover.status) && <><CheckCircle2 className="h-4 w-4 text-[#18B83A]" /><span className="text-slate-600">Approved project ZIP is available for download</span></>}
                 </div>
                 {data.handover.downloadLink && (
                   <Button asChild className="w-full gap-2 bg-[#063B8F] hover:bg-[#0B1F33]">
@@ -311,13 +335,13 @@ export default function PortalView() {
                   </Button>
                 )}
                 {data.handover.confirmLink && !data.handover.passwordChangeConfirmed && (
-                  <PasswordConfirm link={data.handover.confirmLink} onDone={load} />
+                  <DeliveryConfirmation link={data.handover.confirmLink} onDone={load} />
                 )}
                 {data.handover.passwordChangeConfirmed && (
                   <p className="flex items-center gap-2 rounded-lg bg-[#18B83A]/10 p-2.5 text-xs text-[#116b26]"><KeyRound className="h-3.5 w-3.5" /> Password change confirmed — thank you.</p>
                 )}
               </div>
-            ) : <EmptyLine text="The source package is released only after full payment verification — by policy, automatically enforced." />}
+            ) : <EmptyLine text="The actual source ZIP requires verified full payment, completed project tasks, attached source files, and Super Admin release approval." />}
           </SectionCard>
 
           {/* Policy card */}
@@ -347,23 +371,70 @@ export default function PortalView() {
   )
 }
 
-// ---------------- Password-change confirmation (real action) ----------------
-function PasswordConfirm({ link, onDone }: { link: string; onDone: () => void }) {
+// ---------------- Explicit delivery and password confirmation ----------------
+function DeliveryConfirmation({ link, onDone }: { link: string; onDone: () => void }) {
+  const [received, setReceived] = useState(false)
+  const [working, setWorking] = useState(false)
+  const [passwordsChanged, setPasswordsChanged] = useState(false)
+  const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState(false)
-  const confirm = async () => {
+  const [resultMessage, setResultMessage] = useState('')
+
+  const submit = async () => {
     setBusy(true)
     try {
-      await fetch(link, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ passwordsChanged: true, received: true, working: true, notes: 'Confirmed via client portal' }) })
-      setDone(true)
+      const res = await fetch(link, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ received, working, passwordsChanged, notes: notes.trim() }),
+      })
+      const result = await res.json().catch(() => ({})) as { error?: string; message?: string; accepted?: boolean }
+      if (!res.ok) {
+        toast.error(result.error ?? 'Your confirmation could not be recorded.')
+        return
+      }
+      const message = result.message ?? 'Your response was recorded.'
+      setResultMessage(message)
+      if (result.accepted) toast.success(message)
+      else toast.info(message)
       onDone()
-    } finally { setBusy(false) }
+    } catch {
+      toast.error('Could not reach the handover service. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
-  if (done) return <p className="flex items-center gap-2 rounded-lg bg-[#18B83A]/10 p-2.5 text-xs text-[#116b26]"><KeyRound className="h-3.5 w-3.5" /> Password change confirmed — thank you.</p>
+
+  if (resultMessage) return <p className="rounded-lg bg-[#F4FAFF] p-3 text-xs leading-relaxed text-[#063B8F]">{resultMessage}</p>
+
   return (
-    <Button onClick={confirm} disabled={busy} variant="outline" className="w-full gap-2 border-[#063B8F] text-[#063B8F] hover:bg-[#F4FAFF]">
-      <KeyRound className="h-4 w-4" /> {busy ? 'Confirming…' : 'I changed my passwords'}
-    </Button>
+    <div className="space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+      <p className="text-sm font-semibold text-[#0B1F33]">Please answer each item honestly</p>
+      <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-slate-700">
+        <Checkbox checked={received} onCheckedChange={(checked) => setReceived(checked === true)} className="mt-0.5" />
+        <span>I received the project deliverables.</span>
+      </label>
+      <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-slate-700">
+        <Checkbox checked={working} onCheckedChange={(checked) => setWorking(checked === true)} className="mt-0.5" />
+        <span>I tested the deliverables and they work as agreed.</span>
+      </label>
+      <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-slate-700">
+        <Checkbox checked={passwordsChanged} onCheckedChange={(checked) => setPasswordsChanged(checked === true)} className="mt-0.5" />
+        <span>I changed the temporary passwords and credentials.</span>
+      </label>
+      <Textarea
+        value={notes}
+        onChange={(event) => setNotes(event.target.value)}
+        maxLength={2000}
+        placeholder="Describe any delivery issue or follow-up needed."
+        className="min-h-20 bg-white"
+        aria-label="Delivery issue or follow-up notes"
+      />
+      <p className="text-xs leading-relaxed text-slate-500">A missing or negative answer records a support follow-up and does not close your project.</p>
+      <Button onClick={submit} disabled={busy} variant="outline" className="w-full gap-2 border-[#063B8F] text-[#063B8F] hover:bg-[#F4FAFF]">
+        <KeyRound className="h-4 w-4" /> {busy ? 'Recording…' : received && working ? 'Record my answers' : 'Report a delivery issue'}
+      </Button>
+    </div>
   )
 }
 
@@ -981,6 +1052,56 @@ function MeetingsCard({ meetings, onDone }: { meetings: PortalData['meetings']; 
 }
 
 // ---------------- Shared bits ----------------
+// AI workforce activity — a WORK LOG for the client (which agent, what kind
+// of work, status, when). Never shows agent input/output payloads: those stay
+// internal until the team deliberately shares a deliverable.
+function WorkforceCard({ entries }: { entries: PortalData['workforce'] }) {
+  const WORKFORCE_STATUS: Record<string, { label: string; className: string }> = {
+    RUNNING: { label: 'Working now', className: 'border-sky-200 bg-sky-50 text-sky-700' },
+    SUCCESS: { label: 'Completed', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+    FAILED: { label: 'Needs attention', className: 'border-red-200 bg-red-50 text-red-700' },
+    TIMEOUT: { label: 'Timed out', className: 'border-amber-200 bg-amber-50 text-amber-700' },
+    AWAITING_APPROVAL: { label: 'Awaiting approval', className: 'border-violet-200 bg-violet-50 text-violet-700' },
+  }
+  return (
+    <SectionCard icon={<Bot className="h-5 w-5" />} title="Our AI team at work">
+      {entries.length > 0 ? (
+        <div>
+          <p className="mb-3 text-xs text-slate-500">
+            Your project is delivered by our AI workforce — specialized agents working around the clock under human supervision.
+            This is their work log; finished work reaches you through previews and deliveries, never as raw output.
+          </p>
+          <ol className="space-y-2.5">
+            {entries.map((e) => {
+              const s = WORKFORCE_STATUS[e.status] ?? { label: e.status, className: 'border-slate-200 bg-slate-50 text-slate-600' }
+              return (
+                <li key={e.id} className="flex items-start gap-2.5">
+                  <span className="mt-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#063B8F]/10" aria-hidden="true">
+                    <Bot className="size-3.5 text-[#063B8F]" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-800">
+                      {e.agentName}
+                      {e.agentTitle ? <span className="font-normal text-slate-500"> — {e.agentTitle}</span> : null}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {e.work} · {fmtDate(e.at)}
+                      {e.durationMs != null ? ` · ${Math.max(1, Math.round(e.durationMs / 1000))}s` : ''}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${s.className}`}>{s.label}</span>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      ) : (
+        <EmptyLine text="No AI work has run on your account yet — activity appears here as your project moves through delivery." />
+      )}
+    </SectionCard>
+  )
+}
+
 function SectionCard({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <motion.section initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.35 }}>
@@ -1061,7 +1182,7 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
             <li className="flex items-center gap-2.5"><Lock className="h-4.5 w-4.5 text-[#063B8F]" /> Source code released only after verified full payment</li>
             <li className="flex items-center gap-2.5"><Eye className="h-4.5 w-4.5 text-[#009FE3]" /> Every status you see is the real system status</li>
           </ul>
-          <p className="mt-6 text-xs text-slate-400">Don't have your reference? Email <a className="font-medium text-[#009FE3]" href="mailto:info@bdtech360.com">info@bdtech360.com</a> or message us on WhatsApp.</p>
+          <p className="mt-6 text-xs text-slate-400">Don't have your reference? Email <a className="font-medium text-[#009FE3]" href={`mailto:${PUBLIC_CONTACT.email}`}>{PUBLIC_CONTACT.email}</a> or start a chat with the assistant — no phone number needed.</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -1122,21 +1243,39 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
 
 // ---------------- Invoices card (per-invoice allocation + Pay Now) ----------------
 
-type PortalInvoice = { number: string; amount: number; currency: string; status: string; notes: string | null }
+type PortalInvoice = {
+  number: string
+  amount: number
+  remainingAmount?: number
+  currency: string
+  status: string
+  payable?: boolean
+  dueAt?: string | null
+  notes: string | null
+}
 
 function invoiceTone(s: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (s === 'PAID') return 'default'
-  if (s === 'OVERDUE') return 'destructive'
-  if (s === 'CANCELLED') return 'outline'
-  return 'secondary' // DRAFT | SENT | PARTIAL
+  if (s === 'OVERDUE' || s === 'DISPUTED') return 'destructive'
+  if (s === 'CANCELLED' || s === 'VOID' || s === 'REFUNDED') return 'outline'
+  return 'secondary'
 }
 
-function InvoicesCard({ invoices, supportContact }: { invoices: PortalInvoice[]; supportContact: string }) {
-  const [paying, setPaying] = useState<string | null>(null) // invoice number in flight
+function InvoicesCard({
+  invoices,
+  supportContact,
+  paymentReadiness,
+}: {
+  invoices: PortalInvoice[]
+  supportContact: string
+  paymentReadiness?: PortalData['paymentReadiness']
+}) {
+  const [paying, setPaying] = useState<string | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
+  const stripeReady = Boolean(paymentReadiness?.stripeReady)
 
   async function payNow(invoiceNumber: string) {
-    if (paying) return
+    if (paying || !stripeReady) return
     setPaying(invoiceNumber)
     setPayError(null)
     try {
@@ -1156,7 +1295,16 @@ function InvoicesCard({ invoices, supportContact }: { invoices: PortalInvoice[];
   }
 
   return (
-    <SectionCard icon={<Receipt className="h-5 w-5" />} title="Invoices">
+    <SectionCard icon={<Receipt className="h-5 w-5" />} title="Official Invoices">
+      {paymentReadiness && !paymentReadiness.configured ? (
+        <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
+          <span className="font-semibold text-slate-800">Payment status: Not Configured</span> — Payment setup required before live online checkout. Contact{' '}
+          <a href={`mailto:${supportContact}`} className="font-medium text-[#063B8F] underline underline-offset-2">
+            {supportContact}
+          </a>{' '}
+          for billing assistance.
+        </div>
+      ) : null}
       {invoices.length > 0 ? (
         <div>
           {payError ? (
@@ -1164,7 +1312,7 @@ function InvoicesCard({ invoices, supportContact }: { invoices: PortalInvoice[];
               <p className="leading-relaxed">
                 {payError}{' '}
                 <span className="block text-amber-700">
-                  You can also pay by bank transfer — <a href={`mailto:${supportContact}`} className="font-medium underline underline-offset-2">contact us</a> and we&rsquo;ll send details.
+                  For billing assistance, write to <a href={`mailto:${supportContact}`} className="font-medium underline underline-offset-2">{supportContact}</a>.
                 </span>
               </p>
               <button type="button" onClick={() => setPayError(null)} aria-label="Dismiss payment error" className="shrink-0 rounded p-1 hover:bg-amber-100">
@@ -1177,46 +1325,64 @@ function InvoicesCard({ invoices, supportContact }: { invoices: PortalInvoice[];
               <thead>
                 <tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wide text-slate-400">
                   <th className="py-2 pr-4 font-medium">Invoice</th>
-                  <th className="py-2 pr-4 font-medium">Amount</th>
+                  <th className="py-2 pr-4 font-medium">Total</th>
+                  <th className="py-2 pr-4 font-medium">Balance Due</th>
                   <th className="py-2 pr-4 font-medium">Status</th>
-                  <th className="py-2 font-medium text-right">Action</th>
+                  <th className="py-2 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((inv) => (
-                  <tr key={inv.number} className="border-b border-slate-100 last:border-0">
-                    <td className="py-2.5 pr-4 font-mono text-[13px] font-medium text-[#063B8F]">{inv.number}</td>
-                    <td className="py-2.5 pr-4 font-semibold text-[#0B1F33]">{fmtMoney(inv.amount, inv.currency)}</td>
-                    <td className="py-2.5 pr-4"><Badge variant={invoiceTone(inv.status)} className="capitalize">{inv.status.toLowerCase()}</Badge></td>
-                    <td className="py-2.5 text-right">
-                      {inv.status === 'PAID' ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#18B83A]">
-                          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Paid
-                        </span>
-                      ) : inv.status === 'CANCELLED' ? (
-                        <span className="text-xs text-slate-400">—</span>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => payNow(inv.number)}
-                          disabled={paying !== null}
-                          aria-label={`Pay invoice ${inv.number} now`}
-                          className="h-8 gap-1.5 bg-[#063B8F] px-3 text-xs font-semibold text-white hover:bg-[#0B1F33] disabled:opacity-50"
-                        >
-                          {paying === inv.number ? <><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Opening…</> : <><CreditCard className="h-3.5 w-3.5" aria-hidden="true" /> Pay Now</>}
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {invoices.map((inv) => {
+                  const balance = inv.remainingAmount ?? (inv.status === 'PAID' ? 0 : inv.amount)
+                  const canCheckout = Boolean(inv.payable) && stripeReady && balance > 0
+                  return (
+                    <tr key={inv.number} className="border-b border-slate-100 last:border-0">
+                      <td className="py-2.5 pr-4 font-mono text-[13px] font-medium text-[#063B8F]">{inv.number}</td>
+                      <td className="py-2.5 pr-4 font-semibold text-[#0B1F33]">{fmtMoney(inv.amount, inv.currency)}</td>
+                      <td className="py-2.5 pr-4 text-slate-700">{fmtMoney(balance, inv.currency)}</td>
+                      <td className="py-2.5 pr-4"><Badge variant={invoiceTone(inv.status)} className="capitalize">{inv.status.replace(/_/g, ' ').toLowerCase()}</Badge></td>
+                      <td className="py-2.5 text-right">
+                        <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                          <a
+                            href={`/api/portal/invoices/${encodeURIComponent(inv.number)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-8 items-center gap-1 rounded-md border border-[#CBD8E6] bg-white px-2.5 text-xs font-medium text-[#063B8F] hover:bg-[#F4FAFF]"
+                          >
+                            <FileText className="h-3.5 w-3.5" aria-hidden="true" /> View / Print
+                          </a>
+                          {inv.status === 'PAID' ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-[#18B83A]">
+                              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Paid
+                            </span>
+                          ) : canCheckout ? (
+                            <Button
+                              size="sm"
+                              onClick={() => payNow(inv.number)}
+                              disabled={paying !== null}
+                              aria-label={`Pay invoice ${inv.number} now`}
+                              className="h-8 gap-1.5 bg-[#063B8F] px-3 text-xs font-semibold text-white hover:bg-[#0B1F33] disabled:opacity-50"
+                            >
+                              {paying === inv.number ? <><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Opening…</> : <><CreditCard className="h-3.5 w-3.5" aria-hidden="true" /> Pay Now</>}
+                            </Button>
+                          ) : inv.payable && !stripeReady ? (
+                            <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-500">
+                              Payment setup required
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
           <p className="mt-3 text-xs text-slate-400">
-            Each invoice is settled from its own payments — a partially paid invoice shows PARTIAL until the remainder arrives. Card payments are processed by Stripe.
+            Invoices appear here only after formal issuance. Source-code handover unlocks automatically once verified payments settle 100% of your contracted project value.
           </p>
         </div>
-      ) : <EmptyLine text="No invoices yet. Invoices appear here per payment milestone once work is underway." />}
+      ) : <EmptyLine text="No issued invoices yet. Invoices appear here per payment milestone once your HTML preview is approved." />}
     </SectionCard>
   )
 }

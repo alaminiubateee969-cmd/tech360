@@ -1,5 +1,8 @@
 'use client'
 
+import { PipelineStatusPanel } from './PipelineStatusPanel'
+
+import { AiServicesPanel } from './AiServicesPanel'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, CalendarClock, CalendarDays, Loader2, Send, Sparkles, Terminal, Video, XCircle, Zap, Phone, MessageCircle } from 'lucide-react'
 
@@ -302,6 +305,8 @@ export function CommandCenterView() {
 
   return (
     <div className="flex h-[calc(100vh-190px)] min-h-[480px] flex-col">
+      <PipelineStatusPanel />
+      <AiServicesPanel />
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="flex items-center gap-2 text-lg font-bold text-slate-100">

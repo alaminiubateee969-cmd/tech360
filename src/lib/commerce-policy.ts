@@ -15,7 +15,7 @@ export function evaluateHandoverGate(input: HandoverGateInput): GateDecision {
   if (!['RELEASED', 'DOWNLOADED', 'CONFIRMED'].includes(input.status)) {
     return { allowed: false, code: 'NOT_RELEASED' }
   }
-  if (input.totalAmount > 0 && input.paidAmount < input.totalAmount) {
+  if ((input.totalAmount > 0 && input.paidAmount < input.totalAmount) || (input.totalAmount <= 0 && input.paidAmount <= 0)) {
     return { allowed: false, code: 'PAYMENT_INCOMPLETE' }
   }
   if (input.expiryAt && input.expiryAt < (input.now ?? new Date())) {

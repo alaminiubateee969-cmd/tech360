@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Download, Eye, RefreshCw, Search } from 'lucide-react'
+import { Download, Eye, RefreshCw, Search, Table2, Kanban } from 'lucide-react'
 
 import { fmtDateShort, useApi, type ClientsResponse } from '@/lib/admin-client'
 import { DataTable, type Column } from './shared/DataTable'
@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { LeadsBoard } from './LeadsBoard'
 
 const STAGES = [
   'NEW', 'CONTACTED', 'BUSINESS_IDENTIFIED', 'PLAN_RECOMMENDED', 'SCOPE_COLLECTION',
@@ -28,6 +29,66 @@ const STAGES = [
 const STATUSES = ['LEAD', 'CLIENT', 'ACTIVE', 'COMPLETED', 'CLOSED', 'LOST'] as const
 
 const PAGE_SIZE = 20
+
+type IdentityReviewItem = {
+  id: string
+  form: string
+  requestRef: string
+  name: string
+  email: string | null
+  details: string | null
+  preferredContact: string | null
+  createdAt: string
+}
+
+type IdentityReviewResponse = {
+  items: IdentityReviewItem[]
+  total: number
+  hasMore: boolean
+}
+
+function IdentityReviewQueue() {
+  const { data, loading, error, refresh } = useApi<IdentityReviewResponse>('/api/admin/intake-review')
+  const items = data?.items ?? []
+
+  return (
+    <section aria-label="Identity review queue" className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-amber-200">Identity review queue</h2>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
+            {data?.total ?? 0} public intake record{data?.total === 1 ? '' : 's'} withheld from automatic Client linking. This is a read-only queue: verify ownership out of band; an email match alone is not proof, and no merge or portal access is created here.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800">
+          <RefreshCw className={loading ? 'size-3.5 animate-spin' : 'size-3.5'} aria-hidden="true" /> Refresh
+        </Button>
+      </div>
+      {error ? <p role="alert" className="mt-3 text-xs text-rose-300">Could not load the identity review queue: {error}</p> : null}
+      {!error && items.length === 0 && !loading ? <p className="mt-3 text-xs text-slate-500">No public intake records are awaiting identity review.</p> : null}
+      {items.length > 0 ? (
+        <ul className="mt-4 space-y-3">
+          {items.map((item) => (
+            <li key={item.id} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <span className="rounded bg-amber-500/10 px-2 py-0.5 font-semibold text-amber-200">{item.form}</span>
+                <span className="font-mono text-slate-300">Ref: {item.requestRef}</span>
+                <span className="text-slate-500">{new Date(item.createdAt).toLocaleString()}</span>
+              </div>
+              <p className="mt-2 text-sm font-medium text-slate-200">{item.name || 'Name not provided'}</p>
+              {item.email ? <p className="mt-1 break-all text-xs text-slate-400">{item.email}</p> : null}
+              {item.details ? <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-400">{item.details}</p> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {data?.hasMore ? <p className="mt-3 text-xs text-slate-500">Showing the first 100 pending records.</p> : null}
+      <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+        A Super Admin must record any manual identity attestation through the existing audited identity-link process. Do not request or store passwords or OTP codes.
+      </p>
+    </section>
+  )
+}
 
 const pretty = (s: string) =>
   s
@@ -50,6 +111,7 @@ export function LeadsView({
   const [stage, setStage] = useState<string>('ALL')
   const [status, setStatus] = useState<string>(mode === 'leads' ? 'LEAD' : 'ALL')
   const [page, setPage] = useState(1)
+  const [view, setView] = useState<'table' | 'board'>('table')
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -64,9 +126,14 @@ export function LeadsView({
     if (query.trim()) p.set('query', query.trim())
     if (stage !== 'ALL') p.set('stage', stage)
     if (status !== 'ALL') p.set('status', status)
-    p.set('page', String(page))
+    if (view === 'board') {
+      p.set('page', '1')
+      p.set('perPage', '100')
+    } else {
+      p.set('page', String(page))
+    }
     return `/api/admin/clients?${p.toString()}`
-  }, [query, stage, status, page])
+  }, [query, stage, status, page, view])
 
   const { data, loading, error, refresh } = useApi<ClientsResponse>(url)
   const rows = data?.clients ?? []
@@ -122,6 +189,24 @@ export function LeadsView({
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label="View mode" className="inline-flex overflow-hidden rounded-lg border border-slate-800">
+              <button
+                type="button"
+                aria-pressed={view === 'table'}
+                onClick={() => setView('table')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition ${view === 'table' ? 'bg-[#009FE3] text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+              >
+                <Table2 className="size-3.5" /> Table
+              </button>
+              <button
+                type="button"
+                aria-pressed={view === 'board'}
+                onClick={() => setView('board')}
+                className={`inline-flex items-center gap-1.5 border-l border-slate-800 px-3 py-1.5 text-xs font-semibold transition ${view === 'board' ? 'bg-[#009FE3] text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+              >
+                <Kanban className="size-3.5" /> Board
+              </button>
+            </div>
             {isLeads ? (
               <Button
                 variant="outline"
@@ -147,6 +232,8 @@ export function LeadsView({
           </div>
         }
       />
+
+      {isLeads ? <IdentityReviewQueue /> : null}
 
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <div className="relative min-w-0 flex-1 sm:max-w-xs">
@@ -204,26 +291,31 @@ export function LeadsView({
         </div>
       ) : null}
 
-      <DataTable
-        columns={columns}
-        rows={rows}
-        loading={loading}
-        rowKey={(r) => r.id}
-        onRowClick={(r) => onOpenClient(r.id)}
-        empty={
-          <EmptyState
-            title={query || stage !== 'ALL' || status !== 'ALL' ? 'No records match these filters' : isLeads ? 'No leads yet' : 'No clients yet'}
-            description={
-              query || stage !== 'ALL' || status !== 'ALL'
-                ? 'Try clearing the search or filters.'
-                : 'New inquiries will appear here.'
+      {view === 'board' ? (
+        <LeadsBoard rows={rows as unknown as Parameters<typeof LeadsBoard>[0]['rows']} onOpenClient={onOpenClient} onMoved={refresh} />
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            rows={rows}
+            loading={loading}
+            rowKey={(r) => r.id}
+            onRowClick={(r) => onOpenClient(r.id)}
+            empty={
+              <EmptyState
+                title={query || stage !== 'ALL' || status !== 'ALL' ? 'No records match these filters' : isLeads ? 'No leads yet' : 'No clients yet'}
+                description={
+                  query || stage !== 'ALL' || status !== 'ALL'
+                    ? 'Try clearing the search or filters.'
+                    : 'New inquiries will appear here.'
+                }
+              />
             }
+            aria-label={isLeads ? 'Leads table' : 'Clients table'}
           />
-        }
-        aria-label={isLeads ? 'Leads table' : 'Clients table'}
-      />
-
-      <Pager page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} loading={loading} unit="records" />
+          <Pager page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} loading={loading} unit="records" />
+        </>
+      )}
     </div>
   )
 }

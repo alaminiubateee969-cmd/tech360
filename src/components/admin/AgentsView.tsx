@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react'
 import {
   Bot,
+  Check,
   ChevronRight,
+  ClipboardList,
   Download,
   Loader2,
   Play,
@@ -23,6 +25,8 @@ import {
   useApi,
   type AgentDetailResponse,
   type AgentFull,
+  type AgentJobRow,
+  type AgentJobsResponse,
   type AgentRow,
   type AgentsResponse,
   type DepartmentRow,
@@ -99,6 +103,8 @@ export function AgentsView() {
   const [createOpen, setCreateOpen] = useState(false)
   const [purpose, setPurpose] = useState('')
   const [description, setDescription] = useState('')
+  const [departmentCode, setDepartmentCode] = useState('')
+  const [parentCode, setParentCode] = useState('')
   const [createBusy, setCreateBusy] = useState(false)
 
   const stats = useMemo(
@@ -159,20 +165,32 @@ export function AgentsView() {
     return { cats, unmatched }
   }, [filteredAgents, departments])
 
+  function openCreateDialog() {
+    const firstParentAgent = agents.find((agent) => agent.status === 'ACTIVE')
+    const firstDepartment = firstParentAgent?.dept ?? departments[0]?.code ?? ''
+    const firstParent = agents.find((agent) => agent.dept === firstDepartment && agent.status === 'ACTIVE')?.code ?? ''
+    setDepartmentCode(firstDepartment)
+    setParentCode(firstParent)
+    setCreateOpen(true)
+  }
+
   async function createAgent() {
     if (createBusy) return
-    if (!purpose.trim() || !description.trim()) {
-      toast.error('Purpose and description are required.')
+    if (purpose.trim().length < 10 || description.trim().length < 20 || !departmentCode || !parentCode) {
+      toast.error('Provide a purpose, boundary description, persisted department, and active parent agent.')
       return
     }
     setCreateBusy(true)
     try {
-      const res = await api.createAgent(purpose.trim(), description.trim())
-      toast.success(res.message ?? 'Agent creation request submitted — queued for Super Admin approval.')
+      const res = await api.createAgent(purpose.trim(), description.trim(), departmentCode, parentCode)
+      toast.success(res.message ?? 'Paused agent draft created.')
       setCreateOpen(false)
       setPurpose('')
       setDescription('')
+      setParentCode('')
+      setDepartmentCode('')
       refresh()
+      if (res.agent?.code) setSelectedCode(res.agent.code)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Creation request failed.')
     } finally {
@@ -183,8 +201,8 @@ export function AgentsView() {
   return (
     <div>
       <PageHeader
-        title="AI Workforce"
-        description="The agent organization — departments, roles, guardrails, and real execution telemetry."
+        title="Persisted AI Agents"
+        description="Database-backed AiAgent rows, department assignments, and execution telemetry. Generated org-chart profiles are shown separately and are not included in these counts."
         actions={
           <>
             <Button
@@ -360,7 +378,8 @@ export function AgentsView() {
         </div>
       )}
 
-      {selectedCode ? <AgentDetailDialog code={selectedCode} onClose={() => setSelectedCode(null)} /> : null}
+      {selectedCode ? <AgentDetailDialog code={selectedCode} onClose={() => setSelectedCode(null)} onUpdated={refresh} /> : null}
+      <AgentJobsPanel />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
@@ -369,11 +388,39 @@ export function AgentsView() {
               <Plus className="size-4" aria-hidden="true" /> Create Agent
             </DialogTitle>
             <DialogDescription className="text-slate-500">
-              Requests a new AI agent. Creation is governed: the request is queued for Super Admin approval before the
-              agent is registered.
+              Creates a PAUSED draft only after a fresh, fully passing persisted DCC assessment. No model drafting call is made when the department is uncertified.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="ag-department" className="text-xs text-slate-400">Persisted department</Label>
+              <select
+                id="ag-department"
+                value={departmentCode}
+                onChange={(event) => {
+                  const nextDepartment = event.target.value
+                  setDepartmentCode(nextDepartment)
+                  setParentCode(agents.find((agent) => agent.dept === nextDepartment && agent.status === 'ACTIVE')?.code ?? '')
+                }}
+                className="h-9 w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-200"
+              >
+                <option value="">Select a persisted department…</option>
+                {departments.map((department) => <option key={department.code} value={department.code}>{department.code} — {department.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ag-parent" className="text-xs text-slate-400">Active parent agent (same department)</Label>
+              <select
+                id="ag-parent"
+                value={parentCode}
+                onChange={(event) => setParentCode(event.target.value)}
+                className="h-9 w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-200"
+              >
+                <option value="">Select a persisted active parent…</option>
+                {agents.filter((agent) => agent.dept === departmentCode && agent.status === 'ACTIVE').map((agent) => <option key={agent.code} value={agent.code}>{agent.code} — {agent.name}</option>)}
+              </select>
+              {!agents.some((agent) => agent.dept === departmentCode && agent.status === 'ACTIVE') ? <p className="text-[10px] text-amber-300">This department has no active persisted parent agent, so child-agent creation is blocked.</p> : null}
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="ag-purpose" className="text-xs text-slate-400">Purpose (e.g. &quot;Analyze failed payments&quot;)</Label>
               <Input
@@ -395,21 +442,89 @@ export function AgentsView() {
               />
             </div>
             <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] leading-relaxed text-amber-300">
-              Governed operation — the new agent will only become active after Super Admin approval (see Approvals).
+              DCC requires all nine passing metrics. Parent limits are three direct children and maximum depth two. The saved draft stays PAUSED; it is not executable until a Super Admin reviews and explicitly activates it.
             </p>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={createBusy} className="text-slate-400 hover:text-slate-200">
               Cancel
             </Button>
-            <Button onClick={createAgent} disabled={createBusy} className="font-semibold" style={{ background: ACCENT }}>
+            <Button onClick={createAgent} disabled={createBusy || !departmentCode || !parentCode || purpose.trim().length < 10 || description.trim().length < 20} className="font-semibold" style={{ background: ACCENT }}>
               {createBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-              Submit Request
+              Create paused draft
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function AgentJobsPanel() {
+  const { data, loading, error, refresh } = useApi<AgentJobsResponse>('/api/admin/agents/jobs?limit=25')
+  const jobs = data?.jobs ?? []
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  async function decide(job: AgentJobRow, decision: 'APPROVE' | 'REJECT') {
+    if (busyId) return
+    setBusyId(job.id)
+    try {
+      await api.decideAgentJob(job.id, decision)
+      toast.success(decision === 'APPROVE' ? 'Job approved and queued.' : 'Job rejected and cancelled.')
+      refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not record the job decision.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <section aria-label="Durable AgentJob history" className={cn(CARD, 'mt-5')}>
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200"><ClipboardList className="size-4 text-[#009FE3]" aria-hidden="true" /> Durable AgentJobs</h2>
+          <p className="mt-0.5 text-xs text-slate-500">MySQL-persisted queue, approval state, retries, lease recovery, inference outcomes, and allowlisted internal task tools. Inference completion is not customer delivery or acceptance.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={refresh} disabled={loading} className="border-slate-800 bg-transparent text-slate-300">
+          <RefreshCw className={loading ? 'size-3.5 animate-spin' : 'size-3.5'} aria-hidden="true" /> Refresh
+        </Button>
+      </header>
+      {error ? <p role="alert" className="p-4 text-xs text-red-400">Could not load AgentJob history: {error}</p> : null}
+      {loading && jobs.length === 0 ? <div className="space-y-2 p-4"><Skeleton className="h-14 w-full bg-slate-800/50" /><Skeleton className="h-14 w-full bg-slate-800/50" /></div> : null}
+      {!loading && jobs.length === 0 ? <div className="p-3"><EmptyState icon={ClipboardList} title="No durable jobs yet" description="Queue inference or an explicitly supported internal tool from an authorized agent profile. Jobs requiring approval stay blocked until a Super Admin decides." /></div> : null}
+      {jobs.length > 0 ? (
+        <ul className="divide-y divide-slate-800/70">
+          {jobs.map((job) => (
+            <li key={job.id} className="space-y-2 px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={job.status} />
+                <span className="font-mono text-[11px] text-slate-400">{job.agentCode ?? '—'}</span>
+                <span className="text-xs font-medium text-slate-200">{job.agent?.name ?? 'Agent'}</span>
+                <span className="text-[10px] text-slate-600">attempt {num(job.attempts)}/{num(job.maxAttempts)}</span>
+                <span className="ml-auto text-[10px] text-slate-600">{fmtDate(job.createdAt)}</span>
+              </div>
+              <p className="text-xs text-slate-400">{job.client?.clientId ? `${job.client.clientId} · ${job.client.name ?? 'Client'} · ` : ''}{job.project?.code ? `${job.project.code} · ` : ''}{job.workflow ?? 'MANUAL'} · {job.taskType === 'TOOL_CALL' ? `tool ${job.toolName ?? 'unknown'}` : 'inference'}</p>
+              {job.lastError ? <p className="rounded border border-red-500/20 bg-red-500/5 px-2 py-1.5 text-[11px] text-red-300">{job.lastError}</p> : null}
+              {job.output ? <details className="rounded border border-slate-800 bg-slate-950/40 p-2"><summary className="cursor-pointer text-[10px] text-slate-500">View persisted job result</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[11px] text-slate-300">{job.output}</pre></details> : null}
+              {job.status === 'AWAITING_APPROVAL' ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] text-amber-300">Approval required; worker will not claim this job.</span>
+                  <div className="ml-auto flex gap-2">
+                    <Button size="sm" onClick={() => decide(job, 'APPROVE')} disabled={Boolean(busyId)} className="h-7 bg-emerald-700 text-[11px] text-white hover:bg-emerald-600">
+                      {busyId === job.id ? <Loader2 className="size-3 animate-spin" aria-hidden="true" /> : <Check className="size-3" aria-hidden="true" />} Approve
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => decide(job, 'REJECT')} disabled={Boolean(busyId)} className="h-7 border-slate-700 text-[11px] text-slate-300">
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   )
 }
 
@@ -442,12 +557,28 @@ function AgentRowItem({ agent, onClick }: { agent: AgentRow; onClick: () => void
   )
 }
 
-function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => void }) {
-  const { data, loading, error } = useApi<AgentDetailResponse>(`/api/admin/agents/${encodeURIComponent(code)}`)
+function AgentDetailDialog({ code, onClose, onUpdated }: { code: string; onClose: () => void; onUpdated: () => void }) {
+  const { data, loading, error, refresh } = useApi<AgentDetailResponse>(`/api/admin/agents/${encodeURIComponent(code)}`)
+  const { data: projectData, loading: projectsLoading, error: projectsError } = useApi<{ projects?: ProjectSummary[] }>('/api/admin/projects')
   const agent: AgentFull | undefined = data?.agent
   const executions = data?.executions ?? []
+  const eligibleToolProjects = (projectData?.projects ?? []).filter((project) => !['COMPLETED', 'CANCELLED', 'ON_HOLD'].includes((project.status ?? '').toUpperCase()))
   const [input, setInput] = useState('')
   const [running, setRunning] = useState(false)
+  const [queueBusy, setQueueBusy] = useState(false)
+  const [queuedJob, setQueuedJob] = useState<{ id: string; status: string; approvalState?: string | null } | null>(null)
+  const [pendingQueueKey, setPendingQueueKey] = useState<{ payload: string; key: string } | null>(null)
+  const [taskToolProjectId, setTaskToolProjectId] = useState('')
+  const [taskToolTitle, setTaskToolTitle] = useState('')
+  const [taskToolDescription, setTaskToolDescription] = useState('')
+  const [taskToolBusy, setTaskToolBusy] = useState(false)
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [requestedStatus, setRequestedStatus] = useState<'ACTIVE' | 'PAUSED'>('ACTIVE')
+  const [statusReason, setStatusReason] = useState('')
+  const [statusConfirmation, setStatusConfirmation] = useState('')
+  const [statusBusy, setStatusBusy] = useState(false)
+  const [pendingTaskToolKey, setPendingTaskToolKey] = useState<{ signature: string; key: string } | null>(null)
+  const [queuedTaskToolJob, setQueuedTaskToolJob] = useState<{ id: string; status: string; approvalState?: string | null } | null>(null)
   const [runResult, setRunResult] = useState<{
     ok?: boolean
     status?: string | null
@@ -456,6 +587,29 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
     executionId?: string | null
     error?: string | null
   } | null>(null)
+
+  function openStatusDialog(next: 'ACTIVE' | 'PAUSED') {
+    setRequestedStatus(next)
+    setStatusReason('')
+    setStatusConfirmation('')
+    setStatusDialogOpen(true)
+  }
+
+  async function saveAgentStatus() {
+    if (!agent || statusBusy || statusReason.trim().length < 20) return
+    setStatusBusy(true)
+    try {
+      const result = await api.updateAgentStatus(code, requestedStatus, statusReason.trim(), statusConfirmation)
+      toast.success(result.message ?? `Agent ${requestedStatus.toLowerCase()}.`)
+      setStatusDialogOpen(false)
+      refresh()
+      onUpdated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Agent status change failed.')
+    } finally {
+      setStatusBusy(false)
+    }
+  }
 
   async function run() {
     if (running) return
@@ -476,6 +630,65 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
       toast.error(msg)
     } finally {
       setRunning(false)
+    }
+  }
+
+  async function queueDurableRun() {
+    if (queueBusy || running) return
+    if (!input.trim()) {
+      toast.error('Enter input before queueing an inference job.')
+      return
+    }
+    setQueueBusy(true)
+    try {
+      const payload = input.trim()
+      const idempotencyKey = pendingQueueKey?.payload === payload ? pendingQueueKey.key : `admin-${code}-${crypto.randomUUID()}`
+      setPendingQueueKey({ payload, key: idempotencyKey })
+      const res = await api.queueAgentJob(code, payload, idempotencyKey, { expectJson: true })
+      if (!res.job) throw new Error(res.message ?? 'The server did not return a persisted job.')
+      setQueuedJob({ id: res.job.id, status: res.job.status, approvalState: res.job.approvalState })
+      setPendingQueueKey(null)
+      toast.success(res.job.status === 'AWAITING_APPROVAL' ? 'Job persisted and is awaiting Super Admin approval.' : 'Inference job persisted in the durable queue.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not queue the durable inference job.')
+    } finally {
+      setQueueBusy(false)
+    }
+  }
+
+  async function queueHumanTaskTool() {
+    if (taskToolBusy) return
+    if (!taskToolProjectId || taskToolTitle.trim().length < 3) {
+      toast.error('Choose a project and provide a task title of at least 3 characters.')
+      return
+    }
+    const payload = {
+      projectId: taskToolProjectId,
+      title: taskToolTitle.trim(),
+      description: taskToolDescription.trim(),
+    }
+    const signature = JSON.stringify(payload)
+    const idempotencyKey = pendingTaskToolKey?.signature === signature
+      ? pendingTaskToolKey.key
+      : `task-create-${code}-${crypto.randomUUID()}`
+    setPendingTaskToolKey({ signature, key: idempotencyKey })
+    setTaskToolBusy(true)
+    try {
+      const res = await api.queueAgentJob(code, 'Create one human-owned internal project task. Do not claim the work is complete.', idempotencyKey, {
+        expectJson: false,
+        projectId: payload.projectId,
+        toolName: 'task.create',
+        toolArgs: { title: payload.title, description: payload.description, priority: 'MEDIUM' },
+      })
+      if (!res.job) throw new Error(res.message ?? 'The server did not return a persisted tool job.')
+      setQueuedTaskToolJob({ id: res.job.id, status: res.job.status, approvalState: res.job.approvalState })
+      toast.success(res.job.status === 'AWAITING_APPROVAL'
+        ? 'Tool job persisted and is awaiting Super Admin approval.'
+        : 'Tool job persisted; the worker may create one human-owned TODO task.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not queue the allowlisted task tool.')
+    } finally {
+      setTaskToolBusy(false)
     }
   }
 
@@ -511,6 +724,24 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
               <StatMini label="Status" value={prettify(agent.status)} />
               <StatMini label="Approval" value={agent.requiresApproval ? 'Required' : 'Not required'} />
             </div>
+
+            {/^AGT-[A-F0-9]{8}$/.test(code) ? (
+              <section className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/25 bg-amber-500/5 p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-amber-200">Dynamic child agent · parent {agent.parentCode ?? 'missing'}</p>
+                  <p className="mt-1 text-[10px] text-slate-500">Activation rechecks current DCC, parent status, department, depth, child cap, and records an audit event.</p>
+                </div>
+                {agent.status === 'PAUSED' ? (
+                  <Button size="sm" onClick={() => openStatusDialog('ACTIVE')} className="bg-emerald-700 text-white hover:bg-emerald-600">
+                    <ShieldCheck className="size-3.5" aria-hidden="true" /> Review & activate
+                  </Button>
+                ) : agent.status === 'ACTIVE' ? (
+                  <Button size="sm" variant="outline" onClick={() => openStatusDialog('PAUSED')} className="border-amber-500/40 text-amber-200 hover:bg-amber-500/10">
+                    Pause agent
+                  </Button>
+                ) : null}
+              </section>
+            ) : null}
 
             <div>
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Purpose</p>
@@ -553,13 +784,26 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
                 aria-label={`Input for agent ${code}`}
                 className="border-slate-800 bg-slate-950/60 text-sm text-slate-200"
               />
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="text-[10px] text-slate-600">Real execution — output and status come from the agent engine.</p>
-                <Button size="sm" onClick={run} disabled={running} className="font-semibold" style={{ background: ACCENT }}>
-                  {running ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Play className="size-3.5" aria-hidden="true" />}
-                  Run
-                </Button>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[10px] text-slate-600">Run now is synchronous. Queue durable persists an inference request for the scheduled worker; it does not authorize external side effects.</p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={queueDurableRun} disabled={running || queueBusy} className="border-slate-700 bg-transparent text-slate-200">
+                    {queueBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <ClipboardList className="size-3.5" aria-hidden="true" />}
+                    Queue durable
+                  </Button>
+                  <Button size="sm" onClick={run} disabled={running || queueBusy} className="font-semibold" style={{ background: ACCENT }}>
+                    {running ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Play className="size-3.5" aria-hidden="true" />}
+                    Run now
+                  </Button>
+                </div>
               </div>
+              {queuedJob ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2">
+                  <StatusBadge status={queuedJob.status} />
+                  <span className="font-mono text-[10px] text-slate-500">job: {queuedJob.id}</span>
+                  {queuedJob.approvalState === 'PENDING' ? <span className="text-[10px] text-amber-300">Awaiting Super Admin approval</span> : <span className="text-[10px] text-slate-500">Refresh Durable inference jobs below for worker updates.</span>}
+                </div>
+              ) : null}
               {runResult ? (
                 <div className="mt-3 space-y-2 rounded-md border border-slate-800 bg-slate-950/60 p-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -581,6 +825,57 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
                 </div>
               ) : null}
             </div>
+
+            {chipList(agent.tools).includes('task.create') && chipList(agent.permissions).includes('write:tasks') ? (
+              <div className="space-y-3 rounded-md border border-emerald-500/20 bg-emerald-500/5 p-3">
+                <div>
+                  <p className="text-xs font-semibold text-emerald-300">Allowlisted internal tool: task.create</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-slate-500">Queues one idempotent tool job for an existing project. The worker creates a human-owned TODO task only; it does not mark work complete or contact the client.</p>
+                </div>
+                {projectsLoading ? <p className="text-xs text-slate-500">Loading projects…</p> : projectsError ? <p role="alert" className="text-xs text-red-400">Could not load projects: {projectsError}</p> : (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="agent-task-project" className="text-xs text-slate-400">Project</Label>
+                    <select
+                      id="agent-task-project"
+                      value={taskToolProjectId}
+                      onChange={(event) => setTaskToolProjectId(event.target.value)}
+                      className="h-9 w-full rounded-md border border-slate-800 bg-slate-950/60 px-3 text-xs text-slate-200"
+                    >
+                      <option value="">Select a non-completed project…</option>
+                      {eligibleToolProjects.map((project) => {
+                        const clientLabel = typeof project.client === 'object' && project.client
+                          ? ` · ${project.client.clientId ?? project.client.name ?? 'Client'}`
+                          : ''
+                        return <option key={project.id} value={project.id}>{project.code ?? project.name} — {project.name}{clientLabel}</option>
+                      })}
+                    </select>
+                    {eligibleToolProjects.length === 0 ? <p className="text-[10px] text-amber-300">No eligible projects are currently available.</p> : null}
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="agent-task-title" className="text-xs text-slate-400">Human task title</Label>
+                  <Input id="agent-task-title" value={taskToolTitle} onChange={(event) => setTaskToolTitle(event.target.value)} maxLength={160} placeholder="e.g. Review the uploaded delivery artifact" className="border-slate-800 bg-slate-950/60 text-sm text-slate-200" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="agent-task-description" className="text-xs text-slate-400">Description (optional)</Label>
+                  <Textarea id="agent-task-description" value={taskToolDescription} onChange={(event) => setTaskToolDescription(event.target.value)} maxLength={2000} rows={2} placeholder="Instructions for the assigned human reviewer…" className="border-slate-800 bg-slate-950/60 text-sm text-slate-200" />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-600">Server rechecks the project/client relationship and agent grants.</span>
+                  <Button size="sm" onClick={queueHumanTaskTool} disabled={taskToolBusy || projectsLoading || Boolean(projectsError) || !taskToolProjectId || !taskToolTitle.trim()} className="bg-emerald-700 text-white hover:bg-emerald-600">
+                    {taskToolBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <ClipboardList className="size-3.5" aria-hidden="true" />}
+                    Queue task tool
+                  </Button>
+                </div>
+                {queuedTaskToolJob ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2">
+                    <StatusBadge status={queuedTaskToolJob.status} />
+                    <span className="font-mono text-[10px] text-slate-500">job: {queuedTaskToolJob.id}</span>
+                    {queuedTaskToolJob.approvalState === 'PENDING' ? <span className="text-[10px] text-amber-300">Awaiting Super Admin approval</span> : <span className="text-[10px] text-slate-500">A queued job is not proof the task was created; inspect its persisted outcome.</span>}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {/* executions */}
             <div>
@@ -610,6 +905,39 @@ function AgentDetailDialog({ code, onClose }: { code: string; onClose: () => voi
         ) : (
           <EmptyState title="Agent not found" />
         )}
+        <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+          <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-slate-100">{requestedStatus === 'ACTIVE' ? 'Activate dynamic agent' : 'Pause dynamic agent'}</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                {requestedStatus === 'ACTIVE'
+                  ? 'Activation is a high-impact human decision. The server rechecks DCC and hierarchy, then audits the decision. The agent remains blocked if any required evidence is missing.'
+                  : 'Pause prevents future execution and is audited with your reason.'}
+              </DialogDescription>
+            </DialogHeader>
+            {requestedStatus === 'ACTIVE' ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="agent-activation-confirm" className="text-xs text-slate-400">Type ACTIVATE to confirm</Label>
+                <Input id="agent-activation-confirm" value={statusConfirmation} onChange={(event) => setStatusConfirmation(event.target.value)} autoComplete="off" className="border-slate-800 bg-slate-950/60 text-slate-200" />
+              </div>
+            ) : null}
+            <div className="space-y-1.5">
+              <Label htmlFor="agent-status-reason" className="text-xs text-slate-400">Decision reason (at least 20 characters)</Label>
+              <Textarea id="agent-status-reason" value={statusReason} onChange={(event) => setStatusReason(event.target.value)} maxLength={500} rows={3} className="border-slate-800 bg-slate-950/60 text-sm text-slate-200" />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setStatusDialogOpen(false)} disabled={statusBusy} className="text-slate-400">Cancel</Button>
+              <Button
+                onClick={saveAgentStatus}
+                disabled={statusBusy || statusReason.trim().length < 20 || (requestedStatus === 'ACTIVE' && statusConfirmation !== 'ACTIVATE')}
+                className={requestedStatus === 'ACTIVE' ? 'bg-emerald-700 text-white hover:bg-emerald-600' : 'bg-amber-700 text-white hover:bg-amber-600'}
+              >
+                {statusBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                {requestedStatus === 'ACTIVE' ? 'Confirm activation' : 'Pause agent'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   )

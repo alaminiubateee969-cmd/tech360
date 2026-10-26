@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
+import { isValidRole } from '@/lib/access-policy'
 import { guard, isResponse } from '@/lib/api-guard'
+import { ROLES } from '@/lib/constants'
 import { readJson, audit } from '@/lib/security'
 import { randomBytes } from 'crypto'
 
@@ -15,8 +17,6 @@ export const dynamic = 'force-dynamic'
 //   PATCH { action: 'reset_password' } → new one-time password + forced change
 // Secrets (hashes, TOTP seeds) are never returned.
 // ============================================================
-
-const VALID_ROLES = new Set(['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'])
 
 function generatePassword(): string {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
@@ -45,8 +45,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // ---- role change ----
   if (typeof body.role === 'string') {
-    if (!VALID_ROLES.has(body.role)) {
-      return Response.json({ error: 'Role must be SUPER_ADMIN, ADMIN, MANAGER or STAFF.' }, { status: 400 })
+    if (!isValidRole(body.role)) {
+      return Response.json({ error: `Role must be one of: ${ROLES.join(', ')}.` }, { status: 400 })
     }
     if (target.role === 'SUPER_ADMIN' && body.role !== 'SUPER_ADMIN') {
       const superCount = await db.user.count({ where: { role: 'SUPER_ADMIN', isActive: true } })

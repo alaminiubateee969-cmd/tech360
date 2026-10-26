@@ -16,6 +16,8 @@ import { createHmac, timingSafeEqual } from 'crypto'
 
 const UNSUB_PURPOSE = 'newsletter-unsub'
 const UNSUB_TTL_DAYS = 30
+const TRACK_PURPOSE = 'newsletter-track'
+const TRACK_TTL_DAYS = 90
 
 function newsletterSecret(): string {
   const s = process.env.PORTAL_SECRET || process.env.OPS_SECRET || process.env.SESSION_SECRET
@@ -70,6 +72,68 @@ export function verifyUnsubToken(token: string | undefined | null): string | nul
   if (Number(expiry) < Date.now()) return null
   return email
 }
+
+// ------------------------------------------------------------
+// Engagement tracking (email-marketing parity)
+// ------------------------------------------------------------
+// Every sent campaign embeds (a) a signed 1×1 open pixel and (b) links
+// rewritten through a click-redirect. Both public endpoints write REAL
+// CampaignEvent rows — nothing is simulated, so stats stay honestly at
+// zero until a real recipient opens or clicks a real sent email.
+
+/** Sign an engagement token attributing an interaction to one subscriber. */
+export function signTrackToken(campaignId: string, email: string): string {
+  const enc = b64url(`${campaignId}|${email.trim().toLowerCase()}`)
+  const expiry = Date.now() + TRACK_TTL_DAYS * 24 * 3600 * 1000
+  const payload = `${TRACK_PURPOSE}.${enc}.${expiry}`
+  const sig = createHmac('sha256', newsletterSecret()).update(payload).digest('hex')
+  return `${payload}.${sig}`
+}
+
+/** Verify an engagement token against the campaign it claims. Returns the subscriber email, or null. */
+export function verifyTrackToken(token: string | undefined | null, campaignId: string): string | null {
+  if (!token) return null
+  const parts = token.split('.')
+  if (parts.length !== 4) return null
+  const [purpose, enc, expiry, sig] = parts
+  if (purpose !== TRACK_PURPOSE || !enc) return null
+  const expected = createHmac('sha256', newsletterSecret()).update(`${purpose}.${enc}.${expiry}`).digest('hex')
+  try {
+    const a = Buffer.from(sig)
+    const b = Buffer.from(expected)
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null
+  } catch {
+    return null
+  }
+  if (Number(expiry) < Date.now()) return null
+  const decoded = unb64url(enc)
+  const [cid, email] = decoded.split('|')
+  if (cid !== campaignId || !email || !email.includes('@')) return null
+  return email
+}
+
+/**
+ * Rewrite every http(s) link in a campaign body through the click
+ * redirect and append the open pixel. `unsubscribeUrl` links are left
+ * untouched — an opt-out must never depend on a tracker.
+ */
+export function injectTracking(campaignId: string, html: string, baseUrl: string, token: string): string {
+  const base = baseUrl.replace(/\/+$/, '')
+  const click = (to: string) =>
+    `${base}/api/newsletter/track/click?c=${encodeURIComponent(campaignId)}&u=${encodeURIComponent(token)}&to=${encodeURIComponent(to)}`
+  const rewritten = html.replace(
+    /href\s*=\s*"([^"]+)"/gi,
+    (m, url: string) => (/^https?:\/\//i.test(url) ? `href="${click(url)}"` : m),
+  ).replace(
+    /href\s*=\s*'([^']+)'/gi,
+    (m, url: string) => (/^https?:\/\//i.test(url) ? `href="${click(url)}"` : m),
+  )
+  const pixel = `<img src="${base}/api/newsletter/track/open?c=${encodeURIComponent(campaignId)}&u=${encodeURIComponent(token)}" width="1" height="1" alt="" style="display:none;" />`
+  return rewritten + pixel
+}
+
+/** Transparent 1×1 GIF — the open-pixel response body. */
+export const TRACKING_PIXEL_GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64')
 
 // ------------------------------------------------------------
 // Campaign body sanitizer — simple HTML paragraphs only

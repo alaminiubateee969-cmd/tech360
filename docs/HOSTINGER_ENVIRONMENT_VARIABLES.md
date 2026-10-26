@@ -15,6 +15,11 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `OPS_SECRET` | Authenticates operations endpoints | Secret | Generate a unique random value distinct from the other application secrets | Yes |
 | `ADMIN_EMAIL` | First-boot Super Admin seed account | Non-secret | Owner-selected account | Yes for first seed |
 | `ADMIN_PASSWORD` | First-boot Super Admin seed account | Secret | Owner-generated password, at least 12 characters; change at first login | Yes for first seed |
+| `ZAI_BASE_URL` | ZAI-compatible chat/function API base URL | Non-secret URL | Provider operator | Yes for production AI |
+| `ZAI_API_KEY` | ZAI provider authentication | Secret | Provider operator | Yes for production AI |
+| `AI_OPS_DRIVER` | In-process production driver switch (`on` or `off`) | Non-secret | Owner policy | Yes; use `on` to run cycles |
+| `AGENT_RUN_TIMEOUT_MS` | Per-agent provider timeout, bounded to 5–300 seconds | Non-secret | Owner policy | Optional |
+| `OPS_INTERVAL_SEC` | In-process AI operations interval, minimum 30 seconds | Non-secret | Owner policy | Optional; defaults to 90 |
 
 `NOTIFY_RELAY_TOKEN`, `NOTIFY_RELAY_URL`, `OPS_INTERVAL_SEC`, and `PLATFORM_URL` are used only when the optional relay/operations service is deployed. For a production sidecar, provide unique `OPS_SECRET` and `PLATFORM_URL`; the ai-ops service now refuses to start in production without them. The notify relay refuses `/emit` when its production token is missing. Do not point a production app or sidecar at `localhost`; configure the actual service URL, or leave the optional relay disabled.
 
@@ -27,13 +32,15 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` | PayPal integration flags | Mixed; secrets marked by name | PayPal dashboard | Optional; integration is not enabled by empty values |
 | `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD` | SSLCommerz integration flags | Mixed; password is secret | SSLCommerz dashboard | Optional |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp Cloud API and webhook verification | Secret | Meta developer console | Optional |
+| `IDENTITY_HASH_SECRET` | Keyed HMAC index for verified client identity; at least 32 random bytes and stable across deployments | Secret | Owner-generated; preserve securely and do not rotate without an identity-index migration | Required when WhatsApp is configured
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | SMTP email delivery | `SMTP_PASS` secret; others configuration | Mail provider | Optional; required before email sending |
 | `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` | Generic SMS delivery | `SMS_API_KEY` secret; others configuration | SMS provider | Optional |
 | `HTTPSMS_API_KEY`, `HTTPSMS_BASE_URL`, `HTTPSMS_FROM` | HTTP SMS provider adapter | `HTTPSMS_API_KEY` secret; base URL/sender are configuration | httpsSMS account | Optional |
-| `PORTAL_OTP`, `PORTAL_OTP_CHANNEL` | Portal one-time-code behavior and preferred channel | Non-secret | Owner policy (`auto`/`off`/`required`; `email`/`whatsapp`/`sms`) | Optional |
+| `PORTAL_OTP`, `PORTAL_OTP_CHANNEL` | Portal one-time-code behavior and preferred channel | Non-secret | OTP is always required in production; `off` is honored only outside production. Preferred channel: `email`/`whatsapp`/`sms` | Optional |
 | `FACEBOOK_PAGE_TOKEN`, `INSTAGRAM_TOKEN`, `LINKEDIN_TOKEN`, `X_TOKEN` | Social publishing | Secret | Respective provider | Optional |
 | `SOCIAL_WEBHOOK_SECRET` | Social inbound webhook auth | Secret | Owner-generated | Optional; required to enable endpoint |
 | `N8N_WEBHOOK_SECRET`, `N8N_WEBHOOK_BASE` | n8n bridge auth and URL | Secret/URL | n8n deployment | Optional; required to enable endpoint |
+| `EMAIL_WEBHOOK_SECRET` | Dedicated inbound email-webhook raw-body HMAC or `x-email-webhook-secret` key | Secret | Owner-generated; at least 32 random bytes | Optional; the endpoint returns 503 until configured |
 | `PREVIEW_TTL_DAYS` | Preview expiry policy | Non-secret | Optional; the application defaults to 30 days | Optional |
 
 The repository also contains dynamic feature metadata for the payment credentials above (`src/lib/features.ts`), so those names are included even though they are not accessed using a literal `process.env.NAME` expression.
@@ -41,7 +48,7 @@ The repository also contains dynamic feature metadata for the payment credential
 ## Production safety
 
 - `.env.example` lists variable names with empty values only; it is not a source of production settings.
-- `npm start` runs `scripts/validate-production-env.mjs` before launching the standalone server. It requires a credentialed MySQL URL with a database name, the canonical HTTPS origins, and three distinct random application secrets of at least 32 characters. It reports variable names only and never prints values; it does not guess or hard-code the Hostinger database endpoint.
+- `npm start` runs `scripts/validate-production-env.mjs` before launching the standalone server. It requires a credentialed MySQL URL with a database name, the canonical HTTPS origins, and three distinct random application secrets of at least 32 characters. If either WhatsApp token or app secret is configured, it also requires `IDENTITY_HASH_SECRET`; any supplied identity key is length-checked and must remain stable across deployments. The validator reports variable names only and never prints values; it does not guess or hard-code the Hostinger database endpoint.
 - An authorized operator must confirm `DATABASE_URL` exactly matches the actual Hostinger MySQL panel before any deployment build can apply migrations. The hPanel values, connection, migration state, and backup remain **NOT VERIFIED**.
 - `ADMIN_EMAIL` and `ADMIN_PASSWORD` are required for the one-time production seed; `ADMIN_PASSWORD` is not needed by normal runtime startup and must be removed after seeding/password change.
 - Do not commit a production `.env` file.

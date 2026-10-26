@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText, audit, logError } from '@/lib/security'
-import { createNotification } from '@/lib/notify'
 import { DOC_EXT_LIST, DOC_MAX_BYTES, normalizeUploadName, resolveExt, scanDocumentBytes, serializeScanResult } from '@/lib/files'
 
 export const dynamic = 'force-dynamic'
@@ -12,7 +11,7 @@ const CLASSIFICATIONS = ['PUBLIC', 'PRIVATE', 'CONFIDENTIAL', 'HIGHLY_SENSITIVE'
 // ------------------------------------------------------------
 // GET /api/admin/documents?clientId=TECH-2026-000001 — list the
 // documents hub for a client (client uploads + files shared by
-// the team), including scan verdicts and download counters.
+// the team and project handover artifacts), including scan verdicts.
 // ------------------------------------------------------------
 export async function GET(req: NextRequest) {
   const g = await guard(req, { minRole: 'MANAGER' })
@@ -25,7 +24,7 @@ export async function GET(req: NextRequest) {
   if (!client) return Response.json({ error: 'Client not found' }, { status: 404 })
 
   const docs = await db.fileRecord.findMany({
-    where: { clientId: client.id, relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE'] } },
+    where: { clientId: client.id, relatedType: { in: ['CLIENT_UPLOAD', 'ADMIN_SHARE', 'DELIVERY'] } },
     orderBy: { createdAt: 'desc' },
     take: 100,
     select: {
@@ -42,6 +41,7 @@ export async function GET(req: NextRequest) {
     rejected: docs.filter((d) => d.scanStatus === 'REJECTED').length,
     clientUploads: docs.filter((d) => d.relatedType === 'CLIENT_UPLOAD').length,
     adminShares: docs.filter((d) => d.relatedType === 'ADMIN_SHARE').length,
+    deliveryArtifacts: docs.filter((d) => d.relatedType === 'DELIVERY').length,
     downloads: docs.reduce((s, d) => s + d.downloads, 0),
     bytes: docs.reduce((s, d) => s + d.size, 0),
   }
@@ -62,8 +62,8 @@ function safeParse(s: string): unknown {
 
 // ------------------------------------------------------------
 // POST /api/admin/documents — the team shares a file with a client
-// (contract, invoice PDF, designs). Scanned with the same engine;
-// CLEAN files become visible in the client portal immediately.
+// (contract, invoice PDF, designs) or attaches a project handover artifact.
+// Project-linked artifacts remain private until a reviewed package is released.
 // ------------------------------------------------------------
 export async function POST(req: NextRequest) {
   const g = await guard(req, { minRole: 'MANAGER' })
@@ -73,8 +73,12 @@ export async function POST(req: NextRequest) {
     const form = await req.formData()
     const file = form.get('file')
     const clientId = sanitizeText(form.get('clientId') ?? '', 30)
+    const projectId = sanitizeText(form.get('projectId') ?? '', 40)
     const note = sanitizeText(form.get('note') ?? '', 300)
     const classificationRaw = sanitizeText(form.get('classification') ?? 'PRIVATE', 20).toUpperCase()
+    if (projectId && classificationRaw !== 'PRIVATE') {
+      return Response.json({ error: 'Project handover artifacts must be explicitly classified PRIVATE; sensitive files cannot be downgraded into a package.' }, { status: 400 })
+    }
     const classification = CLASSIFICATIONS.includes(classificationRaw) ? classificationRaw : 'PRIVATE'
 
     if (!(file instanceof File)) return Response.json({ error: 'A file is required.' }, { status: 400 })
@@ -86,6 +90,11 @@ export async function POST(req: NextRequest) {
 
     const client = await db.client.findFirst({ where: { clientId, deletedAt: null }, select: { id: true, clientId: true, name: true } })
     if (!client) return Response.json({ error: 'Client not found' }, { status: 404 })
+    const project = projectId ? await db.project.findFirst({ where: { id: projectId, clientId: client.id }, select: { id: true, code: true, status: true } }) : null
+    if (projectId && !project) return Response.json({ error: 'Project not found for this client.' }, { status: 404 })
+    if (project && ['COMPLETED', 'CANCELLED'].includes(project.status)) {
+      return Response.json({ error: 'Cannot attach new handover artifacts to a completed or cancelled project.' }, { status: 409 })
+    }
 
     const declaredMime = file.type || ''
     const ext = resolveExt(declaredMime, file.name)
@@ -119,7 +128,8 @@ export async function POST(req: NextRequest) {
         content: bytes,
         note: note || null,
         clientId: client.id,
-        relatedType: 'ADMIN_SHARE',
+        projectId: project?.id ?? null,
+        relatedType: project ? 'DELIVERY' : 'ADMIN_SHARE',
         uploadedBy: `user:${g.user.email}`,
       },
       select: { id: true, originalName: true, createdAt: true },
@@ -127,12 +137,19 @@ export async function POST(req: NextRequest) {
 
     await audit({
       actor: `user:${g.user.email}`,
-      action: 'DOC_SHARED_TO_CLIENT',
+      action: project ? 'DELIVERY_ARTIFACT_ATTACHED' : 'DOC_SHARED_TO_CLIENT',
       clientId: client.clientId,
-      details: { docId: doc.id, originalName, size: file.size, classification, note: note.slice(0, 120) },
+      projectId: project?.id,
+      details: { docId: doc.id, originalName, size: file.size, classification, projectCode: project?.code ?? null, note: note.slice(0, 120) },
     })
 
-    return Response.json({ ok: true, doc, message: `"${originalName}" is now visible in the client's portal.` })
+    return Response.json({
+      ok: true,
+      doc,
+      message: project
+        ? `"${originalName}" is attached to ${project.code}; it remains hidden until the approved handover package is released.`
+        : `"${originalName}" is now visible in the client's portal.`,
+    })
   } catch (e) {
     await logError({ source: 'API', code: 'ADMIN_DOC_SHARE_FAILED', message: e instanceof Error ? e.message : 'unknown' })
     return Response.json({ error: 'Upload failed while processing the file.' }, { status: 500 })

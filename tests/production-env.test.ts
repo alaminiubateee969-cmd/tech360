@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -14,6 +15,8 @@ const goodEnvironment: NodeJS.ProcessEnv = {
   SESSION_SECRET: 'ci_session_secret_only_never_use_in_production_123456',
   PORTAL_SECRET: 'ci_portal_secret_only_never_use_in_production_234567',
   OPS_SECRET: 'ci_ops_secret_only_never_use_in_production_345678',
+  ZAI_BASE_URL: 'https://ci.invalid/v1',
+  ZAI_API_KEY: 'ci_provider_key_only_never_use_in_production',
 }
 
 function validate(overrides: Record<string, string | undefined> = {}) {
@@ -48,6 +51,21 @@ test('production runtime accepts a credentialed MySQL URL without printing value
     const value = goodEnvironment[name]
     if (value) assert.equal(output.includes(value), false)
   }
+})
+
+test('WhatsApp identity linking requires a stable strong HMAC key', () => {
+  const appSecret = randomBytes(32).toString('hex')
+  const missing = validate({ WHATSAPP_APP_SECRET: appSecret, WHATSAPP_TOKEN: undefined, IDENTITY_HASH_SECRET: undefined })
+  assert.notEqual(missing.status, 0)
+  assert.match(missing.stdout + missing.stderr, /IDENTITY_HASH_SECRET/)
+  assert.doesNotMatch(missing.stdout + missing.stderr, new RegExp(appSecret))
+
+  const configured = validate({
+    WHATSAPP_APP_SECRET: appSecret,
+    WHATSAPP_TOKEN: undefined,
+    IDENTITY_HASH_SECRET: randomBytes(32).toString('hex'),
+  })
+  assert.equal(configured.status, 0, configured.stderr)
 })
 
 test('production runtime rejects missing database names and non-MySQL URLs without echoing values', () => {
@@ -88,4 +106,10 @@ test('production runtime rejects reused signing secrets', () => {
   assert.notEqual(result.status, 0)
   assert.match(output, /must be distinct secrets/)
   assert.equal(output.includes(shared), false)
+})
+
+test('production runtime rejects an unknown AI operations driver', () => {
+  const result = validate({ AI_OPS_DRIVER: 'mystery' })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout + result.stderr, /AI_OPS_DRIVER/)
 })

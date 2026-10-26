@@ -1,11 +1,15 @@
+import { parseScopeDecision, parsePreviewDecision } from '@/lib/pipeline/decision-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
+import { hasCapability } from '@/lib/access-policy'
 import { guard, isResponse } from '@/lib/api-guard'
+import { assertGatewayUsable, featureEnabled } from '@/lib/features'
 import { readJson, sanitizeText, audit } from '@/lib/security'
+import { parseHandoverManifest } from '@/lib/handover-artifacts'
 import {
   detectBusiness, recommendPlan, askScopeQuestions, submitScope, generatePreview,
   requestPayment, recordPayment, verifyPayment, activateProject, prepareHandover,
-  releaseHandover, closeProject, clientScopeDecision, requestReviewAndReferral,
+  closeProject, clientScopeDecision, requestReviewAndReferral, recordPreviewDecision,
 } from '@/lib/journey'
 
 export const dynamic = 'force-dynamic'
@@ -51,8 +55,9 @@ export async function POST(req: NextRequest) {
         break
       }
       case 'CLIENT_SCOPE_DECISION': {
-        const decision = sanitizeText(payload.decision, 40).toUpperCase() as 'APPROVED' | 'REVISION_REQUESTED' | 'CLARIFICATION_REQUESTED'
-        const r5 = await clientScopeDecision(client.id, decision || 'APPROVED', sanitizeText(payload.notes, 4000))
+        const decision = parseScopeDecision(payload.decision)
+        if (!decision) return Response.json({ error: 'Explicit scope decision required: APPROVED, REVISION_REQUESTED or CLARIFICATION_REQUESTED.' }, { status: 400 })
+        const r5 = await clientScopeDecision(client.id, decision, sanitizeText(payload.notes, 4000))
         result = r5 as unknown as Record<string, unknown>
         message = `Client decision recorded. Next: ${r5.next}`
         break
@@ -60,19 +65,52 @@ export async function POST(req: NextRequest) {
       case 'GENERATE_PREVIEW': {
         const r6 = await generatePreview(client.id)
         result = r6 as unknown as Record<string, unknown>
-        message = `Preview generated and sent (or logged). Link: ${r6.link}`
+        const delivery = r6.delivery.length ? r6.delivery.map((item) => `${item.channel}:${item.status}`).join(', ') : 'NO_CHANNEL_ATTEMPTED'
+        message = r6.reused
+          ? `Existing preview reused; no duplicate provider sends were attempted. Current status: ${r6.status}. Link: ${r6.link}`
+          : r6.status === 'SENT'
+            ? `Preview generated; at least one provider accepted the send request. Channel status: ${delivery}. Link: ${r6.link}`
+            : `Preview generated but not sent. Channel status: ${delivery}. Share only through an authorized channel. Link: ${r6.link}`
         break
       }
-      case 'REQUEST_PAYMENT':
+      case 'REQUEST_PAYMENT': {
+        if (!hasCapability(g.user, 'finance.invoice.write')) {
+          return Response.json({ error: 'Forbidden — requires finance.invoice.write capability.' }, { status: 403 })
+        }
         const r7 = await requestPayment(client.id, g.user.email)
         result = r7 as unknown as Record<string, unknown>
-        message = `Payment requested. Delivery: ${(r7.results ?? []).join(', ')}`
+        message = 'Payment instructions prepared and queued for Super Admin approval. Nothing was sent to the client yet — approve the PAYMENT_INSTRUCTION request in the Approvals view to send it.'
         break
+      }
+      case 'PREVIEW_DECISION': {
+        if (!hasCapability(g.user, 'preview.manage')) {
+          return Response.json({ error: 'Forbidden — requires preview.manage capability.' }, { status: 403 })
+        }
+        const decision = parsePreviewDecision(payload.decision)
+        if (!decision) return Response.json({ error: 'Explicit preview decision required: APPROVED or REVISION_REQUESTED.' }, { status: 400 })
+        const r7b = await recordPreviewDecision(client.id, decision, sanitizeText(payload.notes, 4000))
+        result = r7b as unknown as Record<string, unknown>
+        message = decision === 'APPROVED'
+          ? `Preview approval recorded. ${r7b.sent.status === 'AWAITING_APPROVAL' ? 'The payment step is queued for admin approval.' : 'Acknowledgement sent.'}`
+          : 'Preview revision recorded. The acknowledgement was sent, the admin was notified and a task was created.'
+        break
+      }
       case 'RECORD_PAYMENT': {
+        if (!hasCapability(g.user, 'finance.payment.record')) {
+          return Response.json({ error: 'Forbidden — requires finance.payment.record capability.' }, { status: 403 })
+        }
+        if (!(await featureEnabled('payments'))) {
+          return Response.json({ error: 'Payments are currently disabled by Super Admin.', code: 'FEATURE_DISABLED' }, { status: 503 })
+        }
         const amount = Number(payload.amount)
         if (!Number.isFinite(amount) || amount <= 0) return Response.json({ error: 'Valid amount required' }, { status: 400 })
+        const method = sanitizeText(payload.method, 40) || 'MANUAL'
+        const usable = await assertGatewayUsable(method)
+        if (!usable.ok) {
+          return Response.json({ error: usable.error, code: 'GATEWAY_UNAVAILABLE' }, { status: usable.status })
+        }
         const r8 = await recordPayment(client.id, {
-          amount, currency: sanitizeText(payload.currency, 8) || 'USD', method: sanitizeText(payload.method, 40),
+          amount, currency: sanitizeText(payload.currency, 8) || 'USD', method,
           transactionId: sanitizeText(payload.transactionId, 80), milestone: sanitizeText(payload.milestone, 60),
           notes: sanitizeText(payload.notes, 2000),
         })
@@ -81,9 +119,22 @@ export async function POST(req: NextRequest) {
         break
       }
       case 'VERIFY_PAYMENT': {
+        // Payment verification unlocks paidAmount and source-code handover gates:
+        // strictly restricted to SUPER_ADMIN (`finance.payment.verify`) and
+        // scoped to payments belonging to this client.
+        if (!hasCapability(g.user, 'finance.payment.verify')) {
+          return Response.json({ error: 'Forbidden — only SUPER_ADMIN can verify payments.' }, { status: 403 })
+        }
+        if (!(await featureEnabled('payments'))) {
+          return Response.json({ error: 'Payments are currently disabled by Super Admin.', code: 'FEATURE_DISABLED' }, { status: 503 })
+        }
         const paymentId = sanitizeText(payload.paymentId, 40)
         if (!paymentId) return Response.json({ error: 'paymentId required' }, { status: 400 })
-        const r9 = await verifyPayment(paymentId, g.user.id)
+        const payment = await db.payment.findUnique({ where: { id: paymentId }, select: { id: true, clientId: true } })
+        if (!payment || payment.clientId !== client.id) {
+          return Response.json({ error: 'Payment not found for this client.' }, { status: 404 })
+        }
+        const r9 = await verifyPayment(paymentId, { type: 'HUMAN', id: g.user.id, role: g.user.role }, sanitizeText(payload.approvalId, 40) || null)
         result = r9 as unknown as Record<string, unknown>
         message = 'Payment verified. Project activated if this was the first verified payment.'
         break
@@ -91,25 +142,37 @@ export async function POST(req: NextRequest) {
       case 'START_PROJECT': {
         const r10 = await activateProject(client.id, sanitizeText(payload.projectId, 40) || undefined)
         result = r10 as unknown as Record<string, unknown>
-        message = `Project ${(r10.project as { code?: string } | undefined)?.code ?? ''} activated with AI task breakdown.`
+        const projectCode = r10.project.code
+        message = r10.taskRun?.ok && r10.taskCount > 0
+          ? `Project ${projectCode} activated; ${r10.taskCount} project task(s) are persisted. Verify the breakdown before assigning work.`
+          : r10.taskRun
+            ? `Project ${projectCode} activated, but task generation did not produce a persisted breakdown. No AI-generated task completion is being claimed.`
+            : `Project ${projectCode} activated; ${r10.taskCount} existing task(s) were retained without duplication.`
         break
       }
       case 'PREPARE_HANDOVER': {
         const projectId = sanitizeText(payload.projectId, 40) || (await db.project.findFirst({ where: { clientId: client.id }, orderBy: { createdAt: 'desc' } }))?.id
         if (!projectId) return Response.json({ error: 'No project found for client' }, { status: 400 })
         const r11 = await prepareHandover(client.id, projectId, g.user.email)
-        result = r11 as unknown as Record<string, unknown>
-        message = r11.blocked ? `BLOCKED: ${r11.reason}` : 'Handover package prepared and queued for Super Admin approval.'
+        if (r11.blocked) {
+          result = { blocked: true, reason: r11.reason }
+          message = `BLOCKED: ${r11.reason}`
+        } else {
+          const manifest = parseHandoverManifest(r11.handover.contents, projectId)
+          result = {
+            blocked: false,
+            reused: 'reused' in r11 && r11.reused === true,
+            handover: { id: r11.handover.id, status: r11.handover.status, projectId: r11.handover.projectId, expiryAt: r11.handover.expiryAt },
+            artifactCount: manifest?.files.length ?? 0,
+          }
+          message = 'reused' in r11 && r11.reused
+            ? `Existing handover record (${r11.handover.status}) reused; no new approval request was created.`
+            : 'Verified artifact manifest prepared and queued for Super Admin approval.'
+        }
         break
       }
       case 'RELEASE_HANDOVER': {
-        const handoverId = sanitizeText(payload.handoverId, 40)
-        if (!handoverId) return Response.json({ error: 'handoverId required' }, { status: 400 })
-        if (g.user.role !== 'SUPER_ADMIN') return Response.json({ error: 'Only Super Admin can release source code' }, { status: 403 })
-        const r12 = await releaseHandover(handoverId, g.user.id)
-        result = r12 as unknown as Record<string, unknown>
-        message = `Source package released. Secure link: ${r12.link}`
-        break
+        return Response.json({ error: 'Handover release must be executed through the pending Super Admin approval request.' }, { status: 403 })
       }
       case 'CLOSE_PROJECT': {
         const projectId = sanitizeText(payload.projectId, 40) || (await db.project.findFirst({ where: { clientId: client.id }, orderBy: { createdAt: 'desc' } }))?.id

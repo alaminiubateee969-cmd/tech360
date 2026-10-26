@@ -1,7 +1,7 @@
 # TECH360 — Reference Coverage Audit
 
-**Date:** September 17, 2026 (recovered + extended after the round-14 sandbox restore; extended again September 19 with the video-cluster + dev-tooling batch)
-**Scope:** Every website and repository link shared by the owner across the project conversations (139 unique references), audited against the delivered TECH360 platform.
+**Date:** September 17, 2026 (recovered + extended after the round-14 sandbox restore; extended again September 19 with the video-cluster + dev-tooling batch; extended October 9 with the email-marketing / doc-chat / prompt-gallery batch)
+**Scope:** Every website and repository link shared by the owner across the project conversations (155 unique references), audited against the delivered TECH360 platform.
 **Method:** Each reference was inspected for its core capability, then mapped to the platform's shipped features (43 Prisma models, 44 AI agents, 24 admin views, 3 services). "Round" numbers refer to the work-log entries in `worklog.md` where each feature was built and verified. After a workspace revert destroyed rounds 11–13 from disk, every listed feature was REBUILT and re-verified in round 14 — see the recovery entry in the worklog.
 
 **Re-review (2026-10-03):** the ⛔ dispositions below record *what the upstream
@@ -24,7 +24,7 @@ Read the ⛔ column as "not vendored", never as "not answered".
 | ◐ | Partially applicable — the applicable core is covered; the rest is honestly out of scope |
 | ⛔ | Not applicable to TECH360 — a different product category, with the reason stated |
 
-**Totals:** 139 references audited → ✅ 45 covered · ➕ 2 added by audit · ◐ 20 partially applicable · ⛔ 72 not applicable (documented reasons). Every reference appears in a table below.
+**Totals:** 155 references audited → ✅ 45 covered · ➕ 6 added by audit · ◐ 23 partially applicable · ⛔ 81 not applicable (documented reasons). Every reference appears in a table below.
 
 ---
 
@@ -271,3 +271,32 @@ The applicable capability — *planning* video content (scripts, shot plans, sto
 | mureka.ai | AI music generation | ⛔ | Music synthesis — different product |
 | buffer.com | Social media scheduling | ✅/◐ | SMM campaign studio + AI drafting + scheduled publishing cover the applicable core; multi-account social scheduling stays honestly channel-gated until credentials land (R7–R11) |
 | stackoverflow.com | Q&A reference site | ⛔ | Reference site, not a capability |
+
+---
+
+## Extension — round 19 audit (owner's October 9 link batch)
+
+**Scope:** 16 additional unique references from the owner's latest message (the two email-marketing repos, the doc-chat reference, the image-prompt gallery, the multi-agent framework, the GPT-UI/API tooling cluster and four product websites). Every link was fetched or researched live on 2026-10-09 and dispositioned against the delivered platform; no link was skipped. All 150 references were then re-probed live — see the regenerated [`docs/REFERENCE_VERIFICATION_MATRIX.md`](docs/REFERENCE_VERIFICATION_MATRIX.md).
+
+**Link-rot note (honest):** the three `engralaminn-collab` repos (`Ai-Markting-crm`, `ukvi-ai-markting_n8n`, `alo-education-uk-final`) now answer **404 on the GitHub API** — they were deleted or made private after the earlier audit covered them. The dispositions below (sections B/G/H) remain valid records of what was audited; the live-probe column in the verification matrix reports `NOT_FOUND` for them.
+
+## R. Email marketing, doc-chat, prompt gallery & GPT tooling (16)
+
+| Reference | What it is | TECH360 | Where / Round |
+| --- | --- | --- | --- |
+| mohamed11sk/Email-markting | PHP email-marketing app (campaigns, templates, lists, SMTP, **open-rate pixel**, Chart.js dashboard) | ➕ | Round 19: the open-rate pixel ships as `/api/newsletter/track/open` (signed per-subscriber 1×1 GIF → one real `CampaignEvent` row per unique open) with per-campaign opens + open-rate in the Newsletter view (`src/lib/newsletter.ts`) |
+| knsoftic/Email_Markting | Laravel multi-tenant email marketing + inbox (block builder, segments, A/B, SMTP rotation, IMAP inbound, **open + click tracking**, automations) | ➕ | Round 19: click tracking ships as `/api/newsletter/track/click` (302 redirect, deduplicated unique clicks, http(s)-only destinations) + unique opens/clicks/CTR per campaign and list totals. Multi-tenant SMTP rotation and IMAP inbound stay out of scope (single-tenant platform, honest channel states) |
+| Lin-jun-xiang/docGPT-langchain | "Chat with your docs" (PDF, WORD, CSV, TXT) | ➕ | Round 19: `POST /api/admin/knowledge/upload` accepts PDF (unpdf), DOCX (mammoth) and TXT/MD/CSV/JSON/HTML with REAL text extraction, deterministic content scanning, sha256 provenance → indexed for the AI-ranked knowledge search (`src/lib/doc-extract.ts`). The upload UI already existed; the backend route is now real |
+| songguoxs/gpt4o-image-prompts | Curated image-prompt gallery (tags, search, one-click copy) | ➕ | Round 19: `src/data/image-prompts.ts` — 36 curated English prompt patterns across 8 business categories (website heroes, brand, social ads, blog covers, dashboard art, service photography, team/culture, illustration styles) with tags, `{placeholders}` and tips; searchable, tag-filterable, copyable in the new admin Prompt Library view |
+| FoundationAgents/MetaGPT | Multi-agent framework — "first AI software company", SOP-driven roles | ⛔ | As a Python framework: not vendored. The in-product analogs are the AI Software Factory (one brief → pages/models/endpoints/agents/docs, `src/lib/factory/blueprint.ts`) and the 44-agent registry with roles/tools/approvals (R7, R15) |
+| ramon-victor/freegpt-webui | GPT 3.5/4 web UI, no API key (reverse-engineered access) | ⛔ | Archived upstream; TECH360's chat is shipped natively (ChatWidget + Conversations inbox) over the official server-side SDK — no reverse-engineered free access is ever used |
+| teremterem/claude-code-gpt-5-codex | Run Claude Code CLI against OpenAI models via LiteLLM proxy | ⛔ | Developer CLI adapter — IDE tooling, not a platform capability |
+| GetGoAPI/Free-GPT-Grok-Gemini-Claude-API | Free multi-model API relay (OpenRouter alternative) | ⛔ | Model access comes from the server-side SDK; routing business data through unofficial free relays would violate the security posture (SECURITY.md) |
+| zai-org/GLM-5 | GLM-5 LLM release ("from vibe coding to agentic engineering") | ⛔ | Model weights/release notes — TECH360 uses hosted SDK models and never claims a self-hosted LLM |
+| GAIR-NLP/LiveTalk | Real-time multimodal interactive avatar video diffusion | ⛔ | Research model needing a 24 GB+ GPU; same boundary as the other video-model references — Media Studio plans content, it does not render avatars |
+| tinystruct/smalltalk | Java chat module for GPT integration | ⛔ | Live chat is a shipped native feature (`ChatConversation`/`ChatMessage` + shared inbox, R11/R14) |
+| morluto/rea | Reverse-engineering agents (app behavior → native binaries) | ⛔ | Binary-analysis CLI — the governed agent registry with per-agent tools/permissions/approvals is the in-product analog |
+| enerpize.com | Cloud all-in-one ERP for SMBs (accounting, sales, POS, inventory, HR/payroll, CRM) | ◐ | The agency-applicable core is covered: invoicing with per-invoice payment allocation (R14), quotes→projects→payments lifecycle, client portal, finance KPIs. Inventory/POS/payroll/manufacturing modules are out of scope — TECH360 sells services, not SKUs |
+| aipraktor.com | Bengali AI commerce agent for Messenger/Instagram/WhatsApp (product recognition, voice orders, courier updates) | ◐ | Shipped analogs: the honest WhatsApp channel architecture + WhatsApp-automation service catalog, DB-backed live chat with chat-to-lead conversion, and AI Software Factory support/booking verticals a client can order. A standalone consumer commerce agent is a client deliverable, not this platform |
+| supercool.com | AI creation platform — conversational website builder, videos, music, books | ◐ | The in-product analogs are the AI Software Factory (brief → deliverable app), Media Studio, Content Studio and the NL Command Center; TECH360 does not market a consumer creative suite |
+| join.supercool.com | Signup portal of supercool.com | ⛔ | Same product as supercool.com (see above) |

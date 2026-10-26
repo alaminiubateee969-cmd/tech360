@@ -19,14 +19,20 @@ import {
   Menu,
   MessageSquare,
   Newspaper,
+  Network,
   Radar,
   ScrollText,
   Search,
   Settings,
   Send,
   ShieldCheck,
+  Sparkles,
   Star,
   Terminal,
+  Cpu,
+  ListChecks,
+  Plug,
+  DatabaseBackup,
   UserPlus,
   Users,
   Wallet,
@@ -39,12 +45,23 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
+import { isReadOnlyRole } from '@/lib/access-policy'
 import { ROLE_RANK } from '@/lib/constants'
 import { ChangePasswordScreen } from './ChangePasswordScreen'
 import { LoginScreen } from './LoginScreen'
 import { NotificationCenter } from './NotificationCenter'
 import { TwoFactorDialog } from './TwoFactorDialog'
 import { AgentsView } from './AgentsView'
+import { DepartmentCertificationView } from './DepartmentCertificationView'
+import ModelsView from './ModelsView'
+import SkillsView from './SkillsView'
+import DepartmentsView from './DepartmentsView'
+import TaskQueueView from './TaskQueueView'
+import WorkflowBuilderView from './WorkflowBuilderView'
+import IntegrationsView from './IntegrationsView'
+import BackupRecoveryView from './BackupRecoveryView'
+import WorkforceView from './WorkforceView'
+import { PipelineView } from './PipelineView'
 import { AnalyticsView } from './AnalyticsView'
 import { ApprovalsView } from './ApprovalsView'
 import { BlogStudioView } from './BlogStudioView'
@@ -63,6 +80,7 @@ import { LeadsView } from './LeadsView'
 import { LogsView } from './LogsView'
 import { MemoryView } from './MemoryView'
 import { NewsletterView } from './NewsletterView'
+import { PromptLibraryView } from './PromptLibraryView'
 import { SeoAuditView } from './SeoAuditView'
 import { MarketingKitView } from './MarketingKitView'
 import { MarketingDashboardView } from './MarketingDashboardView'
@@ -130,6 +148,16 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   media: 'ADMIN',
   feeds: 'STAFF',
   telephony: 'STAFF',
+  models: 'SUPER_ADMIN',
+  skills: 'SUPER_ADMIN',
+  departments: 'SUPER_ADMIN',
+  tasks: 'SUPER_ADMIN',
+  workflows: 'SUPER_ADMIN',
+  integrations: 'SUPER_ADMIN',
+  backup: 'SUPER_ADMIN',
+  dcc: 'SUPER_ADMIN',
+  workforce: 'SUPER_ADMIN',
+  pipeline: 'MANAGER',
 }
 
 interface NavItem {
@@ -155,6 +183,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'communications', label: 'Communications', icon: MessageSquare },
       { id: 'chat', label: 'Live Chat', icon: MessagesSquare },
       { id: 'telephony', label: 'Calls & SMS', icon: PhoneCall },
+      { id: 'pipeline', label: 'Communication Pipeline', icon: MessagesSquare },
     ],
   },
   {
@@ -186,8 +215,15 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
   {
     section: 'Intelligence',
     items: [
-      { id: 'agents', label: 'AI Workforce', icon: Bot },
+      { id: 'agents', label: 'Core Agents', icon: Bot },
+      { id: 'workforce', label: 'Configured Org Chart', icon: Network },
+      { id: 'dcc', label: 'DCC Certification', icon: ShieldCheck },
       { id: 'command', label: 'Command Center', icon: Terminal },
+      { id: 'models', label: 'Model Management', icon: Cpu },
+      { id: 'skills', label: 'Skill Registry', icon: Boxes },
+      { id: 'departments', label: 'Departments', icon: Building2 },
+      { id: 'tasks', label: 'Task Queue', icon: ListChecks },
+      { id: 'workflows', label: 'Workflow Builder', icon: Workflow },
       { id: 'memory', label: 'AI Memory', icon: BookOpen },
       { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
       { id: 'content', label: 'Content Studio', icon: Clapperboard },
@@ -226,6 +262,16 @@ const VIEW_TITLES: Record<ViewId, string> = {
   marketing: 'Marketing Kit',
   marketingos: 'Marketing Dashboard',
   knowledge: 'Knowledge Base',
+  models: 'AI Model Management',
+  skills: 'Skill Registry',
+  departments: 'Department Registry',
+  tasks: 'Task Queue',
+  workflows: 'Workflow Builder',
+  integrations: 'CRM Integrations',
+  workforce: 'Configured Org Chart Profiles',
+  pipeline: 'Communication Pipeline',
+  backup: 'Backup & Recovery',
+  dcc: 'Department Capability Certification',
   content: 'Content Studio',
   blog: 'Blog Studio',
   analytics: 'Analytics',
@@ -336,10 +382,29 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
   const viewKey = useMemo(() => `${view}:${clientId ?? ''}:${projectId ?? ''}`, [view, clientId, projectId])
 
   // Role-gated navigation: only advertise views this role can actually load.
-  const roleRank = me ? (ROLE_RANK[me.role ?? 'STAFF'] ?? 1) : 0
+  const userRole = me?.role ?? 'STAFF'
+  const roleRank = me ? (ROLE_RANK[userRole] ?? 1) : 0
+  const canAccessView = (id: ViewId): boolean => {
+    if (userRole === 'FINANCE') {
+      return ['dashboard', 'clients', 'payments', 'approvals', 'reports'].includes(id)
+    }
+    if (userRole === 'PROJECT_MANAGER') {
+      return ['dashboard', 'leads', 'clients', 'approvals', 'communications', 'chat', 'projects', 'pipeline', 'reports'].includes(id)
+    }
+    if (userRole === 'DEVELOPER') {
+      return ['dashboard', 'clients', 'communications', 'chat', 'projects'].includes(id)
+    }
+    if (userRole === 'SALES' || userRole === 'SUPPORT') {
+      return ['dashboard', 'leads', 'clients', 'communications', 'chat', 'telephony', 'marketing', 'prompts'].includes(id)
+    }
+    if (userRole === 'AUDITOR') {
+      return ['dashboard', 'leads', 'clients', 'payments', 'projects', 'reports'].includes(id)
+    }
+    return roleRank >= (ROLE_RANK[VIEW_MIN_ROLE[id]] ?? 4)
+  }
   const visibleNav = NAV.map((group) => ({
     ...group,
-    items: group.items.filter((item) => roleRank >= (ROLE_RANK[VIEW_MIN_ROLE[item.id]] ?? 4)),
+    items: group.items.filter((item) => canAccessView(item.id)),
   })).filter((group) => group.items.length > 0)
 
   // ---------------- auth states ----------------
@@ -499,6 +564,11 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
           </form>
 
           <div className="ml-auto flex items-center gap-1 md:ml-2">
+            {isReadOnlyRole({ role: me.role ?? 'STAFF' }) ? (
+              <span className="mr-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                Read-Only Auditor
+              </span>
+            ) : null}
             <NotificationCenter onNavigate={navigate} />
 
             <DropdownMenu>
@@ -564,7 +634,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
               ) : projectId ? (
                 <ProjectDetailView projectId={projectId} onBack={() => setProjectId(null)} />
               ) : view === 'dashboard' ? (
-                <DashboardView onOpenClient={openClient} />
+                <DashboardView role={userRole} onOpenClient={openClient} onNavigate={(id) => navigate(id as Parameters<typeof navigate>[0])} />
               ) : view === 'ops' ? (
                 <OpsView />
               ) : view === 'leads' ? (
@@ -585,6 +655,26 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <ReviewsView />
               ) : view === 'agents' ? (
                 <AgentsView />
+              ) : view === 'models' ? (
+                <ModelsView />
+              ) : view === 'skills' ? (
+                <SkillsView />
+              ) : view === 'departments' ? (
+                <DepartmentsView />
+              ) : view === 'tasks' ? (
+                <TaskQueueView />
+              ) : view === 'workflows' ? (
+                <WorkflowBuilderView />
+              ) : view === 'integrations' ? (
+                <IntegrationsView />
+              ) : view === 'backup' ? (
+                <BackupRecoveryView />
+              ) : view === 'dcc' ? (
+                <DepartmentCertificationView />
+              ) : view === 'workforce' ? (
+                <WorkforceView />
+              ) : view === 'pipeline' ? (
+                <PipelineView />
               ) : view === 'command' ? (
                 <CommandCenterView />
               ) : view === 'memory' ? (

@@ -67,6 +67,30 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // Engagement evidence per campaign (email-marketing parity): unique opens
+  // and unique clicks from REAL CampaignEvent rows. A campaign that was never
+  // sent (or whose SMTP channel is not configured) honestly shows zeros —
+  // the events table only ever receives rows from the public pixel/redirect.
+  const campaignIds = campaigns.map((c) => c.id)
+  const events = campaignIds.length
+    ? await db.campaignEvent.findMany({
+        where: { campaignId: { in: campaignIds } },
+        select: { campaignId: true, kind: true, email: true, createdAt: true },
+      })
+    : []
+  const engagement = new Map<string, { opens: number; clicks: number; lastEventAt: string | null }>()
+  for (const id of campaignIds) {
+    const mine = events.filter((e) => e.campaignId === id)
+    const openKeys = new Set(mine.filter((e) => e.kind === 'OPEN').map((e) => e.email ?? 'anonymous'))
+    const clickKeys = new Set(mine.filter((e) => e.kind === 'CLICK').map((e) => e.email ?? 'anonymous'))
+    const last = mine.reduce<Date | null>((acc, e) => (!acc || e.createdAt > acc ? e.createdAt : acc), null)
+    engagement.set(id, {
+      opens: openKeys.size,
+      clicks: clickKeys.size,
+      lastEventAt: last ? last.toISOString() : null,
+    })
+  }
+
   return Response.json({
     migrated,
     subscribers: subscribers.map((s) => ({
@@ -90,6 +114,7 @@ export async function GET(req: NextRequest) {
       agentExecId: c.agentExecId,
       createdBy: c.createdBy,
       createdAt: c.createdAt,
+      engagement: engagement.get(c.id) ?? { opens: 0, clicks: 0, lastEventAt: null },
     })),
     growth,
     stats: {
@@ -97,6 +122,8 @@ export async function GET(req: NextRequest) {
       unsubscribed: unsubCount,
       total: totalCount,
       campaignsSent: sentCount,
+      totalUniqueOpens: new Set(events.filter((e) => e.kind === 'OPEN').map((e) => `${e.campaignId}:${e.email ?? 'anonymous'}`)).size,
+      totalUniqueClicks: new Set(events.filter((e) => e.kind === 'CLICK').map((e) => `${e.campaignId}:${e.email ?? 'anonymous'}`)).size,
     },
   })
 }

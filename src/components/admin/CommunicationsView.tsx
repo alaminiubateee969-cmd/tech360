@@ -6,8 +6,14 @@ import {
   CheckCircle2,
   Loader2,
   MessageSquare,
+  MessagesSquare,
   RefreshCw,
   Send,
+  Table2,
+  Mail,
+  Smartphone,
+  Facebook,
+  Instagram,
 } from 'lucide-react'
 
 import {
@@ -71,6 +77,7 @@ export function CommunicationsView() {
   const [channel, setChannel] = useState('ALL')
   const [status, setStatus] = useState('ALL')
   const [page, setPage] = useState(1)
+  const [viewMode, setViewMode] = useState<'table' | 'inbox'>('table')
   const url = useMemo(() => {
     const p = new URLSearchParams()
     if (channel !== 'ALL') p.set('channel', channel)
@@ -135,19 +142,25 @@ export function CommunicationsView() {
   return (
     <div>
       <PageHeader
-        title="Communications"
-        description="Every outbound and inbound message across channels. Provider statuses are shown exactly as returned — nothing is assumed sent."
+        title="Communications — Unified Inbox"
+        description="Every outbound and inbound message across WhatsApp, Email, SMS, Facebook, Instagram, LinkedIn, X, WEB and PORTAL — chronological, channel-aware, with honest delivery ticks only when the provider confirms."
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refresh}
-            disabled={loading}
-            className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
-            aria-label="Refresh communications"
-          >
-            <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label="View mode" className="inline-flex overflow-hidden rounded-lg border border-slate-800">
+              <button type="button" aria-pressed={viewMode === 'table'} onClick={() => setViewMode('table')} className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition ${viewMode === 'table' ? 'bg-[#009FE3] text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}><Table2 className="size-3.5" /> Table</button>
+              <button type="button" aria-pressed={viewMode === 'inbox'} onClick={() => setViewMode('inbox')} className={`inline-flex items-center gap-1.5 border-l border-slate-800 px-3 py-1.5 text-xs font-semibold transition ${viewMode === 'inbox' ? 'bg-[#009FE3] text-white' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`}><MessagesSquare className="size-3.5" /> Inbox</button>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refresh}
+              disabled={loading}
+              className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
+              aria-label="Refresh communications"
+            >
+              <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} aria-hidden="true" /> Refresh
+            </Button>
+          </div>
         }
       />
 
@@ -212,6 +225,49 @@ export function CommunicationsView() {
         </div>
       ) : null}
 
+      <p className="mb-2 text-xs leading-relaxed text-slate-500">
+        Office hours (Asia/Dhaka) default <span className="font-semibold text-slate-300">10:00–19:00</span> — automated acknowledgment outside hours, human follow-up queued. Quiet hours, consent, opt-out and rate limits are enforced; no delivery tick is shown unless the provider returns it. Every message is persisted under its <span className="font-mono text-slate-300">Client ID</span> and visible in Client 360°.
+      </p>
+
+      {viewMode === 'inbox' ? (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-3 sm:p-4">
+          {comms.length === 0 && !loading ? (
+            <EmptyState icon={MessagesSquare} title="Inbox empty" description="Adjust channel/status filters or send the first message — persisted conversations will thread here." />
+          ) : (
+            <ol className="space-y-3" aria-label="Unified inbox — conversation bubbles">
+              {comms.map((c) => {
+                const inbound = (c.direction ?? '').toUpperCase() === 'IN'
+                const st = (c.status ?? '').toUpperCase()
+                const showTicks = ['SENT', 'DELIVERED', 'READ'].includes(st)
+                const ticks = st === 'READ' ? '✓✓' : st === 'DELIVERED' ? '✓✓' : st === 'SENT' ? '✓' : st === 'QUEUED' ? '…' : ''
+                return (
+                  <li key={c.id} className={`flex ${inbound ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${inbound ? 'bg-slate-800 text-slate-100 rounded-bl-sm' : 'bg-[#009FE3] text-white rounded-br-sm'}`}>
+                      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide opacity-70">
+                        <span className="rounded-full bg-black/15 px-1.5 py-0.5">{prettify(c.channel)}</span>
+                        <span>{inbound ? 'IN' : 'OUT'}</span>
+                        <span>·</span>
+                        <span>{fmtDate(c.sentAt ?? c.createdAt)}</span>
+                      </div>
+                      {c.subject ? <p className="mt-1 text-xs font-semibold opacity-90">{c.subject}</p> : null}
+                      <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{c.body || '—'}</p>
+                      <div className="mt-2 flex items-center justify-between gap-3 text-[11px] opacity-70">
+                        <span className="truncate">{c.recipient || c.sender || '—'} {c.providerMessageId ? <span className="font-mono text-[10px]">· {c.providerMessageId.slice(0, 12)}…</span> : null}</span>
+                        <span className="flex items-center gap-1 shrink-0">
+                          <StatusBadge status={c.status} />
+                          {showTicks ? <span className="ml-1 font-mono text-xs">{ticks}</span> : null}
+                        </span>
+                      </div>
+                      {c.error ? <p className="mt-1 text-xs opacity-80">{c.error}</p> : null}
+                    </div>
+                  </li>
+                )
+              })}
+            </ol>
+          )}
+        </div>
+      ) : null}
+      <div className={viewMode === 'inbox' ? 'hidden' : ''}>
       <DataTable
         columns={[
           { key: 'channel', header: 'Channel', cell: (c) => <span className="text-xs font-medium text-slate-300">{prettify(c.channel)}</span> },
@@ -253,6 +309,7 @@ export function CommunicationsView() {
         aria-label="Communications table"
       />
       <Pager page={page} total={data?.total ?? comms.length} pageSize={PAGE_SIZE} onPage={setPage} loading={loading} unit="messages" />
+      </div>
 
       {/* manual send */}
       <SectionCard

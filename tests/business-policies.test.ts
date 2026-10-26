@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import { createHmac } from 'node:crypto'
 import { describe, it } from 'node:test'
 
-import { canDecideApproval, hasRole, isSuperAdmin } from '../src/lib/access-policy'
+import { canDecideApproval, canViewFinancialDashboard, hasRole, isSuperAdmin } from '../src/lib/access-policy'
 import { evaluateHandoverGate, evaluateStripePayment, verifyStripeSignature } from '../src/lib/commerce-policy'
 import { normalizeUploadName, resolveExt, scanDocumentBytes } from '../src/lib/files'
-import { evaluateProjectClosure } from '../src/lib/lifecycle-policy'
+import { evaluateDeliveryAcceptance, evaluateProjectClosure } from '../src/lib/lifecycle-policy'
 
 const user = (role: string) => ({ role })
 
@@ -20,6 +20,14 @@ describe('authentication and RBAC policy', () => {
     assert.equal(hasRole(user('ADMIN'), 'ADMIN'), true)
     assert.equal(hasRole(user('SUPER_ADMIN'), 'ADMIN'), true)
     assert.equal(hasRole(user('ADMIN'), 'SUPER_ADMIN'), false)
+  })
+
+  it('restricts dashboard financial aggregates to Manager and higher', () => {
+    assert.equal(canViewFinancialDashboard(null), false)
+    assert.equal(canViewFinancialDashboard(user('STAFF')), false)
+    assert.equal(canViewFinancialDashboard(user('MANAGER')), true)
+    assert.equal(canViewFinancialDashboard(user('ADMIN')), true)
+    assert.equal(canViewFinancialDashboard(user('SUPER_ADMIN')), true)
   })
 
   it('reserves pending approval decisions for super administrators', () => {
@@ -45,6 +53,7 @@ describe('handover payment and authorization gate', () => {
   it('blocks expired links and allows fully paid released packages', () => {
     assert.deepEqual(evaluateHandoverGate({ status: 'RELEASED', totalAmount: 1000, paidAmount: 1000, expiryAt: new Date('2026-01-01'), now }), { allowed: false, code: 'EXPIRED' })
     assert.deepEqual(evaluateHandoverGate({ status: 'RELEASED', totalAmount: 1000, paidAmount: 1000, expiryAt: future, now }), { allowed: true })
+    assert.deepEqual(evaluateHandoverGate({ status: 'RELEASED', totalAmount: 0, paidAmount: 0, expiryAt: future, now }), { allowed: false, code: 'PAYMENT_INCOMPLETE' })
   })
 })
 
@@ -52,6 +61,7 @@ describe('file upload validation and quarantine policy', () => {
   it('requires MIME and extension agreement and normalizes traversal names', () => {
     assert.equal(resolveExt('application/pdf', 'invoice.exe'), null)
     assert.equal(resolveExt('application/pdf', 'invoice.pdf'), 'pdf')
+    assert.equal(resolveExt('application/typescript', 'app.ts'), 'ts')
     assert.equal(normalizeUploadName('../../private/brief.txt', 'document.txt'), 'brief.txt')
     assert.equal(normalizeUploadName('..\\..\\private\\brief.txt', 'document.txt'), 'brief.txt')
   })
@@ -68,15 +78,34 @@ describe('file upload validation and quarantine policy', () => {
     assert.equal(pdf.status, 'SCANNED')
     assert.match(pdf.notes.join(' '), /external malware scanning is not configured/)
   })
+
+  it('accepts text source files only after credential-pattern checks', () => {
+    const clean = scanDocumentBytes(Buffer.from('export const key = process.env.API_KEY\\nconsole.log("ready")'), 'application/typescript', 'app.ts')
+    const leaked = scanDocumentBytes(Buffer.from('const apiKey = "this-is-a-realistic-long-secret-value"'), 'application/typescript', 'app.ts')
+    assert.equal(clean.status, 'SCANNED')
+    assert.equal(leaked.status, 'QUARANTINED')
+    assert.match(leaked.notes.join(' '), /hard-coded secret/)
+  })
+})
+
+describe('client delivery acceptance policy', () => {
+  it('requires explicit receipt and working confirmations before acceptance', () => {
+    assert.deepEqual(evaluateDeliveryAcceptance({ received: false, working: false }), { accepted: false, status: 'PARTIAL', code: 'BOTH' })
+    assert.deepEqual(evaluateDeliveryAcceptance({ received: true, working: false }), { accepted: false, status: 'PARTIAL', code: 'NOT_WORKING' })
+    assert.deepEqual(evaluateDeliveryAcceptance({ received: false, working: true }), { accepted: false, status: 'PARTIAL', code: 'NOT_RECEIVED' })
+    assert.deepEqual(evaluateDeliveryAcceptance({ received: true, working: true }), { accepted: true, status: 'CONFIRMED' })
+  })
 })
 
 describe('project closure lifecycle policy', () => {
-  const complete = { totalAmount: 1000, paidAmount: 1000, taskStatuses: ['DONE', 'DONE'], deliveryStatus: 'CONFIRMED', handoverStatus: 'CONFIRMED' }
+  const complete = { totalAmount: 1000, paidAmount: 1000, taskStatuses: ['DONE', 'DONE'], deliveryStatus: 'CONFIRMED', deliveryAnswers: { received: true, working: true }, handoverStatus: 'CONFIRMED' }
 
   it('blocks closure on each missing business gate', () => {
     assert.deepEqual(evaluateProjectClosure({ ...complete, paidAmount: 999 }), { allowed: false, code: 'PAYMENT_INCOMPLETE' })
     assert.deepEqual(evaluateProjectClosure({ ...complete, taskStatuses: ['DONE', 'REVIEW'] }), { allowed: false, code: 'TASKS_INCOMPLETE' })
     assert.deepEqual(evaluateProjectClosure({ ...complete, deliveryStatus: 'PREPARED' }), { allowed: false, code: 'DELIVERY_NOT_ACCEPTED' })
+    assert.deepEqual(evaluateProjectClosure({ ...complete, deliveryAnswers: null }), { allowed: false, code: 'DELIVERY_NOT_ACCEPTED' })
+    assert.deepEqual(evaluateProjectClosure({ ...complete, deliveryAnswers: { received: true, working: false } }), { allowed: false, code: 'DELIVERY_NOT_ACCEPTED' })
     assert.deepEqual(evaluateProjectClosure({ ...complete, handoverStatus: 'DOWNLOADED' }), { allowed: false, code: 'HANDOVER_NOT_CONFIRMED' })
   })
 

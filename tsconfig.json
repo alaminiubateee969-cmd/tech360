@@ -39,6 +39,7 @@
   "exclude": [
     "deployment",
     "examples",
+    "legacy",
     "mini-services",
     "n8n",
     "node_modules"

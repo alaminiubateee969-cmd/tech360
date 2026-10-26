@@ -19,21 +19,49 @@ export const OTP_TTL_MS = 10 * 60_000
 export const OTP_MAX_ATTEMPTS = 5
 
 export type OtpChannel = 'EMAIL' | 'WHATSAPP' | 'SMS'
-export type OtpPayload = { sub: string; ch: OtpChannel; exp: number; n: string }
+export type OtpPayload = { sub: string; ch: OtpChannel; exp: number; n: string; recipientHash?: string }
 
 const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64url')
 const unb64 = (s: string) => Buffer.from(s, 'base64url').toString('utf8')
 const hmac = (secret: string, label: string, data: string) =>
   createHmac('sha256', secret).update(`${label}:${data}`).digest()
 
+function normalizeOtpRecipient(channel: OtpChannel, recipient: string): string {
+  return channel === 'EMAIL'
+    ? recipient.normalize('NFKC').trim().toLowerCase()
+    : recipient.replace(/[^\d]/g, '')
+}
+
+function recipientHash(secret: string, channel: OtpChannel, recipient: string): string {
+  const normalized = normalizeOtpRecipient(channel, recipient)
+  if (!normalized || normalized.length > 320) throw new Error('OTP recipient is invalid.')
+  return hmac(secret, 'otp-recipient', `${channel}\0${normalized}`).toString('hex')
+}
+
+/** Bind a challenge to the exact normalized contact that received the code. */
+export function otpChallengeMatchesRecipient(secret: string, payload: OtpPayload, recipient: string | null | undefined): boolean {
+  if (!secret || !payload.recipientHash || !recipient) return false
+  try {
+    return constantTimeEquals(payload.recipientHash, recipientHash(secret, payload.ch, recipient))
+  } catch {
+    return false
+  }
+}
+
 function deriveCode(secret: string, body: string): string {
   const n = hmac(secret, 'otp-code', body).readUInt32BE(0) % 1_000_000
   return String(n).padStart(6, '0')
 }
 
-export function issueOtp(secret: string, sub: string, ch: OtpChannel, now = Date.now()): { code: string; challenge: string } {
+export function issueOtp(secret: string, sub: string, ch: OtpChannel, now = Date.now(), recipient?: string): { code: string; challenge: string } {
   if (!secret) throw new Error('OTP secret is required')
-  const payload: OtpPayload = { sub, ch, exp: now + OTP_TTL_MS, n: randomBytes(9).toString('base64url') }
+  const payload: OtpPayload = {
+    sub,
+    ch,
+    exp: now + OTP_TTL_MS,
+    n: randomBytes(9).toString('base64url'),
+    ...(recipient ? { recipientHash: recipientHash(secret, ch, recipient) } : {}),
+  }
   const body = b64(JSON.stringify(payload))
   const sig = hmac(secret, 'otp-challenge', body).toString('base64url')
   return { code: deriveCode(secret, body), challenge: `${body}.${sig}` }
@@ -50,6 +78,7 @@ export function readChallenge(secret: string, challenge: unknown, now = Date.now
     const p = JSON.parse(unb64(body)) as OtpPayload
     if (typeof p.sub !== 'string' || typeof p.n !== 'string' || typeof p.exp !== 'number') return null
     if (!['EMAIL', 'WHATSAPP', 'SMS'].includes(p.ch)) return null
+    if (p.recipientHash !== undefined && (typeof p.recipientHash !== 'string' || !/^[a-f0-9]{64}$/.test(p.recipientHash))) return null
     if (p.exp < now) return null
     return p
   } catch {

@@ -1,40 +1,116 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
+import { hasCapability } from '@/lib/access-policy'
 import { guard, isResponse } from '@/lib/api-guard'
-import { sanitizeText } from '@/lib/security'
-import { escapeHtml } from '@/lib/comms'
-import { PAD_CSS, padHeader, padMeta, padFooter, PAD } from '@/lib/letterhead'
-import { featureEnabled, acceptedMethodsPhrase } from '@/lib/features'
+import { channelConfigured, escapeHtml, sendCommunication } from '@/lib/comms'
+import { acceptedMethodsPhrase, featureEnabled } from '@/lib/features'
+import { nextInvoiceNumber } from '@/lib/ids'
+import { DOCUMENT_HTML_HEADERS, renderInvoiceDocumentHtml } from '@/lib/invoice-document'
+import {
+  canEditInvoiceFields,
+  canTransitionInvoiceStatus,
+  computeInvoiceSettlement,
+  computeInvoiceTotals,
+  parseStoredLineItems,
+  resolveInvoiceTotalMinor,
+  type InvoiceLineItemInput,
+} from '@/lib/invoice-policy'
+import { PAD } from '@/lib/letterhead'
+import { audit, readJson, sanitizeEmail, sanitizeText } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
-const STATUS_STYLE: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  DRAFT: { label: 'Draft', color: '#526173', bg: '#F6F9FC', border: '#CBD8E6' },
-  SENT: { label: 'Issued', color: '#063B8F', bg: '#F4FAFF', border: '#B7DBF3' },
-  PARTIAL: { label: 'Partially paid', color: '#92400E', bg: '#FFFBEB', border: '#FDE68A' },
-  PAID: { label: 'PAID', color: '#14532D', bg: '#F0FDF4', border: '#BBF7D0' },
-  OVERDUE: { label: 'Overdue', color: '#7F1D1D', bg: '#FDECEC', border: '#FCA5A5' },
-  CANCELLED: { label: 'Cancelled', color: '#7C8DA0', bg: '#F6F9FC', border: '#CBD8E6' },
+// ============================================================
+// ADMIN SINGLE INVOICE LIFECYCLE
+//   GET   /api/admin/invoices/[number]         → JSON or ?format=html printable invoice
+//   PATCH /api/admin/invoices/[number]         → edit_draft | submit_for_approval |
+//                                                approve | issue | send | mark_overdue |
+//                                                void | cancel | reissue | mark_disputed
+// ============================================================
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ number: string }> }) {
+  const g = await guard(req, { capability: 'finance.read', capabilityOnly: true })
+  if (isResponse(g)) return g
+
+  const { number } = await params
+  const cleanNumber = sanitizeText(number, 40)
+  const invoice = await db.invoice.findUnique({
+    where: { number: cleanNumber },
+    include: {
+      client: { select: { id: true, clientId: true, name: true, businessName: true, email: true, country: true } },
+      project: { select: { id: true, code: true, name: true } },
+      payments: { orderBy: { createdAt: 'desc' }, include: { receipt: { select: { receiptNumber: true } } } },
+      refundCases: { orderBy: { createdAt: 'desc' } },
+    },
+  })
+  if (!invoice) return Response.json({ error: 'Invoice not found.' }, { status: 404 })
+
+  const totalMinor = resolveInvoiceTotalMinor({ totalMinor: invoice.totalMinor, amount: invoice.amount })
+  const settlement = computeInvoiceSettlement({
+    invoiceAmount: invoice.amount,
+    invoiceTotalMinor: totalMinor,
+    currentStatus: invoice.status,
+    dueAt: invoice.dueAt,
+    payments: invoice.payments,
+  })
+
+  if (req.nextUrl.searchParams.get('format') === 'html') {
+    const phrase = await acceptedMethodsPhrase()
+    const html = renderInvoiceDocumentHtml(
+      {
+        ...invoice,
+        totalMinor,
+        paidMinor: settlement.paidMinor,
+        remainingMinor: settlement.remainingMinor,
+      },
+      phrase,
+    )
+    return new Response(html, { status: 200, headers: DOCUMENT_HTML_HEADERS })
+  }
+
+  return Response.json({
+    invoice: {
+      ...invoice,
+      totalMinor,
+      paidMinor: settlement.paidMinor,
+      remainingMinor: settlement.remainingMinor,
+      paidAmount: settlement.paidAmount,
+      remainingAmount: settlement.remainingAmount,
+      parsedLineItems: parseStoredLineItems(
+        invoice.lineItems,
+        invoice.description || invoice.customerNotes || invoice.notes || 'Software engineering & delivery services',
+        totalMinor,
+      ),
+    },
+  })
 }
 
-const money = (n: number, currency: string) =>
-  `${currency === 'USD' ? '$' : ''}${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${currency === 'USD' ? '' : ` ${currency}`}`
-
-// GET /api/admin/invoices/[number] — official invoice on the company pad.
-// Admin-session auth (same guard as every admin API). Renders printable HTML.
-export async function GET(req: NextRequest, { params }: { params: Promise<{ number: string }> }) {
-  // feature-gate: invoices switch (Super Admin) — official documents refuse
-  // to render when invoicing is switched off (honest 503, never a blank doc)
-  if (!(await featureEnabled('invoices'))) {
-    return Response.json({ error: 'Invoicing is currently disabled by Super Admin (System → Feature Management).' }, { status: 503 })
-  }
-  const g = await guard(req, { minRole: 'MANAGER' })
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ number: string }> }) {
+  const g = await guard(req, { capability: 'finance.invoice.write', capabilityOnly: true })
   if (isResponse(g)) return g
+
   const { number } = await params
-  const clean = sanitizeText(number, 32).replace(/[^A-Za-z0-9-]/g, '')
+  const cleanNumber = sanitizeText(number, 40)
+  const raw = await readJson(req)
+  const action = (sanitizeText(raw.action, 40) || 'send').toLowerCase()
+
   const invoice = await db.invoice.findUnique({
-    where: { number: clean },
-    include: { client: { include: { payments: true } }, project: true, payments: true },
+    where: { number: cleanNumber },
+    include: {
+      client: { select: { id: true, clientId: true, name: true, businessName: true, email: true, whatsapp: true, phone: true, country: true } },
+      project: { select: { id: true, code: true, name: true } },
+      payments: { select: { id: true, amount: true, status: true, verifiedAt: true } },
+    },
+  })
+  if (!invoice) return Response.json({ error: 'Invoice not found.' }, { status: 404 })
+
+  const totalMinor = resolveInvoiceTotalMinor({ totalMinor: invoice.totalMinor, amount: invoice.amount })
+  const settlement = computeInvoiceSettlement({
+    invoiceAmount: invoice.amount,
+    invoiceTotalMinor: totalMinor,
+    currentStatus: invoice.status,
+    dueAt: invoice.dueAt,
+    payments: invoice.payments,
   })
   if (!invoice) return Response.json({ error: 'Invoice not found' }, { status: 404 })
 

@@ -1,8 +1,11 @@
 import { createHmac } from 'crypto'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { intakeLead, detectBusiness } from '@/lib/journey'
-import { sanitizeText, sanitizePhone, rateLimit, clientIp, logError, audit, constantTimeEquals } from '@/lib/security'
+import { intakeLead } from '@/lib/journey'
+import { sanitizeText, rateLimit, clientIp, logError, audit, constantTimeEquals } from '@/lib/security'
+import { toE164 } from '@/lib/phone'
+import { claimInboundWebhookEvent, finishInboundWebhookEvent, resolveVerifiedClientIdentity } from '@/lib/identity-resolver'
+import type { VerifiedIdentityProof } from '@/lib/identity-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -110,3 +113,68 @@ export async function POST(req: NextRequest) {
     return Response.json({ ok: false }, { status: 200 }) // always 200 to WhatsApp
   }
 }
+
+// --- Orchestrated reply (uses same one-question-at-a-time engine as web chat) ---
+async function handleWhatsAppReply(input: { client: { id: string; clientId: string; email: string | null; whatsapp: string | null; name: string; pipelineStage: string }; phone: string; text: string; providerMessageId: string }) {
+  // Find or create a ChatConversation for this WhatsApp client so history is unified
+  let convo = await db.chatConversation.findFirst({
+    where: { anonId: `wa:${input.phone}`, status: 'OPEN' },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (!convo) {
+    convo = await db.chatConversation.create({
+      data: { anonId: `wa:${input.phone}`, visitorName: input.client.name, visitorPhone: input.phone, clientId: input.client.id, status: 'OPEN' },
+    })
+  }
+  // Use chat orchestrator for contextual AI response (honest errors, one Q at a time)
+  const { handleCustomerMessage } = await import('@/lib/chat-orchestrator')
+  const result = await handleCustomerMessage({
+    channel: 'WHATSAPP',
+    conversationId: convo.id,
+    clientRowId: input.client.id,
+    clientId: input.client.clientId,
+    visitorBody: input.text,
+    visitorName: input.client.name,
+    visitorEmail: input.client.email,
+  })
+
+  if (!result.ok) return // orchestrator persisted honest error as SYSTEM message; we do not re-send
+
+  // Route outbound: if email is canonical for formal stage, send concise WhatsApp notification;
+  // otherwise send full reply on WhatsApp (same channel as inbound)
+  const isFormalStage = ['SCOPE_REVIEW', 'FINAL_SCOPE', 'CLIENT_APPROVAL', 'PAYMENT_PENDING', 'PROJECT_ACTIVE', 'DELIVERY', 'HANDOVER'].includes(input.client.pipelineStage)
+  const emailCanonical = Boolean(input.client.email) && isFormalStage
+
+  if (emailCanonical) {
+    // Formal detail should go to email — send concise WhatsApp notice
+    const { sendCommunication } = await import('@/lib/comms')
+    await sendCommunication({
+      clientId: input.client.id,
+      channel: 'WHATSAPP',
+      to: input.phone,
+      body: `Tech360 · Ref ${input.client.clientId}\nWe sent details to your email (${input.client.email}). Please check it and reply there when a detailed answer is needed.\n\n${result.reply.slice(0, 500)}`,
+      agentCode: 'CHAT-AI',
+    })
+    const { recordOutbound } = await import('@/lib/conversation-state')
+    await recordOutbound(input.client.id, input.client.clientId, result.reply, 'WHATSAPP').catch(() => null)
+  } else {
+    const { sendCommunication } = await import('@/lib/comms')
+    const sendRes = await sendCommunication({
+      clientId: input.client.id,
+      channel: 'WHATSAPP',
+      to: input.phone,
+      body: result.reply.slice(0, 4000),
+      agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
+    })
+    // Honest status: only claim sent if provider accepted
+    const { recordOutbound } = await import('@/lib/conversation-state')
+    await recordOutbound(input.client.id, input.client.clientId, result.reply, 'WHATSAPP').catch(() => null)
+    // Persist delivery status already handled by sendCommunication
+    if (!sendRes.result.ok) {
+      // Log the honest failure; customer already has SYSTEM message explaining fallback
+      const { logError: le } = await import('@/lib/security')
+      await le({ source: 'WEBHOOK', code: `WA_SEND_${sendRes.result.status}`, message: `Outbound WhatsApp ${sendRes.result.status}: ${sendRes.result.error ?? 'unknown'}`, clientId: input.client.clientId }).catch(() => null)
+    }
+  }
+}
+

@@ -54,7 +54,8 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "deployment/*.cjs",
     ".zscripts/**",
     "mini-services/**",
-    "n8n/**","node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
+    "n8n/**",
+    "legacy/**","node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
 }];
 
 export default eslintConfig;

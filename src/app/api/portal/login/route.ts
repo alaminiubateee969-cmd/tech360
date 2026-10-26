@@ -3,26 +3,26 @@ import { db } from '@/lib/db'
 import { signPortalToken, PORTAL_COOKIE, PORTAL_TTL_HOURS, normalizeContact, portalGate } from "@/lib/portal"
 import { readJson, sanitizeText, rateLimit, clientIp, audit } from '@/lib/security'
 import { channelConfigured, sendCommunication, escapeHtml } from '@/lib/comms'
-import { issueOtp, readChallenge, verifyOtp, maskContact, OTP_MAX_ATTEMPTS, type OtpChannel } from '@/lib/otp'
+import { issueOtp, readChallenge, verifyOtp, otpChallengeMatchesRecipient, maskContact, OTP_MAX_ATTEMPTS, type OtpChannel } from '@/lib/otp'
+import { recordVerifiedIdentityForClient } from '@/lib/identity-resolver'
 import { portalSecret } from '@/lib/portal'
+import { resolvePortalOtpMode } from '@/lib/portal-otp-policy'
 
 export const dynamic = 'force-dynamic'
 
-// Client portal login — two steps, all self-hosted:
-//   1. { clientId, contact }  -> matches the record, e-mails / WhatsApps / SMSes a
-//      6-digit one-time code to the contact ON FILE and returns a signed challenge.
+// Client portal login — production always requires a delivered one-time code:
+//   1. { clientId, contact }  -> matches the record and sends a 6-digit code to
+//      a configured contact on file; returns a signed challenge.
 //   2. { challenge, code }    -> verifies the code and sets the session cookie.
-// Client ID + e-mail alone is guessable (IDs are sequential), so the OTP proves the
-// person controls the inbox/phone. If NO delivery channel is configured the portal
-// falls back to the legacy single step (PORTAL_OTP=required refuses instead;
-// PORTAL_OTP=off forces the legacy step).
+// Sequential Client IDs and a matching contact are not sufficient authentication.
+// If no OTP delivery channel is configured, sign-in fails closed with 503.
+// The legacy contact-match step is available only in non-production development.
 // Rate limited, audit logged. Never reveals which field failed.
 
 const usedChallenges = new Map<string, number>() // nonce -> expiry (single-use, per process)
 
-function otpMode(): 'off' | 'required' | 'auto' {
-  const m = (process.env.PORTAL_OTP ?? '').toLowerCase()
-  return m === 'off' || m === 'required' ? m : 'auto'
+function otpMode(): 'off' | 'required' {
+  return resolvePortalOtpMode(process.env.PORTAL_OTP, process.env.NODE_ENV)
 }
 
 function pickChannel(client: { email: string | null; whatsapp: string | null; phone: string | null }): { ch: OtpChannel; to: string } | null {
@@ -70,10 +70,30 @@ export async function POST(req: NextRequest) {
       await audit({ actor: `portal:${p.sub}`, action: 'PORTAL_OTP_FAILED', clientId: p.sub, ip })
       return Response.json({ error: 'That code is not correct. Check the latest message and try again.' }, { status: 401 })
     }
-    usedChallenges.set(p.n, p.exp)
-    for (const [k, exp] of usedChallenges) if (exp < Date.now()) usedChallenges.delete(k)
     const client = await db.client.findFirst({ where: { clientId: p.sub, deletedAt: null } })
     if (!client) return Response.json({ error: 'Account not found.' }, { status: 401 })
+    const currentRecipient = p.ch === 'EMAIL'
+      ? client.email
+      : p.ch === 'WHATSAPP'
+        ? client.whatsapp || client.phone
+        : client.phone || client.whatsapp
+    if (!otpChallengeMatchesRecipient(secret, p, currentRecipient)) {
+      await audit({ actor: `portal:${client.clientId}`, action: 'PORTAL_OTP_RECIPIENT_CHANGED', clientId: client.clientId, ip, details: { channel: p.ch } })
+      return Response.json({ error: 'The contact on this code has changed. Please start sign-in again.', restart: true }, { status: 401 })
+    }
+    if (p.ch === 'EMAIL' && client.email) {
+      try {
+        await recordVerifiedIdentityForClient({
+          clientRowId: client.id,
+          proof: { type: 'EMAIL', value: client.email, verificationSource: 'EMAIL_OTP' },
+        })
+      } catch {
+        await audit({ actor: `portal:${client.clientId}`, action: 'PORTAL_EMAIL_IDENTITY_REVIEW_REQUIRED', clientId: client.clientId, ip })
+        return Response.json({ error: 'This email needs a secure account review before portal access can be completed. Please contact support.' }, { status: 409 })
+      }
+    }
+    usedChallenges.set(p.n, p.exp)
+    for (const [k, exp] of usedChallenges) if (exp < Date.now()) usedChallenges.delete(k)
     await audit({ actor: `client:${client.clientId}`, action: 'PORTAL_LOGIN', clientId: client.clientId, ip, details: { method: `otp:${p.ch}` } })
     return sessionResponse(client)
   }
@@ -111,10 +131,10 @@ export async function POST(req: NextRequest) {
   const issue = rateLimit(`portal-otp-issue:${client.clientId}`, 3, 10 * 60_000)
   if (!issue.ok) return Response.json({ error: 'A code was already sent recently. Please wait a few minutes before requesting another.' }, { status: 429 })
 
-  const { code, challenge } = issueOtp(portalSecret(), client.clientId, target.ch)
+  const { code, challenge } = issueOtp(portalSecret(), client.clientId, target.ch, Date.now(), target.to)
   const text = `Your Tech360 portal sign-in code is ${code}. It expires in 10 minutes. Never share this code — Tech360 staff will never ask for it.`
   const { result } = await sendCommunication({
-    clientId: client.clientId,
+    clientId: client.id,
     channel: target.ch,
     to: target.to,
     subject: 'Your Tech360 sign-in code',

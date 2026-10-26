@@ -28,13 +28,14 @@ export const AI_WORKFORCE_GOVERNANCE_ROLE = 'SUPER_ADMIN' as const
 
 /**
  * API path prefixes that expose AI Employee internals.
- * Every route under these prefixes must guard with AI_WORKFORCE_MIN_ROLE.
+ * Routes use AI_WORKFORCE_MIN_ROLE except the explicit agents/command operator surfaces.
  */
 export const AI_WORKFORCE_API_PREFIXES = [
   '/api/admin/agents',    // registry, profiles, prompts, execution, export
   '/api/admin/memory',    // agent / company / client memory
   '/api/admin/logs',      // audit, automation runs, agent failures
   '/api/admin/command',   // AI command center
+  '/api/admin/dcc',       // department capability certification
   '/api/admin/ops-status',// autonomous AI operations loop
   '/api/admin/knowledge', // private agent knowledge sources
   '/api/admin/n8n',       // agent workflow definitions
@@ -44,6 +45,7 @@ export const AI_WORKFORCE_API_PREFIXES = [
 export const AI_WORKFORCE_VIEWS = [
   'agents',
   'command',
+  'dcc',
   'memory',
   'logs',
   'knowledge',
@@ -170,6 +172,13 @@ export function authorizeAgentTool(
  * records. Cross-client reach requires an explicit company-wide scope, which
  * only executive/governance agents carry (`read:all`).
  */
+export function agentHasPermission(
+  agent: { permissions?: string | string[] | null },
+  permission: string,
+): boolean {
+  return toList(agent.permissions).includes(permission)
+}
+
 export function agentMayAccessClient(
   agent: { permissions?: string | string[] | null },
   actingForClientId: string | null,

@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
   const stage = sanitizeText(url.searchParams.get('stage') ?? '', 40).toUpperCase()
   const status = sanitizeText(url.searchParams.get('status') ?? '', 40).toUpperCase()
   const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1)
-  const perPage = 20
+  const rawPerPage = Number(url.searchParams.get('perPage') ?? url.searchParams.get('pageSize') ?? 20) || 20
+  const perPage = Math.min(100, Math.max(1, rawPerPage))
 
   const where = {
     deletedAt: null,

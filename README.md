@@ -17,6 +17,37 @@ The official **company letterhead** (owner-provided pad + logo) drives every doc
 
 ---
 
+## 0. Operating the platform
+
+Read **[`docs/OPERATIONS_GUIDEBOOK.md`](docs/OPERATIONS_GUIDEBOOK.md)** — the complete operating manual:
+deployment, daily/weekly/monthly checklists, website, CRM, delivery, finance, portal, AI workforce,
+governance, data, troubleshooting and incident runbooks. The latest code audit is
+**[`docs/FULL_PROJECT_CODE_AUDIT_2026-10-24.md`](docs/FULL_PROJECT_CODE_AUDIT_2026-10-24.md)**.
+
+### Review the whole product without a MySQL server
+
+```bash
+npm ci
+npm i --no-save @prisma/adapter-libsql@6.19.3 @libsql/client@0.15.15  # pin to the Prisma client version
+npm run preview:setup                                   # builds + seeds .preview/demo.db
+PREVIEW_SQLITE_URL=file:$PWD/.preview/demo.db PORTAL_OTP=off npm run dev
+```
+
+The two packages are preview-only and must match `@prisma/client` (6.19.3): the 7.x adapter renames its
+export to `PrismaLibSql`, so an unpinned install makes preview mode fail with
+`PrismaLibSQL is not a constructor`. `PORTAL_OTP=off` enables the development-only contact-match portal
+sign-in; without it the portal fails closed with `503` because no code-delivery channel is configured
+(production always requires a real one-time code).
+
+Then open `/#/` (website), `/#/portal` (client portal) and `/#/admin` (Super Admin console,
+`admin@tech360.local` / `Tech360-Demo-2026!`). Preview mode is refused when `NODE_ENV=production`
+(`src/lib/preview-db.ts`) and `.preview/` is git-ignored — it is never production storage.
+
+A second, unused prototype that PR #39 merged into `main` is preserved **out of the build path** in
+[`legacy/`](legacy/README.md) — it is not compiled, tested or deployed, and nothing in this application
+imports it. See [`docs/FINAL_VERIFICATION_2026-10-26.md`](docs/FINAL_VERIFICATION_2026-10-26.md) for the
+repair and its evidence.
+
 ## 1. Local setup
 
 The application uses **Node.js 22.x, npm, and MySQL**. Use a disposable/development MySQL database here—never point local commands at production.

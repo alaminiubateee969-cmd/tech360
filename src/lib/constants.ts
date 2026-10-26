@@ -2,17 +2,27 @@
 // TECH360 — Core constants & domain configuration
 // ============================================================
 
+import { PUBLIC_CONTACT } from '@/lib/site-contact'
+
 export const COMPANY = {
   legalName: 'TECH360 LLC',
   brand: 'Tech360',
   domain: 'bdtech360.com',
-  url: 'https://bdtech360.com',
+  url: PUBLIC_CONTACT.url,
   automationUrl: 'https://automation.bdtech360.com',
   missouriLLC: 'LC014737249',
   ein: '98-1940053',
   address: '117 S Lexington St Ste 100, Harrisonville, MO 64701, USA',
-  email: 'info@bdtech360.com',
+  email: PUBLIC_CONTACT.email,
   phone: '+1 (816) 380-8660',
+  /**
+   * Public contact — single source of truth.
+   * Owner decision 2026-10-24: no public WhatsApp number or wa.me link is
+   * published anywhere. Public enquiries arrive by webchat, the contact form
+   * and email only.
+   */
+  publicEmail: PUBLIC_CONTACT.email,
+
   founded: 2021,
 } as const
 
@@ -138,7 +148,7 @@ export const PIPELINE_LABELS: Record<string, string> = {
   CLOSED: 'Closed',
 }
 
-export const COMM_CHANNELS = ['WHATSAPP', 'EMAIL', 'SMS', 'FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'X', 'WEB', 'PORTAL'] as const
+export const COMM_CHANNELS = ['WHATSAPP', 'EMAIL', 'SMS', 'FACEBOOK', 'MESSENGER', 'INSTAGRAM', 'LINKEDIN', 'X', 'WEB', 'PORTAL'] as const
 export type CommChannel = (typeof COMM_CHANNELS)[number]
 
 export const SENSITIVE_APPROVAL_TYPES = [
@@ -152,13 +162,40 @@ export const SENSITIVE_APPROVAL_TYPES = [
   'LEGAL_COMM',
   'SENSITIVE_COMM',
   'AGENT_CREATE',
+  // A communication-pipeline message the policy requires an admin to
+  // approve before it reaches the client.
+  'PIPELINE_MESSAGE',
 ] as const
 
-export const ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF'] as const
+export const ROLES = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'FINANCE',
+  'PROJECT_MANAGER',
+  'MANAGER',
+  'DEVELOPER',
+  'SALES',
+  'SUPPORT',
+  'AUDITOR',
+  'STAFF',
+] as const
 
 // Role hierarchy (higher = more authority). Shared by server guard() and
 // client-side role-gated navigation — single source of truth.
-export const ROLE_RANK: Record<string, number> = { SUPER_ADMIN: 4, ADMIN: 3, MANAGER: 2, STAFF: 1 }
+// AUDITOR holds rank 2 for read visibility, while guard() strictly blocks all
+// mutating methods for read-only roles.
+export const ROLE_RANK: Record<string, number> = {
+  SUPER_ADMIN: 4,
+  ADMIN: 3,
+  FINANCE: 2,
+  PROJECT_MANAGER: 2,
+  MANAGER: 2,
+  AUDITOR: 2,
+  DEVELOPER: 1,
+  SALES: 1,
+  SUPPORT: 1,
+  STAFF: 1,
+}
 export type Role = (typeof ROLES)[number]
 
 export const SESSION_COOKIE = 't360_session'

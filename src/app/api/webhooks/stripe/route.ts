@@ -103,7 +103,9 @@ export async function POST(req: Request) {
   // activates the project on first payment, updates invoices,
   // issues confirmation + receipt trail, audits). ----
   try {
-    await verifyPayment(payment.id, 'system:stripe-webhook')
+    // The HMAC signature was verified above. This is provider evidence, the
+    // one non-human path the governance boundary accepts for verification.
+    await verifyPayment(payment.id, { type: 'PROVIDER', id: 'stripe', evidence: 'VERIFIED_SIGNATURE' })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'UNKNOWN'
     await audit({ actor: 'system:stripe-webhook', action: 'WEBHOOK_SETTLEMENT_FAILED', details: { paymentId: payment.id, error: message } }).catch(() => null)
