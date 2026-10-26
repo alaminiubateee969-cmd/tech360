@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import ZAI from 'z-ai-web-dev-sdk'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { featureEnabled } from '@/lib/features'
 import { runAgent, rememberMemory } from '@/lib/agents/engine'
 import { audit, readJson, sanitizeText } from '@/lib/security'
@@ -230,7 +231,7 @@ function validateDossier(raw: Record<string, unknown> | null): EnrichDossier | n
 // GET — latest stored dossier + suggested website URL
 // ------------------------------------------------------------
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const { id } = await params
   const ref = sanitizeText(id, 40)
@@ -267,7 +268,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // POST — run the real enrichment agent (with optional live fetch)
 // ------------------------------------------------------------
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const { id } = await params
   const ref = sanitizeText(id, 40)

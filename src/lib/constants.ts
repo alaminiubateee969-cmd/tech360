@@ -16,6 +16,73 @@ export const COMPANY = {
   founded: 2021,
 } as const
 
+// ------------------------------------------------------------
+// OFFICIAL INFO — exactly as printed on the owner-issued
+// company pad (TECH360_Official_A4_Letterhead.pdf, kept in
+// public/official/ + public/brand/), plus the platform
+// contacts in live use. Single source for the login screen,
+// the Official Info document (/api/official-info), the admin
+// Official Info view, and the shareable PDF generator script
+// (scripts/generate-official-info-pdf.py mirrors this data).
+// NOTE: the pad prints tech360.com / info@tech360.com while
+// the operating platform runs on bdtech360.com — both are
+// published, labelled, and never conflated.
+// ------------------------------------------------------------
+export const OFFICIAL_INFO = {
+  legalName: 'TECH360 LLC',
+  brand: 'TECH360',
+  tagline: 'CONNECT · INNOVATE · GROW',
+  padTagline: 'INNOVATE · AUTOMATE · TRANSFORM · SECURE',
+  motto: 'Smart Solutions for a Digital Tomorrow',
+  missouriLLC: 'LC014737249',
+  ein: '98-1940053',
+  entityType: 'Missouri Limited Liability Company (Sole Member)',
+  addressLines: ['117 S Lexington St Ste 100', 'Harrisonville, MO 64701, USA'],
+  address: '117 S Lexington St Ste 100, Harrisonville, MO 64701, USA',
+  // As printed on the official pad
+  padPhone: '+1 (347) 433 1200',
+  padWebsite: 'www.tech360.com',
+  padEmail: 'info@tech360.com',
+  // Platform contacts in live use
+  phone: '+1 (816) 380-8660',
+  email: 'info@bdtech360.com',
+  website: 'bdtech360.com',
+  websiteUrl: 'https://bdtech360.com',
+  liveSite: 'https://tech360.space-z.ai',
+  whatsapp: '+880 1327-100297',
+  whatsappUrl: 'https://wa.me/8801327100297',
+  servicesLine: 'Web | Cloud | AI | Data | Tech',
+  padServices: [
+    { name: 'Digital Solutions', note: 'Innovative & Scalable' },
+    { name: 'Website Design', note: 'Modern & Responsive' },
+    { name: 'SEO Optimization', note: 'Rank Higher, Grow Faster' },
+    { name: 'Tech Integration', note: 'Seamless & Efficient' },
+    { name: 'Global Connectivity', note: 'Anywhere, Anytime' },
+    { name: 'Cloud Services', note: 'Secure & Reliable' },
+  ],
+  adminLoginPath: '/#/admin',
+  clientPortalPath: '/#/portal',
+  letterheadPdf: '/official/TECH360_Official_A4_Letterhead.pdf',
+  officialInfoPdf: '/official/TECH360-Official-Info.pdf',
+  officialInfoDoc: '/api/official-info',
+} as const
+
+/** Console roles that sign in at /#/admin — one login, role decides access. */
+export const ADMIN_ROLES = [
+  {
+    role: 'SUPER_ADMIN',
+    label: 'Super Admin',
+    summary: 'Full control: team & roles, settings, feature/payment switches, internal operations, approvals, logs, official documents.',
+    can: ['Create / disable Admin, Manager & Staff accounts', 'Feature & payment-gateway governance', 'Final approvals, refunds & handovers', 'Internal automation, operations center, audit logs'],
+  },
+  {
+    role: 'ADMIN',
+    label: 'Admin',
+    summary: 'Operations: clients, projects, content, internal automation and day-to-day delivery — without Super-Admin-only governance.',
+    can: ['Manage clients, projects & payments (view)', 'Content Studio & Software Factory', 'Reports, media & feeds', 'Cannot change roles, switches or gateway credentials'],
+  },
+] as const
+
 export const TRACKING = {
   metaPixelId: '957513230517009',
   gtmId: 'GTM-TM87LDXK',

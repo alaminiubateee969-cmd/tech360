@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
 // Nothing here fabricates a rendered file: render/voice states are computed
 // from real configuration and reported honestly.
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'ADMIN' })
   if (isResponse(g)) return g
 
   const url = new URL(req.url)
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'ADMIN' })
   if (isResponse(g)) return g
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>

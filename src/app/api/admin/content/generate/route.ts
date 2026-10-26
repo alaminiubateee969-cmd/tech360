@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
+import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { readJson, sanitizeText, audit } from '@/lib/security'
 import { runAgent } from '@/lib/agents/engine'
 
@@ -30,7 +31,7 @@ schema_recommendations, E_E_A_T_evidence_needed, conversion_path and measurement
 }
 
 export async function POST(req: NextRequest) {
-  const g = await guard(req)
+  const g = await guard(req, { minRole: AI_WORKFORCE_MIN_ROLE })
   if (isResponse(g)) return g
   const raw = await readJson(req)
   const type = sanitizeText(raw.type, 30).toUpperCase()

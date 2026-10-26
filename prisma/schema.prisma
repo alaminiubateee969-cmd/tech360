@@ -969,6 +969,50 @@ model GeneratedAppEvent {
 // MEDIA STUDIO — script → shots → voiceover → captions → render
 // ============================================================
 
+// ============================================================
+// MARKETING DASHBOARD — social accounts + scheduled/published posts
+// Secrets are NEVER stored here: SocialAccount only records which
+// host env vars a connection uses and the last verification result.
+// ============================================================
+
+model SocialAccount {
+  id            String   @id @default(cuid())
+  platform      String   @unique // FACEBOOK | INSTAGRAM | LINKEDIN | X | YOUTUBE | TIKTOK
+  label         String?
+  externalId    String?  // Page ID / IG account ID / org ID / @handle (not a secret)
+  state         String   @default("NOT_CONFIGURED") // CONNECTED | NOT_CONFIGURED | PARTIAL | ERROR
+  envKeys       String   @db.Text // JSON array of env var NAMES the connection uses (names only)
+  lastVerifiedAt DateTime?
+  lastError     String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SocialPost {
+  id          String   @id @default(cuid())
+  campaignId  String?
+  assetId     String?
+  platform    String   // FACEBOOK | INSTAGRAM | LINKEDIN | X | YOUTUBE | TIKTOK
+  text        String   @db.LongText
+  hashtags    String?  @db.Text // JSON array
+  mediaUrl    String?  @db.Text
+  mediaPrompt String?  @db.Text
+  cta         String?
+  status      String   @default("DRAFT") // DRAFT | APPROVED | PUBLISHED | FAILED | NOT_CONFIGURED
+  externalId  String?
+  externalUrl String?  @db.Text
+  error       String?  @db.Text
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([platform])
+  @@index([status])
+  @@index([campaignId])
+}
+
 model MediaJob {
   id          String   @id @default(cuid())
   code        String   @unique // MS-0001

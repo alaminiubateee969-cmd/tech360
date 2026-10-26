@@ -19,7 +19,8 @@
     "schema:mysql": "node scripts/convert-schema-to-mysql.mjs",
     "schema:check": "node scripts/convert-schema-to-mysql.mjs --check",
     "start:bun": "NODE_ENV=production bun .next/standalone/server.js",
-    "hostinger:build": "npm run build"
+    "hostinger:build": "npm run build",
+    "check:conflicts": "node scripts/check-conflict-markers.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

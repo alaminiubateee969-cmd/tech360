@@ -182,7 +182,7 @@ export default function AboutView() {
                   { term: "EIN", detail: COMPANY.ein },
                   { term: "Registered address", detail: COMPANY.address },
                   { term: "Email", detail: COMPANY.email },
-                  { term: "Contact", detail: "AI assistant chat — on every page" },
+                  { term: "Contact", detail: "Live support chat — on every page" },
                   { term: "Founded", detail: COMPANY.founded },
                 ].map((row) => (
                   <div
@@ -212,8 +212,8 @@ export default function AboutView() {
                   scope: "Delivery model, architecture standards, engineering accountability.",
                 },
                 {
-                  role: "Head of Automation & AI",
-                  scope: "Automation backbone, agent governance, integration reliability.",
+                  role: "Head of Automation",
+                  scope: "Automation backbone, systems governance, integration reliability.",
                 },
                 {
                   role: "Head of Client Delivery",
