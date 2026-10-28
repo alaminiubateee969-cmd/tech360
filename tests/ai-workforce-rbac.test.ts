@@ -18,7 +18,9 @@ import { describe, it } from 'node:test'
 import { hasRole, isSuperAdmin } from '../src/lib/access-policy'
 import {
   AI_WORKFORCE_API_PREFIXES,
+  AI_OPERATOR_MIN_ROLE,
   AI_WORKFORCE_MIN_ROLE,
+  AI_WORKFORCE_GOVERNANCE_ROLE,
   AI_WORKFORCE_VIEWS,
   agentMayAccessClient,
   authorizeAgentTool,
@@ -66,7 +68,9 @@ describe('AI workforce: every protected route requires ADMIN or SUPER_ADMIN', ()
       assert.ok(guards.length > 0, `${rel} does not call guard() at all`)
       for (const g of guards) {
         const declaresPolicy =
+          g.includes('AI_OPERATOR_MIN_ROLE') ||
           g.includes('AI_WORKFORCE_MIN_ROLE') ||
+          g.includes('AI_WORKFORCE_GOVERNANCE_ROLE') ||
           g.includes('AI_WORKFORCE_GOVERNANCE_ROLE') ||
           g.includes("minRole: 'SUPER_ADMIN'")
         assert.ok(
@@ -82,7 +86,7 @@ describe('AI workforce: only Super Admin and Admin can reach the workforce', () 
   it('denies CLIENT, STAFF and MANAGER', () => {
     for (const role of ['CLIENT', 'GUEST', 'STAFF', 'MANAGER', 'PROJECT_MEMBER']) {
       assert.equal(
-        hasRole(user(role), AI_WORKFORCE_MIN_ROLE),
+        hasRole(user(role), AI_OPERATOR_MIN_ROLE),
         false,
         `${role} must not reach private workforce internals`,
       )
@@ -90,19 +94,20 @@ describe('AI workforce: only Super Admin and Admin can reach the workforce', () 
   })
 
   it('allows SUPER_ADMIN and ADMIN only', () => {
-    assert.equal(hasRole(user('SUPER_ADMIN'), AI_WORKFORCE_MIN_ROLE), true)
-    assert.equal(hasRole(user('ADMIN'), AI_WORKFORCE_MIN_ROLE), true)
+    assert.equal(hasRole(user('SUPER_ADMIN'), AI_OPERATOR_MIN_ROLE), true)
+    assert.equal(hasRole(user('ADMIN'), AI_OPERATOR_MIN_ROLE), true)
     assert.equal(isSuperAdmin(user('SUPER_ADMIN')), true)
     assert.equal(isSuperAdmin(user('ADMIN')), false)
   })
 
   it('governance (create / export / settings) stays SUPER_ADMIN only', () => {
-    assert.equal(hasRole(user('SUPER_ADMIN'), 'SUPER_ADMIN'), true)
-    assert.equal(hasRole(user('ADMIN'), 'SUPER_ADMIN'), false)
+    assert.equal(AI_WORKFORCE_MIN_ROLE, AI_WORKFORCE_GOVERNANCE_ROLE)
+    assert.equal(hasRole(user('SUPER_ADMIN'), AI_WORKFORCE_MIN_ROLE), true)
+    assert.equal(hasRole(user('ADMIN'), AI_WORKFORCE_MIN_ROLE), false)
   })
 
   it('denies anonymous requests', () => {
-    assert.equal(hasRole(null, AI_WORKFORCE_MIN_ROLE), false)
+    assert.equal(hasRole(null, AI_OPERATOR_MIN_ROLE), false)
     assert.equal(isSuperAdmin(null), false)
   })
 })

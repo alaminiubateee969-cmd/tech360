@@ -1,6 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'crypto'
 import { db } from '@/lib/db'
-import type { Session } from '@prisma/client'
 import { cookies } from 'next/headers'
 import { SESSION_COOKIE, SESSION_TTL_HOURS, CSRF_COOKIE } from '@/lib/constants'
 export { hasRole, isSuperAdmin } from '@/lib/access-policy'
@@ -33,6 +32,17 @@ export function sha256(input: string): string {
 // ------------------------------------------------------------
 // Sessions — DB-backed, HttpOnly cookie, expiry, lockout
 // ------------------------------------------------------------
+// Keep the transport shape local so pure auth code remains type-checkable
+// before Prisma Client has been generated (for example in offline tooling).
+type Session = {
+  id: string
+  token: string
+  userId: string
+  expiresAt: Date
+  ip: string | null
+  userAgent: string | null
+  createdAt: Date
+}
 export async function createSession(userId: string, ip?: string, userAgent?: string): Promise<Session> {
   const token = randomBytes(32).toString('hex')
   const expiresAt = new Date(Date.now() + SESSION_TTL_HOURS * 3600 * 1000)

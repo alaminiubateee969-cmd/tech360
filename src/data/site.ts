@@ -176,6 +176,35 @@ export const SERVICES: Service[] = [
       "A real-estate developer replacing agent-owned spreadsheets with a CRM where every enquiry, site visit, booking and installment lives on one client timeline.",
   },
   {
+    slug: "whatsapp-ai-sales-crm",
+    icon: "MessagesSquare",
+    title: "WhatsApp-First AI Sales CRM",
+    tagline: "A shared sales workspace for teams that sell through conversation.",
+    problem:
+      "When leads, WhatsApp conversations and follow-ups are split across personal phones and spreadsheets, teams lose context, duplicate work and miss handoffs.",
+    solution:
+      "We scope, configure and customize a dedicated WhatsApp-first sales CRM around your pipeline. DeskcommCRM is one open-source, self-hosted candidate—not TECH360’s internal CRM—and is used only if its current features, license notices, WhatsApp connection options, security and hosting fit are verified for your project. The exact deployment and ongoing costs are agreed in writing before work begins.",
+    features: [
+      "Shared team inbox with assignment and human handoff",
+      "Configurable contact records, tags and sales pipelines",
+      "AI-assisted lead qualification with defined escalation rules",
+      "Event-triggered follow-ups and external integrations",
+      "A separately scoped client deployment with access controls",
+      "Documented setup, backups, training and handover plan",
+    ],
+    tech: ["DeskcommCRM (MIT)", "Docker", "Next.js", "Supabase / PostgreSQL", "WhatsApp Cloud API / WAHA"],
+    workflow: [
+      "Map the sales process, team roles, locations and messaging use cases",
+      "Review the selected release, license, provider requirements and hosting evidence",
+      "Agree the isolated architecture, recurring costs, data boundaries and written scope",
+      "Prepare a preview or sandbox using non-production data for approval",
+      "Configure, integrate and test opt-out, human handoff, delivery failures and backups",
+      "Handover client-owned accounts, documentation, access and agreed support",
+    ],
+    example:
+      "Illustrative scenario: a retailer uses a client-owned CRM instance for its sales pipeline and shared inbox; AI handles only approved routine qualification, with uncertain or sensitive cases routed to staff. This is not a verified customer deployment or guaranteed outcome.",
+  },
+  {
     slug: "client-portals",
     icon: "KeyRound",
     title: "Client Portals",
@@ -1569,7 +1598,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     "slug": "privacy",
     "title": "Privacy Policy",
     "summary": "What information TECH360 collects through its website and services, why it is used, how it is protected and retained, and the choices available to you.",
-    "updated": "October 23, 2026",
+    "updated": "October 28, 2026",
     "sections": [
       {
         "heading": "1. Who we are",
@@ -1581,17 +1610,17 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         "heading": "2. Information we collect",
         "body": [
-          "Depending on your interaction with us, information you provide may include your name, business name, email address, Client ID or customer reference, business telephone or optional WhatsApp number, country, business type, project requirements, preferences, documents, instructions, and approvals submitted through website forms, chat, email, or other communication channels.",
+          "Depending on your interaction with us, information you provide may include your name, business name, email address, Client ID or customer reference, business telephone, mobile number or optional WhatsApp number, country, business type, project requirements, preferences, documents, instructions, and approvals submitted through website forms, chat, email, SMS, or other communication channels.",
           "Technical information may include IP address and request metadata, browser and device information, pages requested, referring pages, security events, error logs, and abuse-prevention records needed to operate and secure the website.",
           "Client and service records may include relevant communications, requirements, project approvals, invoices, payment records, delivery status, and handover documentation associated with a Client ID.",
-          "You are not required to provide information that is unnecessary for your enquiry or engagement. Providing a phone or WhatsApp number is optional. Email verification status is recorded through verified identity records when an approved verification step is completed; a typed email address alone is not proof of ownership."
+          "You are not required to provide information that is unnecessary for your enquiry or engagement. For webchat, email is required only when you choose email as the first reply channel; a mobile number is required only when you choose SMS first. A phone or WhatsApp number is otherwise optional. Email verification status is recorded through verified identity records when an approved verification step is completed; a typed email address alone is not proof of ownership."
         ]
       },
       {
         "heading": "3. Why we collect and use information",
         "body": [
           "We use information to respond to enquiries, understand requirements, prepare proposals or quotations, identify buyers and maintain accurate Client ID records, deliver requested services and documents, send relevant service-related updates, manage approvals and projects, process invoices and payments, provide support, secure our systems, prevent fraud and abuse, investigate technical problems, and meet legal, accounting, tax, contractual, or regulatory obligations.",
-          "Contact consent for an enquiry is recorded separately from optional marketing consent. We do not send marketing messages based only on a project enquiry. We send marketing communications only where the applicable consent or other lawful basis exists, and unsubscribe choices are respected.",
+          "Contact consent for an enquiry is recorded separately from optional marketing consent. When a visitor explicitly selects SMS first and consents, we may use the supplied mobile number for service-related texts about that enquiry; provider availability and message/data rates may apply. We do not send marketing texts or other marketing messages based only on a project enquiry. We send marketing communications only where the applicable consent or other lawful basis exists, and unsubscribe choices are respected.",
           "Depending on the circumstances and applicable law, processing may be based on performing a contract, taking steps requested before a contract, legitimate business interests, consent, or compliance with legal obligations.",
           "We do not sell personal information. TECH360 does not use buyer project data to train third-party AI models."
         ]
@@ -2029,6 +2058,7 @@ export const PROJECT_TYPES: string[] = [
   "Enterprise Website",
   "eCommerce Platform",
   "Custom CRM",
+  "WhatsApp-First AI Sales CRM",
   "Client Portal",
   "Business Dashboard",
   "WhatsApp Automation",

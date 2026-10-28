@@ -71,6 +71,89 @@ function Showcase({ label, children, note }: { label: string; children: React.Re
   )
 }
 
+function PlaygroundTabs() {
+  const [tab, setTab] = useState<'crm' | 'inbox' | 'marketing'>('crm')
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-wrap gap-1 border-b border-slate-200 p-2" role="tablist" aria-label="Playground contexts">
+        {[
+          { id: 'crm', label: 'CRM board' },
+          { id: 'inbox', label: 'Inbox bubbles' },
+          { id: 'marketing', label: 'Marketing calendar' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id as typeof tab)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tab === t.id ? 'bg-[#063B8F] text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            {t.label}
+          </button>
+        ))}
+        <span className="ml-auto hidden items-center gap-1.5 text-xs text-slate-500 sm:inline-flex"><Search className="size-3" /> Search <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5">Tags</span> <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">Badges</span></span>
+      </div>
+      <div className="p-5">
+        {tab === 'crm' ? (
+          <div className="space-y-3">
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {[
+                { stage: 'NEW', items: ['Acme Ltd — TECH-2026-0001', 'Beta Co — TECH-2026-0002'] },
+                { stage: 'CONTACTED', items: ['Gamma LLC — TECH-2026-0003'] },
+                { stage: 'DEVELOPMENT', items: ['Delta — PRJ-2026-0001'] },
+              ].map((col) => (
+                <div key={col.stage} className="w-[200px] shrink-0 rounded-lg border border-slate-200 bg-[#F7FAFC] p-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-700">{col.stage}</p>
+                  <div className="mt-2 space-y-2">
+                    {col.items.map((it) => (
+                      <div key={it} className="rounded-md border border-slate-200 bg-white p-2 text-xs text-slate-700 shadow-sm">{it}</div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs"><Badge variant="outline">Filter: stage = NEW</Badge><Badge variant="secondary">Priority: High</Badge><span className="text-slate-500">Kanban · drag between stages · keyboard: Space to pick, arrows to move</span></div>
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">Empty state: <span className="font-semibold text-slate-700">No leads match these filters</span> — clear filters to see all records.</div>
+          </div>
+        ) : tab === 'inbox' ? (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <div className="flex justify-start"><span className="max-w-[75%] rounded-2xl rounded-bl-sm bg-slate-100 px-3 py-2 text-sm text-slate-800">Hi, I need an e-commerce website.</span></div>
+              <div className="flex justify-end"><span className="max-w-[75%] rounded-2xl rounded-br-sm bg-[#009FE3] px-3 py-2 text-sm text-white">Great — what do you sell, and how do you take payments?</span></div>
+              <div className="flex justify-start"><span className="max-w-[75%] rounded-2xl rounded-bl-sm bg-slate-100 px-3 py-2 text-sm text-slate-800">Fashion — bKash/Nagad + cards. <span className="ml-1 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white">DELIVERED ✓✓</span></span></div>
+            </div>
+            <div className="flex gap-2"><Input placeholder="Search conversations…" className="h-9 flex-1" /><Button size="sm">Send</Button></div>
+            <p className="text-xs text-slate-500">Message bubbles · timestamps · channel · delivery ticks only when provider confirms · assignment · takeover.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700"><Calendar className="size-4 text-[#009FE3]" /> October 2026 — publishing queue</div>
+            <div className="grid grid-cols-7 gap-1 text-xs">
+              {Array.from({ length: 28 }).map((_, i) => (
+                <div key={i} className={`rounded border p-1.5 ${i === 10 ? 'bg-[#009FE3] text-white border-[#009FE3]' : i % 7 === 0 ? 'bg-slate-50 border-slate-200' : 'border-slate-200 bg-white'}`}>
+                  <span className="font-mono text-[11px]">{i + 1}</span>
+                  {i === 10 ? <span className="mt-1 block text-[10px] leading-tight">Campaign: Autumn launch</span> : i === 14 ? <span className="mt-1 block text-[10px] text-emerald-600">Queued</span> : null}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs"><Badge>Drafts 3</Badge><Badge variant="outline">Scheduled 2</Badge><Badge variant="secondary">Published 12</Badge></div>
+            <div className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">Skeleton loader when fetching, empty “No campaigns yet”, and error “Could not load — retry” are all covered.</div>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2 border-t border-slate-200 bg-[#F7FAFC] p-3 text-xs text-slate-600">
+        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 border border-slate-200"><MessageCircle className="size-3" /> Notifications</span>
+        <span>· File upload</span>
+        <span>· Timeline</span>
+        <span>· Media player</span>
+        <span>· Agent execution card</span>
+        <span>· Approval dialog · Light & dark reviewed</span>
+      </div>
+    </div>
+  )
+}
+
+
 import { DiagramGallery } from './DiagramGallery'
 
 export default function DesignKitView() {

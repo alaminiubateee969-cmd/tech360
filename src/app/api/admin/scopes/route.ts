@@ -12,6 +12,7 @@ import {
   type ScopeSectionKey,
 } from '@/lib/scope-validator'
 import { finalizeScopeAndSend } from '@/lib/journey'
+import { normalizeFactoryScopeManifest } from '@/lib/factory/scope-manifest'
 
 export const dynamic = 'force-dynamic'
 
@@ -149,8 +150,14 @@ export async function POST(req: NextRequest) {
     if (!cr.ok) {
       return Response.json(cr, { status: 400 })
     }
+    let changeRequestContent = cr.content
+    if (raw.factoryManifest !== undefined) {
+      const manifest = normalizeFactoryScopeManifest(raw.factoryManifest)
+      if (!manifest.ok) return Response.json({ ok: false, code: 'INVALID_FACTORY_MANIFEST', error: manifest.error }, { status: 400 })
+      changeRequestContent = { ...cr.content, factoryManifest: manifest.manifest }
+    }
 
-    const validation = validate21PointScope(cr.content)
+    const validation = validate21PointScope(changeRequestContent)
     if (!validation.valid) {
       return Response.json(
         {
@@ -170,7 +177,7 @@ export async function POST(req: NextRequest) {
         version: nextVersion,
         status: 'AWAITING_ADMIN_APPROVAL',
         summary: summary || `Change Request v${nextVersion} (supersedes v${baseScope.version})`,
-        content: JSON.stringify(cr.content),
+        content: JSON.stringify(changeRequestContent),
         generatedBy: `MANUAL:${g.user.email}`,
       },
     })
@@ -182,7 +189,7 @@ export async function POST(req: NextRequest) {
         description: `Reason: ${sanitizeText(raw.reason, 500)} | Cost: ${sanitizeText(raw.costImpact, 200)} | Timeline: ${sanitizeText(raw.timelineImpact, 200)}`,
         clientId: client.id,
         projectId: created.projectId,
-        payload: JSON.stringify({ scopeId: created.id, version: created.version, changeRequest: cr.content.changeRequest }),
+        payload: JSON.stringify({ scopeId: created.id, version: created.version, changeRequest: changeRequestContent.changeRequest, factoryManifestChanged: raw.factoryManifest !== undefined }),
         risk: 'HIGH',
         requestedBy: g.user.email,
       },
@@ -208,10 +215,17 @@ export async function POST(req: NextRequest) {
   }
 
   // Initial manual SOW draft (no AI required — full manual fallback)
-  const rawContent =
+  const baseRawContent =
     raw.content && typeof raw.content === 'object' && !Array.isArray(raw.content)
       ? (raw.content as Record<string, unknown>)
       : { title: sanitizeText(raw.title, 200) || `${client.businessName || client.name} — Scope of Work`, summary, sections: raw.sections ?? {} }
+  let rawContent = baseRawContent
+  const factoryManifestInput = raw.factoryManifest !== undefined ? raw.factoryManifest : baseRawContent.factoryManifest
+  if (factoryManifestInput !== undefined) {
+    const manifest = normalizeFactoryScopeManifest(factoryManifestInput)
+    if (!manifest.ok) return Response.json({ ok: false, code: 'INVALID_FACTORY_MANIFEST', error: manifest.error }, { status: 400 })
+    rawContent = { ...baseRawContent, factoryManifest: manifest.manifest }
+  }
 
   const normalized = normalizeTo21PointScope(rawContent, {
     clientId: client.clientId,
@@ -283,12 +297,19 @@ export async function PATCH(req: NextRequest) {
     }
 
     const current = parseJsonSafe(scope.content)
+    let manifestUpdate: Record<string, unknown> = {}
+    if (raw.factoryManifest !== undefined) {
+      const manifest = normalizeFactoryScopeManifest(raw.factoryManifest)
+      if (!manifest.ok) return Response.json({ ok: false, code: 'INVALID_FACTORY_MANIFEST', error: manifest.error }, { status: 400 })
+      manifestUpdate = { factoryManifest: manifest.manifest }
+    }
     const nextSections =
       raw.sections && typeof raw.sections === 'object' && !Array.isArray(raw.sections)
         ? { ...(current.sections as Record<string, unknown> | undefined), ...(raw.sections as Record<string, unknown>) }
         : current.sections
     const merged = {
       ...current,
+      ...manifestUpdate,
       ...(raw.summary !== undefined ? { summary: sanitizeText(raw.summary, 1000) } : {}),
       sections: nextSections,
     }

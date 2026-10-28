@@ -83,7 +83,8 @@ export async function GET(req: NextRequest) {
     const mine = events.filter((e) => e.campaignId === id)
     const openKeys = new Set(mine.filter((e) => e.kind === 'OPEN').map((e) => e.email ?? 'anonymous'))
     const clickKeys = new Set(mine.filter((e) => e.kind === 'CLICK').map((e) => e.email ?? 'anonymous'))
-    const last = mine.reduce<Date | null>((acc, e) => (!acc || e.createdAt > acc ? e.createdAt : acc), null)
+    let last: Date | null = null
+    for (const event of mine) if (!last || event.createdAt > last) last = event.createdAt
     engagement.set(id, {
       opens: openKeys.size,
       clicks: clickKeys.size,

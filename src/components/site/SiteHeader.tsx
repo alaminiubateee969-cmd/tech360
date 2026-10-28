@@ -42,6 +42,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "AI Agent Systems", href: "#/services/ai-agent-systems", desc: "Specialized assistants for research, operations and service", icon: Bot },
       { label: "AI Business Automation", href: "#/services/ai-business-automation", desc: "Connected workflows that remove repetitive manual work", icon: Workflow },
       { label: "Customer Messaging Automation", href: "#/services/whatsapp-automation", desc: "Multichannel customer conversations with human oversight", icon: MessageCircle },
+      { label: "WhatsApp-First AI Sales CRM", href: "#/services/whatsapp-ai-sales-crm", desc: "A separately scoped CRM setup for conversation-led sales", icon: MessageCircle },
       { label: "Business Dashboards & BI", href: "#/services/business-dashboards", desc: "KPIs, reports and decisions from one screen", icon: BarChart3 },
       { label: "Workflow Automation (n8n)", href: "#/services/n8n-workflow-automation", desc: "Integrations and automations across your existing tools", icon: Sparkles },
       { label: "All services", href: "#/services", desc: "The complete service catalogue", icon: Layers },

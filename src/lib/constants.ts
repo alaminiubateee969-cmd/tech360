@@ -59,8 +59,6 @@ export const OFFICIAL_INFO = {
   website: 'bdtech360.com',
   websiteUrl: 'https://bdtech360.com',
   liveSite: 'https://tech360.space-z.ai',
-  whatsapp: '+880 1327-100297',
-  whatsappUrl: 'https://wa.me/8801327100297',
   servicesLine: 'Web | Cloud | AI | Data | Tech',
   padServices: [
     { name: 'Digital Solutions', note: 'Innovative & Scalable' },
@@ -211,7 +209,7 @@ export const BUSINESS_TYPES = [
 ] as const
 
 export const PROJECT_TYPES = [
-  'Business Website', 'Enterprise Website', 'eCommerce Platform', 'Custom CRM', 'Client Portal',
+  'Business Website', 'Enterprise Website', 'eCommerce Platform', 'Custom CRM', 'WhatsApp-First AI Sales CRM', 'Client Portal',
   'Business Dashboard', 'WhatsApp Automation', 'Email/SMS Automation', 'n8n Workflow Automation',
   'AI Agent System', 'API Integration', 'Database System', 'Cloud Deployment',
   'Maintenance & Support', 'Digital Transformation', 'Other',

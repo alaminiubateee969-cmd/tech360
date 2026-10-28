@@ -16,6 +16,8 @@ import { describe, it } from 'node:test'
 const ROOT = join(__dirname, '..')
 const schema = readFileSync(join(ROOT, 'prisma/schema.prisma'), 'utf8')
 const migration = readFileSync(join(ROOT, 'prisma/migrations/1_ai_software_factory/migration.sql'), 'utf8')
+const scopeBindingMigration = readFileSync(join(ROOT, 'prisma/migrations/12_factory_scope_binding/migration.sql'), 'utf8')
+const allFactoryMigrations = migration + String.fromCharCode(10) + scopeBindingMigration
 
 const MODELS = ['GeneratedApp', 'GeneratedAppFile', 'GeneratedAppEvent', 'MediaJob', 'MediaShot', 'FeedSource', 'FeedItem', 'CallLog']
 
@@ -60,7 +62,10 @@ function mysqlType(f: Field): string {
 function tableSql(model: string): string {
   const m = new RegExp(`CREATE TABLE \`${model}\` \\(([\\s\\S]*?)\\n\\) DEFAULT CHARACTER SET`, 'i').exec(migration)
   assert.ok(m, `no CREATE TABLE for ${model} in the migration`)
-  return m[1]
+  const additive = model === 'GeneratedApp'
+    ? new RegExp(`ALTER TABLE \`${model}\`([\\s\\S]*?);`, 'i').exec(scopeBindingMigration)?.[1] ?? ''
+    : ''
+  return `${m[1]}${String.fromCharCode(10)}${additive}`
 }
 
 describe('migration parity: every new model exists', () => {
@@ -106,6 +111,8 @@ describe('migration parity: indexes match @@index / @@unique', () => {
     ['GeneratedApp', 'GeneratedApp_status_idx'],
     ['GeneratedApp', 'GeneratedApp_vertical_idx'],
     ['GeneratedApp', 'GeneratedApp_clientId_idx'],
+    ['GeneratedApp', 'GeneratedApp_projectId_idx'],
+    ['GeneratedApp', 'GeneratedApp_scopeId_idx'],
     ['GeneratedAppFile', 'GeneratedAppFile_appId_path_key'],
     ['GeneratedAppFile', 'GeneratedAppFile_appId_idx'],
     ['GeneratedAppEvent', 'GeneratedAppEvent_appId_idx'],
@@ -123,13 +130,13 @@ describe('migration parity: indexes match @@index / @@unique', () => {
 
   it('creates every declared index with Prisma’s naming convention', () => {
     for (const [model, index] of expected) {
-      assert.ok(migration.includes(`\`${index}\``), `missing index ${index} (${model})`)
+      assert.ok(allFactoryMigrations.includes(`\`${index}\``), `missing index ${index} (${model})`)
     }
   })
 
   it('keeps unique indexes unique', () => {
     for (const [, index] of expected.filter(([, i]) => i.endsWith('_key'))) {
-      assert.ok(new RegExp(`UNIQUE INDEX \`${index}\``).test(migration), `${index} must be UNIQUE`)
+      assert.ok(new RegExp(`UNIQUE INDEX \`${index}\``).test(allFactoryMigrations), `${index} must be UNIQUE`)
     }
   })
 })

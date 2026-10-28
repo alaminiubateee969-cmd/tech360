@@ -20,7 +20,7 @@ import { getZaiProviderStatus } from '@/lib/ai-provider'
 import { sanitizeText } from '@/lib/security'
 import { COMPANY } from '@/lib/constants'
 import { PUBLIC_CONTACT } from '@/lib/site-contact'
-import { loadDiscoveryState, saveDiscoveryState, nextQuestion, buildSummary, DISCOVERY_FIELDS, type DiscoveryFieldKey } from '@/lib/discovery'
+import { loadDiscoveryState, saveDiscoveryState, nextQuestion, buildSummary, isConfirmation, isRevisionRequest, extractDomainHostingHint, extractDomainNames, hasHostingPlanDetails, DISCOVERY_FIELDS, type DiscoveryFieldKey } from '@/lib/discovery'
 import { loadCommState, recordInbound, recordOutbound } from '@/lib/conversation-state'
 import { sendCommunication } from '@/lib/comms'
 import { screenAiReply } from '@/lib/ai-reply-guard'
@@ -113,8 +113,23 @@ export async function handleCustomerMessage(input: {
   // Load conversation history (last 20 messages for context)
   const history = await loadHistoryForClient(input.clientRowId, input.conversationId)
 
-  // Load discovery state
+  // Load discovery state. A new/legacy session must not treat the visitor's
+  // opening business description as an answer to a question the agent has not
+  // asked yet; the next field is armed after the first assistant response.
   const discovery = await loadDiscoveryState(input.clientRowId)
+  if (!history.some((item) => item.sender === 'SYSTEM' || item.sender === 'ADMIN')) {
+    discovery.currentQuestion = null
+  }
+  if (discovery.completed && discovery.summarySent && !discovery.summaryConfirmed) {
+    if (isConfirmation(visitorBody)) {
+      discovery.summaryConfirmed = true
+      await saveDiscoveryState(client.id, discovery).catch(() => null)
+    } else if (isRevisionRequest(visitorBody)) {
+      discovery.proposalFeedback = [discovery.proposalFeedback, visitorBody].filter(Boolean).join('\n').slice(0, 4000)
+      discovery.summarySent = false
+      await saveDiscoveryState(client.id, discovery).catch(() => null)
+    }
+  }
 
   // A free-text address is unverified and must not change CRM identity or be
   // sent to an AI provider as if it had been verified. Email supplied in the
@@ -140,30 +155,47 @@ export async function handleCustomerMessage(input: {
     })
     .catch(() => null)
 
-  // Store visitor's answer for current discovery question if applicable
-  // Heuristic: if discovery.currentQuestion exists, treat this message as answer to it
-  // Unless message contains a new question to us — answer first, then optionally advance
+  // Capture domain names as customer statements, but do not mark the hosting
+  // question answered until they provide a plan/detail or explicitly say they
+  // do not know yet. This prevents a bare domain name from skipping fit checks.
+  const customerDomains = extractDomainNames(visitorBody)
+  const domainHostingHint = extractDomainHostingHint(visitorBody)
+  const hostingDetailsProvided = hasHostingPlanDetails(visitorBody, discovery.currentQuestion === 'domainHosting')
   let discoveryUpdated = false
+  if (customerDomains.length) {
+    const note = `Customer mentioned domain(s) ${customerDomains.join(', ')}; ownership, registration/availability and DNS control are unverified.`
+    if (!discovery.answers.existingWebsite?.includes(customerDomains[0])) {
+      discovery.answers.existingWebsite = [discovery.answers.existingWebsite, note].filter(Boolean).join('\n').slice(0, 1000)
+      discoveryUpdated = true
+    }
+  }
+  if (domainHostingHint && hostingDetailsProvided && discovery.currentQuestion !== 'domainHosting' && !discovery.answers.domainHosting?.includes(domainHostingHint)) {
+    discovery.answers.domainHosting = [discovery.answers.domainHosting, domainHostingHint].filter(Boolean).join('\n').slice(0, 1000)
+    discoveryUpdated = true
+  }
+
+  // Store visitor's answer for the current discovery question, unless the
+  // response only supplied a domain name and left the hosting details unknown.
   if (discovery.currentQuestion && visitorBody.length > 2) {
     const fieldKey = discovery.currentQuestion
-    // Extract potential email answer vs discovery answer: if current question is not email and message looks like email, maybe it's email collection
-    // But we already handled email collection above
-    // Save the visitor's answer as the field value (unless it's clearly a new question to us that should be answered first)
     const isQuestionToUs = isCustomerQuestion(visitorBody)
-    // If customer is asking a question, we will answer it but still capture discovery context if message also contains answer
-    // For now, treat body as answer to current discovery question if not purely a question
     if (!isQuestionToUs || visitorBody.length > 30) {
-      // Only save if field not already answered
       if (!discovery.answers[fieldKey as DiscoveryFieldKey]) {
-        discovery.answers[fieldKey as DiscoveryFieldKey] = visitorBody.slice(0, 1000)
-        discoveryUpdated = true
+        if (fieldKey === 'domainHosting' && !hostingDetailsProvided) {
+          // Keep asking the hosting-fit question after acknowledging/storing a bare domain name.
+        } else {
+          discovery.answers[fieldKey as DiscoveryFieldKey] = fieldKey === 'domainHosting'
+            ? `${domainHostingHint ?? `Customer-provided domain/hosting response: ${visitorBody.slice(0, 700)}`}. Ownership, registration/availability and hosting compatibility remain unverified.`.slice(0, 1000)
+            : visitorBody.slice(0, 1000)
+          discoveryUpdated = true
+        }
       }
     }
   }
 
   // Special: if message itself contains discovery field hint, capture it heuristically
   // e.g. businessType detection from keywords
-  if (!discovery.answers.businessType && !discoveryUpdated) {
+  if (!discovery.answers.businessType) {
     const inferred = inferBusinessType(visitorBody)
     if (inferred) {
       discovery.answers.businessType = inferred
@@ -252,14 +284,12 @@ export async function handleCustomerMessage(input: {
 
   // Ensure every customer-facing lifecycle message includes: Client ID, stage/status, what happened, next step, who must act (Requirement E)
   // Append a structured footer when in discovery or formal stages
-  if (discovery.completed && !discovery.summaryConfirmed && !emailCollectedThisTurn) {
-    // Discovery complete but not confirmed — summarize for confirmation before SOW
-    const summary = buildSummary(discovery.answers, client.name, client.clientId)
-    // If AI already summarized, don't duplicate; else append summary as next action
-    if (!finalReply.includes('Please confirm if this is correct')) {
-      finalReply = finalReply + '\n\n' + summary
-    }
-    // Mark that summary was sent (but not yet confirmed)
+  if (discovery.completed && !discovery.summaryConfirmed && !discovery.summarySent && !emailCollectedThisTurn) {
+    // Send the initial non-binding proposal once; the client can then respond with feedback.
+    const summary = buildSummary(discovery.answers, client.name, client.clientId, discovery.proposalFeedback)
+    finalReply = finalReply + '\n\n' + summary
+    discovery.summarySent = true
+    await saveDiscoveryState(client.id, discovery).catch(() => null)
   }
 
   // Persist outbound message to ChatMessage + Communication
@@ -401,7 +431,7 @@ function inferBusinessType(text: string): string | null {
 async function tryGenerateAiReply(input: {
   context: ClientContext
   history: ConversationHistory
-  discovery: { answers: Record<string, string | undefined>; currentQuestion: string | null; completed: boolean }
+  discovery: { answers: Record<string, string | undefined>; currentQuestion: string | null; completed: boolean; summarySent?: boolean; summaryConfirmed?: boolean; proposalFeedback?: string | null }
   visitorBody: string
   isQuestion: boolean
   emailCollectedThisTurn: boolean
@@ -422,14 +452,21 @@ async function tryGenerateAiReply(input: {
     `Known requirements: ${input.context.lead?.requirements?.slice(0, 500) ?? 'none yet'}`,
     `Discovery answers so far: ${JSON.stringify(input.discovery.answers)}`,
     `Discovery complete: ${input.discovery.completed}`,
+    `Preliminary proposal already sent: ${Boolean(input.discovery.summarySent)}`,
+    `Preliminary proposal confirmed: ${Boolean(input.discovery.summaryConfirmed)}`,
+    `Proposal feedback: ${input.discovery.proposalFeedback ?? 'none yet'}`,
   ].join('\n')
 
   const missingField = input.discovery.completed ? null : nextQuestion(input.discovery.answers as never)
   const nextQuestionInstruction = missingField
     ? `The next essential information still missing is: ${missingField.label} — ask this as ONE concise question: "${missingField.question}" (${missingField.example}). Ask ONLY this one question after answering the customer's query.`
-    : input.discovery.completed
-      ? 'All discovery information is collected. Summarize for confirmation before SOW.'
-      : ''
+    : input.discovery.completed && input.discovery.summarySent && !input.discovery.summaryConfirmed
+      ? 'The preliminary proposal has already been sent. Answer the customer’s question or acknowledge feedback; ask whether they approve this proposal direction or want a revision. Do not repeat the full proposal.'
+      : input.discovery.completed && input.discovery.summaryConfirmed
+        ? 'The customer approved the preliminary proposal direction. Confirm that the next step is to prepare and send a detailed Scope of Work for their review; do not request payment yet.'
+        : input.discovery.completed
+          ? 'All discovery information is collected. Present the non-binding preliminary proposal and invite feedback before drafting the detailed Scope of Work.'
+          : ''
 
   const prompt = `You are TECH360's AI assistant — a helpful, professional business consultant, not a human. Answer truthfully if asked whether you are AI.
 
@@ -440,6 +477,10 @@ Your task:
 4. Keep tone warm, concise, business-first.
 5. Always include Client ID ${input.context.clientId} and current stage ${input.context.pipelineStage} naturally.
 6. If email is not yet known, after providing useful initial assistance, naturally invite the customer to share preferred email for formal updates (do not be pushy).
+7. For retail/service businesses, collect catalogue size, sold/on-hand stock, upcoming items, employee roles and tasks, marketing sources, website, and real shop/service locations for Google Maps/local SEO. Ask one question at a time and accept estimates or “not applicable”.
+8. The process is: understand the business in webchat, draft and send a proposal, invite feedback, then prepare the detailed Scope of Work for explicit client review. Never request or initiate payment before the client has reviewed and approved the final scope.
+9. Any discount or free SEO/marketing work is an optional, human-approved offer; never invent a discount, claim Google affiliation, promise rankings, fake Maps markers, or imply paid Google tools are free.
+10. For domain/hosting questions, say a customer-provided domain is not proof of ownership or availability. Explain the proposed framework only conditionally on the exact hosting plan/runtime/database fit; tell the customer what runs where, the access/info needed, recurring costs, DNS/email-record preservation, SSL, backup, testing and rollback. Never ask for passwords, OTPs or API keys in chat, and never deploy TECH360's internal workforce to the client host. Ask for provider/plan specs or a redacted screenshot if needed.
 
 Context:
 ${knownContext}
@@ -505,7 +546,7 @@ Produce your reply now:`
 
 function buildHonestFallback(input: {
   context: ClientContext
-  discovery: { answers: Record<string, string | undefined>; currentQuestion: string | null; completed: boolean }
+  discovery: { answers: Record<string, string | undefined>; currentQuestion: string | null; completed: boolean; summarySent?: boolean; summaryConfirmed?: boolean; proposalFeedback?: string | null }
   visitorBody: string
   aiError: string
   aiAvailable: boolean
@@ -542,8 +583,12 @@ function buildHonestFallback(input: {
     } else {
       body += `${missing.question}\n`
     }
+  } else if (input.discovery.completed && input.discovery.summarySent && !input.discovery.summaryConfirmed) {
+    body += `The preliminary proposal is already in this chat. Please reply APPROVED if the direction is right, or send changes; after your feedback, we will prepare the detailed Scope of Work. No payment is due at this stage.\n`
+  } else if (input.discovery.completed && input.discovery.summaryConfirmed) {
+    body += `Thank you for approving the preliminary direction. The next step is a detailed Scope of Work for your review; payment is discussed only after you approve that final scope.\n`
   } else if (input.discovery.completed) {
-    body += `All your requirements have been noted. Our team will prepare a summary for your confirmation before drafting the formal Scope of Work.\n`
+    body += `All your requirements have been noted. Our team will prepare a preliminary solution proposal for your feedback before drafting the formal Scope of Work.\n`
   }
 
   body += `\nRef: ${clientId} | If you prefer, email ${PUBLIC_CONTACT.email} with your reference.`

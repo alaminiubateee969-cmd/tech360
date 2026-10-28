@@ -15,6 +15,7 @@ import { sendPipelineMessage, recordStageChange, type PipelineChannel, type Pipe
 import type { PipelineVariables } from '@/lib/pipeline/templates'
 import { assertDeliveryRules, screenAiContent } from '@/lib/pipeline/rules'
 import { nextScopeVersionNumber, normalizeTo21PointScope } from '@/lib/scope-validator'
+import { normalizeFactoryScopeManifest } from '@/lib/factory/scope-manifest'
 import { toMinorUnits } from '@/lib/invoice-policy'
 import type { Prisma } from '@prisma/client'
 import {
@@ -268,14 +269,18 @@ export async function intakeLead(input: {
       const hasContactPermission = createData.source !== 'WEBSITE' || hasExplicitContactConsent(input.contactConsent)
       const selectedChannel = hasContactPermission ? selectWelcomeChannel(createData.source, clientRow.preferredContact) : null
       const welcomeChannels: PipelineChannel[] = []
-      if (hasContactPermission && createData.source === 'WEBSITE' && clientRow.email) {
-        // Email remains primary for every website enquiry. An additional
-        // WhatsApp message is sent only when the visitor selected it and
-        // provided a number; the recorded contact consent covers that choice.
-        welcomeChannels.push('EMAIL')
-        if (clientRow.preferredContact?.toLowerCase() === 'whatsapp' && clientRow.whatsapp) {
-          welcomeChannels.push('WHATSAPP')
-        }
+      if (hasContactPermission && createData.source === 'WEBSITE' && selectedChannel) {
+        // Website leads receive the first response only on the contact method
+        // they explicitly selected. In particular, SMS requires a supplied
+        // phone number and explicit contact consent; there is no silent channel fallback.
+        const hasDestination = selectedChannel === 'EMAIL'
+          ? Boolean(clientRow.email)
+          : selectedChannel === 'SMS'
+            ? Boolean(clientRow.phone)
+            : selectedChannel === 'WHATSAPP'
+              ? Boolean(clientRow.whatsapp)
+              : false
+        if (hasDestination) welcomeChannels.push(selectedChannel as PipelineChannel)
       } else if (hasContactPermission && selectedChannel) {
         welcomeChannels.push(selectedChannel as PipelineChannel)
       }
@@ -300,16 +305,12 @@ export async function intakeLead(input: {
           status: welcome.status,
           deliveries: welcome.deliveries.map(({ channel, status, ok }) => ({ channel, status, ok })),
         }
-        const emailDelivery = welcome.deliveries.find((delivery) => delivery.channel === 'EMAIL')
-        welcomeAccepted = createData.source === 'WEBSITE'
-          ? Boolean(emailDelivery?.ok)
-          : welcome.deliveries.some((delivery) => delivery.ok)
+        welcomeAccepted = welcome.deliveries.some((delivery) => delivery.ok)
         await stepLog(log.id, 'welcome_sent', {
           stage: 'FIRST_MESSAGE',
           channels: welcomeChannels,
           status: welcome.status,
           providerAccepted: welcomeAccepted,
-          emailProviderAccepted: emailDelivery?.ok ?? false,
           deliveries: welcome.deliveries.map((delivery) => `${delivery.channel}:${delivery.status}`),
         })
       } else {
@@ -318,7 +319,7 @@ export async function intakeLead(input: {
         })
       }
 
-      if (welcomeAccepted) await setStage(clientRow.id, 'CONTACTED', 'Initial email accepted by the configured provider')
+      if (welcomeAccepted) await setStage(clientRow.id, 'CONTACTED', `Initial ${welcomeChannels[0] ?? 'contact'} message accepted by the configured provider`)
       // Business detection runs after the welcome attempt. It may update
       // businessType, but only an accepted welcome can advance the pipeline.
       const businessRun = await detectBusiness(clientRow.id, input.message, { advanceStage: welcomeAccepted })
@@ -591,6 +592,11 @@ export function formatScopeForClient(content: Record<string, unknown>, clientId:
   const pp = (content.paymentPolicy ?? {}) as Record<string, unknown>
   let text = `FINAL SCOPE OF WORK — Tech360\nReference: ${clientId}\n\n${String(content.title ?? 'Project Scope')}\n${String(content.summary ?? '')}\n\nDELIVERABLES\n`
   items.forEach((i, idx) => { text += `${idx + 1}. ${i.name ?? ''} — ${i.description ?? ''} (Deliverable: ${i.deliverable ?? 'as described'})\n` })
+  const factoryManifest = normalizeFactoryScopeManifest(content.factoryManifest)
+  if (factoryManifest.ok) {
+    const manifest = factoryManifest.manifest
+    text += `\nSOFTWARE FACTORY DELIVERABLE\nApplication: ${manifest.applicationName}\nVertical: ${manifest.vertical}\nApproved modules: ${manifest.modules.join(', ')}\nLanguage: ${manifest.language} · Currency: ${manifest.currency} · Brand color: ${manifest.primaryColor}\nDelivery format: ${manifest.deliveryFormat} (source archive only; this workflow does not deploy to production)\nHosting and deployment terms: ${manifest.hostingAndDeployment}\nClient responsibilities: ${manifest.clientResponsibilities}\n`
+  }
   text += '\nTIMELINE\n'
   timeline.forEach((t) => { text += `• ${t.phase ?? ''} (${t.weeks ?? '?'} week(s)): ${t.activities ?? ''}\n` })
   text += `\nPAYMENT POLICY\n• Advance: ${String(pp.advancePct ?? '—')}%\n• On milestone: ${String(pp.milestonePct ?? '—')}%\n• On final delivery: ${String(pp.finalPct ?? '—')}%\n• Currency: ${String(pp.currency ?? 'USD')}\n${String(pp.terms ?? '')}\n\nKEY POLICIES\n• HTML Preview Before Payment\n• Source Code After Full Payment\n• Changes to approved scope may require additional cost/time\n\nReply APPROVED to confirm, or send your revision notes.\n— Team Tech360`
@@ -1273,6 +1279,7 @@ export async function activateProject(clientRowId: string, projectId?: string) {
             description: sanitizeText(String(t.description ?? ''), 2000) || null,
             priority: ['LOW', 'MEDIUM', 'HIGH'].includes(String(t.priority)) ? String(t.priority) : 'MEDIUM',
             assigneeType: String(t.assigneeType ?? 'AGENT') === 'HUMAN' ? 'HUMAN' : 'AGENT',
+            assigneeRef: String(t.assigneeType ?? 'AGENT') === 'HUMAN' ? sanitizeText(String(t.assigneeRef ?? ''), 80) || null : 'TSK-019',
             order: order++,
           },
         })

@@ -272,7 +272,8 @@ describe('the schema uses only the attributes this codebase uses', () => {
       if (!line || line.startsWith('//')) continue
       // `@@index` and `@id` are the same attribute name with a different
       // scope, so the leading '@' is stripped before the comparison.
-      for (const attribute of line.match(/@@?[a-zA-Z]+/g) ?? []) used.add(attribute.replace(/^@+/, ''))
+      const schemaCode = line.split('//', 1)[0]
+      for (const attribute of schemaCode.match(/@@?[a-zA-Z]+/g) ?? []) used.add(attribute.replace(/^@+/, ''))
     }
     const unexpected = [...used].filter((attribute) => !ALLOWED.has(attribute)).sort()
     assert.deepEqual(

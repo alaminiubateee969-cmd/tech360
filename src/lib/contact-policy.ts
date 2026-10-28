@@ -1,7 +1,7 @@
 export type WelcomeChannel = 'WHATSAPP' | 'EMAIL' | 'SMS' | null
 
 /** Bump when the corresponding consent copy or processing purpose changes. */
-export const CONTACT_CONSENT_VERSION = 'contact-v2-2026-10-23'
+export const CONTACT_CONSENT_VERSION = 'contact-v3-2026-10-28'
 export const MARKETING_CONSENT_VERSION = 'marketing-v1-2026-10-23'
 
 export function hasExplicitContactConsent(value: unknown): boolean {

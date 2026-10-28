@@ -68,7 +68,8 @@
     "Invoice.lineItems",
     "PaymentReceipt.snapshot",
     "RefundCase.evidenceNotes",
-    "DepartmentCapabilityAssessment.evidence"
+    "DepartmentCapabilityAssessment.evidence",
+    "SocialPost.text"
   ],
   "Text": [
     "Session.userAgent",
@@ -180,7 +181,14 @@
     "Invoice.voidReason",
     "RefundCase.reason",
     "RefundCase.policyBasis",
-    "RefundCase.resolutionNotes"
+    "RefundCase.resolutionNotes",
+    "SocialAccount.envKeys",
+    "SocialAccount.lastError",
+    "SocialPost.hashtags",
+    "SocialPost.mediaUrl",
+    "SocialPost.mediaPrompt",
+    "SocialPost.externalUrl",
+    "SocialPost.error"
   ],
   "LongBlob": [
     "FileRecord.content"

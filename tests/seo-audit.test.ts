@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { analyzePage, analyzeRobots, parseSitemapUrls, scoreChecks } from '../src/lib/seo-audit-core'
 import { isPrivateIp, assertPublicUrl } from '../src/lib/safe-fetch'
+import { buildLocalSeoPlan, splitLocalSeoList } from '../src/lib/local-seo-plan'
 
 const GOOD = `<!doctype html><html lang="en"><head><title>Tech360 — Enterprise Software and Automation</title>
 <meta name="description" content="Tech360 builds enterprise websites, CRMs and automation. HTML preview before payment, source code after full payment.">
@@ -49,6 +50,38 @@ describe('SSRF guard', () => {
       await assert.rejects(() => assertPublicUrl(u), u)
     }
     assert.equal((await assertPublicUrl('http://8.8.8.8/')).hostname, '8.8.8.8')
+  })
+})
+
+describe('free local SEO planner', () => {
+  it('builds service-area keyword clusters without fabricating map coordinates', () => {
+    const plan = buildLocalSeoPlan({
+      businessName: 'Dhaka Computer Care',
+      businessType: 'computer and AC shop',
+      primaryLocation: 'Elephant Road, Dhaka',
+      serviceAreas: ['Dhanmondi', 'Mirpur', 'Dhanmondi'],
+      services: ['laptop sales', 'AC repair'],
+      language: 'BOTH',
+    }, new Date('2026-10-28T00:00:00Z'))
+    assert.equal(plan.mapMarkers.length, 3)
+    assert.equal(plan.mapMarkers[0].markerType, 'BUSINESS_LOCATION_TO_VERIFY')
+    assert.equal(plan.mapMarkers[1].markerType, 'SERVICE_AREA_TO_VERIFY')
+    assert.ok(plan.keywordClusters.some((cluster) => cluster.suggestions.some((term) => term.includes('এ'))))
+    assert.equal(plan.aiEnhanced, false)
+    assert.ok(plan.guardrails.some((item) => item.includes('guarantee')))
+    assert.ok(plan.mapMarkers.every((marker) => !('lat' in marker) && !('lng' in marker)))
+  })
+  it('requires user-verified location if no actual shop/service location is provided', () => {
+    const plan = buildLocalSeoPlan({ businessName: '', businessType: 'AC servicing', primaryLocation: '', serviceAreas: [], services: [], language: 'EN' })
+    assert.equal(plan.mapMarkers.length, 1)
+    assert.match(plan.mapMarkers[0].location, /required/)
+    assert.equal(plan.mapMarkers[0].markerType, 'BUSINESS_LOCATION_TO_VERIFY')
+    assert.match(plan.mapMarkers[0].instruction, /No coordinates/)
+    const areasOnly = buildLocalSeoPlan({ businessName: '', businessType: 'AC servicing', primaryLocation: '', serviceAreas: ['Mirpur'], services: [], language: 'EN' })
+    assert.equal(areasOnly.mapMarkers[0].markerType, 'SERVICE_AREA_TO_VERIFY')
+  })
+  it('splits, trims, deduplicates, and bounds supplied lists', () => {
+    assert.deepEqual(splitLocalSeoList('Mirpur, Dhanmondi; mirpur|Gulshan'), ['Mirpur', 'Dhanmondi', 'Gulshan'])
   })
 })
 

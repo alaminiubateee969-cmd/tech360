@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText, audit } from '@/lib/security'
+import { verifyFactoryAppScope } from '@/lib/factory/verify-scope'
 import { normalizeBrief, buildPlan, buildFiles, summarizeFiles, assertNoSecrets } from '@/lib/factory/blueprint'
 
 export const dynamic = 'force-dynamic'
@@ -12,10 +13,10 @@ type Status = 'DRAFT' | 'PLANNED' | 'BUILT' | 'PREVIEW' | 'APPROVED' | 'DELIVERE
 const TRANSITIONS: Record<string, { stage: Stage; status: Status; note: string; requiresAdmin?: boolean }> = {
   plan: { stage: 'PLAN', status: 'PLANNED', note: 'Blueprint (re)generated from the brief.' },
   build: { stage: 'SCAFFOLD', status: 'BUILT', note: 'Source tree written and stored — ready for review.' },
-  preview: { stage: 'PREVIEW', status: 'PREVIEW', note: 'Preview stage: client-facing walkthrough prepared.' },
-  approve: { stage: 'DELIVERY', status: 'APPROVED', note: 'Client approval recorded; delivery package may be prepared.', requiresAdmin: true },
-  deliver: { stage: 'DELIVERY', status: 'DELIVERED', note: 'Delivery package handed to the client.', requiresAdmin: true },
-  handover: { stage: 'HANDOVER', status: 'DELIVERED', note: 'Source, credentials list and runbook handed over.', requiresAdmin: true },
+  preview: { stage: 'PREVIEW', status: 'PREVIEW', note: 'Internal review checkpoint recorded; no customer preview was deployed.' },
+  approve: { stage: 'DELIVERY', status: 'APPROVED', note: 'TECH360 admin review approved; this is not client scope approval.', requiresAdmin: true },
+  deliver: { stage: 'DELIVERY', status: 'DELIVERED', note: 'Human-recorded delivery evidence supplied by an admin.', requiresAdmin: true },
+  handover: { stage: 'HANDOVER', status: 'DELIVERED', note: 'Human-recorded handover evidence supplied by an admin; no credentials are stored.', requiresAdmin: true },
   fail: { stage: 'PLAN', status: 'FAILED', note: 'Generation or review failed.' },
 }
 
@@ -68,6 +69,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!app) return Response.json({ error: 'Generated app not found.' }, { status: 404 })
   if (app.status === 'DELIVERED' && action !== 'handover') {
     return Response.json({ error: 'This app is already delivered. Handover is the only remaining transition.' }, { status: 409 })
+  }
+  if (action === 'deliver' && app.status !== 'APPROVED') {
+    return Response.json({ error: 'The TECH360 admin review must be approved before delivery can be recorded.' }, { status: 409 })
+  }
+  if (action === 'handover' && app.status !== 'DELIVERED') {
+    return Response.json({ error: 'Record delivery before recording the handover.' }, { status: 409 })
+  }
+  if (action === 'deliver' || action === 'handover') {
+    if (note.length < 20) {
+      return Response.json({ error: 'Record evidence (recipient, delivery channel/location and what was received). Do not include credentials.' }, { status: 400 })
+    }
+    if (/(?:\b(?:password|passwd|secret|api[_ -]?key|access[_ -]?token|bearer)\b\s*[:=]\s*\S+|-----BEGIN [A-Z ]*PRIVATE KEY-----|\bAKIA[0-9A-Z]{16}\b)/i.test(note)) {
+      return Response.json({ error: 'The evidence note appears to contain a credential. Remove all passwords, keys, and tokens.' }, { status: 400 })
+    }
+    const scopeGate = await verifyFactoryAppScope(app)
+    if (!scopeGate.allowed) {
+      return Response.json(
+        { error: 'Client delivery is blocked until this app is bound to the exact FINAL scope approved by the client.', code: scopeGate.code },
+        { status: 409 },
+      )
+    }
+    if (action === 'deliver') {
+      const exportEvent = await db.generatedAppEvent.findFirst({
+        where: { appId: app.id, status: 'EXPORTED' },
+        select: { id: true },
+      })
+      if (!exportEvent) {
+        return Response.json({ error: 'Export the approved source package first; the export audit event is required before delivery can be recorded.' }, { status: 409 })
+      }
+    }
   }
 
   // `plan` regenerates the blueprint and the source tree from the stored brief.

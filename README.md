@@ -1,6 +1,6 @@
 # TECH360 LLC — Enterprise Platform
 
-**bdtech360.com · Websites · Web applications · Custom CRM · Client portals · Business dashboards · eCommerce · WhatsApp automation · n8n automation · AI agent systems · Business automation · Industry software · Maintenance & support**
+**bdtech360.com · Websites · Web applications · Custom CRM · WhatsApp-first AI sales CRM · Client portals · Business dashboards · eCommerce · WhatsApp automation · n8n automation · AI agent systems · Business automation · Industry software · Maintenance & support**
 
 Stack: **Next.js 16 (App Router) · Node.js 22.x · npm · TypeScript 5 · Tailwind CSS 4 · shadcn/ui · Prisma + MySQL · z-ai-web-dev-sdk (server-side AI)**
 

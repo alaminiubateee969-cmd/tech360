@@ -568,6 +568,7 @@ export interface TaskRecord {
   dueAt?: string | null
   completedAt?: string | null
   createdAt?: string | null
+  agentJob?: { id: string; agentCode?: string | null; status: string; output?: string | null; lastError?: string | null; completedAt?: string | null } | null
 }
 export interface MeetingRecord {
   id: string
@@ -1102,6 +1103,10 @@ export const api = {
     }),
   closeProject: (id: string) =>
     fetchJson<{ ok?: boolean; message?: string }>(`/api/admin/projects/${encodeURIComponent(id)}/close`, {
+      method: 'POST',
+    }),
+  runTaskAgentDraft: (projectId: string, taskId: string) =>
+    fetchJson<{ ok?: boolean; message?: string; agentJobId?: string; status?: string }>(`/api/admin/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}/run`, {
       method: 'POST',
     }),
   updateTask: (projectId: string, taskId: string, status: string, evidence?: string) =>

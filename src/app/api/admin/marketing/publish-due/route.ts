@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     orderBy: { scheduledAt: 'asc' },
     take: 20,
   })
-  const results = []
+  const results: Array<{ id: string; platform: string; status: 'PUBLISHED' | 'NOT_CONFIGURED' | 'FAILED'; externalUrl: string | null; error: string | null }> = []
   for (const post of due) {
     const result = await publishPost({
       platform: post.platform as SocialPlatform,

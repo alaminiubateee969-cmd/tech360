@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../src/lib/auth'
-import { ensureAgentRegistry } from '../src/lib/agents/bootstrap'
+import { CORE_AGENTS, DEPARTMENTS } from '../src/lib/agents/registry'
 import { COMPANY } from '../src/lib/constants'
 
 const db = new PrismaClient()
@@ -234,7 +234,6 @@ async function main() {
   // The panel shows the live library index next to these rows.
   const { buildPromptsForBinding } = await import('../src/lib/prompts/library')
   const { ROLE_ARCHETYPES } = await import('../src/lib/agents/catalogue')
-  const { DEPARTMENTS } = await import('../src/lib/agents/registry')
   const STORED_STAGES = ['TASK_EXECUTION'] as const
   let promptCount = 0
   for (const department of DEPARTMENTS) {
@@ -298,7 +297,7 @@ async function main() {
   const memories: Array<{ scope: string; key: string; content: string; importance: number }> = [
     { scope: 'COMPANY', key: 'identity', content: `${COMPANY.legalName} (brand: Tech360), Missouri LLC ${COMPANY.missouriLLC}, EIN ${COMPANY.ein}. Address: ${COMPANY.address}. Domain ${COMPANY.domain}. Primary email ${COMPANY.email}. Contact channel: live support chat at ${COMPANY.url}.`, importance: 10 },
     { scope: 'BRAND', key: 'voice', content: 'Professional, warm, confident, business-first. Never mention AI generation to clients. Sign messages "Team Tech360". No emojis in formal email.', importance: 9 },
-    { scope: 'SERVICES', key: 'portfolio', content: 'Business/Enterprise Websites, eCommerce, Custom CRM, Client Portals, Dashboards, WhatsApp Automation, Email/SMS Automation, n8n Automation, AI Agent Systems, API Integrations, Database Systems, Cloud Deployment (Google Cloud, cPanel/StackCP), Maintenance & Support, Digital Transformation.', importance: 9 },
+    { scope: 'SERVICES', key: 'portfolio', content: 'Business/Enterprise Websites, eCommerce, Custom CRM, WhatsApp-First AI Sales CRM (including a suitability review and separately scoped setup/customization of the open-source DeskcommCRM candidate where appropriate), Client Portals, Dashboards, WhatsApp Automation, Email/SMS Automation, n8n Automation, AI Agent Systems, API Integrations, Database Systems, Cloud Deployment (Google Cloud, cPanel/StackCP), Maintenance & Support, Digital Transformation. DeskcommCRM is a distinct self-hosted application, not TECH360 internal CRM. Validate its current release/features/license/security, the customer-selected WhatsApp provider and applicable rules, hosting fit, data boundaries, backups, support and recurring costs before committing; do not claim it is installed or connected before provider/client acceptance and testing.', importance: 9 },
     { scope: 'PRICING', key: 'policy', content: 'Payment policy: advance / milestone / final split per scope (commonly 40/30/30). HTML Preview Before Payment. Source Code After Full Payment. Scope changes after approval may require additional cost/time.', importance: 10 },
     { scope: 'POLICIES', key: 'core', content: 'Terms, Privacy, Refund, Delivery, Payment, Client Approval and Source Code Handover policies are published on the website. Refunds follow the approved agreement; advance covers committed work and is generally non-refundable after scope approval per policy.', importance: 9 },
     { scope: 'WORKFLOW', key: 'journey', content: 'Journey: first message → Client ID → business detection → plan → scope questions → scope review → draft SOW → admin approval → final SOW via WhatsApp+Email → client approval (or revision / meeting-if-requested) → HTML preview → preview approval → payment request → verified payment → project active + tasks → development → testing → client review → final payment → handover package → admin approval → release → password change confirmation → delivery confirmation → optional review/referral → close.', importance: 10 },

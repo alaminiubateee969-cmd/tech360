@@ -23,7 +23,7 @@ describe('contact and marketing consent are separate, explicit purposes', () => 
     assert.match(chat, /hasExplicitContactConsent\(raw\.contactConsent\)/)
   })
 
-  it('keeps email primary while allowing progressive profile intake', () => {
+  it('supports consented SMS-first or email-first progressive profile intake', () => {
     const contact = read('src/app/api/contact/route.ts')
     const contactView = read('src/components/site/ContactView.tsx')
     const chatWidget = read('src/components/site/ChatWidget.tsx')
@@ -35,9 +35,15 @@ describe('contact and marketing consent are separate, explicit purposes', () => 
     assert.match(contactView, /Budget range \(optional\)/)
     assert.match(contactView, /Email \*/)
     assert.match(contactView, /Project details \*/)
-    assert.match(chatWidget, /Email <span[^>]*>\*/)
+    assert.match(chatWidget, /preferredContact === 'Email'/)
+    assert.match(chatWidget, /optional for SMS-first/)
     assert.match(chatWidget, /Name <span[^>]*>\(optional/)
-    assert.match(chatWidget, /marketing messages require separate opt-in/)
+    assert.match(chatWidget, /SMS first/)
+    assert.match(chatWidget, /No marketing messages without separate opt-in/)
+    const chatSession = read('src/app/api/chat/session/route.ts')
+    assert.match(chatSession, /preferredContact === 'Email'/)
+    assert.match(chatSession, /preferredContact === 'SMS' && !phone/)
+    assert.match(chatSession, /toE164\(phoneInput\)/)
   })
 
   it('requires a separate newsletter opt-in and stores its evidence transactionally', () => {
