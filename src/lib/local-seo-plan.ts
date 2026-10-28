@@ -62,7 +62,7 @@ export function buildLocalSeoPlan(input: LocalSeoInput, now = new Date()): Local
       })
     : [{
         location: 'Business address / service area required',
-        markerType: 'VERIFIED_BUSINESS_LOCATION' as const,
+        markerType: 'BUSINESS_LOCATION_TO_VERIFY' as const,
         instruction: 'No coordinates or map marker were generated. Supply and verify the real customer-facing location in Google Business Profile.',
       }]
 

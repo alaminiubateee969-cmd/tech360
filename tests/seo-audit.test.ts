@@ -75,6 +75,7 @@ describe('free local SEO planner', () => {
     const plan = buildLocalSeoPlan({ businessName: '', businessType: 'AC servicing', primaryLocation: '', serviceAreas: [], services: [], language: 'EN' })
     assert.equal(plan.mapMarkers.length, 1)
     assert.match(plan.mapMarkers[0].location, /required/)
+    assert.equal(plan.mapMarkers[0].markerType, 'BUSINESS_LOCATION_TO_VERIFY')
     assert.match(plan.mapMarkers[0].instruction, /No coordinates/)
     const areasOnly = buildLocalSeoPlan({ businessName: '', businessType: 'AC servicing', primaryLocation: '', serviceAreas: ['Mirpur'], services: [], language: 'EN' })
     assert.equal(areasOnly.mapMarkers[0].markerType, 'SERVICE_AREA_TO_VERIFY')
