@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
   await db.contentAsset.create({
     data: { campaignId: campaign.id, type: 'VIDEO_PLAN', language, aspect: plan.videoPlan.aspect, durationSec: plan.videoPlan.durationSec, title: `${plan.headline} — video`.slice(0, 200), content: JSON.stringify(plan.videoPlan), status: 'DRAFT', safeContent: true, metrics: '{}' },
   })
-  const posts: Array<{ id: string; platform: SocialPlatform; text: string; status: string }> = []
+  const posts: Array<{ id: string; platform: string; text: string; status: string }> = []
   for (const draft of plan.drafts) {
     posts.push(await db.socialPost.create({
       data: {
