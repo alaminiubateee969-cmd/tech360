@@ -12,7 +12,7 @@
 
 ## Remediation update — 2026-10-28
 
-This update supersedes the initial gate results below, which are retained as a dated baseline snapshot. Remediation was made in the working tree on `arena/ad324aec-tech360` (base commit `f4e5661`); the changes have not been committed, pushed, or deployed.
+This update supersedes the initial gate results below, which are retained as a dated baseline snapshot. Remediation is committed and pushed on `arena/ad324aec-tech360` at `a510448`. The production application itself has not been deployed.
 
 ### Current verification
 
@@ -21,14 +21,16 @@ This update supersedes the initial gate results below, which are retained as a d
 | `npm ci --no-audit --no-fund` | **PASS** | 862 packages installed |
 | `npm run lint` | **PASS** | 0 errors |
 | `npm run typecheck` | **PASS** | 0 TypeScript errors |
-| `npm test` | **PARTIAL** | 1,010/1,013 pass. The three remaining database integration suites cannot initialize because Prisma Client generation is blocked by the sandbox's failed TLS connection to `binaries.prisma.sh`; no MySQL is configured. |
+| `npm test` (sandbox) | **PARTIAL** | 1,010/1,013 pass locally; the three DB integration suites need generated Prisma Client and MySQL. **GitHub CI on this commit passed the full MySQL-backed test suite.** |
 | AI workforce / schema parity / messaging regressions | **PASS** | Focused 119-test run passed; schema map check passes with 178 native annotations |
 | `npm run schema:drift` | **PASS** | 75 models/tables, 1,030 columns, 191 indexes |
 | `npm run check:conflicts` | **PASS** | 1,113 tracked files scanned |
 | `npm audit --audit-level=low` and `--omit=dev` | **PASS** | 0 vulnerabilities reported |
-| `npm run build` | **BLOCKED** | Prisma engine download failed before Prisma Client generation, migrations, or Next.js production compilation |
+| `npm run build` (sandbox) | **BLOCKED locally / PASS in CI** | Local Prisma engine download failed; GitHub CI successfully generated Prisma Client, built production output, validated standalone assets, and smoke-tested the server. |
 | Local preview | **RUNNING** | `GET /` returns HTTP 200 (about 154 KB HTML); `/api/health` correctly returns 503 because database/provider configuration is absent |
-| Production deployment | **NOT DONE / NOT VERIFIED** | No production database, Hostinger access/configuration, or live provider credentials are available in this workspace. |
+| Production deployment | **NOT DONE / NOT VERIFIED** | CI is not a production deploy. Hostinger account configuration and live provider credentials were not available in this workspace. |
+
+**Remote CI evidence:** [`ci` run 40643190934](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40643190934) passed on commit `a510448` in 4m8s. The job passed secret scanning, install, Prisma generation, migration/drift checks, lint, typecheck, MySQL-backed business/database tests, seed-safety, database integrity, production build, standalone asset validation and production-server smoke test. The independent MySQL baseline run [`40642900439`](https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40642900439) also passed.
 
 ### Repairs completed
 
@@ -40,7 +42,7 @@ This update supersedes the initial gate results below, which are retained as a d
 - Reconciled MySQL native type map entries with the SocialAccount/SocialPost schema and made the schema attribute scanner ignore inline comments.
 - Removed the retired public WhatsApp contact number from shared official information and login/admin contact displays.
 
-**Current release status:** source lint and type gates are green, and all runnable non-DB tests pass. This is **not yet production-ready/live**: the three DB suites, Prisma-backed build, migration execution, actual hosting, and provider integrations still require verification in an environment with Prisma engine access, disposable/production-safe MySQL, and authorized production configuration.
+**Current release status:** lint, typecheck, schema gates and the complete GitHub CI pipeline (including MySQL tests, Prisma generation, production build and smoke test) are green on `a510448`. This is **not yet live in production**: the project still needs an authorized deployment through its production host and real production environment/provider configuration. No production data or deployment was changed.
 
 ---
 
