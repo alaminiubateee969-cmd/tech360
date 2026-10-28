@@ -8,6 +8,7 @@ import { authorizeAgentTool, agentMayAccessClient, type AgentTool } from '@/lib/
 import { getAgentDefinition } from '@/lib/agents/bootstrap'
 import { isValidExistingChildAgent } from '@/lib/agents/hierarchy-service'
 import { isWellFormedDynamicAgent } from '@/lib/agents/runtime-policy'
+import { deliveryKnowledgeContext, shouldAttachDeliveryKnowledge } from '@/lib/delivery-system-knowledge'
 
 // ------------------------------------------------------------
 // Real AI agent execution engine (server-side only)
@@ -217,8 +218,11 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
 
   const timeoutMs = resolveAgentTimeoutMs()
   const userContent = (run.contextNote ? `${run.contextNote}\n\n` : '') + run.input
+  const approvedDeliveryKnowledge = shouldAttachDeliveryKnowledge({ agentCode, workflow: run.workflow, task: run.input })
+    ? deliveryKnowledgeContext()
+    : ''
   const messages = [
-    { role: 'system' as const, content: agent.systemPrompt },
+    { role: 'system' as const, content: `${agent.systemPrompt}${approvedDeliveryKnowledge}` },
     { role: 'user' as const, content: userContent.slice(0, 24000) },
   ]
   let lastError: unknown = new Error('Provider did not return a result')
@@ -264,7 +268,7 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
         data: {
           output: output.slice(0, 20000), status: 'SUCCESS', tokensUsed,
           durationMs, completedAt,
-          metadata: JSON.stringify({ provider }),
+          metadata: JSON.stringify({ provider, deliveryKnowledgeAttached: Boolean(approvedDeliveryKnowledge) }),
         },
       })
       await tx.aiAgent.update({
@@ -305,7 +309,7 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     await db.$transaction(async (tx) => {
       await tx.aiAgentExecution.update({
         where: { id: execution.id },
-        data: { status, error: message, durationMs, completedAt, metadata: JSON.stringify({ provider: 'zai' }) },
+        data: { status, error: message, durationMs, completedAt, metadata: JSON.stringify({ provider, deliveryKnowledgeAttached: Boolean(approvedDeliveryKnowledge) }) },
       })
       await tx.aiAgent.update({
         where: { code: agentCode },

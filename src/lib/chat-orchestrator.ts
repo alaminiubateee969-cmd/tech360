@@ -20,7 +20,7 @@ import { getZaiProviderStatus } from '@/lib/ai-provider'
 import { sanitizeText } from '@/lib/security'
 import { COMPANY } from '@/lib/constants'
 import { PUBLIC_CONTACT } from '@/lib/site-contact'
-import { loadDiscoveryState, saveDiscoveryState, nextQuestion, buildSummary, isConfirmation, isRevisionRequest, DISCOVERY_FIELDS, type DiscoveryFieldKey } from '@/lib/discovery'
+import { loadDiscoveryState, saveDiscoveryState, nextQuestion, buildSummary, isConfirmation, isRevisionRequest, extractDomainHostingHint, extractDomainNames, hasHostingPlanDetails, DISCOVERY_FIELDS, type DiscoveryFieldKey } from '@/lib/discovery'
 import { loadCommState, recordInbound, recordOutbound } from '@/lib/conversation-state'
 import { sendCommunication } from '@/lib/comms'
 import { screenAiReply } from '@/lib/ai-reply-guard'
@@ -155,30 +155,47 @@ export async function handleCustomerMessage(input: {
     })
     .catch(() => null)
 
-  // Store visitor's answer for current discovery question if applicable
-  // Heuristic: if discovery.currentQuestion exists, treat this message as answer to it
-  // Unless message contains a new question to us — answer first, then optionally advance
+  // Capture domain names as customer statements, but do not mark the hosting
+  // question answered until they provide a plan/detail or explicitly say they
+  // do not know yet. This prevents a bare domain name from skipping fit checks.
+  const customerDomains = extractDomainNames(visitorBody)
+  const domainHostingHint = extractDomainHostingHint(visitorBody)
+  const hostingDetailsProvided = hasHostingPlanDetails(visitorBody, discovery.currentQuestion === 'domainHosting')
   let discoveryUpdated = false
+  if (customerDomains.length) {
+    const note = `Customer mentioned domain(s) ${customerDomains.join(', ')}; ownership, registration/availability and DNS control are unverified.`
+    if (!discovery.answers.existingWebsite?.includes(customerDomains[0])) {
+      discovery.answers.existingWebsite = [discovery.answers.existingWebsite, note].filter(Boolean).join('\n').slice(0, 1000)
+      discoveryUpdated = true
+    }
+  }
+  if (domainHostingHint && hostingDetailsProvided && discovery.currentQuestion !== 'domainHosting' && !discovery.answers.domainHosting?.includes(domainHostingHint)) {
+    discovery.answers.domainHosting = [discovery.answers.domainHosting, domainHostingHint].filter(Boolean).join('\n').slice(0, 1000)
+    discoveryUpdated = true
+  }
+
+  // Store visitor's answer for the current discovery question, unless the
+  // response only supplied a domain name and left the hosting details unknown.
   if (discovery.currentQuestion && visitorBody.length > 2) {
     const fieldKey = discovery.currentQuestion
-    // Extract potential email answer vs discovery answer: if current question is not email and message looks like email, maybe it's email collection
-    // But we already handled email collection above
-    // Save the visitor's answer as the field value (unless it's clearly a new question to us that should be answered first)
     const isQuestionToUs = isCustomerQuestion(visitorBody)
-    // If customer is asking a question, we will answer it but still capture discovery context if message also contains answer
-    // For now, treat body as answer to current discovery question if not purely a question
     if (!isQuestionToUs || visitorBody.length > 30) {
-      // Only save if field not already answered
       if (!discovery.answers[fieldKey as DiscoveryFieldKey]) {
-        discovery.answers[fieldKey as DiscoveryFieldKey] = visitorBody.slice(0, 1000)
-        discoveryUpdated = true
+        if (fieldKey === 'domainHosting' && !hostingDetailsProvided) {
+          // Keep asking the hosting-fit question after acknowledging/storing a bare domain name.
+        } else {
+          discovery.answers[fieldKey as DiscoveryFieldKey] = fieldKey === 'domainHosting'
+            ? `${domainHostingHint ?? `Customer-provided domain/hosting response: ${visitorBody.slice(0, 700)}`}. Ownership, registration/availability and hosting compatibility remain unverified.`.slice(0, 1000)
+            : visitorBody.slice(0, 1000)
+          discoveryUpdated = true
+        }
       }
     }
   }
 
   // Special: if message itself contains discovery field hint, capture it heuristically
   // e.g. businessType detection from keywords
-  if (!discovery.answers.businessType && !discoveryUpdated) {
+  if (!discovery.answers.businessType) {
     const inferred = inferBusinessType(visitorBody)
     if (inferred) {
       discovery.answers.businessType = inferred
@@ -463,6 +480,7 @@ Your task:
 7. For retail/service businesses, collect catalogue size, sold/on-hand stock, upcoming items, employee roles and tasks, marketing sources, website, and real shop/service locations for Google Maps/local SEO. Ask one question at a time and accept estimates or “not applicable”.
 8. The process is: understand the business in webchat, draft and send a proposal, invite feedback, then prepare the detailed Scope of Work for explicit client review. Never request or initiate payment before the client has reviewed and approved the final scope.
 9. Any discount or free SEO/marketing work is an optional, human-approved offer; never invent a discount, claim Google affiliation, promise rankings, fake Maps markers, or imply paid Google tools are free.
+10. For domain/hosting questions, say a customer-provided domain is not proof of ownership or availability. Explain the proposed framework only conditionally on the exact hosting plan/runtime/database fit; tell the customer what runs where, the access/info needed, recurring costs, DNS/email-record preservation, SSL, backup, testing and rollback. Never ask for passwords, OTPs or API keys in chat, and never deploy TECH360's internal workforce to the client host. Ask for provider/plan specs or a redacted screenshot if needed.
 
 Context:
 ${knownContext}
