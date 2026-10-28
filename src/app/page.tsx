@@ -30,6 +30,7 @@ import DesignKitView from '@/components/site/DesignKitView'
 const AdminApp = lazy(() => import('@/components/admin/AdminApp'))
 
 import { TRACKING } from '@/lib/constants'
+import { getLegalDoc } from '@/data/site'
 
 // ------------------------------------------------------------------
 // Consent-aware analytics: Meta Pixel + GTM load only after consent.
@@ -112,8 +113,7 @@ function ConsentBanner({ onDecide }: { onDecide: (g: boolean) => void }) {
     <div role="dialog" aria-label="Cookie consent" className="fixed inset-x-0 bottom-0 z-[90] border-t border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-[0_-8px_30px_rgba(6,59,143,0.08)] print:hidden">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-slate-600">
-          We use privacy-respecting analytics (Google Tag Manager, Meta Pixel) to improve this site.
-          No CRM or personal client data is ever sent to analytics platforms.{' '}
+          If you accept analytics and advertising technologies, the site may load Google Tag Manager and Meta Pixel. These services may receive technical, browser, and event data according to the live configuration and their own policies.{' '}
           <a href="#/legal/privacy" className="font-medium text-[#009FE3] underline underline-offset-2">Privacy Policy</a>
         </p>
         <div className="flex shrink-0 gap-2">
@@ -266,6 +266,21 @@ export default function Page({ initialHash = '/' }: { initialHash?: string }) {
 
   const { section, param } = useMemo(() => parseHash(hash), [hash])
   const isAdmin = section === 'admin'
+  const legalDocument = section === 'legal' ? getLegalDoc(param || 'terms') : undefined
+
+  // Hash-routed legal pages share one document shell, so keep browser metadata
+  // synchronized with the active policy rather than leaving the home-page title.
+  useEffect(() => {
+    if (!legalDocument) return
+    document.title = `${legalDocument.title} | TECH360`
+    let description = document.querySelector<HTMLMetaElement>('meta[name="description"]')
+    if (!description) {
+      description = document.createElement('meta')
+      description.name = 'description'
+      document.head.appendChild(description)
+    }
+    description.content = legalDocument.summary
+  }, [legalDocument])
 
   // analytics lifecycle
   useEffect(() => {

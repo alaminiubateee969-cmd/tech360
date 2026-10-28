@@ -131,7 +131,7 @@ ${inquirySummary}
 
 We use the email address you provided to identify this enquiry and send service-related updates about your requested project. Marketing messages require a separate opt-in. This address is not marked verified until you complete an email one-time code during portal sign-in.
 
-Next steps: our team will review the requirements, ask any necessary follow-up questions, and prepare a written scope for your review. No payment is due before the applicable preview approval under the standard Payment Policy.
+Next steps: our team will review the requirements, ask any necessary follow-up questions, and prepare a written scope for your review. If an HTML Preview is included, its review and the payment schedule will follow the approved Scope of Work and project-specific terms.
 
 You can access the customer portal here: [Open the customer portal](${portalUrl}). Sign-in requires your Client ID and a one-time code sent to a contact on your record.
 
@@ -300,9 +300,9 @@ If you need explanation, you can book an online meeting here:
 ${v.meetingLink ?? 'a meeting link will be shared shortly'}
 
 Important:
-HTML preview may be shared for review before final payment.
-Final source code, files, admin access, and deployment handover are provided after full payment.
-After final delivery/source-code handover, payment is non-refundable unless Tech360 cannot deliver the approved scope.`,
+An HTML Preview is supplied where included in the agreed process. Its review and the project payment schedule follow the approved Scope of Work.
+Unless otherwise agreed in writing, final source-code handover takes place after all required project payments have been received and cleared.
+Refund requests are reviewed under the Refund Policy, the project agreement, actual work and delivery, payment records, applicable law, and relevant payment-provider rules. Properly completed work is generally non-refundable merely because the Client changes their mind; non-waivable rights remain unaffected.`,
   }
 }
 
@@ -324,16 +324,16 @@ Final Scope of Work:
 ${v.finalScope ?? 'the approved scope'}
 
 Payment Policy:
-${v.paymentPolicy ?? 'HTML Preview Before Payment · Source Code After Full Payment'}
+${v.paymentPolicy ?? 'Preview where included in the agreed process · Project-specific payment schedule · Final source-code handover after required payments clear'}
 
 HTML Preview Policy:
-Tech360 may share an HTML/demo preview so you can review the design, structure, and project direction before final source-code handover.
+An HTML Preview is supplied for review where included in the agreed process. Approval applies to the visual design and elements shown, not automatically to backend functions or production integrations.
 
 Final Delivery Policy:
-Final source code, full project files, admin access, and deployment files are delivered after full payment.
+After required outstanding project payments have been received and cleared, TECH360 delivers the source code, documentation, and Client-owned credentials specifically identified in the approved Scope of Work. Internal secrets and other Clients’ information are excluded.
 
 Non-Refund Policy:
-After final delivery, source-code handover, admin access handover, or server deployment, payment is non-refundable unless Tech360 cannot deliver the approved Scope of Work.
+Refund requests are reviewed against the approved Scope of Work, agreement, work completed, delivery status, payment records, any reported defect or non-delivery, applicable law, and payment-provider rules. Completed and conforming work is generally non-refundable merely because the Client changes their mind; non-waivable rights remain unaffected.
 
 If the scope is clear, please reply:
 
@@ -413,11 +413,10 @@ Your approval has been saved under Client ID:
 
 ${v.clientId}
 
-Tech360 will now prepare the HTML/demo preview for your review.
+Any HTML Preview included in the approved Scope of Work will be prepared for your review.
 
 Please note:
-HTML/demo preview is for review and confirmation.
-Final source code, full files, admin access, and deployment handover are provided after full payment.`,
+The preview is for review of the visual design and elements shown; it does not establish that all backend features or production integrations are complete. Final source-code handover follows the agreed payment and handover terms.`,
   }
 }
 
@@ -430,10 +429,10 @@ Your approval has been saved under Client ID:
 
 ${v.clientId}
 
-Tech360 will now prepare the HTML/demo preview for your review.
+Any HTML Preview included in the approved Scope of Work will be prepared for your review.
 
 Please note:
-The HTML/demo preview is shared for review and confirmation only. Final source code, full files, admin access, and deployment handover are provided after full payment.
+The preview covers the visual design and elements shown, not automatically all backend features or production integrations. Final source-code handover follows the agreed payment and handover terms.
 
 Best regards,
 Tech360 Team`
@@ -454,7 +453,7 @@ export function previewSentWhatsApp(v: PipelineVariables): PipelineMessage {
   return {
     stage: 'HTML_PREVIEW_SENT',
     channel: 'WHATSAPP',
-    body: `Your HTML/demo preview is ready.
+    body: `Your HTML Preview is ready for review as provided in the agreed process.
 
 Preview Link:
 ${v.htmlPreviewUrl ?? 'a preview link will be shared shortly'}
@@ -466,7 +465,7 @@ Please review and reply with one of the following:
 3. Need meeting
 
 Important:
-After HTML/demo approval and final delivery/source-code handover, payment is non-refundable unless Tech360 cannot deliver the approved scope.`,
+Preview approval records the design and visible elements reviewed; it does not waive legal rights. Refund requests are reviewed under the approved agreement, actual work and delivery, applicable law, and relevant payment-provider rules.`,
   }
 }
 
@@ -485,7 +484,7 @@ Please review and confirm:
 3. Need meeting
 
 Important:
-The HTML/demo preview is provided for review and confirmation. Final source code, full files, admin access, and deployment handover are provided after full payment. After final delivery/source-code handover, payment is non-refundable unless Tech360 cannot deliver the approved scope.
+The HTML Preview is provided where included in the agreed process and covers the elements shown. Unless otherwise agreed in writing, final source-code handover follows verification that all required outstanding project payments have cleared. Handover includes only the agreed deliverables and Client-owned credentials identified in the Scope of Work; internal secrets and other Clients’ information are excluded. Refund requests are reviewed under the applicable agreement, law, and provider rules; completed and conforming work is generally non-refundable merely because the Client changes their mind, subject to non-waivable rights.
 
 Best regards,
 Tech360 Team`
@@ -635,11 +634,10 @@ ${v.clientId}
 
 Delivery may include:
 
-✅ Final website/system files
-✅ Source code
-✅ Admin access, if included
-✅ Deployment support, if included
-✅ Basic handover documentation
+✅ Agreed website/system deliverables
+✅ Source code where included in the approved scope
+✅ Client-owned credentials identified in the scope, if applicable
+✅ Deployment support and documentation, if included
 
 Please review the delivery carefully and confirm after checking.`,
   }
@@ -653,14 +651,14 @@ Your final project delivery is ready.
 Client ID:
 ${v.clientId}
 
-Your handover may include:
+Your handover includes only the items agreed in the approved Scope of Work. Where applicable, this may include:
 
-1. Final website/system files
-2. Source code
-3. Admin access, if included
-4. Deployment support, if included
-5. Basic handover documentation
-6. Scope-based final delivery
+1. Agreed website/system deliverables
+2. Source code identified in the scope
+3. Client-owned credentials identified in the scope
+4. Deployment support and documentation, if included
+
+TECH360 internal secrets, shared infrastructure credentials, and other Clients’ information are excluded. Unless otherwise agreed in writing, handover follows verification that all required outstanding project payments have cleared.
 
 Please review the delivery carefully and confirm after checking.
 

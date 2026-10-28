@@ -23,7 +23,7 @@ export default function ProcessView() {
       <PageHero
         eyebrow="Delivery process"
         title="Seven phases. Two gates. Zero surprises."
-        description="Discover → Scope → Preview → Payment → Build → Deliver → Handover & Support. Payment begins only after your preview approval; source code is released after final payment. Both rules are published policy."
+        description="Inquiry → written scope and quote → preview where included → approval → agreed payment → implementation, testing, review, and delivery. Required outstanding payments are verified before final source-code handover unless the project agreement states otherwise."
         breadcrumb={[{ label: "Process" }]}
       />
 
@@ -146,9 +146,10 @@ export default function ProcessView() {
                 <CardContent className="p-5">
                   <h3 className="text-base font-semibold text-[#0B1F33]">Delivery &amp; handover</h3>
                   <p className="mt-2 text-sm leading-relaxed text-[#526173]">
-                    Nothing ends at “done” — code, credentials, documentation
-                    and the roadmap for what comes next are transferred to you
-                    as a structured, recorded event. You own everything.
+                    The agreed code, documentation, and Client-owned credentials
+                    specifically identified in the approved scope are handed over
+                    through a recorded process. TECH360 internal secrets and other
+                    clients’ information are excluded.
                   </p>
                 </CardContent>
               </Card>
@@ -164,7 +165,7 @@ export default function ProcessView() {
             id="pipeline-heading"
             eyebrow="At a glance"
             title="One pipeline, two gates, clear ownership"
-            description="The highlighted stage is the promise most agencies skip: you review a working preview before any payment is due."
+            description="Where an HTML Preview is included in the agreed process, the Client can review it before the applicable project payment."
           />
           <div className="mt-10 space-y-6">
             <LeadFunnel />
@@ -241,7 +242,7 @@ export default function ProcessView() {
 
       <CtaBand
         title="See the process work on your project"
-        description="The fastest proof is experience: send one message, and watch a written scope and an HTML preview arrive before any payment request."
+        description="Start with an enquiry. TECH360 can assess the requirements and provide a written proposal; an HTML Preview is supplied where included in the agreed process."
       />
     </main>
   );

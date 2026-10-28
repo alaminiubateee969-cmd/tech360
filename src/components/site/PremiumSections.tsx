@@ -61,7 +61,7 @@ export function SolutionsGrid() {
   return (
     <section aria-labelledby="solutions-h" className="bg-[#F7FAFC]">
       <div className={wrap}>
-        <SectionHeading id="solutions-h" eyebrow="AI Solutions" title="AI Solutions for Every Business Challenge" description="Six connected solution areas, each delivered as working software — scoped in writing, previewed before payment, and handed over with source code." />
+        <SectionHeading id="solutions-h" eyebrow="AI Solutions" title="AI Solutions for Every Business Challenge" description="Six solution areas proposed and scoped in writing; preview, delivery, and source-code handover follow the approved project terms." />
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {SOLUTIONS.map((s) => (
             <Reveal key={s.title}>
@@ -286,7 +286,7 @@ export function BenefitsGrid() {
 
 /* ---------------- Pricing, honest model (§14) ---------------- */
 const ENGAGEMENTS = [
-  { icon: FileText, title: "Fixed-Scope Project", price: "Written quotation", items: ["Defined scope approved before work begins", "HTML preview before payment", "Milestones on the record", "Source code on full payment"], cta: "Request a quotation" },
+  { icon: FileText, title: "Fixed-Scope Project", price: "Written quotation", items: ["Defined scope approved before authorized work", "HTML Preview where included in the agreed process", "Project-specific milestones", "Agreed source code after required payments clear"], cta: "Request a quotation" },
   { icon: CalendarClock, title: "Ongoing Partnership", price: "Monthly, scoped monthly", items: ["Continuous improvements and support", "Automation monitoring and tuning", "Monthly reporting and reviews", "Priority change queue"], cta: "Discuss a partnership" },
   { icon: ShieldCheck, title: "Custom / Enterprise", price: "Custom quotation", items: ["Multi-team or multi-branch rollouts", "Custom integrations and data migration", "Dedicated delivery management", "Security and access review"], cta: "Talk to us" },
 ];
@@ -294,7 +294,7 @@ export function PricingSection() {
   return (
     <section aria-labelledby="pricing-h" className="bg-[#F7FAFC]">
       <div className={wrap}>
-        <SectionHeading id="pricing-h" eyebrow="Pricing" title="Scoped in Writing. Previewed Before Payment." description="Tech360 does not publish a rate card, because no two business systems cost the same. Every engagement starts with a written scope and quotation — you approve an HTML preview before paying. No hidden restrictions, no invented discounts." />
+        <SectionHeading id="pricing-h" eyebrow="Pricing" title="Scoped in Writing. Delivered as Agreed." description="TECH360 does not publish a rate card, because no two business systems cost the same. Each engagement starts with a written scope and quotation; any preview, payment milestones, delivery, and support are specified for that project." />
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
           {ENGAGEMENTS.map((e) => (
             <Reveal key={e.title}>

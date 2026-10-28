@@ -599,7 +599,7 @@ export function formatScopeForClient(content: Record<string, unknown>, clientId:
   }
   text += '\nTIMELINE\n'
   timeline.forEach((t) => { text += `• ${t.phase ?? ''} (${t.weeks ?? '?'} week(s)): ${t.activities ?? ''}\n` })
-  text += `\nPAYMENT POLICY\n• Advance: ${String(pp.advancePct ?? '—')}%\n• On milestone: ${String(pp.milestonePct ?? '—')}%\n• On final delivery: ${String(pp.finalPct ?? '—')}%\n• Currency: ${String(pp.currency ?? 'USD')}\n${String(pp.terms ?? '')}\n\nKEY POLICIES\n• HTML Preview Before Payment\n• Source Code After Full Payment\n• Changes to approved scope may require additional cost/time\n\nReply APPROVED to confirm, or send your revision notes.\n— Team Tech360`
+  text += `\nPAYMENT POLICY\n• Advance: ${String(pp.advancePct ?? '—')}%\n• On milestone: ${String(pp.milestonePct ?? '—')}%\n• On final delivery: ${String(pp.finalPct ?? '—')}%\n• Currency: ${String(pp.currency ?? 'USD')}\n${String(pp.terms ?? '')}\n\nKEY POLICIES\n• HTML Preview where included in the agreed process\n• Source-code handover after required outstanding payments clear, unless otherwise agreed\n• Changes to approved scope may require additional cost/time\n\nReply APPROVED to confirm, or send your revision notes.\n— Team Tech360`
   return text
 }
 
@@ -791,7 +791,7 @@ export async function generatePreview(clientRowId: string) {
   const link = `${base}/api/preview/${token}`
   const attempts: Array<{ channel: string; status: string; ok: boolean }> = []
   // STAGE 6 — the HTML preview notification. The preview is produced
-  // BEFORE any payment: HTML Preview Before Payment.
+  // at the agreed preview/payment stage. The SOW defines whether and when a preview is included.
   const sent = await sendPipelineMessage({
     clientRowId: client.id,
     stage: 'HTML_PREVIEW_SENT',
@@ -832,7 +832,7 @@ ${padMeta([
   ])}
 <main class="doc">
 <h1 class="hello">Hello ${clientDisplayName}${client.businessName ? ` · ${escapeHtml(client.businessName)}` : ''}</h1>
-<p class="intro">This is the working preview of your project scope, generated from your approved requirements and presented on official Tech360 company letterhead. Review everything below — <strong>no payment is due until you approve.</strong></p>
+<p class="intro">This is the working preview of your project scope, generated from your requirements and presented for review. The approved Scope of Work defines any HTML Preview, its review step, and when payment is due.</p>
 <h2>Deliverables</h2>${itemRows || '<div class="card"><p>Scope items will appear here.</p></div>'}
 <h2>Timeline</h2><ol class="timeline">${timelineRows}</ol>
 <h2>Payment Plan</h2>
@@ -841,7 +841,7 @@ ${padMeta([
 <div><b>${escapeHtml(String(pp.milestonePct ?? '—'))}%</b><br/><small>On milestone</small></div>
 <div><b>${escapeHtml(String(pp.finalPct ?? '—'))}%</b><br/><small>On final delivery</small></div>
 </div>
-<div class="note"><strong>Our promise:</strong> HTML Preview Before Payment · Source Code After Full Payment · Changes to approved scope may require additional cost/time.</div>
+<div class="note"><strong>Project terms:</strong> HTML Preview where included in the agreed process · Final source-code handover after required payments have cleared unless otherwise agreed · Changes to approved scope may require an approved price or schedule adjustment.</div>
 ${padSignatures(clientDisplayName, "Client approval of scope preview")}
 <div class="acts no-print"><a class="btn btn-a" href="#approve" id="approveBtn">✓ Approve this preview</a><a class="btn btn-r" href="#revise" id="reviseBtn">Request changes</a></div>
 </main>

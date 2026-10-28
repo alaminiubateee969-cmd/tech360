@@ -267,7 +267,7 @@ export function renderInvoiceDocumentHtml(inv: RenderableInvoice, currentPayment
       <div class="inv-grid">
         <div class="inv-box">
           <h4>Payment Terms &amp; Configured Methods</h4>
-          <p style="margin:0 0 6px"><strong>Terms:</strong> ${escapeHtml(inv.paymentTerms || 'HTML Preview Before Payment. Source Code Handover After Full Verified Payment.')}</p>
+          <p style="margin:0 0 6px"><strong>Terms:</strong> ${escapeHtml(inv.paymentTerms || 'HTML Preview where included in the agreed process. Final source-code handover after required outstanding project payments have cleared, unless otherwise agreed in writing.')}</p>
           <p style="margin:0"><strong>Payment Methods:</strong> ${escapeHtml(methodsText)}</p>
         </div>
         ${

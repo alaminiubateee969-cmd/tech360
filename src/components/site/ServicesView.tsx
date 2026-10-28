@@ -126,7 +126,7 @@ export default function ServicesView() {
       <PageHero
         eyebrow="Services"
         title={`${SERVICES.length} engineering services. One delivery standard.`}
-        description="From your first business website to AI-driven automation — scoped in writing, previewed before payment, delivered with full source handover."
+        description="From websites to AI-assisted automation — scoped in writing, with previews, source code, and handover provided as agreed for each project."
         breadcrumb={[{ label: "Services" }]}
       />
 

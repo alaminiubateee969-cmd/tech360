@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
   const taxLabel = sanitizeText(raw.taxLabel, 80) || null
   const paymentTerms =
     sanitizeText(raw.paymentTerms, 1000) ||
-    'HTML Preview Before Payment. Source Code Handover After Full Verified Payment.'
+    'HTML Preview where included in the agreed process. Final source-code handover after required outstanding project payments have cleared, unless otherwise agreed in writing.'
   const termsVersion = sanitizeText(raw.termsVersion, 60) || 'TECH360-MSA-2026.1'
   const dueRaw = sanitizeText(raw.dueAt, 40)
   const initialStatus =
