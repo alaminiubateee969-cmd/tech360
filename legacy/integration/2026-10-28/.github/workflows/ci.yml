@@ -1,0 +1,459 @@
+# ============================================================
+# TECH360 — CONTINUOUS INTEGRATION
+#
+# Production deployment is NOT performed here.
+#
+# The intended production path is Hostinger's Node.js Web App Git integration.
+# This repository cannot inspect or configure the Hostinger account, so a green
+# CI run is not proof that a Hostinger app is connected or that a deploy ran.
+# There is deliberately no second deployment mechanism in this workflow.
+# See docs/HOSTINGER_DEPLOYMENT.md.
+#
+# This workflow only PROVES a commit is safe to deploy:
+#   - the Prisma schema targets MySQL, the real production engine
+#   - the committed migration baseline applies with zero drift
+#   - lint, typecheck, tests and the production build all pass
+#
+# There is deliberately no SSH, no rsync, no scp and no remote restart:
+# a second deployment mechanism alongside Hostinger's would be able to
+# overwrite production behind Hostinger's back.
+# ============================================================
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - 'arena/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Disposable CI database. NEVER the production database.
+  CI_MYSQL_DB: tech360_ci
+  CI_MYSQL_USER: tech360
+  CI_MYSQL_PASSWORD: ci_only_not_a_secret
+  CI_MYSQL_ROOT_PASSWORD: ci_only_not_a_secret
+
+jobs:
+  # ------------------------------------------------------------------
+  # CI — validated against MySQL, the engine production actually runs
+  # ------------------------------------------------------------------
+  ci:
+    name: Validate against MySQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_only_not_a_secret
+          MYSQL_DATABASE: tech360_ci
+          MYSQL_USER: tech360
+          MYSQL_PASSWORD: ci_only_not_a_secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci_only_not_a_secret"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DATABASE_URL: mysql://tech360:ci_only_not_a_secret@127.0.0.1:3306/tech360_ci
+      SHADOW_DATABASE_URL: mysql://root:ci_only_not_a_secret@127.0.0.1:3306/tech360_ci_shadow
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Secret scan (fail before deploy if a secret slipped in)
+        run: |
+          echo "scanning tracked files for accidental secrets…"
+          if git ls-files -z | xargs -0 grep -lIE \
+            'sk_live_[A-Za-z0-9]{20,}|sk_test_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{22,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[A-Za-z0-9-]{20,}|npm_[A-Za-z0-9]{36,}' \
+            2>/dev/null | grep -v '^\.env\.example$'; then
+            echo "::error::secret-like material found in tracked files — remove it and rotate the credential"
+            exit 1
+          fi
+          echo "clean: no secret patterns in tracked files"
+          if [ -f .env ]; then echo "::error::.env must never be committed"; exit 1; fi
+          echo "clean: .env not committed"
+
+      - name: Setup application Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # The application runtime is Node.js 22; this input does not change the
+      # JavaScript runtime used internally by actions/setup-node (Node.js 24).
+      # Validate the intended Hostinger npm path against the committed lockfile.
+      - name: npm ci on application Node.js 22
+        run: |
+          node --version
+          npm --version
+          npm ci --no-audit --no-fund
+
+      - name: Verify production start fails closed on missing configuration
+        run: |
+          set +e
+          output="$(env -u NODE_ENV -u DATABASE_URL -u APP_PUBLIC_URL -u APP_ORIGIN \
+            -u SESSION_SECRET -u PORTAL_SECRET -u OPS_SECRET npm start 2>&1)"
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ] || ! printf '%s' "$output" | grep -q 'production environment validation failed'; then
+            echo "::error::npm start must stop in prestart when required production configuration is missing"
+            printf '%s\n' "$output"
+            exit 1
+          fi
+          if printf '%s' "$output" | grep -Eqi 'mysql://|ci_only_not_a_secret|PASSWORD=[^[:space:]]+'; then
+            echo "::error::prestart output exposed a configuration value"
+            exit 1
+          fi
+          echo "npm start correctly stopped in prestart without printing values"
+
+      - name: Verify retired deployment paths fail closed
+        run: node tests/retired-deployment-paths.mjs
+
+      - name: Verify the scoped Next ESLint glob API
+        run: |
+          node <<'NODE'
+          const { createRequire } = require('node:module')
+          const pluginRequire = createRequire(require.resolve('@next/eslint-plugin-next'))
+          const fastGlob = pluginRequire('fast-glob')
+          if (typeof fastGlob.globSync !== 'function') throw new Error('fast-glob.globSync is unavailable')
+          const directories = fastGlob.globSync('src', { onlyDirectories: true })
+          if (!directories.includes('src') && !directories.includes('src/')) {
+            throw new Error('globSync did not return the source directory')
+          }
+          console.log(`scoped tinyglobby alias passed fast-glob API check (${directories.length} directories)`)
+          NODE
+
+      # Fail on vulnerabilities at every severity. The Next ESLint plugin only
+      # uses fast-glob.globSync(..., { onlyDirectories: true }); package.json
+      # scopes its compatible tinyglobby alias to that dev-only package. This
+      # removes the currently unpatched braces advisory without downgrading Next
+      # or suppressing npm audit findings.
+      - name: Audit npm dependencies (full and production)
+        run: |
+          npm audit --audit-level=low
+          npm audit --omit=dev --audit-level=low
+
+      # --- provider gates -------------------------------------------------
+      - name: Prisma schema is in sync with the MySQL type map
+        run: node scripts/convert-schema-to-mysql.mjs --check
+
+      # The database-free half of the drift gate. It applies the same rules
+      # as `prisma migrate diff` (tables, columns, types, nullability,
+      # defaults, indexes) statically, so a drift is reported here with a
+      # precise message instead of only after a MySQL container has run.
+      - name: Committed migrations reproduce the schema (no drift)
+        run: node scripts/check-schema-drift.mjs
+
+      - name: Prisma provider matches DATABASE_URL scheme
+        run: |
+          PROVIDER="$(sed -n 's/^[[:space:]]*provider[[:space:]]*=[[:space:]]*"\([a-z]*\)".*/\1/p' prisma/schema.prisma | head -1)"
+          SCHEME="$(printf '%s' "$DATABASE_URL" | sed -n 's|^\([a-z0-9+]*\):.*|\1|p')"
+          echo "prisma provider = $PROVIDER · DATABASE_URL scheme = $SCHEME"
+          if [ "$PROVIDER" != "mysql" ] || [ "$SCHEME" != "mysql" ]; then
+            echo "::error::provider/URL mismatch — CI must exercise the production engine (mysql)"
+            exit 1
+          fi
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # --- Hostinger engine-permission failure mode (regression guard) ----
+      # Hostinger's build environment strips the executable bit from the
+      # lazily-downloaded Prisma engine binaries. Prisma's cache-integrity
+      # check (valid cache + matching sha256) then reuses the non-executable
+      # in-place file instead of re-downloading it, and `prisma migrate
+      # deploy` fails with:
+      #   Error: Schema engine exited / Command failed with EACCES
+      #   spawn .../schema-engine-<target> EACCES
+      # Reproduce that exact state here and prove the production build
+      # (scripts/prisma.mjs wrapper) repairs it. This step is deterministic:
+      # it seeds a VALID Prisma engine cache so the no-redownload branch is
+      # taken, then strips the executable bit, exactly like Hostinger.
+      - name: Simulate Hostinger build-environment permission loss
+        run: |
+          set -euo pipefail
+          engines_dir=node_modules/@prisma/engines
+          target_file=$(ls "$engines_dir"/schema-engine-* | head -1)
+          target="${target_file##*/schema-engine-}"
+          commit=$(node -p "require('@prisma/engines-version').enginesVersion")
+          cache_dir="$HOME/.cache/prisma/master/$commit/$target"
+          mkdir -p "$cache_dir"
+          cp "$target_file" "$cache_dir/schema-engine"
+          printf '%s' "$(sha256sum "$cache_dir/schema-engine" | awk '{print $1}')" > "$cache_dir/schema-engine.sha256"
+          chmod 644 "$cache_dir/schema-engine"
+          chmod 644 "$target_file"
+          for f in "$engines_dir"/libquery_engine-*; do
+            if [ -f "$f" ]; then chmod 644 "$f"; fi
+          done
+          echo "engine state now matches the Hostinger failure condition:"
+          ls -la "$engines_dir"
+
+      - name: Prove the original build path fails without the fix
+        run: |
+          set -uo pipefail
+          out=$(npx prisma migrate deploy 2>&1) && rc=0 || rc=$?
+          if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'EACCES'; then
+            echo "confirmed: raw 'prisma migrate deploy' fails with EACCES (the Hostinger failure mode), rc=$rc"
+            printf '%s\n' "$out" | tail -6
+          else
+            echo "::error::expected raw 'prisma migrate deploy' to fail with EACCES; rc=$rc"
+            printf '%s\n' "$out"
+            exit 1
+          fi
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 40); do
+            if mysqladmin ping -h 127.0.0.1 -P 3306 -uroot -p"$CI_MYSQL_ROOT_PASSWORD" --silent 2>/dev/null; then
+              echo "mysql is up"; mysql -h 127.0.0.1 -uroot -p"$CI_MYSQL_ROOT_PASSWORD" -e "SELECT VERSION();"; exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::MySQL service never became ready"; exit 1
+
+      # --- migration baseline --------------------------------------------
+      # The committed baseline is the single source of truth. CI replays it
+      # exactly as production would (migrate deploy — never db push, never
+      # migrate dev, never migrate reset).
+      - name: Migration baseline exists
+        run: |
+          if [ ! -d prisma/migrations ] || [ -z "$(ls -A prisma/migrations 2>/dev/null)" ]; then
+            echo "::error::prisma/migrations is missing or empty — no reviewed baseline to replay"
+            exit 1
+          fi
+          echo "baseline migrations:"; ls -1 prisma/migrations
+
+      # The production build runs Prisma through scripts/prisma.mjs, which
+      # restores the executable bit on every engine artifact before any
+      # command can spawn one (the Hostinger fix). Run the migration the
+      # same way production will.
+      - name: Apply migrations to the disposable MySQL (as production would)
+        run: node scripts/prisma.mjs migrate deploy
+
+      - name: Baseline must leave zero schema drift
+        run: |
+          set -euo pipefail
+          set +e
+          npx prisma migrate diff \
+            --from-url "$DATABASE_URL" \
+            --to-schema-datamodel prisma/schema.prisma \
+            --exit-code --script > /tmp/drift.sql 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" = "2" ]; then
+            echo "::error::schema drift — the committed baseline does not reproduce schema.prisma"
+            node --input-type=module - <<'NODE'
+          import fs from 'node:fs'
+          const lines = fs.readFileSync('/tmp/drift.sql', 'utf8').trim().split(/\r?\n/)
+          for (const line of lines.slice(0, 60)) {
+            const safe = line.slice(0, 500).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')
+            console.log(`::error::schema drift detail: ${safe}`)
+          }
+          NODE
+            cat /tmp/drift.sql
+            exit 1
+          elif [ "$rc" != "0" ]; then
+            echo "::error::Prisma schema drift check failed with exit code $rc"
+            cat /tmp/drift.sql
+            exit "$rc"
+          fi
+          echo "no drift: migrations reproduce schema.prisma exactly"
+
+      # --- quality gates ---------------------------------------------------
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Business and database isolation tests (MySQL)
+        run: npm test
+
+      - name: Verify production seed bootstrap is idempotent and non-destructive
+        run: node tests/seed-safety.mjs
+
+      - name: Database integrity (MySQL, read-only)
+        run: npm run db:verify
+
+      - name: Production build
+        run: npm run build
+
+      - name: Validate standalone server and static/public output
+        run: |
+          set -euo pipefail
+          test -s .next/standalone/server.js
+          test -n "$(find .next/standalone/.next/static -type f -print -quit)"
+          test -f .next/standalone/public/robots.txt
+          echo "standalone server, Next static assets, and public assets are present"
+
+      - name: Smoke-test the generated production server
+        shell: bash
+        env:
+          NODE_ENV: production
+          APP_PUBLIC_URL: https://bdtech360.com
+          APP_ORIGIN: https://bdtech360.com
+          SESSION_SECRET: ci_session_secret_only_never_use_in_production_123456
+          PORTAL_SECRET: ci_portal_secret_only_never_use_in_production_234567
+          OPS_SECRET: ci_ops_secret_only_never_use_in_production_345678
+          ZAI_BASE_URL: https://ci.invalid/v1
+          ZAI_API_KEY: ci_provider_key_only_never_use_in_production
+          AI_OPS_DRIVER: off
+        run: |
+          set -euo pipefail
+          PORT="$(node -e 'const net = require("node:net"); const server = net.createServer(); server.listen(0, "127.0.0.1", () => { console.log(server.address().port); server.close(); });')"
+          HOSTNAME=127.0.0.1 PORT="$PORT" npm start > /tmp/tech360-production-start.log 2>&1 &
+          APP_PID=$!
+          stop_app() {
+            local pid="$1" status=0
+            if kill -0 "$pid" 2>/dev/null; then
+              if ! kill "$pid" 2>/dev/null && kill -0 "$pid" 2>/dev/null; then
+                echo "::error::could not stop production smoke-test process $pid"
+                return 1
+              fi
+            fi
+            if wait "$pid" 2>/dev/null; then
+              status=0
+            else
+              status=$?
+            fi
+            if [ "$status" -ne 0 ] && [ "$status" -ne 143 ]; then
+              echo "::error::production smoke-test process exited unexpectedly with status $status"
+              return "$status"
+            fi
+          }
+          cleanup() {
+            if [ -n "${APP_PID:-}" ]; then stop_app "$APP_PID"; fi
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for _ in $(seq 1 60); do
+            if curl -fsS "http://127.0.0.1:$PORT/api/health" -o /tmp/tech360-health.json; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$APP_PID" 2>/dev/null; then
+              cat /tmp/tech360-production-start.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat /tmp/tech360-production-start.log
+            echo "::error::standalone production server did not become healthy on its supplied PORT"
+            exit 1
+          fi
+
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const pkg = require('./package.json');
+          const health = JSON.parse(fs.readFileSync('/tmp/tech360-health.json', 'utf8'));
+          if (health.status !== 'healthy') throw new Error(`health status: ${health.status}`);
+          if (health.app !== 'tech360-platform') throw new Error(`unexpected app: ${health.app}`);
+          if (health.version !== pkg.version) throw new Error(`health version ${health.version} != package ${pkg.version}`);
+          if (health.checks?.database?.status !== 'UP') throw new Error(`database status: ${health.checks?.database?.status}`);
+          if (!/MySQL/i.test(health.checks.database.detail ?? '')) throw new Error('health does not identify the connected MySQL database');
+          const healthText = JSON.stringify(health);
+          if (/DATABASE_URL|mysql:\/\/|SESSION_SECRET|PORTAL_SECRET|OPS_SECRET|password/i.test(healthText)) {
+            throw new Error('health response contains configuration or secret material');
+          }
+          console.log(`health OK: version ${health.version}; MySQL UP; no secrets exposed`);
+          NODE
+
+          home_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/")"
+          test "$home_status" = 200
+          portal_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "http://127.0.0.1:$PORT/api/portal/login")"
+          test "$portal_status" = 400
+          login_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"email":"missing@example.invalid","password":"invalid-password"}' "http://127.0.0.1:$PORT/api/auth/login")"
+          test "$login_status" = 401
+          seo_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "http://127.0.0.1:$PORT/api/admin/seo/audit")"
+          test "$seo_status" = 401
+
+          # curl writes CRLF line endings; strip the CR before matching whole
+          # header lines, otherwise a correct header can never match "^...$".
+          response_headers="$(curl -sS -D - -o /dev/null "http://127.0.0.1:$PORT/" | tr -d '\r')"
+          for required_header in \
+            'X-Content-Type-Options: nosniff' \
+            'X-Frame-Options: SAMEORIGIN' \
+            'Referrer-Policy: strict-origin-when-cross-origin' \
+            'Strict-Transport-Security: max-age=31536000'; do
+            if ! printf '%s\n' "$response_headers" | grep -qi "^$required_header$"; then
+              echo "::error::missing required response header: $required_header"
+              printf '%s\n' "$response_headers"
+              exit 1
+            fi
+          done
+          echo "security headers present: X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Strict-Transport-Security"
+
+          www_status="$(curl -sS -D /tmp/tech360-www.headers -o /dev/null -w '%{http_code}' -H 'Host: www.bdtech360.com' "http://127.0.0.1:$PORT/")"
+          www_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-www.headers | tr -d '\r')"
+          test "$www_status" = 308
+          test "$www_location" = 'https://bdtech360.com/'
+          http_status="$(curl -sS -D /tmp/tech360-http.headers -o /dev/null -w '%{http_code}' -H 'x-forwarded-proto: http' "http://127.0.0.1:$PORT/")"
+          http_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-http.headers | tr -d '\r')"
+          test "$http_status" = 308
+          test "$http_location" = 'https://bdtech360.com/'
+
+          for extension in js css; do
+            static_file="$(find .next/standalone/.next/static -type f -name "*.$extension" -print -quit)"
+            test -n "$static_file"
+            static_rel="${static_file#.next/standalone/.next/static/}"
+            asset_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/_next/static/$static_rel")"
+            test "$asset_status" = 200
+          done
+          brand_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/brand/tech360-logo-original.jpg")"
+          robots_status="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/robots.txt")"
+          test "$brand_status" = 200
+          test "$robots_status" = 200
+          echo "production smoke test passed: home=$home_status portal=$portal_status login=$login_status protected-seo=$seo_status JS/CSS/public=$asset_status/$brand_status/$robots_status www=$www_status HTTP-upgrade=$http_status"
+
+          stop_app "$APP_PID"
+          APP_PID=
+          DOWN_PORT="$(node -e 'const net = require("node:net"); const server = net.createServer(); server.listen(0, "127.0.0.1", () => { console.log(server.address().port); server.close(); });')"
+          DATABASE_URL='mysql://tech360:ci_only_not_a_secret@127.0.0.1:1/tech360_ci?connect_timeout=1' HOSTNAME=127.0.0.1 PORT="$DOWN_PORT" npm start > /tmp/tech360-production-down.log 2>&1 &
+          APP_PID=$!
+          down_ready=false
+          for _ in $(seq 1 60); do
+            if down_status="$(curl -sS -o /tmp/tech360-health-down.json -w '%{http_code}' "http://127.0.0.1:$DOWN_PORT/api/health" 2>/dev/null)"; then
+              if [ "$down_status" = 503 ]; then down_ready=true; break; fi
+            fi
+            if ! kill -0 "$APP_PID" 2>/dev/null; then
+              cat /tmp/tech360-production-down.log
+              echo "::error::server exited before the unhealthy-database check"
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$down_ready" != true ]; then
+            cat /tmp/tech360-production-down.log
+            echo "::error::health endpoint did not return HTTP 503 for an unavailable MySQL dependency"
+            exit 1
+          fi
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const health = JSON.parse(fs.readFileSync('/tmp/tech360-health-down.json', 'utf8'));
+          if (health.status !== 'unhealthy') throw new Error(`expected unhealthy health status, got ${health.status}`);
+          if (health.checks?.database?.status !== 'DOWN') throw new Error(`expected database DOWN, got ${health.checks?.database?.status}`);
+          if (/mysql:\/\/|password|SESSION_SECRET|PORTAL_SECRET|OPS_SECRET/i.test(JSON.stringify(health))) {
+            throw new Error('unhealthy health response contains secret/configuration material');
+          }
+          console.log('database failure health check correctly returned 503 without exposing secrets');
+          NODE
