@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText, audit } from '@/lib/security'
+import { canHumanAcceptAgentDraft } from '@/lib/project-task-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id, taskId } = await params
   const project = await db.project.findFirst({ where: { OR: [{ id: sanitizeText(id, 40) }, { code: sanitizeText(id, 40) }] } })
   if (!project) return Response.json({ error: 'Project not found' }, { status: 404 })
-  const task = await db.projectTask.findFirst({ where: { id: sanitizeText(taskId, 40), projectId: project.id } })
+  const task = await db.projectTask.findFirst({
+    where: { id: sanitizeText(taskId, 40), projectId: project.id },
+    include: { agentJob: { select: { status: true } } },
+  })
   if (!task) return Response.json({ error: 'Task not found' }, { status: 404 })
 
   const raw = await readJson(req)
@@ -20,6 +24,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const evidence = sanitizeText(raw.evidence, 4000)
   const description = sanitizeText(raw.description, 2000)
   const priority = sanitizeText(raw.priority, 10).toUpperCase()
+  if (task.assigneeType === 'AGENT' && task.assigneeRef === 'TSK-019' && status === 'DONE') {
+    if (!canHumanAcceptAgentDraft({ assigneeType: task.assigneeType, taskStatus: task.status, jobStatus: task.agentJob?.status })) {
+      return Response.json({ error: 'A completed AI draft must be in REVIEW before a human can accept it.', code: 'HUMAN_REVIEW_REQUIRED' }, { status: 409 })
+    }
+    if (evidence.length < 8) return Response.json({ error: 'Add a short human review note before accepting this agent draft.', code: 'REVIEW_EVIDENCE_REQUIRED' }, { status: 400 })
+  }
 
   const data: Record<string, unknown> = {}
   if (status && ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'BLOCKED'].includes(status)) {

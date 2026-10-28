@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { OR: [{ id: ref }, { code: ref }] },
     include: {
       client: { select: { id: true, clientId: true, name: true, businessName: true, email: true, whatsapp: true, pipelineStage: true } },
-      tasks: { orderBy: { order: 'asc' } },
+      tasks: { orderBy: { order: 'asc' }, include: { agentJob: { select: { id: true, agentCode: true, status: true, output: true, lastError: true, completedAt: true } } } },
       payments: { orderBy: { createdAt: 'desc' } },
       invoices: { orderBy: { issuedAt: 'desc' } },
       scopes: { orderBy: { version: 'desc' } },

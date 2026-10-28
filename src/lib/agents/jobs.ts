@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
+import type { Prisma } from '@prisma/client'
+import { statusAfterAgentJob } from '@/lib/project-task-policy'
 
 import { db } from '@/lib/db'
 import { newCorrelationId } from '@/lib/security'
@@ -56,6 +58,8 @@ export type EnqueueAgentJobInput = {
   expectJson?: boolean
   clientId?: string | null
   projectId?: string | null
+  /** Optional link for a human-reviewed AI draft of one project task. */
+  projectTaskId?: string | null
   workflow?: string | null
   requestedBy?: string | null
   toolName?: string | null
@@ -78,6 +82,7 @@ function payloadHash(input: Omit<EnqueueAgentJobInput, 'idempotencyKey' | 'reque
     expectJson: input.expectJson === true,
     clientId: input.clientId ?? null,
     projectId: input.projectId ?? null,
+    ...(input.projectTaskId ? { projectTaskId: input.projectTaskId } : {}),
     workflow: input.workflow ?? null,
   }
   // Keep the original inference hash format stable for idempotent retries from
@@ -100,6 +105,40 @@ function safeCheckpoint(value: string | null | undefined): Record<string, unknow
   } catch {
     return {}
   }
+}
+
+async function syncProjectTaskForJob(
+  tx: Prisma.TransactionClient,
+  job: { id: string; projectId: string | null; checkpoint: string | null },
+  jobStatus: string,
+  retryScheduled: boolean,
+  now: Date,
+): Promise<void> {
+  const projectTaskId = safeCheckpoint(job.checkpoint).projectTaskId
+  const taskStatus = statusAfterAgentJob(jobStatus, retryScheduled)
+  if (typeof projectTaskId !== 'string' || !job.projectId || !taskStatus) return
+  const task = await tx.projectTask.findFirst({
+    where: {
+      id: projectTaskId,
+      projectId: job.projectId,
+      assigneeType: 'AGENT',
+      status: 'IN_PROGRESS',
+    },
+    select: { id: true, evidence: true },
+  })
+  if (!task) return
+  let evidence: unknown[] = []
+  try {
+    const parsed: unknown = JSON.parse(task.evidence ?? '[]')
+    if (Array.isArray(parsed)) evidence = parsed
+  } catch {
+    evidence = []
+  }
+  evidence.push({ type: 'AGENT_DRAFT', jobId: job.id, jobStatus, notedAt: now.toISOString(), note: jobStatus === 'COMPLETED' ? 'Agent draft is ready for human review; not marked complete.' : `Agent draft job ${jobStatus.toLowerCase()}.` })
+  await tx.projectTask.updateMany({
+    where: { id: task.id, projectId: job.projectId, status: 'IN_PROGRESS' },
+    data: { agentJobId: job.id, status: taskStatus, completedAt: null, evidence: JSON.stringify(evidence).slice(0, 8000) },
+  })
 }
 
 function prismaCode(error: unknown): string | null {
@@ -193,6 +232,7 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
 
   let clientId = input.clientId?.trim() || null
   let projectId = input.projectId?.trim() || null
+  const projectTaskId = input.projectTaskId?.trim() || null
   if (projectId) {
     const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true, clientId: true, deletedAt: true, status: true } })
     if (!project || project.deletedAt) throw new AgentJobInputError('Project not found or deleted')
@@ -201,6 +241,16 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
     clientId = project.clientId
   }
   if (toolCall && !projectId) throw new AgentJobInputError("Tool 'task.create' requires a project ID")
+  if (projectTaskId) {
+    if (!projectId) throw new AgentJobInputError('Project task drafts require a project ID')
+    const task = await db.projectTask.findUnique({ where: { id: projectTaskId }, select: { projectId: true, status: true, assigneeType: true, agentJobId: true } })
+    if (!task || task.projectId !== projectId) throw new AgentJobInputError('Project task does not belong to this project')
+    const priorJob = task.agentJobId ? await db.agentJob.findUnique({ where: { id: task.agentJobId }, select: { status: true } }) : null
+    const priorJobTerminal = !priorJob || ['FAILED', 'TIMED_OUT', 'CANCELLED'].includes(priorJob.status)
+    if (task.assigneeType !== 'AGENT' || task.status !== 'IN_PROGRESS' || !priorJobTerminal) {
+      throw new AgentJobInputError('Project task must be reserved, agent-assigned and have no active prior job')
+    }
+  }
   if (clientId) {
     const client = await db.client.findFirst({ where: { id: clientId, deletedAt: null }, select: { id: true } })
     if (!client) throw new AgentJobInputError('Client not found or deleted')
@@ -214,6 +264,7 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
     expectJson: input.expectJson === true,
     clientId,
     projectId,
+    projectTaskId,
     workflow: input.workflow?.trim().slice(0, 191) || null,
     ...(toolCall ? { toolName: toolCall.toolName, toolArgs: toolCall.args } : {}),
   }
@@ -248,6 +299,7 @@ export async function enqueueAgentJob(input: EnqueueAgentJobInput): Promise<{ jo
           input: jobInput,
           contextNote,
           expectJson: normalized.expectJson,
+          checkpoint: projectTaskId ? JSON.stringify({ projectTaskId, phase: 'DRAFT_QUEUED' }) : null,
           status: requiresApproval ? 'AWAITING_APPROVAL' : 'QUEUED',
           approvalState: requiresApproval ? 'PENDING' : 'NOT_REQUIRED',
           requestedBy: input.requestedBy ?? null,
@@ -363,6 +415,7 @@ async function recoverExpiredAgentJobs(now: Date): Promise<number> {
           details: JSON.stringify({ correlationId: job.correlationId, attempts: job.attempts, status }),
         },
       })
+      if (job.workflow === 'PROJECT_TASK_EXECUTION') await syncProjectTaskForJob(tx, job, status, retry, now)
       return true
     })
     if (result) recovered += 1
@@ -476,6 +529,7 @@ export async function finishClaimedJob(
         details: JSON.stringify({ agentCode: job.agentCode, correlationId: job.correlationId, executionId: result.executionId || null, status: nextStatus, attempt: job.attempts }),
       },
     })
+    if (job.workflow === 'PROJECT_TASK_EXECUTION') await syncProjectTaskForJob(tx, job, nextStatus, retry, now)
     return true
   })
   return saved ? nextStatus : 'LEASE_LOST'

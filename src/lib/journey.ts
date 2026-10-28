@@ -1273,6 +1273,7 @@ export async function activateProject(clientRowId: string, projectId?: string) {
             description: sanitizeText(String(t.description ?? ''), 2000) || null,
             priority: ['LOW', 'MEDIUM', 'HIGH'].includes(String(t.priority)) ? String(t.priority) : 'MEDIUM',
             assigneeType: String(t.assigneeType ?? 'AGENT') === 'HUMAN' ? 'HUMAN' : 'AGENT',
+            assigneeRef: String(t.assigneeType ?? 'AGENT') === 'HUMAN' ? sanitizeText(String(t.assigneeRef ?? ''), 80) || null : 'TSK-019',
             order: order++,
           },
         })
