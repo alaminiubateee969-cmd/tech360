@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, MotionConfig } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX, MessageCircle, Users, Mail, Smartphone, CreditCard, Workflow, Github, Layers, ShieldCheck, Globe, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { PrimaryLink, OutlineLink, AIAssistantLink, LinkArrow } from "./buttons"
 /* Buffer-grade hero — spec §4 headline                               */
 /* ------------------------------------------------------------------ */
 
-const HERO_WORDS = ["Build a Smarter", "Business with AI."];
+const HERO_WORDS_NEW = ["One Platform.", "Your Entire Business.", "Powered by AI."] as const;
 
 function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
   const sectionRef = useRef<HTMLElement | null>(null);

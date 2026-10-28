@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const [posts, campaigns, accounts] = await Promise.all([
     db.socialPost.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
     db.campaign.findMany({ orderBy: { createdAt: 'desc' }, take: 20, include: { _count: { select: { assets: true } } } }),
-    db.socialAccount.findMany(),
+    db.socialAccount.findMany() as Promise<Array<{ platform: string; state: string; lastVerifiedAt: Date | null; lastError: string | null; externalId: string | null }>>,
   ])
   const verified = new Map(accounts.map((a) => [a.platform, a]))
   const platforms = allPlatformStatuses().map((p) => ({

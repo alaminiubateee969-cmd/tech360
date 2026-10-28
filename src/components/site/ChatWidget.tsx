@@ -538,8 +538,8 @@ export default function ChatWidget() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold leading-tight">TECH360 Support</p>
-                <p className="mt-0.5 text-[11px] leading-tight text-white/85">
-                  We reply fast — and a specialist joins when needed
+                <p role="status" className="mt-0.5 text-[11px] leading-tight text-white/85">
+                  {aiStatus === 'checking' ? 'Checking assistant status…' : aiStatus === 'ready' ? 'AI assistant ready · a specialist joins when needed' : aiStatus === 'unavailable' ? 'AI assistant unavailable · our team will review your enquiry' : 'AI assistant status unknown · our team will review your enquiry'}
                 </p>
               </div>
               <button

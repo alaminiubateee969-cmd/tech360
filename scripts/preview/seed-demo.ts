@@ -392,7 +392,7 @@ async function main() {
   }
 
   // ---------------- invoices + payments ----------------
-  const projectRows = await db.project.findMany({ select: { id: true, code: true, clientId: true } })
+  const projectRows = await db.project.findMany({ select: { id: true, code: true, clientId: true } }) as Array<{ id: string; code: string; clientId: string }>
   const projByCode = new Map(projectRows.map((p) => [p.code, p]))
   if ((await db.invoice.count()) === 0) {
     const coffee = projByCode.get('PRJ-2026-0101')!

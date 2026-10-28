@@ -277,7 +277,7 @@ export default function AboutView() {
                   { term: "Registered address", detail: COMPANY.address },
                   { term: "Email", detail: COMPANY.email },
                   { term: "Contact", detail: "Live support chat — on every page" },
-                  { term: "Founded", detail: COMPANY.founded },
+                  { term: "Founded", detail: String(COMPANY.founded) },
                 ].map((row) => (
                   <div
                     key={row.term}
@@ -285,16 +285,7 @@ export default function AboutView() {
                   >
                     <dt className="shrink-0 text-sm font-medium text-[#526173]">{row.term}</dt>
                     <dd className="text-sm font-semibold text-[#0B1F33] sm:text-right">
-                      {"href" in row && row.href ? (
-                        <a
-                          href={row.href}
-                          className="rounded-sm underline decoration-[#E2E8F0] underline-offset-4 outline-none hover:decoration-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
-                        >
-                          {row.detail}
-                        </a>
-                      ) : (
-                        row.detail
-                      )}
+                      {row.detail}
                     </dd>
                   </div>
                 ))}

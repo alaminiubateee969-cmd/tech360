@@ -1,6 +1,6 @@
 'use client'
 
-import { Crown, Download, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone, Printer, ShieldCheck, UserCog } from 'lucide-react'
+import { Crown, Download, ExternalLink, FileText, Mail, MapPin, Phone, Printer, ShieldCheck, UserCog } from 'lucide-react'
 
 import { ADMIN_ROLES, OFFICIAL_INFO } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,6 @@ export function OfficialInfoView() {
     { icon: Phone, label: 'Phone (platform)', value: OFFICIAL_INFO.phone },
     { icon: Mail, label: 'Email (official pad)', value: OFFICIAL_INFO.padEmail },
     { icon: Mail, label: 'Email (platform)', value: OFFICIAL_INFO.email },
-    { icon: MessageCircle, label: 'WhatsApp', value: OFFICIAL_INFO.whatsapp, href: OFFICIAL_INFO.whatsappUrl },
   ]
 
   return (
@@ -92,11 +91,7 @@ export function OfficialInfoView() {
                 <c.icon className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
                 <span>
                   <b className="text-slate-900">{c.label}:</b>{' '}
-                  {c.href ? (
-                    <a href={c.href} target="_blank" rel="noreferrer" className="text-[#009FE3] underline underline-offset-2">{c.value}</a>
-                  ) : (
-                    c.value
-                  )}
+                  {c.value}
                 </span>
               </p>
             ))}

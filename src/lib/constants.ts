@@ -59,8 +59,6 @@ export const OFFICIAL_INFO = {
   website: 'bdtech360.com',
   websiteUrl: 'https://bdtech360.com',
   liveSite: 'https://tech360.space-z.ai',
-  whatsapp: '+880 1327-100297',
-  whatsappUrl: 'https://wa.me/8801327100297',
   servicesLine: 'Web | Cloud | AI | Data | Tech',
   padServices: [
     { name: 'Digital Solutions', note: 'Innovative & Scalable' },

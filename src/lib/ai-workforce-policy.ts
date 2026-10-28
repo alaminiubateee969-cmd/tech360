@@ -1,29 +1,19 @@
 /**
  * TECH360 — AI Employee workforce access policy.
  *
- * The AI Employee workforce is an INTERNAL operational system. It is never
- * public: nothing on the website, in client documents, or in any external
- * channel may state or imply that company operations or projects are run
- * by AI models or agents (see docs/AI_VISIBILITY_POLICY.md).
- *
- * Control boundary (owner directive): the automation system is controlled
- * ONLY from the Super Admin and Admin dashboards.
- *   - ADMIN and SUPER_ADMIN: view, run and control the workforce
- *     (registry, executions, memory, knowledge, workflows, ops loop,
- *     command center, automation logs).
- *   - SUPER_ADMIN only: governance — creating agents, exporting the full
- *     registry/evidence, feature switches and settings.
- *   - STAFF, MANAGER, clients and the public: no access, no visibility.
- *
- * This module is the single source of truth for that boundary. The API guard
- * and the admin navigation both read it, and `tests/ai-workforce-rbac.test.ts`
- * asserts that every protected route file actually declares it — so a new
- * route cannot quietly ship with a weaker role.
+ * Admin and Super Admin may operate agents and the command center.
+ * Private memory, knowledge, logs, department certification and infrastructure
+ * remain Super Admin-only. Operator routes explicitly use AI_OPERATOR_MIN_ROLE;
+ * private routes use AI_WORKFORCE_MIN_ROLE. Commands cannot bypass private
+ * data boundaries simply because the operator console is visible.
  */
 
-export const AI_WORKFORCE_MIN_ROLE = 'ADMIN' as const
+/** Admins may operate agents and commands; infrastructure remains Super Admin-only. */
+export const AI_OPERATOR_MIN_ROLE = 'ADMIN' as const
 
-/** Governance actions inside the workforce stay Super Admin only. */
+export const AI_WORKFORCE_MIN_ROLE = 'SUPER_ADMIN' as const
+
+/** Governance actions and evidence export are Super Admin-only. */
 export const AI_WORKFORCE_GOVERNANCE_ROLE = 'SUPER_ADMIN' as const
 
 /**

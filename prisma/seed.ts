@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../src/lib/auth'
-import { ensureAgentRegistry } from '../src/lib/agents/bootstrap'
+import { CORE_AGENTS, DEPARTMENTS } from '../src/lib/agents/registry'
 import { COMPANY } from '../src/lib/constants'
 
 const db = new PrismaClient()
@@ -234,7 +234,6 @@ async function main() {
   // The panel shows the live library index next to these rows.
   const { buildPromptsForBinding } = await import('../src/lib/prompts/library')
   const { ROLE_ARCHETYPES } = await import('../src/lib/agents/catalogue')
-  const { DEPARTMENTS } = await import('../src/lib/agents/registry')
   const STORED_STAGES = ['TASK_EXECUTION'] as const
   let promptCount = 0
   for (const department of DEPARTMENTS) {

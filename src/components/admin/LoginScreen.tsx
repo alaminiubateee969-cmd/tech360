@@ -279,7 +279,7 @@ export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLogg
           </div>
           <p className="mt-3 flex items-center gap-1.5 text-[10px] text-slate-600">
             <KeyRound className="size-3" aria-hidden="true" />
-            Session cookies are HttpOnly · CSRF-protected mutations · WhatsApp {OFFICIAL_INFO.whatsapp}
+            Session cookies are HttpOnly · administrative mutations are CSRF-protected
           </p>
         </div>
       </div>

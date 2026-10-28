@@ -1,4 +1,3 @@
-import ZAI from 'z-ai-web-dev-sdk'
 import { completeWithFreeModels, openRouterConfigured, type ChatMessage } from './model-provider'
 import { gatewayComplete, gatewayConfigured } from '@/lib/ai-gateway/client'
 import { db } from '@/lib/db'
@@ -223,37 +222,41 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     { role: 'user' as const, content: userContent.slice(0, 24000) },
   ]
   let lastError: unknown = new Error('Provider did not return a result')
-  let completion: Awaited<ReturnType<ReturnType<typeof createZaiClient>['chat']['completions']['create']>> | null = null
+  let output = ''
+  let provider = 'zai'
+  let tokensUsed = 0
 
   try {
-    const userContent = (run.contextNote ? `${run.contextNote}\n\n` : '') + run.input
-    const messages: Array<{ role: 'assistant' | 'user'; content: string }> = [
-      { role: 'assistant', content: agent.systemPrompt },
-      { role: 'user', content: userContent.slice(0, 24000) },
-    ]
-    // Shared AI Gateway first when AgentOS is registered with it
-    // (opt-in via AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN);
-    // then free models (OpenRouter, when keyed); otherwise the SDK.
-    let output: string
-    if (gatewayConfigured()) {
-      const done = await gatewayComplete(messages as ChatMessage[])
-      output = done.output
-    } else if (openRouterConfigured()) {
-      const done = await completeWithFreeModels(messages as ChatMessage[])
-      output = done.output
-    } else {
-      const zai = await getZai()
-      const completion = await zai.chat.completions.create({ messages, thinking: { type: 'disabled' } })
-      output = completion.choices[0]?.message?.content ?? ''
+    for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        if (gatewayConfigured()) {
+          const result = await withTimeout(() => gatewayComplete(messages as ChatMessage[]), timeoutMs)
+          output = result.output
+          provider = result.provider
+        } else if (openRouterConfigured()) {
+          const result = await withTimeout(() => completeWithFreeModels(messages as ChatMessage[]), timeoutMs)
+          output = result.output
+          provider = result.model
+        } else {
+          const client = createZaiClient()
+          const completion = await withTimeout(
+            (signal) => client.chat.completions.create({ messages, thinking: { type: 'disabled' } }, { signal }),
+            timeoutMs,
+          )
+          output = completion.choices[0]?.message?.content ?? ''
+          tokensUsed = typeof completion.usage?.total_tokens === 'number' ? completion.usage.total_tokens : 0
+        }
+        if (!output.trim()) throw new ZaiProviderError('INVALID_PROVIDER_RESPONSE', 'Provider returned empty output')
+        break
+      } catch (error) {
+        lastError = error
+        if (!isTransientRunError(error) || attempt === MAX_RETRY_ATTEMPTS - 1) throw error
+        await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)))
+      }
     }
-    if (!output.trim()) throw new Error('Empty response from model')
-
-    const output = completion?.choices[0]?.message?.content ?? ''
-    if (!output.trim()) throw new ZaiProviderError('INVALID_PROVIDER_RESPONSE', 'Provider returned empty output')
     const json = run.expectJson ? extractJson(output) : null
     if (run.expectJson && !json) throw new ZaiProviderError('INVALID_PROVIDER_RESPONSE', 'Provider output was not valid JSON')
     const completedAt = new Date()
-    const tokensUsed = typeof completion?.usage?.total_tokens === 'number' ? completion.usage.total_tokens : 0
     const durationMs = completedAt.getTime() - startedAt.getTime()
     await db.$transaction(async (tx) => {
       await tx.aiAgentExecution.update({
@@ -261,7 +264,7 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
         data: {
           output: output.slice(0, 20000), status: 'SUCCESS', tokensUsed,
           durationMs, completedAt,
-          metadata: JSON.stringify({ provider: 'zai' }),
+          metadata: JSON.stringify({ provider }),
         },
       })
       await tx.aiAgent.update({

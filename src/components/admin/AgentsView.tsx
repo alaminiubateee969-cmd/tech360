@@ -32,6 +32,7 @@ import {
   type DepartmentRow,
   type ExecutionRecord,
   type MeResponse,
+  type ProjectSummary,
 } from '@/lib/admin-client'
 import { EmptyState, KpiCard, PageHeader } from './shared/cards'
 import { JsonView } from './shared/JsonView'

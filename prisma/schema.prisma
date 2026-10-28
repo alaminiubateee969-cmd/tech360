@@ -1322,9 +1322,9 @@ model SocialAccount {
   label         String?
   externalId    String?  // Page ID / IG account ID / org ID / @handle (not a secret)
   state         String   @default("NOT_CONFIGURED") // CONNECTED | NOT_CONFIGURED | PARTIAL | ERROR
-  envKeys       String   @db.Text // JSON array of env var NAMES the connection uses (names only)
+  envKeys       String @db.Text // JSON array of env var NAMES the connection uses (names only)
   lastVerifiedAt DateTime?
-  lastError     String?  @db.Text
+  lastError     String? @db.Text
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -1334,15 +1334,15 @@ model SocialPost {
   campaignId  String?
   assetId     String?
   platform    String   // FACEBOOK | INSTAGRAM | LINKEDIN | X | YOUTUBE | TIKTOK
-  text        String   @db.LongText
-  hashtags    String?  @db.Text // JSON array
-  mediaUrl    String?  @db.Text
-  mediaPrompt String?  @db.Text
+  text        String @db.LongText
+  hashtags    String? @db.Text // JSON array
+  mediaUrl    String? @db.Text
+  mediaPrompt String? @db.Text
   cta         String?
   status      String   @default("DRAFT") // DRAFT | APPROVED | PUBLISHED | FAILED | NOT_CONFIGURED
   externalId  String?
-  externalUrl String?  @db.Text
-  error       String?  @db.Text
+  externalUrl String? @db.Text
+  error       String? @db.Text
   scheduledAt DateTime?
   publishedAt DateTime?
   createdBy   String?
