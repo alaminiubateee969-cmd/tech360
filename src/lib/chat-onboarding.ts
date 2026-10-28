@@ -8,6 +8,7 @@ export type ChatOnboardingResult = {
   displayClientId: string | null
   identityReviewRequired: boolean
   emailDeliveryStatus: string | null
+  contactDeliveryStatus: { channel: string; status: string; ok: boolean } | null
 }
 
 function formIdForConversation(conversationId: string): string {
@@ -34,7 +35,9 @@ export async function ensureChatClient(input: {
   conversationId: string
   anonId: string
   name: string
-  email: string
+  email: string | null
+  phone?: string
+  preferredContact?: string
   firstMessage: string
   contactConsentAt: Date
 }): Promise<ChatOnboardingResult> {
@@ -54,7 +57,7 @@ export async function ensureChatClient(input: {
       select: { id: true, clientId: true, deletedAt: true },
     })
     if (client && !client.deletedAt) {
-      return { clientRowId: client.id, displayClientId: client.clientId, identityReviewRequired: false, emailDeliveryStatus: null }
+      return { clientRowId: client.id, displayClientId: client.clientId, identityReviewRequired: false, emailDeliveryStatus: null, contactDeliveryStatus: null }
     }
   }
 
@@ -71,7 +74,7 @@ export async function ensureChatClient(input: {
       name: input.name || 'Website Visitor',
       email: input.email,
       details,
-      preferredContact: 'Email',
+      preferredContact: input.preferredContact || 'Email',
       contactConsentAt: input.contactConsentAt,
       consentVersion: CONTACT_CONSENT_VERSION,
       tracking: JSON.stringify({ source: 'WEB_CHAT', consentVersion: CONTACT_CONSENT_VERSION }),
@@ -80,10 +83,12 @@ export async function ensureChatClient(input: {
     update: {},
   })
 
-  const existingEmailOwner = await db.client.findFirst({
-    where: { email: input.email, deletedAt: null },
-    select: { id: true },
-  })
+  const existingEmailOwner = input.email
+    ? await db.client.findFirst({
+        where: { email: input.email, deletedAt: null },
+        select: { id: true },
+      })
+    : null
   if (existingEmailOwner) {
     const reviewTransition = await db.formSubmission.updateMany({
       where: { id: formId, status: { not: 'PENDING_REVIEW' } },
@@ -109,15 +114,16 @@ export async function ensureChatClient(input: {
         }).catch(() => null),
       ])
     }
-    return { clientRowId: null, displayClientId: null, identityReviewRequired: true, emailDeliveryStatus: null }
+    return { clientRowId: null, displayClientId: null, identityReviewRequired: true, emailDeliveryStatus: null, contactDeliveryStatus: null }
   }
 
   try {
     const result = await intakeLead({
       source: 'WEBSITE',
       name: input.name || 'Website Visitor',
-      email: input.email,
-      preferredContact: 'Email',
+      email: input.email || undefined,
+      phone: input.phone || undefined,
+      preferredContact: input.preferredContact || 'Email',
       contactConsent: true,
       message: details,
       tracking: { source: 'WEB_CHAT', consentVersion: CONTACT_CONSENT_VERSION },
@@ -128,6 +134,7 @@ export async function ensureChatClient(input: {
       displayClientId: result.clientId,
       identityReviewRequired: false,
       emailDeliveryStatus: result.welcome?.deliveries.find((delivery) => delivery.channel === 'EMAIL')?.status ?? null,
+      contactDeliveryStatus: result.welcome?.deliveries.find((delivery) => delivery.channel.toLowerCase() === (input.preferredContact || 'Email').toLowerCase()) ?? null,
     }
   } catch (error) {
     // Recover a Client already attached to this form if a later pipeline step
@@ -142,7 +149,7 @@ export async function ensureChatClient(input: {
         select: { id: true, clientId: true, deletedAt: true },
       }).catch(() => null)
       if (client && !client.deletedAt) {
-        return { clientRowId: client.id, displayClientId: client.clientId, identityReviewRequired: false, emailDeliveryStatus: null }
+        return { clientRowId: client.id, displayClientId: client.clientId, identityReviewRequired: false, emailDeliveryStatus: null, contactDeliveryStatus: null }
       }
     }
 
@@ -160,10 +167,10 @@ export async function ensureChatClient(input: {
           select: { id: true, clientId: true, deletedAt: true },
         }).catch(() => null)
         if (client && !client.deletedAt) {
-          return { clientRowId: client.id, displayClientId: client.clientId, identityReviewRequired: false, emailDeliveryStatus: null }
+          return { clientRowId: client.id, displayClientId: client.clientId, identityReviewRequired: false, emailDeliveryStatus: null, contactDeliveryStatus: null }
         }
       }
     }
-    return { clientRowId: null, displayClientId: null, identityReviewRequired: false, emailDeliveryStatus: null }
+    return { clientRowId: null, displayClientId: null, identityReviewRequired: false, emailDeliveryStatus: null, contactDeliveryStatus: null }
   }
 }

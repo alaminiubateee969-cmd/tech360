@@ -268,14 +268,18 @@ export async function intakeLead(input: {
       const hasContactPermission = createData.source !== 'WEBSITE' || hasExplicitContactConsent(input.contactConsent)
       const selectedChannel = hasContactPermission ? selectWelcomeChannel(createData.source, clientRow.preferredContact) : null
       const welcomeChannels: PipelineChannel[] = []
-      if (hasContactPermission && createData.source === 'WEBSITE' && clientRow.email) {
-        // Email remains primary for every website enquiry. An additional
-        // WhatsApp message is sent only when the visitor selected it and
-        // provided a number; the recorded contact consent covers that choice.
-        welcomeChannels.push('EMAIL')
-        if (clientRow.preferredContact?.toLowerCase() === 'whatsapp' && clientRow.whatsapp) {
-          welcomeChannels.push('WHATSAPP')
-        }
+      if (hasContactPermission && createData.source === 'WEBSITE' && selectedChannel) {
+        // Website leads receive the first response only on the contact method
+        // they explicitly selected. In particular, SMS requires a supplied
+        // phone number and explicit contact consent; there is no silent channel fallback.
+        const hasDestination = selectedChannel === 'EMAIL'
+          ? Boolean(clientRow.email)
+          : selectedChannel === 'SMS'
+            ? Boolean(clientRow.phone)
+            : selectedChannel === 'WHATSAPP'
+              ? Boolean(clientRow.whatsapp)
+              : false
+        if (hasDestination) welcomeChannels.push(selectedChannel as PipelineChannel)
       } else if (hasContactPermission && selectedChannel) {
         welcomeChannels.push(selectedChannel as PipelineChannel)
       }
@@ -300,16 +304,12 @@ export async function intakeLead(input: {
           status: welcome.status,
           deliveries: welcome.deliveries.map(({ channel, status, ok }) => ({ channel, status, ok })),
         }
-        const emailDelivery = welcome.deliveries.find((delivery) => delivery.channel === 'EMAIL')
-        welcomeAccepted = createData.source === 'WEBSITE'
-          ? Boolean(emailDelivery?.ok)
-          : welcome.deliveries.some((delivery) => delivery.ok)
+        welcomeAccepted = welcome.deliveries.some((delivery) => delivery.ok)
         await stepLog(log.id, 'welcome_sent', {
           stage: 'FIRST_MESSAGE',
           channels: welcomeChannels,
           status: welcome.status,
           providerAccepted: welcomeAccepted,
-          emailProviderAccepted: emailDelivery?.ok ?? false,
           deliveries: welcome.deliveries.map((delivery) => `${delivery.channel}:${delivery.status}`),
         })
       } else {
@@ -318,7 +318,7 @@ export async function intakeLead(input: {
         })
       }
 
-      if (welcomeAccepted) await setStage(clientRow.id, 'CONTACTED', 'Initial email accepted by the configured provider')
+      if (welcomeAccepted) await setStage(clientRow.id, 'CONTACTED', `Initial ${welcomeChannels[0] ?? 'contact'} message accepted by the configured provider`)
       // Business detection runs after the welcome attempt. It may update
       // businessType, but only an accepted welcome can advance the pipeline.
       const businessRun = await detectBusiness(clientRow.id, input.message, { advanceStage: welcomeAccepted })

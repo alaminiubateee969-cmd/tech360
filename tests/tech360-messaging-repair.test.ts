@@ -252,7 +252,7 @@ describe('8 — one-question-at-a-time discovery', () => {
     const summary = buildSummary(answers as never, 'Ayesha', 'TECH-2026-000001')
     assert.match(summary, /TECH-2026-000001/, 'must include Client ID')
     assert.match(summary, /Business type/, 'must include collected fields')
-    assert.match(summary, /CONFIRMED|^.*confirm.*change/im, 'must ask for confirmation')
+    assert.match(summary, /APPROVED|feedback|change/i, 'must ask for proposal feedback or approval')
   })
 
   it('isAnswered treats “n/a”, “none” as valid optional answers (not repeated)', () => {

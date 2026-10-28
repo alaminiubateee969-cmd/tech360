@@ -140,6 +140,8 @@ export default function ChatWidget() {
   // first-contact form
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [preferredContact, setPreferredContact] = useState<'SMS' | 'Email'>('SMS')
   const [contactConsent, setContactConsent] = useState(false)
   const [subject, setSubject] = useState('')
   const [initialMsg, setInitialMsg] = useState('')
@@ -350,7 +352,7 @@ export default function ChatWidget() {
     const trimmedName = name.trim()
     const trimmedEmail = email.trim()
     const trimmedMsg = initialMsg.trim()
-    if (trimmedMsg.length < 1 || !trimmedEmail || !contactConsent) return
+    if (trimmedMsg.length < 1 || (preferredContact === 'Email' && !trimmedEmail) || !contactConsent || (preferredContact === 'SMS' && !phone.trim())) return
     startRequestIdRef.current ??= newRequestId()
     setBusy(true)
     setConnIssue(false)
@@ -366,6 +368,8 @@ export default function ChatWidget() {
           requestId: startRequestIdRef.current,
           name: trimmedName,
           email: trimmedEmail,
+          phone: phone.trim() || undefined,
+          preferredContact,
           subject: subject.trim() || undefined,
           message: trimmedMsg,
           contactConsent: true,
@@ -380,15 +384,20 @@ export default function ChatWidget() {
         ai?: { available: boolean; detail: string }
         identityReviewRequired?: boolean
         emailDeliveryStatus?: 'ACCEPTED_BY_PROVIDER' | 'NOT_CONFIRMED' | null
+        contactDeliveryStatus?: { channel: string; status: string; ok: boolean } | null
         notice?: string
       }
       startRequestIdRef.current = null
       setConversation({ id: data.conversation.id, status: 'OPEN', visitorName: trimmedName })
       if (data.conversation.clientId) setClientId(data.conversation.clientId)
-      if (data.emailDeliveryStatus === 'ACCEPTED_BY_PROVIDER') {
+      if (data.contactDeliveryStatus) {
+        setDeliveryNotice(data.contactDeliveryStatus.ok
+          ? `Your first ${data.contactDeliveryStatus.channel} reply was accepted by the configured provider; final delivery is not confirmed.`
+          : `Your enquiry is saved, but the first ${data.contactDeliveryStatus.channel} message was not accepted by the provider. Continue here in webchat; our team will review it.`)
+      } else if (data.emailDeliveryStatus === 'ACCEPTED_BY_PROVIDER') {
         setDeliveryNotice('The initial email was accepted by the configured mail service; delivery to the inbox is not confirmed.')
       } else if (data.emailDeliveryStatus === 'NOT_CONFIRMED') {
-        setDeliveryNotice('Your enquiry is saved, but initial email delivery was not confirmed. Please contact info@bdtech360.com if you need a reply by email.')
+        setDeliveryNotice('Your enquiry is saved, but initial email delivery was not confirmed. Continue here in webchat; our team will review it.')
       }
       if (data.ai) {
         setAiStatus(data.ai.available ? 'ready' : 'unavailable')
@@ -556,7 +565,7 @@ export default function ChatWidget() {
             {!showThread && !showClosed && (
               <form onSubmit={startConversation} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
                 <p className="text-sm leading-relaxed text-slate-600">
-                  Welcome to TECH360. Describe what you want to build or improve; we can ask follow-up questions as we go. Email is required for service-related updates, while your name and other profile details can wait. A Client ID is issued or linked only after identity can be handled safely. A phone number is optional.
+                  Welcome to TECH360. Tell us about your business and what you need; our webchat agent will ask focused questions, prepare an initial proposal, and then refine the scope after your feedback. Choose SMS for the first service-related reply or email. A Client ID is issued or linked only after identity can be handled safely.
                 </p>
                 <div className="space-y-1">
                   <label htmlFor="chat-name" className="text-xs font-medium text-slate-700">
@@ -574,13 +583,14 @@ export default function ChatWidget() {
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="chat-email" className="text-xs font-medium text-slate-700">
-                    Email <span className="text-[#EF4444]" aria-hidden="true">*</span>
-                    <span className="sr-only">(required)</span>
+                    Email {preferredContact === 'Email'
+                      ? <><span className="text-[#EF4444]" aria-hidden="true">*</span><span className="sr-only">(required)</span></>
+                      : <span className="font-normal text-slate-400">(optional for SMS-first)</span>}
                   </label>
                   <input
                     id="chat-email"
                     type="email"
-                    required
+                    required={preferredContact === 'Email'}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={320}
@@ -588,8 +598,27 @@ export default function ChatWidget() {
                     placeholder="you@company.com"
                     className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#009FE3] focus:outline-none focus:ring-2 focus:ring-[#009FE3]/30"
                   />
-                  <p className="text-[11px] leading-relaxed text-slate-500">We use this email for service-related updates. A typed address alone does not verify ownership; marketing messages require separate opt-in.</p>
+                  <p className="text-[11px] leading-relaxed text-slate-500">{preferredContact === 'Email' ? 'Service follow-up will use email. A typed address alone does not verify ownership.' : 'Email is optional when SMS is selected; service follow-up uses SMS/webchat, not an email marketing list.'}</p>
                 </div>
+                <fieldset className="space-y-2">
+                  <legend className="text-xs font-medium text-slate-700">First service reply</legend>
+                  <div className="flex gap-2">
+                    {(['SMS', 'Email'] as const).map((method) => (
+                      <button key={method} type="button" onClick={() => setPreferredContact(method)} aria-pressed={preferredContact === method}
+                        className={`min-h-9 rounded-lg border px-3 text-xs font-semibold ${preferredContact === method ? 'border-[#009FE3] bg-sky-50 text-sky-800' : 'border-slate-300 text-slate-600'}`}>
+                        {method === 'SMS' ? 'SMS first' : 'Email first'}
+                      </button>
+                    ))}
+                  </div>
+                  {preferredContact === 'SMS' && (
+                    <div className="space-y-1">
+                      <label htmlFor="chat-phone" className="text-xs font-medium text-slate-700">Mobile number <span className="text-[#EF4444]" aria-hidden="true">*</span></label>
+                      <input id="chat-phone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={32} autoComplete="tel" placeholder="+8801XXXXXXXXX"
+                        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#009FE3] focus:outline-none focus:ring-2 focus:ring-[#009FE3]/30" />
+                      <p className="text-[11px] leading-relaxed text-slate-500">We will attempt one service-related SMS first only if an SMS gateway is configured. If not, your enquiry remains in webchat; we will not silently switch channels. No marketing texts without separate opt-in.</p>
+                    </div>
+                  )}
+                </fieldset>
                 <div className="space-y-1">
                   <label htmlFor="chat-subject" className="text-xs font-medium text-slate-700">
                     Subject <span className="font-normal text-slate-400">(optional)</span>
@@ -629,7 +658,7 @@ export default function ChatWidget() {
                     className="mt-0.5 size-4 shrink-0 accent-[#009FE3]"
                   />
                   <span>
-                    I consent to TECH360 LLC storing this enquiry and using my email to respond and send service-related updates about this request. Marketing messages require a separate opt-in. See the{" "}
+                    I consent to TECH360 LLC storing this enquiry and using my selected first-reply channel ({preferredContact}) for service-related updates about this request. If I selected SMS, I agree to receive service-related texts at the number provided; message/data rates may apply. No marketing messages without separate opt-in. See the{" "}
                     <a href="#/legal/privacy" className="font-semibold underline underline-offset-2">Privacy Policy</a>.
                   </span>
                 </label>
@@ -645,7 +674,7 @@ export default function ChatWidget() {
                 )}
                 <button
                   type="submit"
-                  disabled={busy || !contactConsent || !email.trim()}
+                  disabled={busy || !contactConsent || (preferredContact === 'Email' && !email.trim()) || (preferredContact === 'SMS' && !phone.trim())}
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white shadow transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]/50 focus-visible:ring-offset-2 disabled:opacity-60"
                   style={{ background: 'linear-gradient(135deg, #009FE3 0%, #063B8F 100%)' }}
                 >

@@ -1569,7 +1569,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
     "slug": "privacy",
     "title": "Privacy Policy",
     "summary": "What information TECH360 collects through its website and services, why it is used, how it is protected and retained, and the choices available to you.",
-    "updated": "October 23, 2026",
+    "updated": "October 28, 2026",
     "sections": [
       {
         "heading": "1. Who we are",
@@ -1581,17 +1581,17 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         "heading": "2. Information we collect",
         "body": [
-          "Depending on your interaction with us, information you provide may include your name, business name, email address, Client ID or customer reference, business telephone or optional WhatsApp number, country, business type, project requirements, preferences, documents, instructions, and approvals submitted through website forms, chat, email, or other communication channels.",
+          "Depending on your interaction with us, information you provide may include your name, business name, email address, Client ID or customer reference, business telephone, mobile number or optional WhatsApp number, country, business type, project requirements, preferences, documents, instructions, and approvals submitted through website forms, chat, email, SMS, or other communication channels.",
           "Technical information may include IP address and request metadata, browser and device information, pages requested, referring pages, security events, error logs, and abuse-prevention records needed to operate and secure the website.",
           "Client and service records may include relevant communications, requirements, project approvals, invoices, payment records, delivery status, and handover documentation associated with a Client ID.",
-          "You are not required to provide information that is unnecessary for your enquiry or engagement. Providing a phone or WhatsApp number is optional. Email verification status is recorded through verified identity records when an approved verification step is completed; a typed email address alone is not proof of ownership."
+          "You are not required to provide information that is unnecessary for your enquiry or engagement. For webchat, email is required only when you choose email as the first reply channel; a mobile number is required only when you choose SMS first. A phone or WhatsApp number is otherwise optional. Email verification status is recorded through verified identity records when an approved verification step is completed; a typed email address alone is not proof of ownership."
         ]
       },
       {
         "heading": "3. Why we collect and use information",
         "body": [
           "We use information to respond to enquiries, understand requirements, prepare proposals or quotations, identify buyers and maintain accurate Client ID records, deliver requested services and documents, send relevant service-related updates, manage approvals and projects, process invoices and payments, provide support, secure our systems, prevent fraud and abuse, investigate technical problems, and meet legal, accounting, tax, contractual, or regulatory obligations.",
-          "Contact consent for an enquiry is recorded separately from optional marketing consent. We do not send marketing messages based only on a project enquiry. We send marketing communications only where the applicable consent or other lawful basis exists, and unsubscribe choices are respected.",
+          "Contact consent for an enquiry is recorded separately from optional marketing consent. When a visitor explicitly selects SMS first and consents, we may use the supplied mobile number for service-related texts about that enquiry; provider availability and message/data rates may apply. We do not send marketing texts or other marketing messages based only on a project enquiry. We send marketing communications only where the applicable consent or other lawful basis exists, and unsubscribe choices are respected.",
           "Depending on the circumstances and applicable law, processing may be based on performing a contract, taking steps requested before a contract, legitimate business interests, consent, or compliance with legal obligations.",
           "We do not sell personal information. TECH360 does not use buyer project data to train third-party AI models."
         ]

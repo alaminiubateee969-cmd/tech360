@@ -4,6 +4,7 @@ import { readJson, sanitizeText, sanitizeEmail, rateLimit, clientIp, apiError, j
 import { CONTACT_CONSENT_VERSION, hasExplicitContactConsent, isValidClientRequestId } from '@/lib/contact-policy'
 import { CHAT_SESSION_COOKIE, chatSessionCookieIsValid, withChatSessionCookie } from '@/lib/chat-session'
 import { ensureChatClient } from '@/lib/chat-onboarding'
+import { toE164 } from '@/lib/phone'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,12 +57,17 @@ export async function POST(req: NextRequest) {
     const name = sanitizeText(raw.name, 80)
     const emailInput = sanitizeText(raw.email, 320)
     const email = sanitizeEmail(emailInput)
+    const phoneInput = sanitizeText(raw.phone, 32)
+    const phone = phoneInput ? toE164(phoneInput) : null
+    const preferredContact = sanitizeText(raw.preferredContact, 16).toUpperCase() === 'SMS' ? 'SMS' : 'Email'
     const subject = sanitizeText(raw.subject, 120)
     const initialMessage = sanitizeText(raw.message ?? raw.initialMsg ?? '', MAX_BODY)
 
     if (anonId.length < 4) return apiError('Missing visitor identifier.', 400, 'BAD_ANON_ID')
     if (!isValidClientRequestId(requestId)) return apiError('A valid session request id is required.', 400, 'BAD_REQUEST_ID')
-    if (!email) return apiError(emailInput ? 'Enter a valid email address.' : 'Email is required to start a chat.', 400, 'EMAIL_REQUIRED')
+    if (!email && preferredContact === 'Email') return apiError(emailInput ? 'Enter a valid email address.' : 'Email is required when email is selected as the first reply channel.', 400, 'EMAIL_REQUIRED')
+    if (phoneInput && !phone) return apiError('Enter a valid phone number, such as +8801XXXXXXXXX.', 400, 'PHONE_INVALID')
+    if (preferredContact === 'SMS' && !phone) return apiError('A valid phone number is required when SMS is selected.', 400, 'PHONE_REQUIRED')
     if (!hasExplicitContactConsent(raw.contactConsent)) {
       return apiError('Please agree to the Privacy Policy so we can store and respond to your enquiry.', 400, 'CONSENT_REQUIRED')
     }
@@ -123,6 +129,7 @@ export async function POST(req: NextRequest) {
             status: 'OPEN',
             visitorName: name || null,
             visitorEmail: email,
+            visitorPhone: phone,
             subject: subject || null,
             contactConsentAt: now,
             consentVersion: CONTACT_CONSENT_VERSION,
@@ -141,6 +148,7 @@ export async function POST(req: NextRequest) {
     const patch: Record<string, unknown> = {}
     if (!conversation.visitorName && name) patch.visitorName = name
     if (!conversation.visitorEmail && email) patch.visitorEmail = email
+    if (!conversation.visitorPhone && phone) patch.visitorPhone = phone
     if (!conversation.subject && subject) patch.subject = subject
     if (isLegacyConversation) {
       // Old conversations could have been linked by an unverified email. Break
@@ -157,6 +165,7 @@ export async function POST(req: NextRequest) {
     let identityReviewRequired = false
     let displayClientId: string | null = null
     let emailDeliveryStatus: 'ACCEPTED_BY_PROVIDER' | 'NOT_CONFIRMED' | null = null
+    let linkedContactDeliveryStatus: { channel: string; status: string; ok: boolean } | null = null
     if (conversation.clientId) {
       displayClientId = await resolveDisplayClientId(conversation.clientId)
     } else {
@@ -165,10 +174,13 @@ export async function POST(req: NextRequest) {
         anonId,
         name: name || conversation.visitorName || 'Website Visitor',
         email,
+        phone: phone || undefined,
+        preferredContact,
         firstMessage: initialMessage || subject || 'Website chat started',
         contactConsentAt: conversation.contactConsentAt ?? now,
       })
       identityReviewRequired = linked.identityReviewRequired
+      linkedContactDeliveryStatus = linked.contactDeliveryStatus
       if (linked.emailDeliveryStatus) {
         emailDeliveryStatus = linked.emailDeliveryStatus === 'SENT' ? 'ACCEPTED_BY_PROVIDER' : 'NOT_CONFIRMED'
       }
@@ -191,6 +203,7 @@ export async function POST(req: NextRequest) {
       ai: { available: aiAvailable, detail: aiDetail },
       identityReviewRequired,
       emailDeliveryStatus,
+      contactDeliveryStatus: linkedContactDeliveryStatus,
       ...(identityReviewRequired
         ? { notice: `Your message is saved, but no Client ID was issued because the email needs safe ownership review. Use conversation reference ${conversation.id} when contacting info@bdtech360.com; this reference is not an authentication secret.` }
         : {}),

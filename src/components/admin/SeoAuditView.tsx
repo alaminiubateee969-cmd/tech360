@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, Info, Loader2, Search, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Info, Loader2, MapPin, Search, Sparkles, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { fetchJson, ApiError } from '@/lib/admin-client'
@@ -18,6 +18,18 @@ interface AuditResult {
   url: string; fetchedAt: string; ms: number; score: number; pass: number; warn: number; fail: number
   facts: { title?: string; words?: number }
   checks: Check[]
+}
+interface LocalPlan {
+  generatedAt: string
+  business: { name: string; type: string; primaryLocation: string; website: string | null; language: string }
+  mapMarkers: Array<{ location: string; markerType: string; instruction: string }>
+  keywordClusters: Array<{ area: string; service: string; suggestions: string[] }>
+  freeSetup: string[]
+  landingPages: string[]
+  contentIdeas: string[]
+  measurement: string[]
+  guardrails: string[]
+  aiEnhanced: boolean
 }
 
 const ICON = { pass: CheckCircle2, warn: AlertTriangle, fail: XCircle, info: Info } as const
@@ -47,6 +59,37 @@ export function SeoAuditView() {
   const [result, setResult] = useState<AuditResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [onlyIssues, setOnlyIssues] = useState(false)
+  const [localBusy, setLocalBusy] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(null)
+  const [localPlan, setLocalPlan] = useState<LocalPlan | null>(null)
+  const [businessName, setBusinessName] = useState('')
+  const [businessType, setBusinessType] = useState('')
+  const [primaryLocation, setPrimaryLocation] = useState('')
+  const [serviceAreas, setServiceAreas] = useState('')
+  const [services, setServices] = useState('')
+  const [localWebsite, setLocalWebsite] = useState('')
+  const [localLanguage, setLocalLanguage] = useState<'BN' | 'EN' | 'BOTH'>('BOTH')
+  const [useAiEnhancement, setUseAiEnhancement] = useState(false)
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null)
+  const [aiEnhancementStatus, setAiEnhancementStatus] = useState<string>('NOT_REQUESTED')
+
+  const generateLocalPlan = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLocalBusy(true); setLocalError(null)
+    try {
+      const response = await fetchJson<{ plan: LocalPlan; aiSuggestion: string | null; aiEnhancementStatus: string }>('/api/admin/seo/local-plan', {
+        method: 'POST',
+        body: { businessName, businessType, primaryLocation, serviceAreas, services, website: localWebsite, language: localLanguage, useAi: useAiEnhancement },
+      })
+      setLocalPlan(response.plan)
+      setAiSuggestion(response.aiSuggestion)
+      setAiEnhancementStatus(response.aiEnhancementStatus)
+      toast.success('Local SEO plan drafted; verify every address and claim before publishing.')
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Local SEO plan could not be generated'
+      setLocalError(msg); toast.error(msg)
+    } finally { setLocalBusy(false) }
+  }
 
   const run = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,8 +107,8 @@ export function SeoAuditView() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="SEO Audit"
-        description="Free on-page and technical audit of any public URL: indexation, titles, headings, structured data, social tags, speed and security — plus a check that your sitemap URLs actually load. No paid API."
+        title="SEO & Local Discovery"
+        description="Free technical SEO audit plus a Bangladesh-focused local-search planner for Google Search and Maps. No paid SEO data APIs; all map locations and recommendations need human verification."
       />
       <SectionCard>
         <form onSubmit={run} className="flex flex-col gap-2 sm:flex-row">
@@ -77,6 +120,51 @@ export function SeoAuditView() {
         </form>
         {error ? <p role="alert" className="mt-3 rounded-md bg-red-500/10 p-2.5 text-sm text-red-300">{error}</p> : null}
         <p className="mt-2 text-[11px] text-slate-500">Only public web addresses are fetched; private/internal addresses are blocked. Each run is recorded in the audit log.</p>
+      </SectionCard>
+
+      <SectionCard title="Free local SEO agent — Google Search & Maps">
+        <p className="mb-3 text-xs leading-relaxed text-slate-400">Build a no-cost draft for real Bangladesh service areas: location × service keyword clusters, verified-location checklist, useful page ideas and free measurement steps. This planner does not scrape Maps, geocode, create pins, publish content or guarantee rankings.</p>
+        <form onSubmit={generateLocalPlan} className="grid gap-3 md:grid-cols-2">
+          <input className={INPUT} value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business name (e.g. Rahim Computer & AC)" maxLength={120} />
+          <input className={INPUT} required value={businessType} onChange={(e) => setBusinessType(e.target.value)} placeholder="Business type (e.g. computer and AC shop)" maxLength={100} />
+          <input className={INPUT} value={primaryLocation} onChange={(e) => setPrimaryLocation(e.target.value)} placeholder="Real main shop address/area — no invented pin" maxLength={120} />
+          <input className={INPUT} value={serviceAreas} onChange={(e) => setServiceAreas(e.target.value)} placeholder="Genuine service areas, comma-separated (e.g. Dhanmondi, Mirpur)" maxLength={1200} />
+          <input className={INPUT} value={services} onChange={(e) => setServices(e.target.value)} placeholder="Products/services, comma-separated (e.g. AC repair, laptop sales)" maxLength={1200} />
+          <input className={INPUT} value={localWebsite} onChange={(e) => setLocalWebsite(e.target.value)} placeholder="Website URL (optional)" maxLength={200} inputMode="url" />
+          <select className={INPUT} value={localLanguage} onChange={(e) => setLocalLanguage(e.target.value as 'BN' | 'EN' | 'BOTH')}>
+            <option value="BOTH">Bangla + English</option><option value="BN">Bangla</option><option value="EN">English</option>
+          </select>
+          <label className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-400 md:col-span-2">
+            <input type="checkbox" checked={useAiEnhancement} onChange={(e) => setUseAiEnhancement(e.target.checked)} className="mt-0.5" />
+            Ask the configured SEO & Discovery AI agent for extra draft ideas. Provider usage may have separate costs; the free plan works without it.
+          </label>
+          <Button type="submit" disabled={localBusy || !businessType.trim()} className="h-9 justify-self-start gap-2" style={{ backgroundColor: ACCENT }}>
+            {localBusy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {localBusy ? 'Drafting…' : 'Generate free local SEO plan'}
+          </Button>
+        </form>
+        {localError ? <p role="alert" className="mt-3 rounded-md bg-red-500/10 p-2.5 text-sm text-red-300">{localError}</p> : null}
+        {localPlan ? (
+          <div className="mt-4 space-y-4 border-t border-slate-800 pt-4">
+            <p className="text-xs font-semibold text-emerald-300">Free rules-based draft · no paid SEO data API used · generated {new Date(localPlan.generatedAt).toLocaleString()}</p>
+            {aiEnhancementStatus === 'GENERATED' && aiSuggestion ? <div className="rounded-lg border border-sky-500/30 bg-sky-500/5 p-3"><p className="text-xs font-semibold text-sky-200">AI-added suggestions · review before use</p><p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-slate-300">{aiSuggestion}</p></div> : null}
+            {aiEnhancementStatus === 'UNAVAILABLE' ? <p className="text-xs text-amber-300">AI enhancement was unavailable; the free rules-based plan is still ready.</p> : null}
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-100"><MapPin className="size-4 text-sky-300" /> Real map locations to verify — no pins created</h3>
+              <ul className="mt-2 space-y-2">{localPlan.mapMarkers.map((marker) => <li key={`${marker.location}-${marker.markerType}`} className="rounded-lg border border-slate-800 p-3"><p className="text-xs font-semibold text-slate-200">{marker.location} · {marker.markerType.replaceAll('_', ' ')}</p><p className="mt-1 text-xs text-slate-400">{marker.instruction}</p></li>)}</ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-100">Local keyword markers</h3>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">{localPlan.keywordClusters.map((cluster) => <div key={`${cluster.area}-${cluster.service}`} className="rounded-lg border border-slate-800 p-3"><p className="text-xs font-semibold text-slate-200">{cluster.service} · {cluster.area}</p><p className="mt-1 text-xs leading-relaxed text-slate-400">{cluster.suggestions.join(' · ')}</p></div>)}</div>
+            </div>
+            {([
+              ['Free Google setup checklist', localPlan.freeSetup],
+              ['Useful local pages (avoid doorway pages)', localPlan.landingPages],
+              ['Content ideas', localPlan.contentIdeas],
+              ['Measure actual enquiries and sales', localPlan.measurement],
+              ['Trust and accuracy guardrails', localPlan.guardrails],
+            ] as Array<[string, string[]]>).map(([heading, items]) => <div key={heading}><h3 className="text-sm font-semibold text-slate-100">{heading}</h3><ul className="mt-1 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-400">{items.map((item) => <li key={item}>{item}</li>)}</ul></div>)}
+          </div>
+        ) : null}
       </SectionCard>
 
       {result ? (
