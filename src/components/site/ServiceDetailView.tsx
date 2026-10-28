@@ -31,7 +31,7 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
         <PageHero
           eyebrow="Service not found"
           title="This service does not exist"
-          description="The service you are looking for may have been renamed or the link is outdated. Browse all twenty services instead."
+          description={`The service you are looking for may have been renamed or the link is outdated. Browse all ${SERVICES.length} services instead.`}
           breadcrumb={[{ label: "Services", href: "#/services" }, { label: "Not found" }]}
         />
         <section className="bg-white">

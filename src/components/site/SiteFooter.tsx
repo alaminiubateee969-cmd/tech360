@@ -226,7 +226,7 @@ export default function SiteFooter() {
                   href="#/services"
                   className="inline-flex min-h-9 items-center rounded-sm text-sm font-medium text-[#009FE3] outline-none transition-colors hover:text-[#7FD4FF] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                 >
-                  All 20 services
+                  All {SERVICES.length} services
                 </a>
               </li>
             </ul>

@@ -209,7 +209,7 @@ export const BUSINESS_TYPES = [
 ] as const
 
 export const PROJECT_TYPES = [
-  'Business Website', 'Enterprise Website', 'eCommerce Platform', 'Custom CRM', 'Client Portal',
+  'Business Website', 'Enterprise Website', 'eCommerce Platform', 'Custom CRM', 'WhatsApp-First AI Sales CRM', 'Client Portal',
   'Business Dashboard', 'WhatsApp Automation', 'Email/SMS Automation', 'n8n Workflow Automation',
   'AI Agent System', 'API Integration', 'Database System', 'Cloud Deployment',
   'Maintenance & Support', 'Digital Transformation', 'Other',

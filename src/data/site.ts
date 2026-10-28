@@ -176,6 +176,35 @@ export const SERVICES: Service[] = [
       "A real-estate developer replacing agent-owned spreadsheets with a CRM where every enquiry, site visit, booking and installment lives on one client timeline.",
   },
   {
+    slug: "whatsapp-ai-sales-crm",
+    icon: "MessagesSquare",
+    title: "WhatsApp-First AI Sales CRM",
+    tagline: "A shared sales workspace for teams that sell through conversation.",
+    problem:
+      "When leads, WhatsApp conversations and follow-ups are split across personal phones and spreadsheets, teams lose context, duplicate work and miss handoffs.",
+    solution:
+      "We scope, configure and customize a dedicated WhatsApp-first sales CRM around your pipeline. DeskcommCRM is one open-source, self-hosted candidate—not TECH360’s internal CRM—and is used only if its current features, license notices, WhatsApp connection options, security and hosting fit are verified for your project. The exact deployment and ongoing costs are agreed in writing before work begins.",
+    features: [
+      "Shared team inbox with assignment and human handoff",
+      "Configurable contact records, tags and sales pipelines",
+      "AI-assisted lead qualification with defined escalation rules",
+      "Event-triggered follow-ups and external integrations",
+      "A separately scoped client deployment with access controls",
+      "Documented setup, backups, training and handover plan",
+    ],
+    tech: ["DeskcommCRM (MIT)", "Docker", "Next.js", "Supabase / PostgreSQL", "WhatsApp Cloud API / WAHA"],
+    workflow: [
+      "Map the sales process, team roles, locations and messaging use cases",
+      "Review the selected release, license, provider requirements and hosting evidence",
+      "Agree the isolated architecture, recurring costs, data boundaries and written scope",
+      "Prepare a preview or sandbox using non-production data for approval",
+      "Configure, integrate and test opt-out, human handoff, delivery failures and backups",
+      "Handover client-owned accounts, documentation, access and agreed support",
+    ],
+    example:
+      "Illustrative scenario: a retailer uses a client-owned CRM instance for its sales pipeline and shared inbox; AI handles only approved routine qualification, with uncertain or sensitive cases routed to staff. This is not a verified customer deployment or guaranteed outcome.",
+  },
+  {
     slug: "client-portals",
     icon: "KeyRound",
     title: "Client Portals",
@@ -2029,6 +2058,7 @@ export const PROJECT_TYPES: string[] = [
   "Enterprise Website",
   "eCommerce Platform",
   "Custom CRM",
+  "WhatsApp-First AI Sales CRM",
   "Client Portal",
   "Business Dashboard",
   "WhatsApp Automation",

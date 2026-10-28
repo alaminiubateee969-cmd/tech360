@@ -1,16 +1,24 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { INDUSTRIES, LEGAL_DOCS, SERVICES } from '../src/data/site'
+import { INDUSTRIES, LEGAL_DOCS, PROJECT_TYPES, SERVICES } from '../src/data/site'
 import { getStaticPublicRoutePaths, resolvePublicRoute } from '../src/lib/public-route-catalog'
 
 describe('public clean routes resolve to the existing hash-routed views', () => {
   const staticPaths = new Set(getStaticPublicRoutePaths())
 
-  it('covers all 20 service and industry detail pages without inventing new records', () => {
-    assert.equal(SERVICES.length, 20)
+  it('covers every service and industry detail page in the published catalog', () => {
+    assert.equal(SERVICES.length, 21)
     assert.equal(INDUSTRIES.length, 20)
     for (const service of SERVICES) assert.ok(staticPaths.has(`/services/${service.slug}`))
     for (const industry of INDUSTRIES) assert.ok(staticPaths.has(`/industries/${industry.slug}`))
+  })
+
+  it('offers a distinct, scoped WhatsApp-first AI sales CRM service and intake option', () => {
+    const service = SERVICES.find((item) => item.slug === 'whatsapp-ai-sales-crm')
+    assert.ok(service)
+    assert.match(service.solution, /DeskcommCRM/)
+    assert.match(service.solution, /not TECH360’s internal CRM/)
+    assert.ok(PROJECT_TYPES.includes('WhatsApp-First AI Sales CRM'))
   })
 
   it('covers all legal policies and the public sections, including design-kit', () => {

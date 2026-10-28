@@ -277,7 +277,7 @@ function IntegrationShowcase() {
 
 function TrustByNumbers() {
   const stats = [
-    { value: String(SERVICES.length), label: "Service descriptions", note: "Twenty entries are defined in the public catalogue; scope and availability are confirmed before engagement." },
+    { value: String(SERVICES.length), label: "Service descriptions", note: `${SERVICES.length} entries are defined in the public catalogue; scope and availability are confirmed before engagement.` },
     { value: String(INDUSTRIES.length), label: "Industry profiles", note: "Twenty profiles are defined in the public catalogue; this is not a customer-count claim." },
     { value: String(CASE_STUDIES.length), label: "Illustrative scenarios", note: "Examples only; they are not verified customer engagements or measured outcomes." },
     { value: "20", label: "Pipeline-stage definitions", note: "Twenty stages are defined in source. Live adoption and automation coverage have not been verified." },
@@ -433,7 +433,7 @@ function FlagshipServices() {
           id="services-heading"
           eyebrow="What we do"
           title="Six ways we move a business forward"
-          description="Twenty service descriptions are defined in the catalogue; scope and availability are confirmed for each engagement. The interface visuals and scenario text below are illustrative concepts, not live systems or verified client results."
+          description={`${SERVICES.length} service descriptions are defined in the catalogue; scope and availability are confirmed for each engagement. The interface visuals and scenario text below are illustrative concepts, not live systems or verified client results.`}
         />
         <div className="mt-12 space-y-8">
           {flagship.map((service, idx) => {
@@ -491,7 +491,7 @@ function FlagshipServices() {
           })}
         </div>
         <div className="mt-10 text-center">
-          <OutlineLink href="#/services">All 20 services</OutlineLink>
+          <OutlineLink href="#/services">All {SERVICES.length} services</OutlineLink>
         </div>
       </div>
     </section>

@@ -29,6 +29,7 @@ const GROUPS: { name: string; blurb: string; slugs: string[] }[] = [
     blurb: "Systems of record that make every decision answerable.",
     slugs: [
       "custom-crm-development",
+      "whatsapp-ai-sales-crm",
       "business-dashboards",
       "database-systems",
       "api-integrations",
@@ -104,7 +105,7 @@ function ServiceCard({ service }: { service: Service }) {
 }
 
 export default function ServicesView() {
-  // client-side search across all 20 services (title, tagline, problem, tech)
+  // Client-side search across the catalogue (title, tagline, problem, technology).
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const searching = q.length > 0;
@@ -124,7 +125,7 @@ export default function ServicesView() {
     <main id="main-content">
       <PageHero
         eyebrow="Services"
-        title="Twenty engineering services. One delivery standard."
+        title={`${SERVICES.length} engineering services. One delivery standard.`}
         description="From your first business website to AI-driven automation — scoped in writing, previewed before payment, delivered with full source handover."
         breadcrumb={[{ label: "Services" }]}
       />
