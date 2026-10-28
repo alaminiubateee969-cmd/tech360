@@ -1264,6 +1264,12 @@ model GeneratedApp {
   name        String
   clientId    String?
   projectId   String?
+  // Exact, immutable approval snapshot used to authorize client-facing delivery.
+  // These are scalar references by design: the handover record survives changes
+  // to CRM relationships, while the SHA-256 detects any later scope mutation.
+  scopeId      String?
+  scopeVersion Int?
+  scopeHash    String?
   vertical    String   @default("crm") // crm | marketing | education | ecommerce | booking | realestate | support
   brief       String @db.LongText // JSON: the owner/client form
   plan        String @db.LongText // JSON: blueprint (pages, models, agents, automations)
@@ -1279,6 +1285,8 @@ model GeneratedApp {
   @@index([status])
   @@index([vertical])
   @@index([clientId])
+  @@index([projectId])
+  @@index([scopeId])
 }
 
 model GeneratedAppFile {

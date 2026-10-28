@@ -18,7 +18,12 @@ const MODULES = ['leads', 'pipeline', 'clients', 'projects', 'invoices', 'paymen
 
 interface AppRow {
   id: string; code: string; name: string; vertical: string; status: string; stage: string
-  fileCount: number; totalBytes: number; clientId: string | null; createdAt: string; deliveredAt: string | null
+  fileCount: number; totalBytes: number; clientId: string | null; projectId?: string | null
+  scopeId?: string | null; scopeVersion?: number | null; createdAt: string; deliveredAt: string | null
+}
+interface DeliveryProject {
+  id: string; code: string; name: string; clientId: string; clientName: string
+  approvedScope: { id: string; version: number } | null
 }
 interface PlanShape {
   summary: string
@@ -50,20 +55,22 @@ const STATUS_TONE: Record<string, string> = {
 
 export function FactoryView() {
   const [apps, setApps] = useState<AppRow[]>([])
+  const [projects, setProjects] = useState<DeliveryProject[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [detail, setDetail] = useState<Detail | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
-    appName: '', clientName: '', vertical: 'crm' as (typeof VERTICALS)[number],
+    appName: '', clientName: '', projectId: '', vertical: 'crm' as (typeof VERTICALS)[number],
     modules: ['leads', 'pipeline', 'clients', 'communications'] as string[],
     language: 'EN', currency: 'GBP', primaryColor: '#063B8F', primaryContact: '', notes: '',
   })
 
   const loadApps = useCallback(async () => {
     try {
-      const data = await fetchJson<{ apps: AppRow[] }>('/api/admin/factory/apps')
+      const data = await fetchJson<{ apps: AppRow[]; projects: DeliveryProject[] }>('/api/admin/factory/apps')
       setApps(data.apps)
+      setProjects(data.projects)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not load generated apps')
     }
@@ -95,9 +102,21 @@ export function FactoryView() {
 
   const act = async (action: string) => {
     if (!selected) return
+    let note = ''
+    if (action === 'deliver' || action === 'handover') {
+      const evidence = window.prompt(
+        `Record the actual ${action === 'deliver' ? 'delivery' : 'handover'} evidence: recipient, channel/location, delivered format (including shared-hosting arrangement if relevant), and receipt/acceptance reference. Do not enter passwords, keys, or credentials.`,
+      )
+      if (evidence === null) return
+      note = evidence.trim()
+      if (note.length < 20) {
+        toast.error('Please enter a meaningful delivery/handover evidence note (at least 20 characters).')
+        return
+      }
+    }
     setBusy(true)
     try {
-      await fetchJson(`/api/admin/factory/apps/${selected}`, { method: 'PATCH', body: { action } })
+      await fetchJson(`/api/admin/factory/apps/${selected}`, { method: 'PATCH', body: { action, note } })
       toast.success(`Stage updated: ${action}`)
       await Promise.all([loadApps(), loadDetail(selected)])
     } catch (err) {
@@ -135,7 +154,7 @@ export function FactoryView() {
     <div className="space-y-4">
       <PageHeader
         title="AI Software Factory"
-        description="Turn one brief into a real, reviewed client application: pages, data model, API, agents and automations — then export the source, approve, deliver and hand it over. The blueprint engine is deterministic; nothing is delivered unreviewed."
+        description="Generate a deterministic, reviewable application blueprint. Internal prototypes are not client deliverables. Customer-bound work snapshots an exact FINAL scope version; client approval, human-recorded delivery evidence, and handover evidence are required before the platform records delivery."
       />
 
       <SectionCard title="Templates — one click to start (Qwen-inspired)" description="Pick a starter; the vertical + modules + notes prefill the brief below. Every template becomes a real Next.js/Prisma app — not a mock.">
@@ -156,8 +175,31 @@ export function FactoryView() {
           <label className="text-xs text-slate-400">Application name
             <input required value={form.appName} onChange={(e) => setForm({ ...form, appName: e.target.value })} className={cn(INPUT, 'mt-1 w-full')} placeholder="Northwind Client Hub" />
           </label>
-          <label className="text-xs text-slate-400">Client
-            <input required value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} className={cn(INPUT, 'mt-1 w-full')} placeholder="Northwind Ltd" />
+          <label className="text-xs text-slate-400">Client / prototype label
+            <input required readOnly={Boolean(form.projectId)} value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} className={cn(INPUT, 'mt-1 w-full', form.projectId && 'cursor-not-allowed opacity-70')} placeholder="Northwind Ltd" />
+          </label>
+          <label className="text-xs text-slate-400 md:col-span-2">Customer project (optional for an internal prototype)
+            <select
+              value={form.projectId}
+              onChange={(e) => {
+                const projectId = e.target.value
+                const project = projects.find((item) => item.id === projectId)
+                setForm((current) => ({
+                  ...current,
+                  projectId,
+                  clientName: project?.clientName ?? current.clientName,
+                }))
+              }}
+              className={cn(INPUT, 'mt-1 w-full')}
+            >
+              <option value="">Internal prototype — not client-deliverable</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id} disabled={!project.approvedScope}>
+                  {project.code} · {project.name} · {project.clientName} · {project.approvedScope ? `client-approved scope v${project.approvedScope.version}` : 'no current client-approved FINAL scope'}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-[11px] text-slate-500">Client-bound generation snapshots the exact scope version and SHA-256. Delivery and handover remain blocked if the scope changes, is superseded, or lacks client approval.</span>
           </label>
           <label className="text-xs text-slate-400">Vertical
             <select value={form.vertical} onChange={(e) => setForm({ ...form, vertical: e.target.value as (typeof VERTICALS)[number] })} className={cn(INPUT, 'mt-1 w-full')}>
@@ -231,12 +273,12 @@ export function FactoryView() {
               <div className="flex flex-wrap gap-1.5">
                 <Button variant="outline" size="sm" disabled={busy} onClick={() => void act('plan')}><RefreshCw className="mr-1 size-3.5" />Regenerate</Button>
                 <Button variant="outline" size="sm" disabled={busy} onClick={() => void act('build')}><Boxes className="mr-1 size-3.5" />Mark built</Button>
-                <Button variant="outline" size="sm" disabled={busy} onClick={() => void act('preview')}>Preview</Button>
-                <Button variant="outline" size="sm" disabled={busy} onClick={() => void act('approve')}><PackageCheck className="mr-1 size-3.5" />Approve</Button>
+                <Button variant="outline" size="sm" disabled={busy} onClick={() => void act('preview')}>Internal review</Button>
+                <Button variant="outline" size="sm" disabled={busy} onClick={() => void act('approve')}><PackageCheck className="mr-1 size-3.5" />Admin review</Button>
                 <Button variant="outline" size="sm" disabled={busy} onClick={() => void act('deliver')}>Deliver</Button>
                 <Button variant="outline" size="sm" disabled={busy} onClick={() => void act('handover')}>Handover</Button>
                 <a href={`/api/admin/factory/apps/${detail.app.id}/export`} className={cn('inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-white')} style={{ backgroundColor: GREEN }}>
-                  <Download className="size-3.5" />Export ZIP
+                  <Download className="size-3.5" />Export source ZIP
                 </a>
               </div>
             }>
