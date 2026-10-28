@@ -29,6 +29,8 @@ export type FactoryScopeGateResult =
         | 'SCOPE_NOT_FINAL'
         | 'CLIENT_APPROVAL_REQUIRED'
         | 'SCOPE_CONTENT_CHANGED'
+        | 'SCOPE_MANIFEST_INVALID'
+        | 'SCOPE_BRIEF_MISMATCH'
     }
 
 /**

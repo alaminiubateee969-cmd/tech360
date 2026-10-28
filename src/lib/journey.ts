@@ -15,6 +15,7 @@ import { sendPipelineMessage, recordStageChange, type PipelineChannel, type Pipe
 import type { PipelineVariables } from '@/lib/pipeline/templates'
 import { assertDeliveryRules, screenAiContent } from '@/lib/pipeline/rules'
 import { nextScopeVersionNumber, normalizeTo21PointScope } from '@/lib/scope-validator'
+import { normalizeFactoryScopeManifest } from '@/lib/factory/scope-manifest'
 import { toMinorUnits } from '@/lib/invoice-policy'
 import type { Prisma } from '@prisma/client'
 import {
@@ -591,6 +592,11 @@ export function formatScopeForClient(content: Record<string, unknown>, clientId:
   const pp = (content.paymentPolicy ?? {}) as Record<string, unknown>
   let text = `FINAL SCOPE OF WORK — Tech360\nReference: ${clientId}\n\n${String(content.title ?? 'Project Scope')}\n${String(content.summary ?? '')}\n\nDELIVERABLES\n`
   items.forEach((i, idx) => { text += `${idx + 1}. ${i.name ?? ''} — ${i.description ?? ''} (Deliverable: ${i.deliverable ?? 'as described'})\n` })
+  const factoryManifest = normalizeFactoryScopeManifest(content.factoryManifest)
+  if (factoryManifest.ok) {
+    const manifest = factoryManifest.manifest
+    text += `\nSOFTWARE FACTORY DELIVERABLE\nApplication: ${manifest.applicationName}\nVertical: ${manifest.vertical}\nApproved modules: ${manifest.modules.join(', ')}\nLanguage: ${manifest.language} · Currency: ${manifest.currency} · Brand color: ${manifest.primaryColor}\nDelivery format: ${manifest.deliveryFormat} (source archive only; this workflow does not deploy to production)\nHosting and deployment terms: ${manifest.hostingAndDeployment}\nClient responsibilities: ${manifest.clientResponsibilities}\n`
+  }
   text += '\nTIMELINE\n'
   timeline.forEach((t) => { text += `• ${t.phase ?? ''} (${t.weeks ?? '?'} week(s)): ${t.activities ?? ''}\n` })
   text += `\nPAYMENT POLICY\n• Advance: ${String(pp.advancePct ?? '—')}%\n• On milestone: ${String(pp.milestonePct ?? '—')}%\n• On final delivery: ${String(pp.finalPct ?? '—')}%\n• Currency: ${String(pp.currency ?? 'USD')}\n${String(pp.terms ?? '')}\n\nKEY POLICIES\n• HTML Preview Before Payment\n• Source Code After Full Payment\n• Changes to approved scope may require additional cost/time\n\nReply APPROVED to confirm, or send your revision notes.\n— Team Tech360`

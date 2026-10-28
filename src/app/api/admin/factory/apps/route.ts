@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText, audit } from '@/lib/security'
 import { normalizeBrief, buildPlan, buildFiles, summarizeFiles, assertNoSecrets, type FactoryBrief } from '@/lib/factory/blueprint'
+import { factoryBriefMatchesScopeManifest, factoryManifestFromScopeContent } from '@/lib/factory/scope-manifest'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
             id: true,
             version: true,
             approvedAt: true,
+            content: true,
             approvals: {
               orderBy: { decidedAt: 'desc' },
               take: 1,
@@ -61,9 +63,18 @@ export async function GET(req: NextRequest) {
   const deliveryProjects = projects.map((project) => {
     const scope = project.scopes[0]
     const approval = scope?.approvals[0]
-    const approvedScope = scope && scope.approvedAt && approval?.decision === 'APPROVED' && approval.clientId === project.clientId
-      ? { id: scope.id, version: scope.version }
+    const scopeApprovalIsCurrent = Boolean(scope?.approvedAt && approval?.decision === 'APPROVED' && approval.clientId === project.clientId)
+    const manifestResult = scope ? factoryManifestFromScopeContent(scope.content) : null
+    const approvedScope = scope && scopeApprovalIsCurrent && manifestResult?.ok
+      ? { id: scope.id, version: scope.version, manifest: manifestResult.manifest }
       : null
+    const scopeIssue = !scope
+      ? 'No current FINAL scope.'
+      : !scopeApprovalIsCurrent
+        ? 'No current client approval for the FINAL scope.'
+        : manifestResult && !manifestResult.ok
+          ? manifestResult.error
+          : null
     return {
       id: project.id,
       code: project.code,
@@ -71,6 +82,7 @@ export async function GET(req: NextRequest) {
       clientId: project.clientId,
       clientName: project.client.businessName || project.client.name,
       approvedScope,
+      scopeIssue,
     }
   })
 
@@ -132,6 +144,19 @@ export async function POST(req: NextRequest) {
     if (!scope || clientApproval?.decision !== 'APPROVED' || clientApproval.clientId !== project.clientId) {
       return Response.json(
         { error: 'Client-bound generation requires a FINAL scope approved by the client for this exact project.' },
+        { status: 409 },
+      )
+    }
+    const manifestResult = factoryManifestFromScopeContent(scope.content)
+    if (!manifestResult.ok) {
+      return Response.json(
+        { error: `Client-bound generation is blocked: the approved scope lacks a valid factory manifest. ${manifestResult.error}` },
+        { status: 409 },
+      )
+    }
+    if (!factoryBriefMatchesScopeManifest(brief, manifestResult.manifest)) {
+      return Response.json(
+        { error: 'The factory brief must exactly match the approved scope manifest (application name, vertical, modules, language, currency, brand color, and no extra notes). Create a versioned scope change before changing these terms.' },
         { status: 409 },
       )
     }

@@ -5,6 +5,7 @@ import { Boxes, Download, FileCode2, Github, Globe, GraduationCap, LayoutDashboa
 import { toast } from 'sonner'
 
 import { fetchJson, ApiError } from '@/lib/admin-client'
+import type { FactoryScopeManifest } from '@/lib/factory/scope-manifest'
 import { PageHeader, SectionCard } from './shared/cards'
 import { ACCENT, GREEN, INPUT, MONO, RED } from './shared/styles'
 import { Button } from '@/components/ui/button'
@@ -23,7 +24,8 @@ interface AppRow {
 }
 interface DeliveryProject {
   id: string; code: string; name: string; clientId: string; clientName: string
-  approvedScope: { id: string; version: number } | null
+  approvedScope: { id: string; version: number; manifest: FactoryScopeManifest } | null
+  scopeIssue: string | null
 }
 interface PlanShape {
   summary: string
@@ -160,7 +162,7 @@ export function FactoryView() {
       <SectionCard title="Templates — one click to start (Qwen-inspired)" description="Pick a starter; the vertical + modules + notes prefill the brief below. Every template becomes a real Next.js/Prisma app — not a mock.">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {FACTORY_TEMPLATES.map((tpl) => (
-            <button key={tpl.key} type="button" onClick={() => applyTemplate(tpl)} className="group flex flex-col rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-left transition hover:-translate-y-0.5 hover:border-[#009FE3]/40 hover:bg-slate-900 hover:shadow-[0_8px_20px_rgba(6,59,143,0.12)]">
+            <button key={tpl.key} type="button" disabled={Boolean(form.projectId)} onClick={() => applyTemplate(tpl)} className="group flex flex-col rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-left transition hover:-translate-y-0.5 hover:border-[#009FE3]/40 hover:bg-slate-900 hover:shadow-[0_8px_20px_rgba(6,59,143,0.12)] disabled:cursor-not-allowed disabled:opacity-50">
               <span className={cn('flex size-11 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow', tpl.color)}>{tpl.icon}</span>
               <span className="mt-3 text-sm font-semibold text-slate-100">{tpl.title}</span>
               <span className="mt-1 text-xs leading-relaxed text-slate-500">{tpl.blurb}</span>
@@ -173,7 +175,7 @@ export function FactoryView() {
       <SectionCard title="1 · Brief" description="Everything below is stored with the app so the client’s request and our blueprint always line up." id="factory-brief">
         <form onSubmit={create} className="grid gap-3 md:grid-cols-2">
           <label className="text-xs text-slate-400">Application name
-            <input required value={form.appName} onChange={(e) => setForm({ ...form, appName: e.target.value })} className={cn(INPUT, 'mt-1 w-full')} placeholder="Northwind Client Hub" />
+            <input required readOnly={Boolean(form.projectId)} value={form.appName} onChange={(e) => setForm({ ...form, appName: e.target.value })} className={cn(INPUT, 'mt-1 w-full', form.projectId && 'cursor-not-allowed opacity-70')} placeholder="Northwind Client Hub" />
           </label>
           <label className="text-xs text-slate-400">Client / prototype label
             <input required readOnly={Boolean(form.projectId)} value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} className={cn(INPUT, 'mt-1 w-full', form.projectId && 'cursor-not-allowed opacity-70')} placeholder="Northwind Ltd" />
@@ -184,10 +186,20 @@ export function FactoryView() {
               onChange={(e) => {
                 const projectId = e.target.value
                 const project = projects.find((item) => item.id === projectId)
+                const manifest = project?.approvedScope?.manifest
                 setForm((current) => ({
                   ...current,
                   projectId,
                   clientName: project?.clientName ?? current.clientName,
+                  ...(manifest ? {
+                    appName: manifest.applicationName,
+                    vertical: manifest.vertical,
+                    modules: [...manifest.modules],
+                    language: manifest.language,
+                    currency: manifest.currency,
+                    primaryColor: manifest.primaryColor,
+                    notes: '',
+                  } : {}),
                 }))
               }}
               className={cn(INPUT, 'mt-1 w-full')}
@@ -195,28 +207,28 @@ export function FactoryView() {
               <option value="">Internal prototype — not client-deliverable</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.id} disabled={!project.approvedScope}>
-                  {project.code} · {project.name} · {project.clientName} · {project.approvedScope ? `client-approved scope v${project.approvedScope.version}` : 'no current client-approved FINAL scope'}
+                  {project.code} · {project.name} · {project.clientName} · {project.approvedScope ? `approved factory scope v${project.approvedScope.version}` : project.scopeIssue || 'scope is not delivery-ready'}
                 </option>
               ))}
             </select>
-            <span className="mt-1 block text-[11px] text-slate-500">Client-bound generation snapshots the exact scope version and SHA-256. Delivery and handover remain blocked if the scope changes, is superseded, or lacks client approval.</span>
+            <span className="mt-1 block text-[11px] text-slate-500">Client-bound generation is enabled only for a client-approved FINAL scope containing a structured factory manifest. The brief is locked to its app name, vertical, modules, language, currency and brand color; changes require a versioned scope update. Hosting/deployment terms are shown in the approved scope. Live deployment is not performed here.</span>
           </label>
           <label className="text-xs text-slate-400">Vertical
-            <select value={form.vertical} onChange={(e) => setForm({ ...form, vertical: e.target.value as (typeof VERTICALS)[number] })} className={cn(INPUT, 'mt-1 w-full')}>
+            <select disabled={Boolean(form.projectId)} value={form.vertical} onChange={(e) => setForm({ ...form, vertical: e.target.value as (typeof VERTICALS)[number] })} className={cn(INPUT, 'mt-1 w-full', form.projectId && 'cursor-not-allowed opacity-70')}>
               {VERTICALS.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </label>
           <div className="grid grid-cols-3 gap-2">
             <label className="text-xs text-slate-400">Language
-              <select value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })} className={cn(INPUT, 'mt-1 w-full')}>
+              <select disabled={Boolean(form.projectId)} value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })} className={cn(INPUT, 'mt-1 w-full', form.projectId && 'cursor-not-allowed opacity-70')}>
                 <option value="EN">English</option><option value="BN">বাংলা</option><option value="BOTH">Both</option>
               </select>
             </label>
             <label className="text-xs text-slate-400">Currency
-              <input value={form.currency} maxLength={3} onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} className={cn(INPUT, 'mt-1 w-full')} />
+              <input readOnly={Boolean(form.projectId)} value={form.currency} maxLength={3} onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} className={cn(INPUT, 'mt-1 w-full', form.projectId && 'cursor-not-allowed opacity-70')} />
             </label>
             <label className="text-xs text-slate-400">Brand colour
-              <input type="color" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value })} className={cn(INPUT, 'mt-1 h-[38px] w-full p-1')} />
+              <input disabled={Boolean(form.projectId)} type="color" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value })} className={cn(INPUT, 'mt-1 h-[38px] w-full p-1', form.projectId && 'cursor-not-allowed opacity-70')} />
             </label>
           </div>
           <label className="text-xs text-slate-400 md:col-span-2">Primary contact
@@ -227,15 +239,15 @@ export function FactoryView() {
             <div className="mt-2 flex flex-wrap gap-2">
               {MODULES.map((m) => (
                 <button
-                  key={m} type="button" onClick={() => toggleModule(m)}
+                  key={m} type="button" disabled={Boolean(form.projectId)} onClick={() => toggleModule(m)}
                   aria-pressed={form.modules.includes(m)}
-                  className={cn('rounded-full border px-3 py-1 text-xs', form.modules.includes(m) ? 'border-[#009FE3]/50 bg-[#009FE3]/15 text-[#009FE3]' : 'border-slate-700 text-slate-400 hover:border-slate-600')}
+                  className={cn('rounded-full border px-3 py-1 text-xs', form.modules.includes(m) ? 'border-[#009FE3]/50 bg-[#009FE3]/15 text-[#009FE3]' : 'border-slate-700 text-slate-400 hover:border-slate-600', form.projectId && 'cursor-not-allowed opacity-70')}
                 >{m}</button>
               ))}
             </div>
           </fieldset>
           <label className="text-xs text-slate-400 md:col-span-2">Anything the client specifically asked for
-            <textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={cn(INPUT, 'mt-1 w-full')} placeholder="Paste the client’s own words. Requests the factory cannot build are listed explicitly in the plan instead of being dropped." />
+            <textarea rows={3} disabled={Boolean(form.projectId)} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={cn(INPUT, 'mt-1 w-full', form.projectId && 'cursor-not-allowed opacity-70')} placeholder={form.projectId ? 'Client-bound briefs cannot add unapproved requirements.' : 'Internal prototype notes only. Client requirements must be added to a versioned Scope of Work before client-bound generation.'} />
           </label>
           <div className="md:col-span-2">
             <Button type="submit" disabled={busy} style={{ backgroundColor: ACCENT }}>

@@ -63,6 +63,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         scopeBinding: boundToClient && scopeGate.allowed
           ? { scopeId: app.scopeId, scopeVersion: app.scopeVersion, contentSha256: app.scopeHash }
           : null,
+        approvedSoftwareScope: boundToClient && scopeGate.allowed ? scopeGate.manifest : null,
         clientDeliveryEligible: boundToClient && scopeGate.allowed,
         deliveryWarning: boundToClient
           ? null
