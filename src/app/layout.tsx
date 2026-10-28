@@ -6,10 +6,10 @@ const SITE_URL = process.env.APP_PUBLIC_URL ?? 'https://bdtech360.com'
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Tech360 — Enterprise Software, Automation & Digital Transformation',
-    template: '%s | Tech360',
+    default: 'TECH360 — Enterprise Software, Automation & Digital Transformation',
+    template: '%s | TECH360',
   },
-  description: 'Tech360 (TECH360 LLC) builds enterprise-grade websites, eCommerce platforms, custom CRMs, WhatsApp-first AI sales CRM setups, WhatsApp automation, n8n workflows and AI systems. HTML Preview Before Payment. US-registered LLC delivering worldwide.',
+  description: 'TECH360 LLC builds websites, eCommerce platforms, custom CRMs, AI-assisted applications, and business automation. Project scope, payment, delivery, and support are agreed in writing.',
   keywords: ['software company', 'enterprise software', 'web development', 'eCommerce development', 'CRM development', 'WhatsApp AI CRM', 'WhatsApp sales CRM', 'WhatsApp automation', 'n8n automation', 'business automation', 'Google Cloud', 'digital transformation', 'Tech360', 'bdtech360'],
   applicationName: 'Tech360',
   authors: [{ name: 'TECH360 LLC' }],
@@ -22,13 +22,13 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: 'Tech360',
     title: 'Tech360 — Strategy. Software. Automation. Growth.',
-    description: 'Enterprise-grade websites, platforms and automation for ambitious businesses. HTML Preview Before Payment · Source Code After Full Payment.',
+    description: 'Enterprise-grade websites, platforms and automation for ambitious businesses. Project-specific scope, approvals, payment, delivery and handover.',
     images: [{ url: '/images/tech360-banner.jpg', width: 1200, height: 630, alt: 'Tech360 — Enterprise Software Company' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Tech360 — Enterprise Software, Automation & Growth',
-    description: 'Enterprise-grade websites, platforms and automation. HTML Preview Before Payment.',
+    description: 'Enterprise-grade websites, platforms and automation. Project-specific scope, approvals, payment, delivery and handover.',
     images: ['/images/tech360-banner.jpg'],
   },
   robots: {

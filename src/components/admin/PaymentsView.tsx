@@ -657,7 +657,7 @@ function CreateInvoiceDialog({
   const [billingAddress, setBillingAddress] = useState('')
   const [billingCountry, setBillingCountry] = useState('')
   const [paymentTerms, setPaymentTerms] = useState(
-    'HTML Preview Before Payment. Source Code Handover After Full Verified Payment.',
+    'HTML Preview where included in the agreed process. Final source-code handover after required outstanding project payments have cleared, unless otherwise agreed in writing.',
   )
   const [customerNotes, setCustomerNotes] = useState('')
   const [internalNotes, setInternalNotes] = useState('')

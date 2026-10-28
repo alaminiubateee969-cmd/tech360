@@ -137,11 +137,11 @@ describe('communication pipeline — the exact client copy', () => {
   it('stage 4 sends the final scope with the approval phrase and both policies', () => {
     const { whatsapp, email } = pipelineMessage('FINAL_SCOPE_APPROVED', V)
     assert.ok(whatsapp.body.includes('I approve the Scope of Work.'))
-    assert.ok(whatsapp.body.includes('HTML preview may be shared for review before final payment.'))
-    assert.ok(whatsapp.body.includes('Final source code, files, admin access, and deployment handover are provided after full payment.'))
+    assert.ok(whatsapp.body.includes('An HTML Preview is supplied where included in the agreed process.'))
+    assert.ok(whatsapp.body.includes('all required project payments have been received and cleared.'))
     assert.ok(email.subject === 'Final Scope of Work for Approval - Client ID TECH-2026-000001')
-    assert.ok(email.body.includes('Final source code, full project files, admin access, and deployment files are delivered after full payment.'))
-    assert.ok(email.body.includes('payment is non-refundable unless Tech360 cannot deliver the approved Scope of Work.'))
+    assert.ok(email.body.includes('Client-owned credentials specifically identified in the approved Scope of Work.'))
+    assert.ok(email.body.includes('Completed and conforming work is generally non-refundable merely because the Client changes their mind'))
   })
 
   it('stage 5A sends the meeting link and the meeting explanation', () => {
@@ -153,7 +153,7 @@ describe('communication pipeline — the exact client copy', () => {
   it('stage 5B confirms the scope approval and states the preview policy', () => {
     const { whatsapp, email } = pipelineMessage('SCOPE_APPROVED', V)
     assert.ok(whatsapp.body.includes('Your approval has been saved under Client ID:'))
-    assert.ok(whatsapp.body.includes('Final source code, full files, admin access, and deployment handover are provided after full payment.'))
+    assert.ok(whatsapp.body.includes('Any HTML Preview included in the approved Scope of Work will be prepared for your review.'))
     assert.equal(email.subject, 'Scope Approval Confirmed - Client ID TECH-2026-000001')
   })
 
@@ -639,10 +639,10 @@ describe('communication pipeline — the stated policy', () => {
     // access", "handover" and "payment policy". Those are POLICY
     // statements, not a handover, and the gate must not fire on them.
     const policyStatements: Array<[PipelineMessageStage, string]> = [
-      ['SCOPE_DETAILS_RECEIVED', 'Payment policy: Advance 40% · Source code, files, admin access and deployment handover follow full payment.'],
+      ['SCOPE_DETAILS_RECEIVED', 'Project-specific payment schedule; final source-code handover follows verified clearance of required payments.'],
       ['MEETING_REQUESTED', 'We can explain the payment policy, the HTML preview process and the final source-code handover.'],
-      ['SCOPE_APPROVED', 'Final source code, full files, admin access and deployment handover are provided after full payment.'],
-      ['HTML_PREVIEW_SENT', 'After HTML/demo approval and final delivery/source-code handover, payment is non-refundable unless Tech360 cannot deliver the approved scope.'],
+      ['SCOPE_APPROVED', 'Agreed source code and Client-owned credentials identified in the SOW are handed over after required payments clear.'],
+      ['HTML_PREVIEW_SENT', 'Refund requests are reviewed under the project agreement, applicable law, and relevant payment-provider rules.'],
       ['FINAL_DELIVERY_READY', 'Delivery may include the final files, the source code, the admin access and the deployment support.'],
       ['FINAL_DELIVERY_COMPLETED', 'Please confirm you received the source code, the admin access and the deployment.'],
       ['BUSINESS_TYPE_RECEIVED', 'Do you need payment gateway integration?'],

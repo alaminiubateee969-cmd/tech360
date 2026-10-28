@@ -68,10 +68,7 @@ export default function LegalView({ slug }: { slug: string }) {
                   <h3 className="text-xs font-semibold text-[#0B1F33]">Legal identity</h3>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-[#526173]">
-                  {COMPANY.legalName} · Missouri LLC {COMPANY.missouriLLC} · EIN{" "}
-                  {COMPANY.ein}
-                  <br />
-                  {COMPANY.address}
+                  {COMPANY.legalName}
                   <br />
                   {COMPANY.email}
                 </p>
@@ -92,10 +89,6 @@ export default function LegalView({ slug }: { slug: string }) {
                   <div className="mt-1.5 text-[9.5px] leading-[1.6] text-[#526173]">
                     <b className="text-[#0B1F33] tracking-wide">TECH360 LLC</b>
                     <br />
-                    Missouri LLC {COMPANY.missouriLLC} · EIN {COMPANY.ein}
-                    <br />
-                    {COMPANY.address}
-                    <br />
                     {COMPANY.email}
                   </div>
                 </div>
@@ -103,14 +96,14 @@ export default function LegalView({ slug }: { slug: string }) {
               <div className="pad-rule" />
               <div className="pad-sub">
                 <span>Official company document</span>
-                <span>Legal &amp; policies · {doc ? `Updated ${doc.updated}` : "Policy"}</span>
+                <span>Legal &amp; policies · {doc ? `Effective ${doc.updated}` : "Policy"}</span>
               </div>
             </div>
             {doc ? (
               <Reveal>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="rounded-md bg-[#009FE3]/10 px-2.5 py-1 text-xs font-semibold text-[#0079AC]">
-                    Updated {doc.updated}
+                    Effective {doc.updated}
                   </span>
                   <span className="text-xs text-[#526173]">
                     Applies as written; a signed engagement agreement prevails where it differs.
@@ -170,7 +163,7 @@ export default function LegalView({ slug }: { slug: string }) {
 
                 {/* Official company footer — printed on every policy PDF */}
                 <div data-print="pad" className="pad-footer-line" aria-hidden="true">
-                  <span>{COMPANY.legalName} · {COMPANY.domain} · {COMPANY.address}</span>
+                  <span>{COMPANY.legalName} · {COMPANY.domain} · {COMPANY.email}</span>
                   <span>Issued electronically by the Tech360 client platform</span>
                 </div>
               </Reveal>

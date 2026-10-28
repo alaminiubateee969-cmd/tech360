@@ -361,7 +361,7 @@ export function LeadFunnel() {
         { label: "First message", sub: "any channel → Client ID" },
         { label: "Scope & questions", sub: "business detection · plan" },
         { label: "Approved scope", sub: "admin + client approval" },
-        { label: "HTML preview", sub: "shown BEFORE any payment" },
+        { label: "HTML preview", sub: "where included, before applicable payment" },
         { label: "Verified payment", sub: "milestones confirmed by finance" },
         { label: "Build & review", sub: "tasks · testing · client review" },
         { label: "Final payment", sub: "gate to source release" },

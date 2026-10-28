@@ -19,7 +19,7 @@ export function PipelineStatusPanel() {
     <details className="mb-3 shrink-0 rounded-xl border border-slate-800 bg-slate-900/60 text-sm text-slate-300">
       <summary className="cursor-pointer p-4 font-semibold">First message → final delivery · live pipeline</summary>
       <div className="max-h-[60vh] space-y-4 overflow-auto p-4 pt-0">
-        <p className="text-sky-300">HTML Preview Before Payment. Source Code After Full Payment.</p>
+        <p className="text-sky-300">Preview where included. Final source-code handover after required payments clear.</p>
         <p>Agents handle permitted work through the existing journey engine and durable queue. Final scope, payment instructions, invoices, legal/dispute responses and file release require approval. A client message or uploaded payment proof is not verified payment.</p>
         <Button onClick={refresh} variant="outline" disabled={loading}>Refresh evidence</Button>
         {loading && <p role="status">Loading live CRM evidence…</p>}

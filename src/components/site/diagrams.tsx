@@ -504,7 +504,7 @@ export function DeliveryHandoverDiagram() {
   return (
     <Wrap
       label="Delivery and handover diagram: source code, credentials, documentation and roadmap transferred to the client as a structured event"
-      title="Handover — you own everything"
+      title="Handover — agreed Client-owned deliverables"
       titleIcon={
         <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
           <path d="M12 3v12m0 0-4-4m4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -531,7 +531,7 @@ export function DeliveryHandoverDiagram() {
           <svg viewBox="0 0 60 12" className="h-3 w-14" aria-hidden="true">
             <path d="M0 6h50m0 0-5-5m5 5-5 5" stroke="#7FD4FF" strokeWidth="2" fill="none" strokeLinecap="round" />
           </svg>
-          <span className="text-[11px] font-semibold text-white">You own everything</span>
+          <span className="text-[11px] font-semibold text-white">Agreed deliverables transferred</span>
         </div>
       </div>
     </Wrap>

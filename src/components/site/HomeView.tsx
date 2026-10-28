@@ -289,7 +289,7 @@ function TrustByNumbers() {
           <div>
             <h2 id="trust-numbers-heading" className="text-xs font-bold uppercase tracking-[0.18em] text-[#009FE3]">Credibility</h2>
             <p className="mt-2 text-lg font-semibold tracking-tight text-[#0B1F33]">Numbers you can verify</p>
-            <p className="mt-1 text-sm leading-relaxed text-[#526173]">Derived from configuration — not marketing inflation. Company: {COMPANY.legalName} · Missouri {COMPANY.missouriLLC} · EIN {COMPANY.ein}.</p>
+            <p className="mt-1 text-sm leading-relaxed text-[#526173]">Service and company information is subject to the specific written proposal and approved project scope.</p>
           </div>
           <div className="hidden items-center gap-2 text-xs text-[#526173] sm:flex"><ShieldCheck className="size-4 text-[#18B83A]" /> No invented customer counts</div>
         </div>
@@ -361,7 +361,7 @@ function FlagshipServices() {
   };
   const previews: Record<string, { eyebrow: string; mock: React.ReactNode }> = {
     "premium-business-websites": {
-      eyebrow: "Preview before payment",
+      eyebrow: "Preview where included",
       mock: (
         <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
           <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-2"><span className="size-2 rounded-full bg-red-400" /><span className="size-2 rounded-full bg-amber-400" /><span className="size-2 rounded-full bg-emerald-400" /><span className="ml-2 text-[10px] text-[#526173]">yourbrand.com — Preview</span></div>
@@ -505,20 +505,20 @@ function FlagshipServices() {
 const DIFFERENTIATORS = [
   {
     icon: "Eye",
-    title: "HTML preview before payment",
-    text: "A working, clickable preview of your solution — generated from your approved scope and delivered before any payment request. Evaluate quality with your own eyes first.",
+    title: "HTML preview where included",
+    text: "Where included in the agreed process, review an HTML Preview of the approved scope before the applicable project payment.",
     link: { label: "Delivery Policy", href: "#/legal/delivery" },
   },
   {
     icon: "FileCheck",
-    title: "Source code after full payment",
-    text: "The complete source package, documentation and every credential are handed over once final payment is verified. You own the system outright — no hostage hosting.",
+    title: "Agreed source code after verified payment",
+    text: "After the final payment has been verified and cleared, TECH360 delivers the agreed source-code package, project documentation, and Client-owned credentials specifically identified in the approved Scope of Work. TECH360 internal secrets and shared infrastructure credentials are excluded.",
     link: { label: "Handover Policy", href: "#/legal/source-code-handover" },
   },
   {
     icon: "ShieldCheck",
     title: "US LLC, on-record operations",
-    text: "TECH360 LLC is a Missouri-registered company (LC014737249) with EIN registration. Every engagement, payment and approval is on the record and tied to your Client ID.",
+    text: "TECH360 LLC records relevant project scopes, approvals, payments, and delivery evidence to support clear project administration.",
     link: { label: "About the company", href: "#/about" },
   },
   {
@@ -646,7 +646,7 @@ function ProcessStrip() {
           id="process-heading"
           eyebrow="How delivery works"
           title="Seven phases. Two gates. Zero surprises."
-          description="Payment begins only after your preview approval — and the source code is released after final payment. Everything between is written, milestone-tracked and on the record."
+          description="Where included, review an HTML Preview against the approved scope. Project-specific written terms set approvals, payment milestones, delivery, and support; final source-code handover generally follows verification of required outstanding payments."
         />
         <Reveal className="mt-12">
           <ol className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">

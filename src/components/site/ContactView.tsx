@@ -555,8 +555,7 @@ export default function ContactView() {
                           )}
                         </Button>
                         <p className="text-xs text-[#526173]">
-                          Under the default policy, no payment request is made
-                          before preview approval. You decide whether to proceed.
+                          Your approved Scope of Work will identify any preview, its review process, and when payments are due.
                         </p>
                       </form>
                     </Form>
@@ -645,9 +644,6 @@ export default function ContactView() {
                           <br />
                           {COMPANY.address}
                         </address>
-                        <p className="mt-2 text-xs text-[#526173]">
-                          Missouri LLC {COMPANY.missouriLLC} · EIN {COMPANY.ein}
-                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -663,8 +659,8 @@ export default function ContactView() {
                     {[
                       "Start with your email and a short project description; profile details are optional.",
                       "We issue or link a Client ID only when we can do so safely; possible identity collisions go to review.",
-                      "If you proceed, the project scope is documented and a preview is provided for approval.",
-                      "Under the default policy, no payment request is made before the applicable preview is approved.",
+                      "If you proceed, the project scope is documented; an HTML Preview is provided where included in the agreed process.",
+                      "The approved Scope of Work defines any required preview approval and the applicable payment schedule.",
                     ].map((step, i) => (
                       <li key={step} className="flex items-start gap-3 text-sm leading-relaxed text-[#526173]">
                         <span

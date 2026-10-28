@@ -46,7 +46,7 @@ I noticed {{observation}}. For {{industry}} businesses that usually means {{pain
 
 We recently helped {{proof}} get {{result}}.
 
-Worth a quick look? We can send an HTML preview of what it could look like for {{businessName}} before any payment.
+Worth a quick look? If included in the agreed process, we can provide an HTML Preview for review against the approved scope.
 
 {{senderName}}`,
   },
@@ -82,7 +82,7 @@ All the best,
     title: 'WhatsApp — first message',
     category: 'WhatsApp & SMS', channel: 'WhatsApp', framework: 'Context → value → one question',
     when: 'Only to people who contacted you or opted in. Keep under 400 characters.',
-    body: `Assalamu alaikum {{firstName}}, this is {{senderName}} from Tech360. You asked about {{observation}}. We can show you {{result}} as a free HTML preview before you pay anything. Shall I send a short list of questions so we can start?`,
+    body: `Assalamu alaikum {{firstName}}, this is {{senderName}} from Tech360. You asked about {{observation}}. If an HTML Preview is included in the agreed process, we can show you the agreed visual direction before the applicable payment. Shall I send a short list of questions so we can start?`,
   },
   {
     id: 'sms-otp-notice',
@@ -96,17 +96,17 @@ All the best,
     title: 'Landing page hero (PAS)',
     category: 'Website copy', channel: 'Web', framework: 'Problem → Agitate → Solution (clarity over cleverness)',
     when: 'Hero + first section of a service landing page.',
-    body: `# {{result}} — without paying until you've seen it
+    body: `# {{result}} — with a project scope agreed in writing
 
 {{industry}} businesses lose customers when {{painPoint}}.
 
 Every day that continues is revenue you don't get back.
 
-Tech360 builds {{result}}. You review a working HTML preview first. Payment starts only after you approve it, and you receive the full source code after final payment.
+TECH360 can build {{result}}. An HTML Preview is supplied where included in the agreed process. Project-specific terms define payment, delivery, and source-code handover.
 
-[Start with a free preview →]({{link}})
+[Discuss the project scope →]({{link}})
 
-**How it works:** 1. Tell us about {{businessName}} · 2. Approve the scope · 3. Review your preview · 4. Pay only when you're happy`,
+**How it works:** 1. Tell us about {{businessName}} · 2. Review the written proposal and SOW · 3. Review any included preview · 4. Follow the agreed payment schedule`,
   },
   {
     id: 'case-study',
@@ -117,7 +117,7 @@ Tech360 builds {{result}}. You review a working HTML preview first. Payment star
 
 **The situation.** {{businessName}} is a {{industry}} business. Before working with us, {{painPoint}}.
 
-**What we built.** {{observation}} — so we designed and shipped {{result}}, previewed in HTML before any payment.
+**What we built.** {{observation}} — so we designed and shipped {{result}}. Any preview, payment, and handover details must match the relevant approved SOW.
 
 **The outcome.** [Add the real, measured result and the date range here.]
 
@@ -139,7 +139,7 @@ Three things we check first:
 
 If any answer is "not sure", start there — before redesigning anything.
 
-(We build a free HTML preview before you pay. {{link}})`,
+(HTML Preview where included in the agreed process. {{link}})`,
   },
   {
     id: 'facebook-offer',
@@ -148,7 +148,7 @@ If any answer is "not sure", start there — before redesigning anything.
     when: 'Facebook page or group post for local businesses.',
     body: `{{industry}} owners: still taking orders by inbox only?
 
-We build {{result}} — and you see a working preview before you pay a taka.
+We build {{result}}. Any preview, payment, and handover terms are agreed for the project in writing.
 
 Send us a message with the word PREVIEW and we'll reply with 5 quick questions.
 {{link}}`,
@@ -159,14 +159,14 @@ Send us a message with the word PREVIEW and we'll reply with 5 quick questions.
     category: 'Ads', channel: 'Meta Ads', framework: 'Hook → benefit → proof → CTA (3 headline variants)',
     when: 'Meta/Instagram ad copy. Test one variable at a time.',
     body: `Primary text:
-{{painPoint}}? Get {{result}}. See a free HTML preview before you pay.
+{{painPoint}}? Discuss {{result}} against a written scope. Any HTML Preview and payment milestones are agreed for the project.
 
 Headlines (test each):
-- See your new site before you pay
+- A website scoped for your business
 - {{industry}} websites that take orders for you
-- Preview first. Pay later.
+- Project terms in writing
 
-Description: Free HTML preview · Source code after final payment
+Description: Preview where included · Handover as agreed
 CTA button: Send Message
 Link: {{link}}`,
   },
@@ -213,7 +213,7 @@ Thank you,
 {{industry}} Website Development | Tech360
 
 Meta description (70–160 chars):
-Get {{result}}. See a free HTML preview before you pay. Source code delivered after final payment. Start with Tech360.
+Discuss {{result}} against a written scope. An HTML Preview is provided where included in the agreed process; project-specific terms define payment, delivery, and source-code handover.
 
 H1: {{industry}} websites that win customers online`,
   },

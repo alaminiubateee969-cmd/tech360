@@ -73,7 +73,7 @@ export default function IndustriesView() {
 
       <CtaBand
         title="Your industry, scoped properly"
-        description="Tell us the sector and the problem you keep hitting. The written scope and HTML preview show exactly how we would solve it — before any payment."
+        description="Tell us your sector and requirements. We can prepare a written proposal and scope; an HTML Preview is included where agreed before the applicable payment."
       />
     </main>
   );

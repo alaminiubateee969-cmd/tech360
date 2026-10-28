@@ -225,11 +225,11 @@ export function normalizeTo21PointScope(
     ),
     previewPolicy: pick(
       'previewPolicy',
-      'HTML Preview Before Payment: TECH360 delivers an interactive staging HTML preview for explicit client review and approval prior to payment collection.',
+      'HTML Preview: supplied for review before the applicable project payment where included in the agreed process; review scope and limitations are stated in the approved SOW.',
     ),
     revisionPolicy: pick(
       'revisionPolicy',
-      'Includes up to 2 structured revision rounds on the HTML preview within agreed scope. Material additions after approval require a versioned Change Request.',
+      'Any included review and revision allowance is stated in the approved SOW. Material additions after approval require a documented change request and approval of price or timing impacts.',
     ),
     timelineAndMilestones: pick('timelineAndMilestones', timelineSummary),
     pricingAndCurrency: pick(
@@ -238,19 +238,19 @@ export function normalizeTo21PointScope(
     ),
     paymentSchedule: pick(
       'paymentSchedule',
-      `Advance ${String(pp.advancePct ?? 50)}% after HTML preview approval · Milestone ${String(pp.milestonePct ?? 0)}% · Final ${String(pp.finalPct ?? 50)}% prior to source code release (${currency}).`,
+      'Payment amounts, currency, and due dates are defined in the approved quotation, invoice, and SOW. No standard percentage or payment schedule is implied.',
     ),
     handoverPolicy: pick(
       'handoverPolicy',
-      'Source Code After Full Payment: Full source code, build artifacts, documentation, and credential rotation checklist are released strictly after 100% verified payment.',
+      'Unless otherwise agreed in writing, final source-code handover follows verification that all required outstanding project payments have cleared. Handover scope and Client-owned credentials are defined in the approved SOW; TECH360 internal secrets and other Clients’ information are excluded.',
     ),
     acceptanceCriteria: pick(
       'acceptanceCriteria',
-      'All included features pass functional QA, responsive verification, security baseline checks, and match the approved HTML preview and SOW.',
+      'Testing and acceptance checks are limited to those identified in the approved SOW. An HTML Preview covers only the elements shown and does not automatically establish backend or production integration completion.',
     ),
     warrantyAndSupport: pick(
       'warrantyAndSupport',
-      '14-day post-handover defect warranty on delivered scope; ongoing feature enhancements or managed hosting available under separate agreement.',
+      'Any defect-correction period, warranty, support, hosting, or maintenance is only as stated in the approved SOW or separate written agreement, subject to applicable law.',
     ),
     assumptionsAndDependencies: pick(
       'assumptionsAndDependencies',

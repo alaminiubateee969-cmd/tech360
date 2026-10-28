@@ -14,8 +14,8 @@ import { Reveal, RevealList, RevealItem } from "./Reveal";
 const PRINCIPLES = [
   {
     icon: Eye,
-    title: "Preview before payment",
-    text: "Clients should have a meaningful opportunity to review the proposed solution before making a payment commitment. Our process includes an HTML preview before payment.",
+    title: "Preview where included",
+    text: "Where included in the agreed process, clients can review an HTML Preview against the approved scope before the applicable project payment.",
     link: "#/legal/delivery",
     label: "Read our Delivery Policy",
   },
@@ -29,7 +29,7 @@ const PRINCIPLES = [
   {
     icon: Lock,
     title: "Clear ownership and handover",
-    text: "Following verification of the final payment and completion of the applicable handover requirements, we provide the agreed source code, documentation and credentials.",
+    text: "Following verification of the final payment and completion of the applicable handover requirements, we provide the agreed source code, documentation and Client-owned credentials specifically identified in the approved SOW.",
     link: "#/legal/source-code-handover",
     label: "Read our Source Code Handover Policy",
   },
@@ -56,7 +56,7 @@ const WORKING_STEPS = [
   {
     n: "03",
     title: "Review the HTML preview",
-    text: "You can evaluate the agreed preview and share feedback before proceeding to payment under our published delivery process.",
+    text: "Where an HTML Preview is included, you can evaluate the agreed visual elements before the applicable project payment as stated in the SOW.",
   },
   {
     n: "04",
@@ -71,7 +71,7 @@ const WORKING_STEPS = [
   {
     n: "06",
     title: "Complete the handover",
-    text: "After the final payment is verified and the agreed release conditions are satisfied, we hand over the contracted source code, documentation and credentials.",
+    text: "After the final payment is verified and the agreed release conditions are satisfied, we hand over the contracted source code, documentation and Client-owned credentials specifically identified in the approved SOW.",
   },
   {
     n: "07",
@@ -273,7 +273,6 @@ export default function AboutView() {
                   { term: "Legal name", detail: COMPANY.legalName },
                   { term: "Brand", detail: `${COMPANY.brand} · ${COMPANY.domain}` },
                   { term: "Missouri LLC number", detail: COMPANY.missouriLLC },
-                  { term: "EIN", detail: COMPANY.ein },
                   { term: "Registered address", detail: COMPANY.address },
                   { term: "Email", detail: COMPANY.email },
                   { term: "Contact", detail: "Live support chat — on every page" },

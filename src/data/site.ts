@@ -1,4 +1,6 @@
 import { PUBLIC_CONTACT } from "@/lib/site-contact";
+import { LEGAL_DOCS, type LegalDoc } from "@/data/legal-docs";
+export { LEGAL_DOCS } from "@/data/legal-docs";
 
 /**
  * Tech360 public website content.
@@ -14,7 +16,6 @@ export const COMPANY = {
   brand: "Tech360",
   domain: "bdtech360.com",
   missouriLLC: "LC014737249",
-  ein: "98-1940053",
   address: "117 S Lexington St Ste 100, Harrisonville, MO 64701, USA",
   email: PUBLIC_CONTACT.email,
   founded: "2021",
@@ -84,12 +85,12 @@ export const SERVICES: Service[] = [
     workflow: [
       "Discovery workshop — business goals, audience, competitors",
       "Sitemap, messaging outline and wireframes",
-      "HTML preview for your approval before payment begins",
+      "HTML Preview where included in the agreed process",
       "Design refinement, build, content integration",
-      "QA, SEO pass, launch and handover of credentials",
+      "Agreed QA, SEO work, launch and Client-owned credentials identified for handover",
     ],
     example:
-      "A professional services firm replacing a five-year-old template site with a structured 12-page website, launched with a preview-approved design and a 40/30/30 milestone plan.",
+      "Illustrative scenario: a professional services firm replacing a five-year-old template site with a structured 12-page website. Preview, schedule, and milestones would be agreed in that project’s SOW.",
   },
   {
     slug: "enterprise-websites",
@@ -112,9 +113,9 @@ export const SERVICES: Service[] = [
     workflow: [
       "Stakeholder mapping and governance model definition",
       "Information architecture and content model design",
-      "Preview of key templates and workflows before payment",
+      "Preview of key templates and workflows where included in the agreed process",
       "Iterative build with milestone acceptance per department",
-      "Migration, training, launch and operational handover",
+      "Migration, training, launch and operational handover where included in the agreement",
     ],
     example:
       "A multi-unit organization consolidating separate department sites into one governed platform with a shared design system and per-department publishing rights.",
@@ -576,13 +577,13 @@ export const SERVICES: Service[] = [
     problem:
       "The way your business handles quotes, bookings, production or fulfilment is different from every competitor — so off-the-shelf software either fights your process or forces you to become generic.",
     solution:
-      "We engineer custom software around the process that makes your business distinctive: requirements engineered into a scoped specification, preview before payment, milestone delivery and a full source-code handover when the project completes.",
+      "We engineer custom software around the process that makes your business distinctive: requirements documented in a scoped specification, an HTML Preview where included in the agreed process, project-specific delivery terms, and handover as set out in the agreement.",
     features: [
       "Requirements engineering into a written specification",
       "Architecture designed for your scale and integration needs",
-      "HTML preview before payment begins",
+      "HTML Preview where included in the agreed process",
       "Milestone delivery with acceptance testing",
-      "Full source code and credential handover",
+      "Agreed source code and Client-owned credentials identified in the SOW",
       "Post-delivery support and maintenance options",
     ],
     tech: ["Next.js", "Node.js", "Laravel", "Python", "PostgreSQL", "Google Cloud"],
@@ -1214,7 +1215,7 @@ export const PROCESS: ProcessPhase[] = [
     step: "01",
     name: "Discover",
     title: "Understanding your business before proposing anything",
-    duration: "1–3 days",
+    duration: "As agreed",
     description:
       "We study your business, your customers and the outcomes you need. This phase produces a shared understanding — and an honest recommendation, including telling you when you do not need us.",
     details: [
@@ -1228,7 +1229,7 @@ export const PROCESS: ProcessPhase[] = [
     step: "02",
     name: "Scope",
     title: "A written scope that removes ambiguity permanently",
-    duration: "2–4 days",
+    duration: "As agreed",
     description:
       "Every deliverable, timeline, milestone and payment term is written into a Final Scope of Work. You review it, request revisions, and approve it in writing. From this moment, \"I thought it would include…\" stops being a possible conversation.",
     details: [
@@ -1245,28 +1246,28 @@ export const PROCESS: ProcessPhase[] = [
   {
     step: "03",
     name: "Preview",
-    title: "HTML preview before any payment moves",
-    duration: "2–5 days",
+    title: "HTML preview where included",
+    duration: "As agreed",
     description:
-      "We build and send you a working, clickable HTML preview of the solution generated from your approved scope. You evaluate quality with your own eyes — and can request revisions at this stage at no cost — before any money is committed.",
+      "Where included in the agreed process, we provide an HTML Preview for review against the approved scope before the applicable project payment. Backend features and production integrations may be incomplete unless the SOW says otherwise.",
     details: [
-      "Working preview generated from the approved scope",
-      "Review with your team and stakeholders",
-      "Revision requests at this stage are free",
-      "Written approval (or revision) recorded on file",
+      "Preview supplied where included in the agreed process",
+      "Review against the agreed scope and preview content",
+      "Revision allowance follows the approved SOW",
+      "Written approval or revision request recorded",
     ],
     gate: {
       label: "Approval gate",
-      text: "Payment begins only after your preview approval. The preview and the scope document are permanent references for the whole engagement.",
+      text: "Where required by the agreed process, approval of the relevant preview precedes the applicable payment request. The approved SOW determines project-specific payment terms.",
     },
   },
   {
     step: "04",
     name: "Payment",
     title: "Milestone payments, verified and receipted",
-    duration: "Per milestone",
+    duration: "Per agreed schedule",
     description:
-      "Payment follows the structure in your scope — commonly 40% advance, 30% at the midpoint milestone, 30% at delivery. Every payment is recorded, verified and receipted. Project status changes only after verification — never on a screenshot.",
+      "Payment follows the schedule in the approved quotation, invoice, and SOW. TECH360 verifies payment status using available transaction records and provider or financial-institution confirmation; a screenshot or pending transfer alone is not conclusive proof of cleared funds.",
     details: [
       "Milestone structure as written in the approved scope",
       "Payment instructions with reference to your Client ID",
@@ -1275,20 +1276,20 @@ export const PROCESS: ProcessPhase[] = [
     ],
     gate: {
       label: "Verification gate",
-      text: "The project activates only after the first payment is verified. Final delivery and source-code release gate on full payment completion.",
+      text: "Project commencement and any payment trigger follow the approved SOW. Final source-code handover generally follows verification that required outstanding payments have cleared.",
     },
   },
   {
     step: "05",
     name: "Build",
     title: "Iterative build with milestone acceptance",
-    duration: "Per scope timeline",
+    duration: "As agreed in the SOW",
     description:
       "Development proceeds against the approved scope in milestones — each accepted in writing before the next begins. Progress updates reach you automatically at milestone boundaries, not when someone remembers to write.",
     details: [
       "Milestone-based development against the scope",
       "Automated progress updates at each milestone",
-      "Two revision rounds within scope included",
+      "Revisions as defined in the approved scope",
       "Testing against the QA checklist before each acceptance",
     ],
   },
@@ -1296,7 +1297,7 @@ export const PROCESS: ProcessPhase[] = [
     step: "06",
     name: "Deliver",
     title: "Delivery with a checklist, not a hope",
-    duration: "2–4 days",
+    duration: "As agreed",
     description:
       "Delivery is a structured event: the system goes live against the quality checklist, you confirm delivery in writing, and any final payment milestone is settled with the same verification discipline as the first.",
     details: [
@@ -1307,21 +1308,21 @@ export const PROCESS: ProcessPhase[] = [
     ],
     gate: {
       label: "Payment gate",
-      text: "Source code release happens only after full payment is verified — per the Source Code Handover Policy. Both sides are protected by the same rule.",
+      text: "Unless otherwise agreed in writing, final source-code handover follows verification that all required project payments have cleared.",
     },
   },
   {
     step: "07",
     name: "Handover & Support",
-    title: "Source code, credentials and a system you own",
-    duration: "1–2 days + support",
+    title: "Agreed source code, documentation and handover",
+    duration: "As agreed",
     description:
-      "After full payment, the complete source package and every credential are handed over securely. You change passwords, confirm in writing, and receive documentation any competent developer can follow. Ongoing support is available — and optional.",
+      "After required outstanding payments are verified and cleared, TECH360 hands over agreed source code, documentation, and Client-owned credentials specifically identified in the approved SOW. Internal secrets and other Clients’ information are excluded. Support is only as agreed.",
     details: [
-      "Full source code and documentation package",
-      "Secure credential handover",
-      "Password change confirmed by you in writing",
-      "Optional maintenance and support agreement",
+      "Agreed source package and documentation",
+      "Client-owned credentials identified in the SOW, where applicable",
+      "Secure transfer and handover record",
+      "Support only where included in the agreement",
     ],
   },
 ];
@@ -1337,16 +1338,16 @@ export interface Faq {
 
 export const FAQS: Faq[] = [
   {
-    q: "Do I really get an HTML preview before paying anything?",
-    a: "Yes. After your written scope approval, we build a working, clickable HTML preview of your solution and send it to you. You approve it or request revisions — revisions at the preview stage are free — and payment begins only after your approval. This is written into our Delivery Policy, not just promised in a chat.",
+    q: "Will I receive an HTML Preview before payment?",
+    a: "An HTML Preview is supplied before the applicable project payment where it is included in the agreed process. The approved SOW identifies the preview and review process. Approval concerns the visual design and visible elements shown, not automatically every backend feature or production integration.",
   },
   {
     q: "When do I receive the source code?",
-    a: "The complete source code, documentation and all credentials are handed over after final payment is verified. The release is gated by our Source Code Handover Policy, which protects both sides: you cannot lose the code you paid for, and we cannot deliver code that was not paid for. After handover you confirm password changes in writing, and the system is fully yours.",
+    a: "Unless otherwise agreed in writing, final source-code handover takes place after all required project payments have been received and cleared. The agreed package and Client-owned credentials are defined by the SOW; TECH360 internal secrets, shared infrastructure credentials, and other Clients’ information are excluded.",
   },
   {
     q: "How do payments work? Do I pay everything upfront?",
-    a: "No upfront lump payment. Payment follows the milestone structure written in your approved scope — commonly 40% advance, 30% at a midpoint milestone and 30% at delivery. Every payment is recorded and receipted, and project status changes only after verification — never on a payment screenshot. Details are in our Payment Policy.",
+    a: "Your approved quotation, invoice, and SOW determine the payment method and schedule. Projects may use a single payment or agreed stages; no universal percentage applies. Pending transfers or screenshots alone do not establish cleared payment. See the Payment Policy.",
   },
   {
     q: "What if I want changes after the scope is approved?",
@@ -1354,7 +1355,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "How many revisions do I get?",
-    a: "Two revision rounds within the approved scope are included in every engagement, as written in our Delivery Policy. Revision rounds at the preview stage — before any payment — are free. Revision requests that expand the scope become new quoted work, agreed in writing beforehand.",
+    a: "Any included revision rounds and review limits are stated in the approved SOW. Requests that change approved requirements may require a written change request, additional fees, or schedule adjustment.",
   },
   {
     q: "How long does a project take?",
@@ -1362,7 +1363,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "What support do I get after delivery?",
-    a: "Delivery includes documentation, credential handover and a post-launch check-in. Beyond that, maintenance and support is available as a structured agreement: monitoring, security patches, backup verification, incident response with defined turnaround and a monthly report. It is optional — the system is fully yours either way.",
+    a: "Documentation, training, defect correction, maintenance, and support are included only where stated in the approved SOW or a separate written agreement. The agreement describes any service level, duration, and fees.",
   },
   {
     q: "How do you protect my business data and confidentiality?",
@@ -1370,11 +1371,11 @@ export const FAQS: Faq[] = [
   },
   {
     q: "Where do you work? Can you handle clients outside the US?",
-    a: "TECH360 LLC is registered in Missouri, USA (LC014737249). The Work page contains illustrative scenarios, not verified client engagements; any public client reference requires that client’s prior written permission and may not be available.",
+    a: "TECH360 LLC serves clients internationally. The Work page contains illustrative scenarios, not verified client engagements; any public client reference requires that client’s prior written permission and may not be available.",
   },
   {
     q: "How do we start working together?",
-    a: "Send one message — through the contact form or a live chat with our team. You receive a Client ID for all future communication, we run discovery on your business, and you get a written scope and then an HTML preview before any payment decision. Starting costs you nothing but the message.",
+    a: "Send an enquiry through the contact form, webchat, or email. TECH360 can review your requirements, provide a written proposal and SOW, and supply an HTML Preview where included in the agreed process. Project-specific approvals, payment, delivery, and support terms are confirmed in writing.",
   },
   {
     q: "What technologies do you build with?",
@@ -1382,7 +1383,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "Where will my project be hosted — and who controls it?",
-    a: "Your choice, made with our guidance during scoping. Google Cloud suits platforms that need scaling and observability; cPanel or StackCP hosting suits many business sites and Laravel applications. In every case the accounts and billing belong to you, credentials are handed over at completion, and we never hold your system hostage — it is your asset from day one.",
+    a: "Hosting, account ownership, deployment, and access arrangements are identified in the approved SOW. Client-owned credentials specifically identified for handover may be transferred securely when available; provider accounts and licences remain subject to their terms.",
   },
 ];
 
@@ -1473,7 +1474,7 @@ export const ROLES: Role[] = [
     location: "Remote",
     type: "Full-time",
     summary:
-      "Design interfaces that convert for client businesses and hold up under enterprise-level scrutiny. Your work is the HTML preview clients approve before payment — the design carries our delivery promise.",
+      "Design interfaces for client businesses and enterprise use. Where an HTML Preview is included, clients review the agreed visual elements against the approved scope.",
     responsibilities: [
       "Design conversion-focused websites and platform interfaces",
       "Produce design systems, component libraries and prototypes",
@@ -1517,481 +1518,14 @@ export const ROLES: Role[] = [
 /* Legal documents                                                     */
 /* ------------------------------------------------------------------ */
 
-export interface LegalSection {
-  heading: string;
-  body: string[];
-}
-
-export interface LegalDoc {
-  slug: string;
-  title: string;
-  summary: string;
-  updated: string;
-  sections: LegalSection[];
-}
-
-export const LEGAL_DOCS: LegalDoc[] = [
-  {
-    slug: "terms",
-    title: "Terms & Conditions",
-    summary:
-      "The general terms governing use of this website and the framework under which TECH360 LLC provides services.",
-    updated: "October 2026",
-    sections: [
-      {
-        heading: "1. Agreement to these terms",
-        body: [
-          "These Terms & Conditions (\"Terms\") govern your access to and use of the website bdtech360.com (the \"Site\") operated by TECH360 LLC, a limited liability company registered in Missouri, USA (registration LC014737249, EIN 98-1940053), with its registered address at 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA (\"Tech360\", \"we\", \"us\").",
-          "By accessing the Site, submitting a project enquiry, or engaging our services, you agree to these Terms. If you do not agree, you must not use the Site or submit information through it.",
-          "These Terms apply together with any written agreement, scope of work, or proposal signed between you and TECH360 LLC for a specific engagement. Where a signed agreement and these Terms conflict, the signed agreement prevails for that engagement.",
-        ],
-      },
-      {
-        heading: "2. Our services and how engagements are formed",
-        body: [
-          "Tech360 provides software design, development, automation and related consulting services, including websites, eCommerce platforms, CRM systems, portals, dashboards, and workflow automation. Descriptions of services on the Site are informational and do not constitute a binding offer.",
-          "No engagement exists until both parties have agreed in writing to a Final Scope of Work. Content submitted through the contact form, WhatsApp, or email constitutes an enquiry — not a contract.",
-          "Each engagement is governed by: (a) the signed Final Scope of Work; (b) these Terms; (c) our Delivery, Payment, Client Approval, Refund and Source Code Handover Policies; and (d) any written variation agreed by both parties.",
-        ],
-      },
-      {
-        heading: "3. Client responsibilities",
-        body: [
-          "You agree to provide accurate business information, timely feedback on previews and deliverables, and written approvals where our policies require them. Delivery timelines are calculated from the date written approvals and required materials are received.",
-          "You confirm you own or are authorised to provide all content, data, trademarks and third-party materials supplied to us for use in a project. You remain responsible for the legality of materials you supply.",
-          "Delays caused by pending client input may extend timelines proportionately. We will communicate any such extension in writing.",
-        ],
-      },
-      {
-        heading: "4. Intellectual property",
-        body: [
-          "Upon full payment of an engagement, ownership of the custom source code, design assets and documentation created specifically for your project is transferred to you in accordance with our Source Code Handover Policy.",
-          "Tech360 retains ownership of pre-existing tools, internal frameworks, templates and know-how used to produce your deliverable. We will identify or display a client engagement, deliverable, or related materials publicly only with the client's separate prior written permission and subject to applicable confidentiality terms.",
-          "Third-party components delivered as part of your project (open-source libraries, licensed fonts, third-party services) remain subject to their own licences.",
-        ],
-      },
-      {
-        heading: "5. Website content and accuracy",
-        body: [
-          "We work to keep the Site accurate and current, but content is provided for general information only and may change without notice. The scenarios on the Work page are illustrative examples, not verified records of client engagements or measured results. We do not promise that client references are available; any reference requires the client's prior permission and may not be available.",
-          "The Site may include links to third-party services (for example, WhatsApp). We are not responsible for third-party content or availability.",
-        ],
-      },
-      {
-        heading: "6. Limitation of liability",
-        body: [
-          "To the maximum extent permitted by law, TECH360 LLC's total liability arising from or related to an engagement is limited to the total fees actually paid by you for that engagement.",
-          "We are not liable for indirect or consequential losses, including lost profits, lost data not covered by agreed backup procedures, or business interruption, except where such limitation is prohibited by law.",
-          "Nothing in these Terms excludes liability that cannot lawfully be excluded.",
-        ],
-      },
-      {
-        heading: "7. Governing terms and contact",
-        body: [
-          "These Terms are governed by the laws applicable to contracts formed in the State of Missouri, USA, without regard to conflict-of-law principles. Disputes will first be addressed through good-faith negotiation; unresolved disputes shall be brought in the courts of competent jurisdiction for Cass County, Missouri.",
-          "Questions about these Terms: info@bdtech360.com or 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA — or start a live chat with our team from any page.",
-        ],
-      },
-    ],
-  },
-  {
-    "slug": "privacy",
-    "title": "Privacy Policy",
-    "summary": "What information TECH360 collects through its website and services, why it is used, how it is protected and retained, and the choices available to you.",
-    "updated": "October 28, 2026",
-    "sections": [
-      {
-        "heading": "1. Who we are",
-        "body": [
-          "TECH360 LLC (“TECH360,” “we,” “us,” or “our”) is a Missouri-registered limited liability company (Registration No. LC014737249, EIN 98-1940053), with a registered address at 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
-          "We operate bdtech360.com and provide software design, development, automation, and related technology services. This Policy applies to information collected through our website and in connection with our services, communications, and client engagements. Specific privacy or confidentiality terms in a signed agreement apply to the extent agreed and permitted by law."
-        ]
-      },
-      {
-        "heading": "2. Information we collect",
-        "body": [
-          "Depending on your interaction with us, information you provide may include your name, business name, email address, Client ID or customer reference, business telephone, mobile number or optional WhatsApp number, country, business type, project requirements, preferences, documents, instructions, and approvals submitted through website forms, chat, email, SMS, or other communication channels.",
-          "Technical information may include IP address and request metadata, browser and device information, pages requested, referring pages, security events, error logs, and abuse-prevention records needed to operate and secure the website.",
-          "Client and service records may include relevant communications, requirements, project approvals, invoices, payment records, delivery status, and handover documentation associated with a Client ID.",
-          "You are not required to provide information that is unnecessary for your enquiry or engagement. For webchat, email is required only when you choose email as the first reply channel; a mobile number is required only when you choose SMS first. A phone or WhatsApp number is otherwise optional. Email verification status is recorded through verified identity records when an approved verification step is completed; a typed email address alone is not proof of ownership."
-        ]
-      },
-      {
-        "heading": "3. Why we collect and use information",
-        "body": [
-          "We use information to respond to enquiries, understand requirements, prepare proposals or quotations, identify buyers and maintain accurate Client ID records, deliver requested services and documents, send relevant service-related updates, manage approvals and projects, process invoices and payments, provide support, secure our systems, prevent fraud and abuse, investigate technical problems, and meet legal, accounting, tax, contractual, or regulatory obligations.",
-          "Contact consent for an enquiry is recorded separately from optional marketing consent. When a visitor explicitly selects SMS first and consents, we may use the supplied mobile number for service-related texts about that enquiry; provider availability and message/data rates may apply. We do not send marketing texts or other marketing messages based only on a project enquiry. We send marketing communications only where the applicable consent or other lawful basis exists, and unsubscribe choices are respected.",
-          "Depending on the circumstances and applicable law, processing may be based on performing a contract, taking steps requested before a contract, legitimate business interests, consent, or compliance with legal obligations.",
-          "We do not sell personal information. TECH360 does not use buyer project data to train third-party AI models."
-        ]
-      },
-      {
-        "heading": "4. Buyer information and data protection",
-        "body": [
-          "We aim to collect and retain only information reasonably necessary to identify buyers, communicate with them, provide requested services, deliver documents and project materials, and meet legitimate operational requirements.",
-          "Access to buyer information is limited to authorized personnel and approved service providers who need it to perform their responsibilities. We take reasonable steps to prevent unauthorized access, disclosure, alteration, loss, or misuse, while recognizing that no online system or transmission method can be guaranteed completely secure.",
-          "AI tools may assist with authorized tasks such as understanding requirements, preparing documents, supporting project workflows, and responding to service enquiries. AI tools and agents are not authorized to disclose buyer information or use it for unrelated purposes. Third-party processing remains subject to the provider’s terms, configuration, and applicable safeguards."
-        ]
-      },
-      {
-        "heading": "5. Sharing and service providers",
-        "body": [
-          "We may share limited information with service providers when necessary to operate the website, communicate with buyers, process payments, or deliver services. Depending on the actual services and configuration, these providers may include hosting and infrastructure providers such as Google Cloud or others; authorized messaging providers such as WhatsApp or Meta; SMTP or transactional email providers; payment processors applicable to a particular engagement; and approved technical, security, backup, or professional service providers.",
-          "We aim to provide each service provider only the information needed for its assigned function. Providers may process information under their own terms, applicable agreements, and legal obligations. Information may be processed in the United States, Bangladesh, or other locations where authorized service providers operate, subject to applicable law and available safeguards.",
-          "We may disclose information when reasonably necessary to comply with law or lawful requests, protect our rights, investigate fraud, or protect users and service security. We do not sell personal information to third parties."
-        ]
-      },
-      {
-        "heading": "6. Data retention",
-        "body": [
-          "We retain information only as long as reasonably necessary for the purposes in this Policy, subject to applicable legal and contractual obligations.",
-          "Enquiry information that does not become an engagement is retained for a limited period to respond, manage follow-ups, and maintain necessary business records, then deleted or anonymized when no longer needed unless a valid reason requires continued retention.",
-          "Buyer contact details and Client IDs are retained as needed to identify buyers, maintain accurate service records, and provide relevant support. Project documents, approvals, deliverables, and handover records are retained for the period reasonably necessary to fulfil commitments and address support, warranty, or dispute-resolution needs.",
-          "Invoices, payment records, and other financial documents are retained for the period required by applicable law and accounting obligations. Security and technical logs are retained for a proportionate period to protect systems, investigate incidents, and address abuse.",
-          "You may request deletion by contacting info@bdtech360.com. We assess requests and delete information where appropriate, subject to legal, accounting, contractual, security, and dispute-resolution requirements."
-        ]
-      },
-      {
-        "heading": "7. Security",
-        "body": [
-          "We take reasonable technical and organizational measures to protect personal information and confidential buyer records. Measures may include role-based access restrictions, access logging where supported, secure credential and secret handling, appropriate protection of databases and documents, authentication and authorization controls, backups and recovery procedures, security updates, and investigation of relevant system errors.",
-          "Credentials and secrets should be stored in protected server-side configuration or an appropriate secret-management system, not exposed in public source code. Buyers should not send passwords, payment-card security codes, or similarly sensitive credentials through ordinary chat or email.",
-          "No security measure can guarantee absolute protection. If a personal-data breach occurs, we assess the incident and notify affected individuals or authorities where required by law."
-        ]
-      },
-      {
-        "heading": "8. Cookies and analytics",
-        "body": [
-          "The website may use essential cookies or similar technologies for functionality, security, sessions, and user preferences. Optional analytics or tracking, where enabled, are subject to applicable consent requirements and controls made available on the website.",
-          "We aim to avoid sending private client documents, confidential project details, or unnecessary personal information to analytics providers. You can manage cookies in your browser, although disabling essential cookies may affect website functionality."
-        ]
-      },
-      {
-        "heading": "9. Your privacy rights and choices",
-        "body": [
-          "Subject to applicable law and the circumstances of your request, you may ask us to confirm whether we hold your personal information; provide access or an export where applicable; correct inaccurate or incomplete information; delete information that we no longer have a valid reason to retain; withdraw consent for optional processing or marketing; or explain how information is used or shared.",
-          "To make a request, contact info@bdtech360.com. We may need to verify your identity before processing a request. Some records may be retained for legal obligations, contract performance, security, or dispute resolution. Withdrawing consent does not affect processing that was lawful before withdrawal or processing that continues under another applicable legal basis."
-        ]
-      },
-      {
-        "heading": "10. Third-party websites and services",
-        "body": [
-          "The website may contain links to external websites, payment providers, communication platforms, or other third-party services. Those services operate under their own privacy policies and terms. We do not control their independent privacy practices; review their policies before submitting information directly to them."
-        ]
-      },
-      {
-        "heading": "11. Children’s privacy",
-        "body": [
-          "The website and services are intended for business customers and others seeking our services, not specifically for children. We do not knowingly collect children’s personal information where doing so would violate applicable law. If you believe a child has provided information inappropriately, contact info@bdtech360.com so we can review and take appropriate action."
-        ]
-      },
-      {
-        "heading": "12. Changes to this Privacy Policy",
-        "body": [
-          "We may update this Policy to reflect changes in services, technology, operational practices, or applicable legal requirements. When we make changes, we update the “Last updated” date and provide additional notice or obtain consent for material changes where required by law. We encourage visitors and buyers to review this page periodically."
-        ]
-      },
-      {
-        "heading": "13. Contact us",
-        "body": [
-          "For privacy questions, access requests, corrections, or deletion requests, contact TECH360 LLC at info@bdtech360.com or https://bdtech360.com. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
-          "We review privacy requests and respond within a reasonable period, subject to applicable law and any necessary identity verification. Our commitment is to collect only information reasonably needed, protect its confidentiality, use it for legitimate purposes, and treat every buyer’s information with respect."
-        ]
-      }
-    ]
-  },
-  {
-    slug: "refund",
-    title: "Refund Policy",
-    summary:
-      "When refunds apply, when advance payments are non-refundable, and how refund windows are defined before work begins.",
-    updated: "January 2026",
-    sections: [
-      {
-        heading: "1. Principles",
-        body: [
-          "Our pricing model is built to prevent the situation refunds exist to fix: you approve a written scope, see an HTML preview of the solution, and only then begin paying. Because risk is structured out of the process before money moves, refund scenarios are rare and clearly defined.",
-          "This policy applies as written, supplemented by the payment terms of your signed scope of work, which prevails where it differs.",
-        ],
-      },
-      {
-        heading: "2. Before any payment — the free window",
-        body: [
-          "Everything before your first payment is free and revocable: enquiry, discovery, written scope, and the HTML preview with its revision round. You may walk away at any point in this window with no obligation.",
-          "No deposit, booking fee or commitment is required to reach the preview stage.",
-        ],
-      },
-      {
-        heading: "3. The advance payment",
-        body: [
-          "Once you approve the preview and make the advance payment, that payment covers committed work: the team, schedule and resources allocated to your engagement from that moment. For this reason, the advance is non-refundable after scope and preview approval, except as provided in sections 4 and 5.",
-          "If you cancel after scope approval but before work has commenced and no resources have been scheduled, we will refund the advance in full. \"Work commenced\" includes team allocation, environment setup, and design or development activity against your scope.",
-          "The refund window: a cancellation is treated as pre-commencement only if we have not started any billed activity — you will be able to see from our records whether this applies, and we will tell you honestly which case you are in.",
-        ],
-      },
-      {
-        heading: "4. Milestone payments in progress",
-        body: [
-          "Mid-engagement milestone payments cover work accepted at the previous milestone. Once a milestone is accepted in writing, its payment is not refundable, because it compensates work already delivered and approved.",
-          "If we terminate an engagement for reasons within our control (for example, we cannot deliver the scope), all payments covering undelivered work are refunded in full within 14 business days, and all work product produced to date is released to you.",
-        ],
-      },
-      {
-        heading: "5. Failure to deliver",
-        body: [
-          "If we fail to deliver the approved scope materially and cannot remedy the failure within a reasonable agreed period, you are entitled to a refund of payments attributable to the undelivered portion, determined against the milestone structure of your scope.",
-          "Remedies operate in order: correction, replacement, then refund. We will not hide behind technicalities where the honest answer is that the work was not delivered.",
-        ],
-      },
-      {
-        heading: "6. How to request and processing time",
-        body: [
-          "Refund requests are made in writing to info@bdtech360.com with your client reference ID (TECH-YYYY-NNNNNN) and the reason for the request. We acknowledge within two business days and issue a written decision with reasoning within five.",
-          "Approved refunds are returned through the original payment method within 14 business days of the decision. Currency conversion differences, where the original payment crossed currencies, are not recoverable by us and are excluded from refund amounts.",
-        ],
-      },
-    ],
-  },
-  {
-    slug: "delivery",
-    title: "Delivery Policy",
-    summary:
-      "How engagements are delivered: preview before payment, timeline gates, revision rounds and acceptance procedures.",
-    updated: "January 2026",
-    sections: [
-      {
-        heading: "1. The delivery model",
-        body: [
-          "Every engagement follows the same sequence: written scope — HTML preview — preview approval — payment — milestone build — delivery — handover. The order is deliberate: quality is demonstrated before payment, and payment discipline protects the final handover.",
-          "This policy defines what \"delivery\" means, when it has occurred, and how revisions work. Your signed scope of work may add engagement-specific gates, and prevails where it differs.",
-        ],
-      },
-      {
-        heading: "2. HTML preview before payment",
-        body: [
-          "Before the first payment request, we deliver a working HTML preview of the core solution generated from your approved scope. The preview is clickable, reflects the agreed structure, and is sent with a review period stated in writing.",
-          "You may approve the preview or request revisions. Revisions requested at preview stage — while the work is within the approved scope — are included at no cost. The preview becomes a permanent reference for the engagement: what is delivered at completion must match what was previewed, as amended by agreed scope changes.",
-          "Payment begins only after your written preview approval. This is the first gate of the delivery model.",
-        ],
-      },
-      {
-        heading: "3. Timeline gates",
-        body: [
-          "Timeline commitments are stated in the Final Scope of Work and begin from the later of: scope approval, or receipt of required client materials and access. Each milestone carries its own acceptance date.",
-          "The following events are timeline gates that pause or extend the schedule and are communicated in writing: pending client feedback beyond the stated review period; pending client materials, content or credentials; approved scope changes; and third-party dependencies outside our control (for example, payment gateway or API approvals).",
-          "We commit to informing you of any gate event within one business day of it arising — not at the deadline.",
-        ],
-      },
-      {
-        heading: "4. Revision policy",
-        body: [
-          "Included with every engagement: two revision rounds within the approved scope. A revision round is a consolidated set of change requests submitted together. Piecemeal requests received separately are grouped into the current round.",
-          "Preview-stage revisions (before payment) are free and do not count against the two rounds.",
-          "Requests outside the approved scope are not revisions — they are scope changes handled under the Client Approval Policy with a new written quote and timeline before work begins.",
-        ],
-      },
-      {
-        heading: "5. Acceptance and what \"delivered\" means",
-        body: [
-          "Delivery occurs when the solution is deployed or handed over in the manner the scope defines (for example: live on your hosting, or package handover), passes the agreed quality checklist, and you have confirmed delivery in writing.",
-          "If you do not respond to a delivery notice within the review period stated in the scope (default: five business days), the delivery is considered accepted unless defects are reported. This prevents indefinite open states, and we will remind you before the period closes.",
-          "Defects reported at delivery are fixed at no cost where they reflect non-conformity with the approved scope. This obligation is the warranty for the engagement and continues for 30 days after delivery acceptance.",
-        ],
-      },
-    ],
-  },
-  {
-    "slug": "payment",
-    "title": "Payment Policy",
-    "summary": "Milestone amounts, payment methods, verification evidence, reconciliation, partial payments, and dispute handling.",
-    "updated": "October 2026",
-    "sections": [
-      {
-        heading: "1. Payment structure",
-        body: [
-          "Payment amounts, milestones, currency, and due dates come from the approved Final Scope of Work and payment agreement. A commonly used schedule is 40% after preview approval, 30% at the agreed midpoint, and 30% at delivery; only the schedule written in the approved agreement applies. The signed engagement agreement governs where it expressly differs from this policy.",
-          "Under the standard Payment Policy, no booking fee, advance payment, administration charge, or other payment is requested before the customer approves the applicable preview. There are no hidden charges. Any signed-agreement exception must be displayed clearly and reviewed by an authorized person before activation.",
-        ],
-      },
-      {
-        "heading": "2. Currency and pricing",
-        "body": [
-          "All quoted amounts state their currency explicitly. USD is the standard currency unless another currency has been expressly agreed in writing.",
-          "No hidden charges or retroactive price changes apply to an approved scope. A revised price requires a written quotation and customer approval before it takes effect."
-        ]
-      },
-      {
-        "heading": "3. Accepted payment methods",
-        "body": [
-          "Payment methods depend on what is actually configured and authorized for the engagement. They may include bank transfer, card payment through a configured provider, or supported online banking transfer. An unavailable or unconfigured provider is not presented as operational.",
-          "Every payment request identifies the Client ID, invoice or payment reference, project reference, milestone, amount and currency, verified payment instructions, and applicable due date. Payment instructions are provided through an authorized TECH360 communication channel."
-        ]
-      },
-      {
-        "heading": "4. Payment verification",
-        "body": [
-          "A payment is marked paid only after the funds have been verified through the provider’s verified event, bank reconciliation, or an authorized reconciliation process. A screenshot or customer message may support an investigation but is not proof that funds were received.",
-          "The payment record identifies the amount received, currency, transaction reference, customer and invoice association, verification source and timestamp, reconciliation status, and any outstanding balance. Signed webhook verification, idempotency, and replay protection are used where supported by the configured provider. A mismatch in amount, currency, account, or invoice is sent to reconciliation rather than credited automatically."
-        ]
-      },
-      {
-        "heading": "5. Late and partial payments",
-        "body": [
-          "Partial payments are recorded separately from outstanding balances. A partial payment does not satisfy a milestone unless both parties agree otherwise in writing.",
-          "If a payment is delayed, any work pause follows the approved agreement and is communicated to the customer where reasonably practicable. No hidden payment penalties are added."
-        ]
-      },
-      {
-        "heading": "6. Reversals, refunds, and chargebacks",
-        "body": [
-          "A reversal or chargeback request is not automatically approved or automatically treated as invalid. It is handled under the signed engagement agreement, applicable Refund Policy, payment-provider rules, and applicable law.",
-          "Disputes, provider notifications, refunds, reversals, and reconciliation changes are recorded, and the customer is notified of relevant changes. Payment records are not altered to conceal a dispute or falsely represent a reversed transaction as settled."
-        ]
-      },
-      {
-        "heading": "7. Payment support",
-        "body": [
-          "For payment questions, contact info@bdtech360.com or https://bdtech360.com. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
-          "Include your Client ID and relevant payment reference. Never share passwords, online banking credentials, or card security codes through email or chat."
-        ]
-      }
-    ]
-  },
-  {
-    slug: "client-approval",
-    title: "Client Approval Policy",
-    summary:
-      "Written approval gates, what approval commits, and how scope changes are handled without silent drift.",
-    updated: "January 2026",
-    sections: [
-      {
-        heading: "1. Why approvals are written",
-        body: [
-          "Every consequential step in an engagement is approved in writing: the Final Scope of Work, the HTML preview, each milestone acceptance, delivery, and the handover confirmation. Written approvals protect both parties — the record answers any later question about what was agreed and when.",
-          "Written means: an explicit reply (email, WhatsApp message, portal action) that states approval. Silence is not approval; where a review period closes without response, the Delivery Policy's acceptance rules apply instead.",
-        ],
-      },
-      {
-        heading: "2. The approval gates",
-        body: [
-          "Gate one — Scope approval: the Final Scope of Work (deliverables, timeline, milestones, payment terms) is approved in writing. Work, previews and payment requests all begin after this gate.",
-          "Gate two — Preview approval: the HTML preview is approved or revised in writing. Payment begins only after approval.",
-          "Gate three — Milestone acceptance: each milestone is accepted in writing before the next proceeds. Acceptance confirms the milestone conforms to the approved scope.",
-          "Gate four — Delivery confirmation: you confirm in writing that the delivered solution passes the agreed checklist.",
-          "Gate five — Handover confirmation: after full payment and handover, you confirm that passwords have been changed and access is complete.",
-        ],
-      },
-      {
-        heading: "3. What approval commits",
-        body: [
-          "Approving a scope, preview or milestone confirms that the item conforms to the agreed requirements and authorises the next phase — including the payment milestone attached to it, per the Payment Policy.",
-          "Approval is not a waiver of defects. Non-conformity with the approved scope discovered later is remedied under the Delivery Policy warranty even after acceptance.",
-        ],
-      },
-      {
-        heading: "4. Scope changes",
-        body: [
-          "A scope change is any addition, removal or material alteration to the agreed deliverables or requirements. Scope changes are normal — mishandled scope changes are not.",
-          "Every scope change follows the same path: request documented — impact assessment (cost, timeline, technical) — written quotation — your written approval — scope document amended and re-versioned. Work on a change never begins before its approval.",
-          "We do not absorb changes silently into \"goodwill\", and we do not let clients' changes proceed informally. The amendment quote states exactly what changes and what it costs, so your budget never drifts without your signature.",
-        ],
-      },
-      {
-        heading: "5. Disagreements",
-        body: [
-          "If a disagreement arises about whether delivered work conforms to the scope, the comparison is objective: the approved scope document, the approved preview, and the delivery checklist. We provide the full record to you on request.",
-          "Where genuine ambiguity exists in the written scope, we resolve it toward the interpretation that a reasonable client would have understood at approval time — and we amend the scope text so it never recurs.",
-        ],
-      },
-    ],
-  },
-  {
-    "slug": "source-code-handover",
-    "title": "Source Code Handover Policy",
-    "summary": "When agreed source code, build assets, documentation, credentials, and other deliverables are transferred, and the responsibilities that follow.",
-    "updated": "October 2026",
-    "sections": [
-      {
-        "heading": "1. The principle",
-        "body": [
-          "Subject to the approved Final Scope of Work, engagement agreement, verified final payment, and applicable law, TECH360 delivers the agreed source code, applicable build assets, documentation, and other handover materials.",
-          "Before final payment, work in progress is available for review at the agreed preview and milestone stages. You are not required to pay for an undisclosed black box.",
-          "The agreed payment gate protects both parties: the client receives the deliverables covered by the agreement, and TECH360 releases the final handover package after the agreed payment condition is satisfied."
-        ]
-      },
-      {
-        "heading": "2. What is handed over",
-        "body": [
-          "The handover package includes the applicable items specified in the approved scope, which may include: the custom source-code repository and application code; applicable build assets and custom files; configuration templates without embedded secrets; database schemas and migrations; installation, dependency, build, deployment, and maintenance documentation sufficient for a competent developer to rebuild and deploy the system; an environment-variable and credential-name inventory; a third-party dependency, version, and licence inventory; and a written handover manifest.",
-          "For systems hosted on TECH360-managed infrastructure, the package includes an infrastructure description and migration instructions or reasonable migration assistance only where that work is included in the approved scope or a separate written agreement.",
-          "Backups are excluded unless expressly included in the approved Final Scope of Work or a separate written agreement. A backup snapshot will be provided only where it has been expressly included and is available for delivery."
-        ]
-      },
-      {
-        "heading": "3. Credentials handover",
-        "body": [
-          "Applicable credentials for systems created or managed on the client’s behalf are transferred through a suitable secure channel, not as unprotected passwords, API secrets, database passwords, private keys, or tokens in ordinary email.",
-          "For third-party accounts, TECH360 assists with ownership transfer or confirmation only where the provider permits it and the engagement includes that assistance.",
-          "Where applicable, handover documentation identifies the account or system, the access being transferred, relevant permission levels, transfer method, required password or key rotation, and remaining third-party restrictions."
-        ]
-      },
-      {
-        "heading": "4. Password changes and handover confirmation",
-        "body": [
-          "Clients should rotate applicable transferred passwords, API keys, tokens, and other secrets promptly after handover. A period of 72 hours is recommended where practical.",
-          "The client may confirm the rotation in writing. That acknowledgement records the handover and does not waive any rights or obligations that cannot legally be waived.",
-          "After handover, TECH360 does not retain or use access to client-controlled systems except where separately authorized by the client or otherwise permitted under the engagement agreement and applicable law. Temporary access that is no longer needed should be revoked securely."
-        ]
-      },
-      {
-        "heading": "5. Client responsibilities after handover",
-        "body": [
-          "After the agreed handover, the client is responsible for taking reasonable care of the delivered materials, including: keeping secure copies of source code and documentation; maintaining independent backups unless a backup service is expressly included; protecting credentials and confidential configuration; managing user access and permissions; reviewing and testing changes made by the client or subsequent developers; and maintaining client-managed hosting, databases, infrastructure, and third-party services.",
-          "TECH360 does not provide ongoing source-code storage or backup services after handover unless a separate written agreement expressly includes them. TECH360 does not guarantee that it will retain or be able to recover a copy of handed-over source code after delivery."
-        ]
-      },
-      {
-        "heading": "6. Issues arising after handover",
-        "body": [
-          "Unless otherwise agreed, post-handover troubleshooting, restoration, maintenance, and recovery are separate services. Client or third-party modifications, lost source code, compromised client-controlled credentials, inadequate client-managed backups, and systems outside TECH360’s control may require separately agreed assistance.",
-          "TECH360 does not automatically classify every post-handover defect as the client’s responsibility. Responsibility for defects, breaches, warranties, or failures attributable to TECH360’s own work, and any obligation that cannot lawfully be excluded, remains subject to the applicable agreement and law."
-        ]
-      },
-      {
-        "heading": "7. Ownership and third-party materials",
-        "body": [
-          "Subject to full payment, the approved engagement agreement, and applicable law, ownership or the agreed rights to custom deliverables transfer to the client as specified in the contract.",
-          "Third-party libraries, frameworks, fonts, software, and other licensed materials remain subject to their respective licences. Open-source and third-party components are not transferred as exclusive property where their licences do not permit that. Pre-existing TECH360 materials and reusable components are identified and licensed as agreed.",
-          "TECH360 will identify or display a client engagement or related materials publicly only with the client’s separate prior written permission and subject to applicable confidentiality terms."
-        ]
-      },
-      {
-        "heading": "8. Support after handover",
-        "body": [
-          "Maintenance and support after handover are optional and may be provided only under a separate written agreement that identifies the scope, response targets, fees, support hours, covered systems, exclusions, renewal, and termination terms.",
-          "Hosting, monitoring, backups, restoration, recovery, and maintenance do not continue automatically after handover unless expressly agreed in writing."
-        ]
-      },
-      {
-        "heading": "9. Contact",
-        "body": [
-          "For handover questions, contact TECH360 LLC at info@bdtech360.com or https://bdtech360.com. Postal address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA.",
-          "Include your Client ID and project reference when asking about a handover. Never send passwords, API secrets, online banking credentials, or card security codes through ordinary email or chat."
-        ]
-      }
-    ]
-  },
-];
-
-/* ------------------------------------------------------------------ */
 /* Stats (source/catalogue counts only; live operation is not asserted) */
 /* ------------------------------------------------------------------ */
 
 export const STATS: { value: string; label: string; note: string }[] = [
   {
     value: "US LLC",
-    label: "EIN registered",
-    note: "TECH360 LLC · Missouri LC014737249 · EIN 98-1940053 — on-record operations, verifiable.",
+    label: "Company information",
+    note: "TECH360 LLC provides the services described on this website; project terms are confirmed in writing.",
   },
   {
     value: "110",
@@ -2091,9 +1625,6 @@ export const BUDGET_RANGES: string[] = [
 export const CONTACT_METHODS: string[] = ["Email", "Phone", "WhatsApp"];
 
 /* ------------------------------------------------------------------ */
-/* Lookups                                                             */
-/* ------------------------------------------------------------------ */
-
 export function getService(slug: string): Service | undefined {
   return SERVICES.find((s) => s.slug === slug);
 }
@@ -2108,9 +1639,9 @@ export function getLegalDoc(slug: string): LegalDoc | undefined {
 
 export const TRUST_POINTS: string[] = [
   "US-Registered LLC",
-  "HTML Preview Before Payment",
-  "Source Code After Full Payment",
-  "100% On-Record Delivery",
+  "HTML Preview where included",
+  "Source Code after verified payment",
+  "Approvals and delivery documented",
 ];
 
 /* ------------------------------------------------------------------ */

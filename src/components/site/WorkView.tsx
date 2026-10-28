@@ -38,7 +38,7 @@ function CaseStudyDialog({
     { t: "Discovery", d: `Confirm business context and ${study.industry.toLowerCase()} constraints.` },
     { t: "Written scope", d: "Agree deliverables, milestones, and payment terms in writing." },
     { t: "Design & build", d: "Plan implementation iterations and progress reporting." },
-    { t: "Preview gate", d: "Review and approve the agreed preview before payment milestones." },
+    { t: "Preview gate", d: "Where included, review the agreed preview before the applicable payment milestone." },
     { t: "Verify", d: "Define and run the quality and security checks in the scope." },
     { t: "Launch & handover", d: "Plan deployment, ownership transfer, and documentation." },
     { t: "Support", d: "Set any post-launch support terms in a separate agreement." },
