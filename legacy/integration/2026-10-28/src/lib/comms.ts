@@ -1,0 +1,551 @@
+import { db } from '@/lib/db'
+import { COMPANY } from '@/lib/constants'
+import { toE164 } from '@/lib/phone'
+import { DEAD_LETTER, backoffMs, decideRetry, scheduleAfterFailure } from '@/lib/outbox-retry'
+import { classifyOutbound } from '@/lib/governance/outbound'
+import { HOSTINGER_MAIL_ENV, readHostingerMailConfig } from '@/lib/mail/hostinger-config'
+import { createHostingerMailClient, sendHostingerEmail } from '@/lib/mail/hostinger-mail'
+import { outboundPlainText } from '@/lib/mail/hostinger-inbound-policy'
+
+// ============================================================
+// TECH360 COMMUNICATIONS — real adapters, honest statuses
+// WhatsApp Cloud API · SMTP Email · SMS provider · Social
+// Credentials ONLY from environment variables (never hardcoded).
+// When not configured → status NOT_CONFIGURED (never fake SENT).
+// ============================================================
+
+export type SendResult = {
+  ok: boolean
+  status: 'SENT' | 'FAILED' | 'NOT_CONFIGURED' | 'DISABLED_BY_ADMIN' | 'SENT_PLATFORM'
+  providerMessageId?: string
+  error?: string
+}
+
+/** httpSMS (open source, free to self-host) — sends through YOUR Android phone's SIM. */
+export function httpSmsConfigured(): boolean {
+  return Boolean(process.env.HTTPSMS_API_KEY && process.env.HTTPSMS_FROM)
+}
+
+export function channelConfigured(channel: string): boolean {
+  switch (channel) {
+    case 'WHATSAPP':
+      return Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID)
+    case 'EMAIL':
+      // Hostinger Mail API (when fully configured) or the legacy SMTP relay.
+      return readHostingerMailConfig().state === 'CONFIGURED' ||
+        Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM)
+    case 'SMS':
+      return httpSmsConfigured() || Boolean(process.env.SMS_API_URL && process.env.SMS_API_KEY)
+    default:
+      return false
+  }
+}
+
+export function channelStatuses() {
+  return {
+    WHATSAPP: channelConfigured('WHATSAPP'),
+    EMAIL: channelConfigured('EMAIL'),
+    SMS: channelConfigured('SMS'),
+    FACEBOOK: Boolean(process.env.FACEBOOK_PAGE_TOKEN),
+    INSTAGRAM: Boolean(process.env.INSTAGRAM_TOKEN),
+    LINKEDIN: Boolean(process.env.LINKEDIN_TOKEN),
+    X: Boolean(process.env.X_TOKEN),
+    N8N: Boolean(process.env.N8N_WEBHOOK_BASE),
+  }
+}
+
+// ------------------------------------------------------------
+// WhatsApp Cloud API (Graph v21)
+// ------------------------------------------------------------
+async function sendWhatsApp(to: string, body: string): Promise<SendResult> {
+  if (!channelConfigured('WHATSAPP')) {
+    return { ok: false, status: 'NOT_CONFIGURED', error: 'WhatsApp Cloud API credentials not configured' }
+  }
+  try {
+    const phone = to.replace(/[^\d]/g, '')
+    const res = await fetch(`https://graph.facebook.com/v21.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { preview_url: true, body } }),
+      signal: AbortSignal.timeout(15000),
+    })
+    const data = (await res.json().catch(() => ({}))) as { messages?: Array<{ id: string }>; error?: { message?: string } }
+    if (!res.ok) {
+      return { ok: false, status: 'FAILED', error: data?.error?.message ?? `WhatsApp API HTTP ${res.status}` }
+    }
+    return { ok: true, status: 'SENT', providerMessageId: data?.messages?.[0]?.id }
+  } catch (e) {
+    return { ok: false, status: 'FAILED', error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// ------------------------------------------------------------
+// Email (SMTP via nodemailer)
+// ------------------------------------------------------------
+async function sendEmail(to: string, subject: string, html: string): Promise<SendResult> {
+  if (!channelConfigured('EMAIL')) {
+    return { ok: false, status: 'NOT_CONFIGURED', error: 'SMTP credentials not configured' }
+  }
+  try {
+    const nodemailer = await import('nodemailer')
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT ?? 587),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user: process.env.SMTP_USER!, pass: process.env.SMTP_PASS! },
+    })
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM!,
+      to,
+      subject,
+      html,
+    })
+    return { ok: true, status: 'SENT', providerMessageId: info.messageId }
+  } catch (e) {
+    return { ok: false, status: 'FAILED', error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/** True when the operator has switched email to the Hostinger Mail API. */
+export function isHostingerMailSelected(): boolean {
+  return (process.env[HOSTINGER_MAIL_ENV.enabled] ?? '').trim() === 'true'
+}
+
+/**
+ * Email through the Hostinger Mail API (official SDK, server-side only).
+ * The result is PROVIDER ACCEPTANCE (HTTP 204). Hostinger returns no message
+ * id and no delivery confirmation, so this function never reports delivery.
+ */
+async function sendEmailViaHostinger(to: string, subject: string, bodyHtml: string): Promise<SendResult> {
+  const status = readHostingerMailConfig()
+  if (status.state !== 'CONFIGURED') {
+    const reason = status.state === 'INVALID'
+      ? `Hostinger Mail API is enabled but not valid: ${status.problems.join('; ')}`
+      : 'Hostinger Mail API is not enabled'
+    return { ok: false, status: 'NOT_CONFIGURED', error: reason }
+  }
+  const html = wrapEmailHtml(subject, bodyHtml)
+  const text = `${subject}\n\n${outboundPlainText(bodyHtml)}\n\n${COMPANY.email}`
+  const result = await sendHostingerEmail(
+    { to, subject, html, text },
+    { client: createHostingerMailClient(status.config), displayName: 'Tech360' },
+  )
+  return {
+    ok: result.ok,
+    status: result.status,
+    ...(result.error ? { error: result.error } : {}),
+  }
+}
+
+// ------------------------------------------------------------
+// SMS via httpSMS — https://github.com/NdoleStudio/httpsms (AGPL-3.0, used purely
+// as an external HTTP service, so no licence obligation reaches this codebase).
+// The Tech360 Android phone with the httpSMS app sends the text over its own SIM:
+// no per-message gateway fee. Point HTTPSMS_BASE_URL at a self-hosted instance
+// to avoid the hosted service entirely.
+// ------------------------------------------------------------
+async function sendHttpSms(to: string, body: string): Promise<SendResult> {
+  const phone = toE164(to)
+  if (!phone) return { ok: false, status: 'FAILED', error: 'Recipient is not a valid phone number' }
+  const from = toE164(process.env.HTTPSMS_FROM ?? '')
+  if (!from) return { ok: false, status: 'NOT_CONFIGURED', error: 'HTTPSMS_FROM must be the E.164 number of the sending Android phone' }
+  const base = (process.env.HTTPSMS_BASE_URL || 'https://api.httpsms.com').replace(/\/+$/, '')
+  try {
+    const res = await fetch(`${base}/v1/messages/send`, {
+      method: 'POST',
+      headers: { 'x-api-key': process.env.HTTPSMS_API_KEY!, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ content: body, from, to: phone }),
+      signal: AbortSignal.timeout(15000),
+    })
+    const data = (await res.json().catch(() => ({}))) as { data?: { id?: string }; message?: string }
+    if (!res.ok) return { ok: false, status: 'FAILED', error: data?.message ?? `httpSMS API HTTP ${res.status}` }
+    // httpSMS queues the message to the phone; delivery is reported by the phone app.
+    return { ok: true, status: 'SENT', providerMessageId: data?.data?.id }
+  } catch (e) {
+    return { ok: false, status: 'FAILED', error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// ------------------------------------------------------------
+// SMS (generic provider via SMS_API_URL + SMS_API_KEY)
+// ------------------------------------------------------------
+async function sendSms(to: string, body: string): Promise<SendResult> {
+  if (!channelConfigured('SMS')) {
+    return { ok: false, status: 'NOT_CONFIGURED', error: 'SMS provider not configured' }
+  }
+  if (httpSmsConfigured()) return sendHttpSms(to, body)
+  try {
+    const res = await fetch(process.env.SMS_API_URL!, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.SMS_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ to: to.replace(/[^\d+]/g, ''), message: body, sender: process.env.SMS_SENDER ?? 'Tech360' }),
+      signal: AbortSignal.timeout(15000),
+    })
+    const data = (await res.json().catch(() => ({}))) as { id?: string; message?: string }
+    if (!res.ok) return { ok: false, status: 'FAILED', error: data?.message ?? `SMS API HTTP ${res.status}` }
+    return { ok: true, status: 'SENT', providerMessageId: data?.id }
+  } catch (e) {
+    return { ok: false, status: 'FAILED', error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+// ------------------------------------------------------------
+// Channel dispatch — the send itself, with NO database write.
+// sendCommunication() persists a record around this; the outbox retry
+// path calls it directly so a retry updates the ORIGINAL row instead of
+// inserting a duplicate.
+// ------------------------------------------------------------
+export async function dispatchChannel(entry: { channel: string; to?: string; subject?: string; body: string }): Promise<SendResult> {
+  switch (entry.channel) {
+    case 'WHATSAPP':
+      return sendWhatsApp(entry.to ?? '', entry.body)
+    case 'EMAIL': {
+      const subject = entry.subject ?? 'Tech360'
+      // HOSTINGER_MAIL_ENABLED=true selects the Hostinger Mail API exclusively.
+      // An enabled but invalid configuration refuses the send; it never falls
+      // back silently to SMTP.
+      if (isHostingerMailSelected()) return sendEmailViaHostinger(entry.to ?? '', subject, entry.body)
+      return sendEmail(entry.to ?? '', subject, wrapEmailHtml(subject, entry.body))
+    }
+    case 'SMS':
+      return sendSms(entry.to ?? '', entry.body)
+    default:
+      // Social outbound publishing is approval-gated and provider-specific.
+      return { ok: false, status: 'NOT_CONFIGURED', error: `${entry.channel} outbound not connected` }
+  }
+}
+
+/** True when the Super Admin channel switch currently permits sending. */
+async function channelSwitchAllows(channel: string): Promise<boolean> {
+  const channelFlag: Record<string, 'whatsapp' | 'email' | 'sms'> = { WHATSAPP: 'whatsapp', EMAIL: 'email', SMS: 'sms' }
+  const flag = channelFlag[channel]
+  if (!flag) return true
+  const { featureEnabled } = await import('@/lib/features')
+  return featureEnabled(flag)
+}
+
+// ------------------------------------------------------------
+// Persist + dispatch — every message is recorded against Client ID
+// ------------------------------------------------------------
+export async function sendCommunication(entry: {
+  clientId?: string
+  channel: string
+  to?: string
+  subject?: string
+  body: string
+  agentCode?: string
+  workflowId?: string
+  approvalId?: string
+  templateName?: string
+  messageType?: string
+  /** What to persist in the Communication log instead of `body` (e.g. OTP codes must never be stored). */
+  storedBody?: string
+  /** Extra JSON stored on the Communication row (e.g. the plain-text copy of an HTML email body). */
+  metadata?: string
+}): Promise<{ communicationId: string; result: SendResult }> {
+  const comm = await db.communication.create({
+    data: {
+      clientId: entry.clientId ?? null,
+      channel: entry.channel,
+      direction: 'OUT',
+      recipient: entry.to ?? null,
+      subject: entry.subject ?? null,
+      body: (entry.storedBody ?? entry.body).slice(0, 20000),
+      agentCode: entry.agentCode ?? null,
+      workflowId: entry.workflowId ?? null,
+      approvalId: entry.approvalId ?? null,
+      templateName: entry.templateName ?? null,
+      messageType: entry.messageType ?? 'TEXT',
+      metadata: entry.metadata ?? null,
+      status: 'QUEUED',
+    },
+  })
+
+  // ---- Super Admin channel switches (REAL backend enforcement) ----
+  // When a channel is switched OFF, the send attempt is refused honestly
+  // (the Communication record is still kept, status DISABLED_BY_ADMIN) —
+  // records stay for the audit trail, but nothing is ever sent.
+  if (!(await channelSwitchAllows(entry.channel))) {
+    const disabled: SendResult = { ok: false, status: 'DISABLED_BY_ADMIN', error: entry.channel + ' channel is switched OFF by Super Admin — send refused (record kept)' }
+    await db.communication.update({ where: { id: comm.id }, data: { status: disabled.status, error: disabled.error ?? null, sentAt: null, lastAttemptAt: new Date() } })
+    return { communicationId: comm.id, result: disabled }
+  }
+
+  const result = await dispatchChannel(entry)
+
+  // A first-send failure is recorded as FAILED (not DEAD_LETTER) so operators
+  // keep seeing it in the normal failure view, but it already carries a backoff
+  // deadline so the ops loop cannot hammer it on the next tick. `attempts` stays
+  // 0 here: no automatic re-dispatch has happened yet.
+  const now = new Date()
+  await db.communication.update({
+    where: { id: comm.id },
+    data: {
+      status: result.status,
+      error: result.error ?? null,
+      providerMessageId: result.providerMessageId ?? null,
+      sentAt: result.status === 'SENT' ? now : null,
+      lastAttemptAt: now,
+      nextRetryAt: result.status === 'FAILED' ? new Date(now.getTime() + backoffMs(1)) : null,
+    },
+  })
+
+  if (result.status === 'FAILED') {
+    const { logError } = await import('@/lib/security')
+    await logError({
+      source: 'COMMS', code: `SEND_FAILED_${entry.channel}`,
+      message: `${entry.channel} delivery failed for Communication ${comm.id}; recipient and message body omitted from the error log.`,
+      clientId: entry.clientId, workflow: entry.workflowId ?? undefined,
+    })
+  }
+
+  return { communicationId: comm.id, result }
+}
+
+// ------------------------------------------------------------
+// OUTBOX RETRY — bounded, back-off-respecting, duplicate-safe.
+//
+// Re-dispatches ONE existing outbound record through its real channel
+// adapter and updates THAT record. It never inserts a second row, so a
+// message that keeps failing drains into DEAD_LETTER instead of
+// multiplying. The attempt is claimed with a conditional update on
+// `attempts`, so two concurrent dispatchers (ops loop + an operator
+// clicking retry) cannot both send the same message.
+// ------------------------------------------------------------
+export type OutboxRetryOutcome = {
+  ok: boolean
+  communicationId: string
+  action: 'SENT' | 'FAILED' | 'BACKOFF_WAIT' | 'DEAD_LETTER' | 'NOT_RETRYABLE' | 'DISABLED_BY_ADMIN' | 'SKIPPED'
+  attempts: number
+  reason: string
+  status?: string
+  error?: string | null
+  nextRetryAt?: string | null
+}
+
+export async function retryCommunicationOutbox(
+  commId: string,
+  options: { force?: boolean; actor?: string } = {},
+): Promise<OutboxRetryOutcome> {
+  const comm = await db.communication.findUnique({ where: { id: commId } })
+  if (!comm) {
+    return { ok: false, communicationId: commId, action: 'SKIPPED', attempts: 0, reason: 'Communication not found' }
+  }
+  if (comm.direction !== 'OUT') {
+    return { ok: false, communicationId: comm.id, action: 'SKIPPED', attempts: comm.attempts, reason: 'Only outbound messages can be retried' }
+  }
+
+  // Consequential messages (amounts, payment, contract, handover, legal) are
+  // never re-dispatched, automatically or by an operator. A send that failed
+  // or timed out may still have been delivered, so repeating it could send a
+  // second payment instruction or contract. A new message needs a new,
+  // governed approval bound to its exact content.
+  if (comm.approvalId || classifyOutbound(comm.body, comm.subject).consequential) {
+    return {
+      ok: false,
+      communicationId: comm.id,
+      action: 'NOT_RETRYABLE',
+      attempts: comm.attempts,
+      reason: 'Consequential message: automatic and operator re-dispatch is refused. Request a new Super Admin approval to send it again.',
+      status: comm.status,
+    }
+  }
+
+  const now = new Date()
+  const decision = decideRetry(
+    {
+      id: comm.id,
+      channel: comm.channel,
+      recipient: comm.recipient,
+      status: comm.status,
+      error: comm.error,
+      attempts: comm.attempts,
+      nextRetryAt: comm.nextRetryAt,
+      lastAttemptAt: comm.lastAttemptAt,
+    },
+    now,
+  )
+
+  // An operator retry overrides the backoff window and a spent budget, but it
+  // can never override a permanent failure — a bad recipient stays a bad
+  // recipient, and re-sending would only produce another hard failure.
+  if (decision.action === 'NOT_RETRYABLE' && decision.requiresOperator && comm.status !== DEAD_LETTER) {
+    await db.communication.update({
+      where: { id: comm.id },
+      data: { status: DEAD_LETTER, nextRetryAt: null, lastAttemptAt: now },
+    })
+    await notifyDeadLetter(comm.id, comm.channel, comm.recipient, decision.reason, options.actor)
+    return { ok: false, communicationId: comm.id, action: 'NOT_RETRYABLE', attempts: comm.attempts, reason: decision.reason, status: DEAD_LETTER }
+  }
+
+  if (decision.action === 'DEAD_LETTER') {
+    await db.communication.update({ where: { id: comm.id }, data: { status: DEAD_LETTER, nextRetryAt: null, lastAttemptAt: now } })
+    await notifyDeadLetter(comm.id, comm.channel, comm.recipient, decision.reason, options.actor)
+    return { ok: false, communicationId: comm.id, action: 'DEAD_LETTER', attempts: comm.attempts, reason: decision.reason, status: DEAD_LETTER }
+  }
+
+  if (decision.action === 'BACKOFF_WAIT' && !options.force) {
+    return {
+      ok: false,
+      communicationId: comm.id,
+      action: 'BACKOFF_WAIT',
+      attempts: comm.attempts,
+      reason: decision.reason,
+      status: comm.status,
+      nextRetryAt: comm.nextRetryAt?.toISOString() ?? null,
+    }
+  }
+
+  // ---- claim the attempt (optimistic concurrency) ----
+  const claimed = await db.communication.updateMany({
+    where: { id: comm.id, attempts: comm.attempts },
+    data: { lastAttemptAt: now },
+  })
+  if (claimed.count !== 1) {
+    return {
+      ok: false,
+      communicationId: comm.id,
+      action: 'SKIPPED',
+      attempts: comm.attempts,
+      reason: 'Another dispatcher already claimed this attempt (duplicate send prevented)',
+    }
+  }
+
+  if (!(await channelSwitchAllows(comm.channel))) {
+    const reason = `${comm.channel} channel is switched OFF by Super Admin — retry refused (record kept)`
+    await db.communication.update({ where: { id: comm.id }, data: { status: 'DISABLED_BY_ADMIN', error: reason, nextRetryAt: null } })
+    return { ok: false, communicationId: comm.id, action: 'DISABLED_BY_ADMIN', attempts: comm.attempts, reason, status: 'DISABLED_BY_ADMIN' }
+  }
+
+  // ---- real re-dispatch through the same adapter as the original send ----
+  const result = await dispatchChannel({
+    channel: comm.channel,
+    to: comm.recipient ?? undefined,
+    subject: comm.subject ?? undefined,
+    body: comm.body,
+  })
+
+  if (result.ok) {
+    await db.communication.update({
+      where: { id: comm.id },
+      data: {
+        status: result.status,
+        error: null,
+        providerMessageId: result.providerMessageId ?? null,
+        sentAt: new Date(),
+        attempts: comm.attempts + 1,
+        lastAttemptAt: new Date(),
+        nextRetryAt: null,
+      },
+    })
+    return {
+      ok: true,
+      communicationId: comm.id,
+      action: 'SENT',
+      attempts: comm.attempts + 1,
+      reason: `Delivered on retry #${comm.attempts + 1} via ${comm.channel}`,
+      status: result.status,
+    }
+  }
+
+  // Failure: apply the SAME policy so the record either backs off again or
+  // terminates. The updated error replaces the previous one so diagnostics
+  // always describe the latest attempt.
+  const next = scheduleAfterFailure({ ...comm, error: result.error ?? comm.error, attempts: comm.attempts }, new Date())
+  await db.communication.update({
+    where: { id: comm.id },
+    data: {
+      status: next.status,
+      error: result.error ?? null,
+      attempts: next.attempts,
+      lastAttemptAt: new Date(),
+      nextRetryAt: next.nextRetryAt,
+    },
+  })
+  if (next.deadLettered) await notifyDeadLetter(comm.id, comm.channel, comm.recipient, next.reason, options.actor)
+
+  return {
+    ok: false,
+    communicationId: comm.id,
+    action: next.deadLettered ? 'DEAD_LETTER' : 'FAILED',
+    attempts: next.attempts,
+    reason: result.error ?? next.reason,
+    status: next.status,
+    error: result.error ?? null,
+    nextRetryAt: next.nextRetryAt?.toISOString() ?? null,
+  }
+}
+
+/** One notification per terminal failure, so operators learn why it stopped. */
+async function notifyDeadLetter(id: string, channel: string, recipient: string | null, reason: string, actor?: string): Promise<void> {
+  try {
+    await db.notification.create({
+      data: {
+        type: 'SYSTEM',
+        severity: 'WARNING',
+        title: `${channel} message dead-lettered`,
+        body: `${reason}. Recipient ${recipient ?? 'unknown'}; message ${id}. Automatic retries have stopped — fix the cause and retry manually.${actor ? ` (${actor})` : ''}`,
+        link: 'communications',
+      },
+    })
+  } catch {
+    // A notification failure must never mask the retry outcome.
+  }
+}
+
+// ------------------------------------------------------------
+// Email template wrapper (professional signature)
+// ------------------------------------------------------------
+export function wrapEmailHtml(subject: string, bodyHtml: string): string {
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px;">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+      <tr><td style="background:#0f172a;padding:20px 28px;">
+        <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">Tech<span style="color:#22c55e;">360</span></span>
+        <div style="color:#94a3b8;font-size:12px;margin-top:4px;">Strategy · Software · Automation · Growth</div>
+      </td></tr>
+      <tr><td style="padding:28px;color:#1f2937;font-size:15px;line-height:1.7;">
+        <div style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:14px;">${escapeHtml(subject)}</div>
+        ${bodyHtml}
+      </td></tr>
+      <tr><td style="padding:20px 28px;background:#f8fafc;border-top:1px solid #e5e7eb;color:#64748b;font-size:12px;line-height:1.6;">
+        ${COMPANY.legalName} · ${COMPANY.address}<br/>
+        ${COMPANY.email} · ${COMPANY.url}<br/>
+        This message contains confidential business information intended for the addressed recipient.
+      </td></tr>
+    </table>
+  </td></tr></table></body></html>`
+}
+
+export function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c))
+}
+
+// Standard email templates (brand-consistent)
+export function emailTemplate(type: string, vars: { name?: string; link?: string; extra?: string }): { subject: string; body: string } {
+  const n = vars.name ?? 'there'
+  const linkBtn = vars.link ? `<p style="margin:18px 0;"><a href="${vars.link}" style="background:#16a34a;color:#ffffff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">Open Link</a></p><p style="color:#64748b;font-size:13px;">Or copy this link: ${vars.link}</p>` : ''
+  const map: Record<string, { subject: string; body: string }> = {
+    WELCOME: { subject: 'Welcome to Tech360 — we received your request', body: `<p>Hi ${n},</p><p>Thank you for reaching out to Tech360. Your request has been registered and our team is reviewing your requirements right now.</p><p>Your reference: <strong>{{clientId}}</strong>. Please keep it for future communication.${vars.extra ?? ''}</p>${linkBtn}<p>We will be in touch shortly.</p><p>— Team Tech360</p>` },
+    SCOPE_QUESTIONS: { subject: 'A few questions about your project', body: `<p>Hi ${n},</p><p>To prepare the right solution for your business, we need a few details:${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` },
+    FINAL_SCOPE: { subject: 'Your Final Scope of Work — Tech360', body: `<p>Hi ${n},</p><p>Please find your Final Scope of Work attached below. It includes deliverables, timeline and our payment policy.</p><p>Reply to this email or start a chat with our AI assistant at bdtech360.com with <strong>APPROVED</strong> or any revision notes.${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` },
+    REVISION: { subject: 'Updated scope — revision ready for your review', body: `<p>Hi ${n},</p><p>We have updated the scope based on your feedback. Please review the revised version.${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` },
+    PREVIEW: { subject: 'Your project preview is ready', body: `<p>Hi ${n},</p><p>Your HTML preview is ready. You can review it before any payment is due — we build trust first.</p>${linkBtn}<p>After reviewing, reply APPROVED or let us know your change requests.</p><p>— Team Tech360</p>` },
+    PAYMENT: { subject: 'Payment instructions for your project', body: `<p>Hi ${n},</p><p>Thank you for approving the preview. Here are the payment details for your project milestones.${vars.extra ?? ''}</p><p>Work begins immediately after payment confirmation.</p><p>— Team Tech360</p>` },
+    PAYMENT_CONFIRMED: { subject: 'Payment received — your project is now active', body: `<p>Hi ${n},</p><p>We have confirmed your payment. Your project is now active and our delivery team has started. You will receive progress updates at every milestone.${vars.extra ?? ''}</p><p>— Team Tech360</p>` },
+    DELIVERY: { subject: 'Your project has been delivered', body: `<p>Hi ${n},</p><p>Your project is complete and delivered. Please confirm everything works as approved, and remember to change any temporary passwords we shared.${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` },
+    HANDOVER: { subject: 'Source code handover — secure download', body: `<p>Hi ${n},</p><p>Your final source package is ready for secure download following full payment verification.</p>${linkBtn}<p>— Team Tech360</p>` },
+    PASSWORD_CHANGE: { subject: 'Please confirm you changed your passwords', body: `<p>Hi ${n},</p><p>For your security, please confirm that you have changed all temporary passwords provided during handover.${vars.extra ?? ''}</p><p>— Team Tech360</p>` },
+    REVIEW_REQUEST: { subject: 'How was your experience with Tech360?', body: `<p>Hi ${n},</p><p>We would genuinely appreciate your feedback on working with Tech360. A short review helps us improve.${vars.extra ?? ''}</p><p>— Team Tech360</p>` },
+    REFERRAL_REQUEST: { subject: 'Know a business that needs software?', body: `<p>Hi ${n},</p><p>If you know a business that could benefit from what we built for you, we would be glad to help them too.${vars.extra ?? ''}</p><p>— Team Tech360</p>` },
+    PROJECT_UPDATE: { subject: 'Progress update on your project', body: `<p>Hi ${n},</p><p>Here is the latest progress on your project:${vars.extra ?? ''}</p><p>— Team Tech360</p>` },
+    MEETING: { subject: 'Meeting confirmation — Tech360', body: `<p>Hi ${n},</p><p>Here are the proposed times for our call.${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` },
+  }
+  return map[type] ?? { subject: 'Tech360 update', body: `<p>Hi ${n},</p><p>${vars.extra ?? ''}</p>${linkBtn}<p>— Team Tech360</p>` }
+}

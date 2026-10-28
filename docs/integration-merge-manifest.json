@@ -1,0 +1,776 @@
+{
+  "generatedFor": "PR #43 — fix: resolve TECH360 merge conflicts",
+  "resolvedAt": "2026-10-28",
+  "sourceBranch": "integration/tech360-merge",
+  "baseBranch": "main",
+  "facts": {
+    "unrelatedHistories": true,
+    "addAddConflicts": 95,
+    "liveFilesChanged": 0,
+    "deletions": 0,
+    "incomingFilesAlreadyInMainUnderLegacy": 223,
+    "incomingFilesWithNoLegacyTwin": 1
+  },
+  "preservedIncomingFiles": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "resolution": "kept-main-version-live",
+      "liveSha": "94e2aae44d5dbd230ebb469719c4e3837b015663",
+      "preservedPath": "legacy/integration/2026-10-28/.github/workflows/ci.yml",
+      "preservedSha": "fe64d6af5e4e5b0340981b18b0fe5e90630c542c",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": ".gitignore",
+      "resolution": "kept-main-version-live",
+      "liveSha": "74637dd6c99becd1ec1cb8a3124697f53c215bcf",
+      "preservedPath": "legacy/integration/2026-10-28/.gitignore",
+      "preservedSha": "e9847b846a300986799422389b3d81a14c11b3ec",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "Caddyfile",
+      "resolution": "kept-main-version-live",
+      "liveSha": "639bd44d01baf0c18e51bbf4d1b5ca85aba58570",
+      "preservedPath": "legacy/integration/2026-10-28/Caddyfile",
+      "preservedSha": "e4fb2a1abdc3542f710cab68b4b9d342865238f1",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "DEPLOYMENT.md",
+      "resolution": "kept-main-version-live",
+      "liveSha": "97dd3c30d564ec4ac0940289083e71c4df4cf9e5",
+      "preservedPath": "legacy/integration/2026-10-28/DEPLOYMENT.md",
+      "preservedSha": "507db2e4e524183cc8742fa653a905c254424acb",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "KNOWN_ISSUES_AND_BLOCKERS.md",
+      "resolution": "kept-main-version-live",
+      "liveSha": "8dcd6741e29ff031e432ce13e183aa271f50fd1b",
+      "preservedPath": "legacy/integration/2026-10-28/KNOWN_ISSUES_AND_BLOCKERS.md",
+      "preservedSha": "cb06b2c7456767bfd1cd5a60996984c8fad7a808",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "OFFICIAL-DOCUMENTS.md",
+      "resolution": "kept-main-version-live",
+      "liveSha": "4f114653f357b68d583d5a5077024a749c89f275",
+      "preservedPath": "legacy/integration/2026-10-28/OFFICIAL-DOCUMENTS.md",
+      "preservedSha": "3407a6b53499f8e81a5fd3c75a661163f486c24f",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "README.md",
+      "resolution": "kept-main-version-live",
+      "liveSha": "1a93e209980556e1aa1b515291f0a0ea53fe9880",
+      "preservedPath": "legacy/integration/2026-10-28/README.md",
+      "preservedSha": "1de815a3381f10912ad839886f62e774fa8a6e32",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "bun.lock",
+      "resolution": "kept-main-version-live",
+      "liveSha": "3011103b2aa837a361de7b1386c11aba057a9702",
+      "preservedPath": "legacy/integration/2026-10-28/bun.lock",
+      "preservedSha": "c36396b735cb69bb28cd5be584b9ac89f9fc991b",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "docs/OPERATIONS_GUIDEBOOK.md",
+      "resolution": "kept-main-version-live",
+      "liveSha": "9523d829fdd90f7a58b373a14b653e88eb5b695a",
+      "preservedPath": "legacy/integration/2026-10-28/docs/OPERATIONS_GUIDEBOOK.md",
+      "preservedSha": "6bb8b6d1bd2473a6b67094a7610d8d735b167028",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "docs/REFERENCE_VERIFICATION_MATRIX.md",
+      "resolution": "kept-main-version-live",
+      "liveSha": "05adc7a2632140828a0889e6c9a0a04fa9ee1174",
+      "preservedPath": "legacy/integration/2026-10-28/docs/REFERENCE_VERIFICATION_MATRIX.md",
+      "preservedSha": "4dd4c5de47d31a5157db0da6d1cd51ec0ceb756f",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "eslint.config.mjs",
+      "resolution": "kept-main-version-live",
+      "liveSha": "4880d2002e920e1142eed28efe5eedc486afbe0c",
+      "preservedPath": "legacy/integration/2026-10-28/eslint.config.mjs",
+      "preservedSha": "55aaa0653a483bd960a237dc927486403b467ea1",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "next.config.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "5c535c4e4c735f299018a727846725b60642af94",
+      "preservedPath": "legacy/integration/2026-10-28/next.config.ts",
+      "preservedSha": "0bd2f1124a09380d96f5128412059e51f4af8106",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "package.json",
+      "resolution": "kept-main-version-live",
+      "liveSha": "92a55c373ccaf6a940afa62869122c1d991a2839",
+      "preservedPath": "legacy/integration/2026-10-28/package.json",
+      "preservedSha": "4de2cebba2333477ea0c38bc91052131f694bf53",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "resolution": "kept-main-version-live",
+      "liveSha": "06b791bdc0f26961463844089e724b538195c573",
+      "preservedPath": "legacy/integration/2026-10-28/prisma/schema.prisma",
+      "preservedSha": "c5744e15c1052f24e8ab016ae184f9d9d6027ffc",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "prisma/seed.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "1335188de10e089d39d651b837afbf6c4b346ed3",
+      "preservedPath": "legacy/integration/2026-10-28/prisma/seed.ts",
+      "preservedSha": "be55e4638cf93bc78ea996dedb447d72a50dcca4",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "public/robots.txt",
+      "resolution": "kept-main-version-live",
+      "liveSha": "ee607e2682f8697f1200f4ad7fc17ae1f5c52538",
+      "preservedPath": "legacy/integration/2026-10-28/public/robots.txt",
+      "preservedSha": "6018e701fc7dd0317cda9eceea390524322e8a05",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "scripts/mysql-schema-map.json",
+      "resolution": "kept-main-version-live",
+      "liveSha": "091698f0a4b717819223f848004189e207144028",
+      "preservedPath": "legacy/integration/2026-10-28/scripts/mysql-schema-map.json",
+      "preservedSha": "552e1ac7fa77530e4cf4150502aa6245ffeb7d3d",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "scripts/preview/seed-demo.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "b9f6544e39dca66d3c870884863af59b1962e5cf",
+      "preservedPath": "legacy/integration/2026-10-28/scripts/preview/seed-demo.ts",
+      "preservedSha": "6e4306fe34fcb1abe2cffe2ecd18b51598b52247",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "scripts/preview/setup.mjs",
+      "resolution": "kept-main-version-live",
+      "liveSha": "e954bdd7c0b3ec5d9a751c66b062def31b3825aa",
+      "preservedPath": "legacy/integration/2026-10-28/scripts/preview/setup.mjs",
+      "preservedSha": "a35694cfaa1389b88c5b3d12c90ce5df17dda762",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "scripts/verify-reference-links.mjs",
+      "resolution": "kept-main-version-live",
+      "liveSha": "e4dd69be4d1427acc6964b1eabd4c0cbe60138bc",
+      "preservedPath": "legacy/integration/2026-10-28/scripts/verify-reference-links.mjs",
+      "preservedSha": "134f65628eb5a82dbce020a8de0bd1410be6721a",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/agents/export/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "aad58955b1ad081c0052a6ffba7b10ddcce8a991",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/agents/export/route.ts",
+      "preservedSha": "92fd7bc880661875fcb4dad6a798dde5963aa24a",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/clients/[id]/enrich/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "2c39d510a6fb8a0255e92d5851c8527ed9688443",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/clients/[id]/enrich/route.ts",
+      "preservedSha": "ef26dadaaedfb917ec2c980329ce4435730ba50c",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/content/generate/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "060f8b4b8bdf5596e97b01643a6f3b0b2ea2603a",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/content/generate/route.ts",
+      "preservedSha": "c27304e875b5b2cf1e8332df4bc9ab7724535dac",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/content/review/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "0582230e633cb356b3b700cde55a42fdbbd220cd",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/content/review/route.ts",
+      "preservedSha": "d9a912cc80ebea964a8a09de5698af52064f4eeb",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/factory/apps/[id]/export/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "89d355a63f99fd123c66a7725403d29788cb06ce",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/factory/apps/[id]/export/route.ts",
+      "preservedSha": "3c0c9943c28676a044f88efbbc26ab15dbbf6c83",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/factory/apps/[id]/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "3c90c15c4714639bcf65746a7f3def809fcd915f",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/factory/apps/[id]/route.ts",
+      "preservedSha": "ff2bd2bcc0a7c24d5684faabc43989808a9a2b30",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/factory/apps/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "0945f597051abcc14dbc859f76842ef9b7f42944",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/factory/apps/route.ts",
+      "preservedSha": "c7a9015d8940d6814c85d57ea5b2a92145b1aaf6",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/media/jobs/[id]/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "5bcea19de5440b008c9f2b51074ebf6ffd4e1957",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/media/jobs/[id]/route.ts",
+      "preservedSha": "b3c63c679af3ff55c7728ef444b35afb28787344",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/media/jobs/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "a5a7d50ba8a466f5fd9a889299e24fde3dab1983",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/media/jobs/route.ts",
+      "preservedSha": "1feed1c71529a972273a5b0cc2336085650c8c63",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/newsletter/campaigns/draft/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "96941970f7fd3886011e845006498a057b9b8527",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/newsletter/campaigns/draft/route.ts",
+      "preservedSha": "bdb96293dcf5f4965aa8eddeb89f033abc2d3e0f",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/newsletter/draft/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "71bd2c5e6c3c83c9717fd84c6aeaa3b23f567505",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/newsletter/draft/route.ts",
+      "preservedSha": "88c71cad8e6ad2b0aa3c9b641a43c4132004658c",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/newsletter/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "1616f3b9bf3b5b5498aa6414b7eaa98225d18bda",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/newsletter/route.ts",
+      "preservedSha": "ed82cf4d5cb1256cb02f617d5527054e40404f74",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/projects/[id]/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "1b97207fcef4eaad81585d3f53677506028e1eb1",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/projects/[id]/route.ts",
+      "preservedSha": "b71a8b099ecb8ae0f227c52e7af327859561338d",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/projects/[id]/tasks/[taskId]/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "6fcf69ac6081f8066e2b7af28255400a1b53fe74",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/projects/[id]/tasks/[taskId]/route.ts",
+      "preservedSha": "287a896cc844c8aaf5755e8b9ae63a9acca76634",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/admin/scopes/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "3f9a85baa87eb3a7b2d4b147222b62d5278befce",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/admin/scopes/route.ts",
+      "preservedSha": "d80035eea0e38b6fb26760734fd9062eb474764c",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/agents/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "f3abc6a852bf0fb0d7d59dd7153f37ab939fe06e",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/agents/route.ts",
+      "preservedSha": "b0fe710958ea4f950c4ba216e4e55ec5b03d2f70",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/blog/[slug]/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "30c8a9562678bb828977987eb9d50f5ec30b4587",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/blog/[slug]/route.ts",
+      "preservedSha": "ccaf5b0463b13e2fd579222ee1d0b961a8c64e6e",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/blog/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "2cb3654649ec93965d3cd6b0b4e9a9497c5b27a1",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/blog/route.ts",
+      "preservedSha": "eacd4130343e12e5f99d22aaa8c87684c4f030d2",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/chat/session/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "90d1611d6c5b8a8dad56692bf577bccf9424e8ed",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/chat/session/route.ts",
+      "preservedSha": "de47327a4ce0a51153833d46215657716e122441",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/reviews/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "0797017a4578235b10ff64d78cc3297a947360ff",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/reviews/route.ts",
+      "preservedSha": "2fa49dd275e0df097bd98ff1ba852c757f0c4741",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/skills/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "c511906ddb8b49813487ede6a84a03ce246d3495",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/skills/route.ts",
+      "preservedSha": "e59801482bfd9acc6c4b784e91e426b31ba30587",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/tasks/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "e7128051267065b278e2424a1d37b22666f03aed",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/tasks/route.ts",
+      "preservedSha": "c4114765dd0126df2d328d2a93cac8efa516a9c2",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/api/track/route.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "b8835135b463000f48597d36d8daab69964613fc",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/api/track/route.ts",
+      "preservedSha": "e8f50e2774423f542baa413c3bc7feac76be2be2",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/globals.css",
+      "resolution": "kept-main-version-live",
+      "liveSha": "fcde14349a9efbd7a218fb1149ff3d8501975803",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/globals.css",
+      "preservedSha": "bf187abd7b9de93162672cc780c0c3424cdfdcac",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "091c25b66c246e721cc6fef7e8698af2f1b5969b",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/layout.tsx",
+      "preservedSha": "daaa7729cd3a4d8e9374b8008a12974d67375360",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/app/page.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "f50118f4e715b81203f4e9e008e9bbfed1a29aa5",
+      "preservedPath": "legacy/integration/2026-10-28/src/app/page.tsx",
+      "preservedSha": "0ea6c066e4b8a77bdf199dec13cffe780375f8e1",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/admin/AgentsView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "fc5ae2dda95bf4f90ae18c21c627acfe4ac024cf",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/admin/AgentsView.tsx",
+      "preservedSha": "ceebfbb0fca967f7a56df56798fb174776974baf",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/admin/FactoryView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "e689d6b2fab03718481057aef021fe49237b7710",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/admin/FactoryView.tsx",
+      "preservedSha": "4a8e3deabf2dfd93810b9eb57419fdfd1d10afe8",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/admin/LoginScreen.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "35d37843766f78981e4d20f8bd9294834c63f472",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/admin/LoginScreen.tsx",
+      "preservedSha": "ce24866d22bf7f8548cbdc6c60cd9e6c75c5e917",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/admin/ProjectsView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "ad00fee9399c4a8fff5cd4c33534ed0d53e635ff",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/admin/ProjectsView.tsx",
+      "preservedSha": "9c45cdc4ab88cef56a4006297880c9dbda7f7d1c",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/admin/SeoAuditView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "7015f371ceff4a55712619f8f109573094038c27",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/admin/SeoAuditView.tsx",
+      "preservedSha": "2b9ee9c528bdcf2955d6a0a4248df5432392c607",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/AboutView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "c5aec5d924dbf3539913352439143dfdad4557f4",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/AboutView.tsx",
+      "preservedSha": "53a0891cdaef83a21cfad0f08765a303b5404f25",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/ChatWidget.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "1b77b3b0d7c0bb370bae9a66b125ebbcc0c7983c",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/ChatWidget.tsx",
+      "preservedSha": "0a78b909ffc07dc7eeae9a9acc9d4ab8dd8d2e1b",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/ContactView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "78b14a8bb2fd99ab57e53de1a8b36e84c0b9d077",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/ContactView.tsx",
+      "preservedSha": "cac14abce5448cf2ede94bb7de0403ddc6fd4230",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/CtaBand.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "fb0ccace84766596654c5e59abd1231fb79af1fb",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/CtaBand.tsx",
+      "preservedSha": "9b4324286428db6235554d10e4f9b62c1f7ad5eb",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/DesignKitView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "391e1abfeec9ba77ec090f6602ff5578d02ad149",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/DesignKitView.tsx",
+      "preservedSha": "1d0b90750ad92f4e82857ce90df607c165a87f4d",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/HomeView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "5f2097004c233a73555c4dd6e459a84075389172",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/HomeView.tsx",
+      "preservedSha": "f6cccdc2381e43b429004799e244e26d8c9491d8",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/LegalView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "adcd6c324eda7ccf4bb463f2734adadaa50d957a",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/LegalView.tsx",
+      "preservedSha": "dfaded92b641957f5577af44e880642903afb3fa",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/PortalView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "b75892cddd64816c1234d14c8d0d75c2626d5c5f",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/PortalView.tsx",
+      "preservedSha": "9d6cfc4ad72721168bea9e23c2a9b5a660882fbd",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/ServiceDetailView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "eabc194b0097800d118fc70c565f01f7a9eff0d2",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/ServiceDetailView.tsx",
+      "preservedSha": "e536c17e244b782c72ba402e0588174b860d6399",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/ServicesView.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "7a278e5a5ca2240d74c2a6aabc70e38b6c8b4281",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/ServicesView.tsx",
+      "preservedSha": "2a383740be1a4635444b2b93b366fba0df5dce36",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/SiteFooter.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "895f2c52694439e956630b1ce208c334646bcb9a",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/SiteFooter.tsx",
+      "preservedSha": "2a9fcbbd84b8ecfc9d548915ed141630721899c8",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/SiteHeader.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "90bb531c8b8650635506be780e65b3659be12518",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/SiteHeader.tsx",
+      "preservedSha": "ea0e17f391018e03089ef55d413e12216f76a4b0",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/buttons.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "7227921f0a81a6f00a1057a3b2837b6b7601ae8a",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/buttons.tsx",
+      "preservedSha": "d3682b47b4665058f91c0948df26c64f68479a37",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/concepts.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "15b96f51703a50601354c68eb3da53c47dfea551",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/concepts.tsx",
+      "preservedSha": "999583c5c05441107b0d58f2d966e6755e186f66",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/diagram-kit.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "ec126c1a8f306fadffd2d63d4852d9ed50c50ea6",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/diagram-kit.tsx",
+      "preservedSha": "1dd7e010a1fe50f7e47f957599d0636aeced0fd9",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/site/diagrams.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "f713db922f7a69dffc96fc4651e4c0b33612f3a6",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/site/diagrams.tsx",
+      "preservedSha": "11fd230d5c0be01e790030f1872c4f6ae4e42af4",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/components/ui/progress.tsx",
+      "resolution": "kept-main-version-live",
+      "liveSha": "e86099c0ddd918e8530c9245ad92203a03436a5e",
+      "preservedPath": "legacy/integration/2026-10-28/src/components/ui/progress.tsx",
+      "preservedSha": "e7a416c375109c29e844f0ecee7e0645a03ec301",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/data/site.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "bfc897bcee342cfd55dd764a90f292f9312922e4",
+      "preservedPath": "legacy/integration/2026-10-28/src/data/site.ts",
+      "preservedSha": "6367e1eeda9bb0fa6c644d13ad4e7cab4b428c23",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/admin-client.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "953717b5179861c16a76c85ea6ca8c60597520a4",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/admin-client.ts",
+      "preservedSha": "b689b44406994919477fb484048b6fae9b3c0bee",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/agents/engine.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "8dcc89f306bfa18939bfa3c2e7dc20882a482e23",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/agents/engine.ts",
+      "preservedSha": "b298900af9095d8033d27a66ef456949e086c177",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/agents/jobs.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "a546fd76710dc526a2558d2f5057a836bd762c65",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/agents/jobs.ts",
+      "preservedSha": "010f5f746fbdf6484636c2f263cd91a555e3afb1",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/agents/registry.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "1a0ef580de0f45bf1a19067ae258af8ac7c0b9be",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/agents/registry.ts",
+      "preservedSha": "021c0fe7fbfabacc4549b5a8f45ea1f3a3e4bc0e",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/ai-workforce-policy.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "c913b098f71ed095a70e23111a80ad5a430d771c",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/ai-workforce-policy.ts",
+      "preservedSha": "8166419be37581388172a762081f69fe034ea58d",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "c38dba289f1045c4bf03afe78146e66833b61a01",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/auth.ts",
+      "preservedSha": "373891ddaa8cd67ad14f5fa8f812bc340082c39f",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/chat-onboarding.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "5f08b63babf117d7b407d1d4156a3ec39f65d13d",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/chat-onboarding.ts",
+      "preservedSha": "544b20f86e2b87977486fd29eca08b3851b74318",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/chat-orchestrator.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "9de7fecca0de740fe911cdd381930591932b66f2",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/chat-orchestrator.ts",
+      "preservedSha": "43b086afdcf05b00d0125847d85d7fe88e67e757",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/chat.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "57f807e1b8f24451d5ead784741dd6f6565a3a18",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/chat.ts",
+      "preservedSha": "4f8b03a8c563b82cc883656ef15593d452a75b28",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/comms.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "84f7fae7f130f93ac07c5fb3152e9ce39fa54cf3",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/comms.ts",
+      "preservedSha": "7c50d486b6d8cc1d1a9c3d12ec66a62a294139b9",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/constants.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "ff0fc59ecf957e7a4ec1c0c0726c68fb64c8d123",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/constants.ts",
+      "preservedSha": "e70a43102f4a27ba6198118b350bda622463f222",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/contact-policy.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "9bb3b34c784dde8fc65b34fd3dd72e0543bf3ad7",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/contact-policy.ts",
+      "preservedSha": "23f0f915abf5f671f1cdeb16bbeda93fbc64c5bf",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/db.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "6cc3d37b2e8a6f0a52bdd68d20a9a2e7527b2852",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/db.ts",
+      "preservedSha": "7dfb80c4c07e35547d16aa4a3f91d75b43c5494c",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/discovery.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "37583557ab5dc1a893f79d698ea7023e3225dd2b",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/discovery.ts",
+      "preservedSha": "b2da9d054c9bba0fa75bb486a771f82a2033a6e1",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/journey.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "c80afaf93863d625f0344ca7a5b48ae161bfff1f",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/journey.ts",
+      "preservedSha": "4249a8ec40b7e66bc0f8e67a7486f453e1d257cc",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/letterhead.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "a1371581579b0951b2f39fab533541807c3c6b3e",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/letterhead.ts",
+      "preservedSha": "d082c6491826a6868b09e117992a6ab5a6e60704",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "src/lib/preview-db.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "60c6b81ebd20e5032e8fdb159d2d4f7b598a89ca",
+      "preservedPath": "legacy/integration/2026-10-28/src/lib/preview-db.ts",
+      "preservedSha": "2da213a1548d07802f0fbce33eae6064242d2022",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "tests/ai-workforce-rbac.test.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "c0a79c1bf4a9372ad740e6ece4c490fc27e58fc1",
+      "preservedPath": "legacy/integration/2026-10-28/tests/ai-workforce-rbac.test.ts",
+      "preservedSha": "a988ae2cd179c8c34fd7d1fd9a4b9ea53033dd5f",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "tests/contact-consent-evidence.test.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "8d2ab233c77f28d5c0fcfe844e1a1e33ab7a11b9",
+      "preservedPath": "legacy/integration/2026-10-28/tests/contact-consent-evidence.test.ts",
+      "preservedSha": "e6e406ebffd7e236776615b9cd0bd1551092c48c",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "tests/migration-parity.test.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "0dd902d378939707faedd9494af84cb956499350",
+      "preservedPath": "legacy/integration/2026-10-28/tests/migration-parity.test.ts",
+      "preservedSha": "3704e5d0be8d2a59101560bf2eec18442cc4ea61",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "tests/public-route-catalog.test.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "3a4edf5ea6fe50ffa383976e84150c5d1ea329df",
+      "preservedPath": "legacy/integration/2026-10-28/tests/public-route-catalog.test.ts",
+      "preservedSha": "92572af9d0dbbcb2378317ef4569ffc261dae048",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "tests/schema-ddl-parity.test.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "3dc4dad0b58cd3d90042c5f899d422b57440ba1a",
+      "preservedPath": "legacy/integration/2026-10-28/tests/schema-ddl-parity.test.ts",
+      "preservedSha": "8dc781b987518c3f703f6978486d2dac95e152cc",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "tests/seo-audit.test.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "a29591bc2637c1980478a219d0973fdc29e9fe70",
+      "preservedPath": "legacy/integration/2026-10-28/tests/seo-audit.test.ts",
+      "preservedSha": "a16523d2b15f26b07a8307f53c82b0d75df2bc8b",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "tests/tech360-messaging-repair.test.ts",
+      "resolution": "kept-main-version-live",
+      "liveSha": "b0393bc489f844debcb5e8ab2003892d02df5314",
+      "preservedPath": "legacy/integration/2026-10-28/tests/tech360-messaging-repair.test.ts",
+      "preservedSha": "6baad8721d597f69162a847ce836261bd4f3ba9b",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "tsconfig.json",
+      "resolution": "kept-main-version-live",
+      "liveSha": "f0871c59e6db5db091d26c77fced2a1b10077f79",
+      "preservedPath": "legacy/integration/2026-10-28/tsconfig.json",
+      "preservedSha": "3b3bdf4aff15e2e04f7f6a481e051e4e4c899c95",
+      "byteIdenticalToIncoming": true
+    },
+    {
+      "path": "worklog.md",
+      "resolution": "kept-main-version-live",
+      "liveSha": "3fe951396e41f057f9f71c07840fe11f2fa86cf4",
+      "preservedPath": "legacy/integration/2026-10-28/worklog.md",
+      "preservedSha": "bc68e3e07ac877f26ea69a702e8b742df273f585",
+      "byteIdenticalToIncoming": true
+    }
+  ]
+}
