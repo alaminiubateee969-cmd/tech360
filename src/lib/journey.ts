@@ -707,7 +707,7 @@ export async function clientScopeDecision(clientRowId: string, decision: 'APPROV
  * that a `Notification` carries the task, because a ProjectTask cannot
  * exist without a project.
  */
-async function createHumanTask(input: {
+export async function createHumanTask(input: {
   clientRowId: string
   title: string
   description: string

@@ -7,6 +7,8 @@
     "build": "node scripts/prisma.mjs generate && node scripts/prisma.mjs migrate deploy && next build --webpack && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "prestart": "node scripts/validate-production-env.mjs",
     "start:check": "NODE_ENV=production node scripts/start-production.mjs --check",
+    "install:check": "node scripts/install.mjs --check",
+    "install:app": "node scripts/install.mjs --all",
     "start": "NODE_ENV=production node scripts/start-production.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
