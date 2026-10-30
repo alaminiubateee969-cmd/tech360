@@ -68,6 +68,37 @@ the connected Page/account or the exact failure.
    fake-published; the Beacon-S publishing agent (`PUB-035`,
    approval-required) follows the same rule.
 
+## Post review grid (Super Admin → Growth → Marketing Dashboard)
+
+Every drafted post also appears as a **card in the review grid**:
+
+- **Clear poster, not a scrambled AI image.** The card image is rendered on
+  the server from the post's own copy by `src/lib/social/poster.ts`
+  (`GET /api/admin/marketing/posts/:id/poster?format=SQUARE|STORY|LANDSCAPE`).
+  It is deterministic, inert SVG — escaped text, no script, no remote fonts —
+  and carries the post's real status badge (DRAFT / APPROVED / PUBLISHED …).
+  Download it with `&download=1`.
+- **Real ratings only.** `PostReview` rows (migration
+  `13_post_review_grid`) are written through
+  `POST /api/admin/marketing/posts/:id/reviews` with a whole number 1–5.
+  The card shows the mean of those rows. A post nobody reviewed reads
+  **“Not rated yet”**; there is no seeded or placeholder 5.0 anywhere, and
+  “Highest rated” sinks unrated posts instead of promoting them.
+- **Filter / Sort.** Filter by platform and status (counts come from the
+  posts that exist), sort by highest rated, newest or most reviewed, plus
+  free-text search over the drafted copy.
+- **AI Prompts+ tile.** Composes a legible, brand-safe image brief from a
+  post's headline, copies it, or saves it back to the post as its media
+  brief (`PATCH /api/admin/marketing/posts/:id` with `{ action: "prompt" }`).
+  It is a local composer — no model call, no invented statistics, and it does
+  not claim an image was generated.
+- **Approval stays in the queue.** The grid's Approve button calls the same
+  reviewed endpoint as the queue; nothing in the grid publishes.
+
+Publishing an image-bearing post to Instagram still needs a **publicly
+hosted** image URL: download the poster SVG from the grid, host it on your own
+media host, then paste that URL into the post before publishing.
+
 ## Honest limits
 
 - YouTube/TikTok: draft + credential scaffolding ready; upload
@@ -76,6 +107,8 @@ the connected Page/account or the exact failure.
 - Analytics and comment/reply automation: inbound replies already
   arrive via `/api/webhooks/social` (SOC-014 triage); outbound
   analytics dashboards are a follow-up, not claimed here.
+- The review grid needs the `PostReview` migration (`13_post_review_grid`)
+  applied together with `SocialAccount`/`SocialPost`.
 - Requires the `SocialAccount`/`SocialPost` migration to be applied
   on the production MySQL host (`npm run db:migrate` in the deploy
   pipeline) and the env vars above before first use.

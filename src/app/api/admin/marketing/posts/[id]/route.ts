@@ -8,6 +8,7 @@ import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText, audit } from '@/lib/security'
 import { publishPost } from '@/lib/social/publish'
 import type { SocialPlatform } from '@/lib/social/platforms'
+import { buildImagePrompt, headlineOf } from '@/lib/social/post-grid'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (mediaUrl && !/^https:\/\//i.test(mediaUrl)) return Response.json({ error: 'mediaUrl must be a public https URL' }, { status: 400 })
     const updated = await db.socialPost.update({ where: { id }, data: { mediaUrl: mediaUrl || null } })
     return Response.json({ ok: true, post: updated })
+  }
+  if (action === 'prompt') {
+    // Compose (or store) the image brief for this post. A prompt supplied by
+    // the operator is kept verbatim; otherwise it is built locally from the
+    // post's own headline. Nothing is generated or sent anywhere here.
+    const supplied = sanitizeText(raw.prompt, 1500)
+    const prompt = supplied || buildImagePrompt({
+      topic: headlineOf(post, 140),
+      platform: post.platform,
+    })
+    const updated = await db.socialPost.update({ where: { id }, data: { mediaPrompt: prompt } })
+    await audit({ actor: g.user.email, action: 'SOCIAL_POST_PROMPT_SET', userId: g.user.id, entityId: id, details: { platform: post.platform, composed: !supplied } })
+    return Response.json({ ok: true, post: updated, prompt })
   }
   if (action === 'schedule') {
     if (post.status !== 'APPROVED') return Response.json({ error: 'Post must be APPROVED before scheduling' }, { status: 400 })
@@ -72,5 +86,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     })
     return Response.json({ ok: result.status === 'PUBLISHED', result, post: updated })
   }
-  return Response.json({ error: 'action must be approve | reject | media | publish' }, { status: 400 })
+  return Response.json({ error: 'action must be approve | reject | media | prompt | schedule | publish' }, { status: 400 })
 }
