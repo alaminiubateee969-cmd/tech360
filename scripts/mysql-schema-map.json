@@ -98,6 +98,7 @@
     "Delivery.confirmationAnswers",
     "HandoverRecord.contents",
     "Review.content",
+    "PostReview.comment",
     "Referral.notes",
     "FormSubmission.details",
     "FormSubmission.tracking",

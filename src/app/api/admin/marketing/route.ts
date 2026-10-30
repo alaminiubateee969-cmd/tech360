@@ -12,10 +12,13 @@ export async function GET(req: NextRequest) {
   const g = await guard(req, { minRole: 'ADMIN' })
   if (isResponse(g)) return g
 
-  const [posts, campaigns, accounts] = await Promise.all([
+  const [posts, campaigns, accounts, reviews] = await Promise.all([
     db.socialPost.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
     db.campaign.findMany({ orderBy: { createdAt: 'desc' }, take: 20, include: { _count: { select: { assets: true } } } }),
     db.socialAccount.findMany() as Promise<Array<{ platform: string; state: string; lastVerifiedAt: Date | null; lastError: string | null; externalId: string | null }>>,
+    // Real team reviews only. These rows are what the review grid averages —
+    // there is no synthetic rating anywhere in this response.
+    db.postReview.findMany({ orderBy: { createdAt: 'desc' }, take: 2000 }),
   ])
   const verified = new Map(accounts.map((a) => [a.platform, a]))
   const platforms = allPlatformStatuses().map((p) => ({
@@ -25,5 +28,5 @@ export async function GET(req: NextRequest) {
     lastError: verified.get(p.platform)?.lastError ?? null,
     externalId: verified.get(p.platform)?.externalId ?? null,
   }))
-  return Response.json({ platforms, posts, campaigns, oauthNote: OAUTH_CONTINUITY_NOTE })
+  return Response.json({ platforms, posts, campaigns, reviews, oauthNote: OAUTH_CONTINUITY_NOTE })
 }

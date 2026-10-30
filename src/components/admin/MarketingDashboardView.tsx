@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { fetchJson } from '@/lib/admin-client'
 import { PageHeader, SectionCard } from './shared/cards'
 import { INPUT } from './shared/styles'
+import { MarketingPostGrid, type ReviewGridReview } from './MarketingPostGrid'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -24,7 +25,7 @@ interface SocialPost {
   id: string; platform: string; text: string; status: string; mediaUrl: string | null
   mediaPrompt: string | null; externalUrl: string | null; error: string | null; createdAt: string
 }
-interface Overview { platforms: PlatformStatus[]; posts: SocialPost[]; oauthNote: string }
+interface Overview { platforms: PlatformStatus[]; posts: SocialPost[]; reviews?: ReviewGridReview[]; oauthNote: string }
 interface GenerateResponse { ok: boolean; enhanced: boolean; plan: { headline: string; imagePrompt: string; videoPlan: { hook: string; shots: string[] } }; posts: SocialPost[] }
 
 const ALL_PLATFORMS = ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'X', 'YOUTUBE', 'TIKTOK']
@@ -181,6 +182,22 @@ export function MarketingDashboardView() {
           )}
         </div>
       </SectionCard>
+
+      <MarketingPostGrid
+        posts={(overview?.posts ?? []).map((p) => ({
+          id: p.id,
+          platform: p.platform,
+          text: p.text,
+          status: p.status,
+          mediaUrl: p.mediaUrl,
+          mediaPrompt: p.mediaPrompt,
+          createdAt: p.createdAt,
+        }))}
+        reviews={overview?.reviews ?? []}
+        onRefresh={load}
+        onAction={(id, action) => act(id, action)}
+        busy={busy}
+      />
 
       <SectionCard title="Post queue — review, approve, publish">
         <div className="mb-3">

@@ -69,6 +69,7 @@ import { CommunicationsView } from './CommunicationsView'
 import { ConversationsView } from './ConversationsView'
 import { ContentStudioView } from './ContentStudioView'
 import { FactoryView } from './FactoryView'
+import { MarketingDashboardView } from './MarketingDashboardView'
 import { FeedsView } from './FeedsView'
 import { MediaStudioView } from './MediaStudioView'
 import { TelephonyView } from './TelephonyView'
@@ -107,7 +108,7 @@ type ViewId =
   | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
   | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
-  | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts'
+  | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts' | 'marketingDashboard'
   | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
   | 'workforce' | 'pipeline'
 
@@ -131,6 +132,8 @@ const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN
   newsletter: 'MANAGER',
   seo: 'MANAGER',
   marketing: 'STAFF',
+  // The dashboard reads and writes /api/admin/marketing*, which requires ADMIN.
+  marketingDashboard: 'ADMIN',
   prompts: 'STAFF',
   knowledge: 'SUPER_ADMIN',
   content: 'ADMIN',
@@ -205,6 +208,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'blog', label: 'Blog Studio', icon: Newspaper },
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
       { id: 'seo', label: 'SEO Audit', icon: Search },
+      { id: 'marketingDashboard', label: 'Marketing Dashboard', icon: Radar },
       { id: 'marketing', label: 'Marketing Kit', icon: Megaphone },
       { id: 'prompts', label: 'Prompt Library', icon: Sparkles },
     ],
@@ -258,6 +262,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   newsletter: 'Newsletter',
   seo: 'SEO Audit',
   marketing: 'Marketing Kit',
+  marketingDashboard: 'Marketing Dashboard',
   prompts: 'Prompt Library',
   knowledge: 'Knowledge Base',
   models: 'AI Model Management',
@@ -680,6 +685,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <NewsletterView />
               ) : view === 'seo' ? (
                 <SeoAuditView />
+              ) : view === 'marketingDashboard' ? (
+                <MarketingDashboardView />
               ) : view === 'marketing' ? (
                 <MarketingKitView />
               ) : view === 'prompts' ? (
