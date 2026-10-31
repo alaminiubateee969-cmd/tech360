@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
+import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
 import { canViewFinancialDashboard, hasRole } from '@/lib/access-policy'
 import { guard, isResponse } from '@/lib/api-guard'
 
@@ -84,8 +85,8 @@ export async function GET(req: NextRequest) {
   }) : []
 
   // AI workforce roster for ADMIN and SUPER_ADMIN. Identity and status only:
-  // system prompts, tool and data permissions, memory and run controls stay
-  // SUPER_ADMIN-only (see src/lib/ai-workforce-policy.ts). STAFF and MANAGER
+  // system prompts, tool and data permissions and memory stay on their
+  // role-guarded operator/governance routes. STAFF and MANAGER
   // never receive this payload.
   const aiAgents = hasRole(g.user, 'ADMIN')
     ? await db.aiAgent.findMany({
@@ -100,6 +101,7 @@ export async function GET(req: NextRequest) {
 
   return Response.json({
     financialDataAvailable: canViewFinancials,
+    aiProvider: hasRole(g.user, 'ADMIN') ? getAgentProviderStatus() : undefined,
     aiAgents: aiAgents
       ? {
           total: aiAgents.length,

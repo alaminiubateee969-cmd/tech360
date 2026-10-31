@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, CalendarClock, CalendarDays, Loader2, Send, Sparkles, Terminal, Video, XCircle, Zap, Phone, MessageCircle } from 'lucide-react'
 
 import { api, num, useApi, type DashboardResponse } from '@/lib/admin-client'
+import { AgentProviderNotice } from './AgentProviderNotice'
 import { Markdownish } from './shared/Markdownish'
 import { ACCENT, CARD, SCROLL_THIN } from './shared/styles'
 import { Button } from '@/components/ui/button'
@@ -255,6 +256,7 @@ export function CommandCenterView() {
   const seededRef = useRef(false)
 
   const { data: dash, error: dashError } = useApi<DashboardResponse>('/api/admin/dashboard')
+  const providerUnavailable = dash?.aiProvider?.configured === false
 
   useEffect(() => {
     if (seededRef.current) return
@@ -263,7 +265,7 @@ export function CommandCenterView() {
     const s = dash?.stats
     const text = dash
       ? [
-          '**Command Center online.** Ask anything about the platform in plain language — answers and actions are executed against live data.',
+          '**Command Center connected.** Ask about the platform in plain language. AI commands require a configured execution provider; data and actions come from the backend.',
           '',
           `Live context: **${num(s?.totalLeads)}** total leads · **${num(s?.activeProjects)}** active projects · **${num(s?.pendingAdminApprovals)}** approvals awaiting you · **${num(s?.unreadCommunications)}** unread messages · **${num(s?.failedAutomations)}** failed automations.`,
         ].join('\n')
@@ -277,7 +279,7 @@ export function CommandCenterView() {
 
   async function send(text: string) {
     const message = text.trim()
-    if (!message || sending) return
+    if (!message || sending || providerUnavailable) return
     setMessages((m) => [...m, { role: 'user', text: message }])
     setInput('')
     setSending(true)
@@ -319,6 +321,8 @@ export function CommandCenterView() {
           </p>
         </div>
       </div>
+
+      <AgentProviderNotice status={dash?.aiProvider} compact />
 
       {/* messages */}
       <div
@@ -370,7 +374,7 @@ export function CommandCenterView() {
           <button
             key={q}
             type="button"
-            disabled={sending}
+            disabled={sending || providerUnavailable}
             onClick={() => void send(q)}
             className="inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/60 px-3 py-1.5 text-[11px] text-slate-400 transition-colors hover:border-[#009FE3]/50 hover:bg-[#009FE3]/10 hover:text-[#009FE3] disabled:opacity-40"
           >
@@ -405,7 +409,7 @@ export function CommandCenterView() {
           placeholder="e.g. schedule a call with TECH-2026-000001 next Tuesday 3pm, or move their call to Thursday 4pm…"
           className="max-h-32 min-h-[44px] flex-1 resize-none rounded-lg border border-slate-800 bg-slate-950/70 px-3.5 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus-visible:border-[#009FE3]/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#009FE3]/40"
         />
-        <Button type="submit" disabled={sending || !input.trim()} className="h-11 px-5 font-semibold" style={{ background: ACCENT }}>
+        <Button type="submit" disabled={sending || providerUnavailable || !input.trim()} className="h-11 px-5 font-semibold" style={{ background: ACCENT }}>
           {sending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}
           <span className="sr-only sm:not-sr-only">Run</span>
         </Button>

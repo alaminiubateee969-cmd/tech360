@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { channelStatuses } from '@/lib/comms'
 import { getZaiProviderStatus } from '@/lib/ai-provider'
+import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
 import { modelServiceStatus } from '@/lib/model/router'
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
 
   const channels = channelStatuses()
   const zai = getZaiProviderStatus()
+  const agentProvider = getAgentProviderStatus()
   const models = modelServiceStatus()
 
   let featureFlags: Record<string, boolean> = {}
@@ -97,6 +99,14 @@ export async function GET(req: NextRequest) {
       category: 'AI',
       state: models.state === 'UNAVAILABLE' ? 'NOT_CONFIGURED' : 'CONFIGURED',
       detail: models.detail,
+      adminSwitch: null,
+    },
+    {
+      id: 'agent-provider',
+      name: 'AI workforce execution provider',
+      category: 'AI',
+      state: agentProvider.configured ? 'CONFIGURED' : 'NOT_CONFIGURED',
+      detail: agentProvider.detail,
       adminSwitch: null,
     },
     {

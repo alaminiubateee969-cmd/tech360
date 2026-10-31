@@ -8,8 +8,6 @@ const REQUIRED = [
   "SESSION_SECRET",
   "PORTAL_SECRET",
   "OPS_SECRET",
-  "ZAI_BASE_URL",
-  "ZAI_API_KEY",
 ];
 const SECRET_NAMES = ["SESSION_SECRET", "PORTAL_SECRET", "OPS_SECRET", "IDENTITY_HASH_SECRET", "EMAIL_WEBHOOK_SECRET"];
 const errors = [];
@@ -58,6 +56,33 @@ if (process.env.PREVIEW_SQLITE_URL?.trim()) {
 const aiOpsDriver = process.env.AI_OPS_DRIVER?.trim().toLowerCase();
 if (aiOpsDriver && !["on", "off"].includes(aiOpsDriver)) {
   errors.push("AI_OPS_DRIVER (must be on or off)");
+}
+
+// The execution engine supports three provider paths. Require at least one
+// complete path, rather than requiring ZAI when the operator chose a gateway
+// or OpenRouter. Keep each configured ZAI endpoint subject to the same safety
+// validation as before. Never print provider credentials or endpoint values.
+const hasZai = Boolean(process.env.ZAI_BASE_URL?.trim() && process.env.ZAI_API_KEY?.trim());
+const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY?.trim());
+const gatewayBaseUrl = process.env.AI_GATEWAY_BASE_URL?.trim();
+const gatewayToken = process.env.AGENTOS_GATEWAY_TOKEN?.trim();
+let hasGateway = Boolean(gatewayBaseUrl && gatewayToken);
+if (gatewayBaseUrl) {
+  try {
+    const parsed = new URL(gatewayBaseUrl);
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password || parsed.search || parsed.hash) {
+      errors.push("AI_GATEWAY_BASE_URL (must be an absolute HTTP(S) URL without credentials or query data)");
+      hasGateway = false;
+    }
+  } catch {
+    errors.push("AI_GATEWAY_BASE_URL (invalid URL)");
+    hasGateway = false;
+  }
+}
+if (gatewayBaseUrl && !gatewayToken) errors.push("AGENTOS_GATEWAY_TOKEN (required with AI_GATEWAY_BASE_URL)");
+if (gatewayToken && !gatewayBaseUrl) errors.push("AI_GATEWAY_BASE_URL (required with AGENTOS_GATEWAY_TOKEN)");
+if (!hasZai && !hasOpenRouter && !hasGateway) {
+  errors.push("AI provider (configure AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN, OPENROUTER_API_KEY, or ZAI_BASE_URL + ZAI_API_KEY)");
 }
 
 const zaiBaseUrl = process.env.ZAI_BASE_URL;

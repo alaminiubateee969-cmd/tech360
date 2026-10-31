@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { getZaiProviderStatus } from '@/lib/ai-provider'
+import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
 import { channelStatuses } from '@/lib/comms'
 import packageJson from '../../../../package.json'
 
@@ -12,13 +12,13 @@ export async function GET() {
     : databaseUrl.startsWith('file:')
       ? 'SQLite'
       : 'database'
-  const checks: Record<string, { status: string; detail?: string }> = {}
+  const checks: Record<string, { status: string; detail?: string; provider?: string }> = {}
   // Safe provider states: CONFIGURED | NOT_CONFIGURED | MISCONFIGURED.
-  const provider = getZaiProviderStatus()
+  const provider = getAgentProviderStatus()
   const providerRequired = process.env.NODE_ENV === 'production'
   let databaseHealthy = false
 
-  checks.aiProvider = { status: provider.state, detail: provider.detail }
+  checks.aiProvider = { status: provider.state, detail: provider.detail, provider: provider.provider }
 
   try {
     // SELECT 1 proves network/credentials; this model query also confirms that

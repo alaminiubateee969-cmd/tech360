@@ -1,6 +1,7 @@
 import { AI_OPERATOR_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
+import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
 import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText } from '@/lib/security'
 import { AGENT_HANDLER, AGENT_REGISTRY_VERSION } from '@/lib/agents/registry'
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
       parentCode: a.parentCode, dailyQuota: a.dailyQuota,
     })),
     departments: departments.map((d) => ({ code: d.code, name: d.name, category: d.category })),
+    aiProvider: getAgentProviderStatus(),
     stats: { totalDepartments: departments.length, totalAgents: stats._count, activeAgents: active, totalExecutions: totalExec },
   })
 }

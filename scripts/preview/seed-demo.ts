@@ -178,6 +178,7 @@ async function main() {
     'Platform Owner',
     'Tech360-Demo-2026!',
   )
+  await user('operations@tech360.local', 'Tech360 Operations Admin', 'ADMIN', 'Operations Administrator', 'Tech360-Demo-2026!')
   await user('manager@tech360.local', 'Farhana Rahman', 'MANAGER', 'Delivery Manager', 'Tech360-Demo-2026!')
   await user('sales@tech360.local', 'Tanvir Ahmed', 'STAFF', 'Growth Specialist', 'Tech360-Demo-2026!')
 

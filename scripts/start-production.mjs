@@ -57,6 +57,8 @@ function summary() {
     `OPS_SECRET=${yes('OPS_SECRET')}`,
     `IDENTITY_HASH_SECRET=${yes('IDENTITY_HASH_SECRET')}`,
     `ZAI_BASE_URL=${yes('ZAI_BASE_URL')} / ZAI_API_KEY=${yes('ZAI_API_KEY')}`,
+    `OPENROUTER_API_KEY=${yes('OPENROUTER_API_KEY')}`,
+    `AI_GATEWAY_BASE_URL=${yes('AI_GATEWAY_BASE_URL')} / AGENTOS_GATEWAY_TOKEN=${yes('AGENTOS_GATEWAY_TOKEN')}`,
     `AI_OPS_DRIVER=${process.env.AI_OPS_DRIVER?.trim() || '(default: on)'}`,
     `PREVIEW_SQLITE_URL=${process.env.PREVIEW_SQLITE_URL ? 'SET (refused in production)' : 'not set'}`,
   ]

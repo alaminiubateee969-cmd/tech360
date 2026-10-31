@@ -229,8 +229,15 @@ export interface DashboardAgentRow {
   deptName: string
   category: string
 }
+export interface AgentProviderSummary {
+  provider: 'ai-gateway' | 'openrouter' | 'zai' | 'none'
+  state: 'CONFIGURED' | 'NOT_CONFIGURED' | 'MISCONFIGURED'
+  configured: boolean
+  detail: string
+}
 export interface DashboardResponse {
   financialDataAvailable: boolean
+  aiProvider?: AgentProviderSummary
   aiAgents?: { total: number; active: number; agents: DashboardAgentRow[] } | null
   stats: DashboardStats
   pipeline: StageCount[]
@@ -824,6 +831,7 @@ export interface AgentRow {
 }
 export interface DepartmentRow { code: string; name: string; category?: string | null }
 export interface AgentsResponse {
+  aiProvider?: AgentProviderSummary
   agents: AgentRow[]
   departments: DepartmentRow[]
 }

@@ -44,7 +44,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
 import { isReadOnlyRole } from '@/lib/access-policy'
-import { ROLE_RANK } from '@/lib/constants'
+import { canAccessAdminView, type AdminViewId } from '@/lib/admin-view-policy'
 import { ChangePasswordScreen } from './ChangePasswordScreen'
 import { LoginScreen } from './LoginScreen'
 import { NotificationCenter } from './NotificationCenter'
@@ -103,59 +103,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-type ViewId =
-  | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
-  | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
-  | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
-  | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts'
-  | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
-  | 'workforce' | 'pipeline'
-
-// Minimum console role required to see (and use) each view. Mirrors the
-// server-side minRole on the backing API routes — the nav never advertises
-// a view whose data the role cannot actually load.
-const VIEW_MIN_ROLE: Record<ViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN'> = {
-  dashboard: 'STAFF',
-  ops: 'SUPER_ADMIN',
-  leads: 'STAFF',
-  clients: 'STAFF',
-  approvals: 'MANAGER',
-  communications: 'STAFF',
-  chat: 'STAFF',
-  payments: 'MANAGER',
-  projects: 'MANAGER',
-  reviews: 'MANAGER',
-  agents: 'ADMIN',
-  command: 'ADMIN',
-  memory: 'SUPER_ADMIN',
-  newsletter: 'MANAGER',
-  seo: 'MANAGER',
-  marketing: 'STAFF',
-  prompts: 'STAFF',
-  knowledge: 'SUPER_ADMIN',
-  content: 'ADMIN',
-  blog: 'MANAGER',
-  analytics: 'MANAGER',
-  logs: 'SUPER_ADMIN',
-  n8n: 'SUPER_ADMIN',
-  reports: 'MANAGER',
-  settings: 'SUPER_ADMIN',
-  team: 'SUPER_ADMIN',
-  factory: 'ADMIN',
-  media: 'STAFF',
-  feeds: 'STAFF',
-  telephony: 'STAFF',
-  models: 'SUPER_ADMIN',
-  skills: 'SUPER_ADMIN',
-  departments: 'SUPER_ADMIN',
-  tasks: 'SUPER_ADMIN',
-  workflows: 'SUPER_ADMIN',
-  integrations: 'SUPER_ADMIN',
-  backup: 'SUPER_ADMIN',
-  dcc: 'SUPER_ADMIN',
-  workforce: 'SUPER_ADMIN',
-  pipeline: 'MANAGER',
-}
+type ViewId = AdminViewId
 
 interface NavItem {
   id: ViewId
@@ -335,12 +283,16 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
   const failedAutomations = num(dash?.stats?.failedAutomations)
 
   const navigate = useCallback((v: ViewId) => {
+    if (!canAccessAdminView(me?.role, v)) {
+      toast.error('This module is not available for your account role.')
+      return
+    }
     setView(v)
     setClientId(null)
     setProjectId(null)
     setNavOpen(false)
     viewTitleRef.current?.focus()
-  }, [])
+  }, [me?.role])
 
   const openClient = useCallback((id: string) => {
     setClientId(id)
@@ -380,25 +332,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
 
   // Role-gated navigation: only advertise views this role can actually load.
   const userRole = me?.role ?? 'STAFF'
-  const roleRank = me ? (ROLE_RANK[userRole] ?? 1) : 0
-  const canAccessView = (id: ViewId): boolean => {
-    if (userRole === 'FINANCE') {
-      return ['dashboard', 'clients', 'payments', 'approvals', 'reports'].includes(id)
-    }
-    if (userRole === 'PROJECT_MANAGER') {
-      return ['dashboard', 'leads', 'clients', 'approvals', 'communications', 'chat', 'projects', 'pipeline', 'reports'].includes(id)
-    }
-    if (userRole === 'DEVELOPER') {
-      return ['dashboard', 'clients', 'communications', 'chat', 'projects'].includes(id)
-    }
-    if (userRole === 'SALES' || userRole === 'SUPPORT') {
-      return ['dashboard', 'leads', 'clients', 'communications', 'chat', 'telephony', 'marketing', 'prompts'].includes(id)
-    }
-    if (userRole === 'AUDITOR') {
-      return ['dashboard', 'leads', 'clients', 'payments', 'projects', 'reports'].includes(id)
-    }
-    return roleRank >= (ROLE_RANK[VIEW_MIN_ROLE[id]] ?? 4)
-  }
+  const canAccessView = (id: ViewId): boolean => canAccessAdminView(userRole, id)
   const visibleNav = NAV.map((group) => ({
     ...group,
     items: group.items.filter((item) => canAccessView(item.id)),
@@ -708,8 +642,10 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <ReportsView />
               ) : view === 'team' ? (
                 <TeamView />
-              ) : (
+              ) : view === 'settings' && canAccessView('settings') ? (
                 <SettingsView />
+              ) : (
+                <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-200">This module is not available for your account role. Choose an available module from the navigation.</div>
               )}
             </motion.div>
           </AnimatePresence>

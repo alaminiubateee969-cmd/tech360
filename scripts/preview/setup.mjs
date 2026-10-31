@@ -174,6 +174,7 @@ Preview database ready.
 
   Super Admin console:  http://localhost:3000/#/admin
     admin@tech360.local      / Tech360-Demo-2026!
+    operations@tech360.local / Tech360-Demo-2026!
     manager@tech360.local    / Tech360-Demo-2026!
     sales@tech360.local      / Tech360-Demo-2026!
 

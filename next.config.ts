@@ -5,6 +5,9 @@ const CANONICAL_ORIGIN = "https://bdtech360.com";
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: false,
+  // Next dev protects its HMR/runtime resources from foreign origins. Allow the
+  // Arena preview proxy and loopback diagnostics; production is unaffected.
+  allowedDevOrigins: ["127.0.0.1", "*.e2b.app"],
   async redirects() {
     return [
       // The root path is declared explicitly: for the catch-all below,
@@ -27,16 +30,26 @@ const nextConfig: NextConfig = {
         // Hostinger terminates TLS before the Node.js process. Redirect only
         // when its trusted proxy explicitly marks the original request as HTTP.
         source: "/",
-        has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
+        has: [
+          { type: "host", value: "bdtech360.com" },
+          { type: "header", key: "x-forwarded-proto", value: "http" },
+        ],
         destination: `${CANONICAL_ORIGIN}/`,
         permanent: true,
       },
       {
         source: "/:path*",
-        has: [{ type: "header", key: "x-forwarded-proto", value: "http" }],
+        has: [
+          { type: "host", value: "bdtech360.com" },
+          { type: "header", key: "x-forwarded-proto", value: "http" },
+        ],
         destination: `${CANONICAL_ORIGIN}/:path*`,
         permanent: true,
       },
+      // Friendly aliases for the one role-based console. Authentication and
+      // permissions are unchanged; there is no separate unguarded dashboard.
+      { source: "/admin", destination: "/#/admin", permanent: false },
+      { source: "/super-admin", destination: "/#/admin", permanent: false },
     ];
   },
   async headers() {

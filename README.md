@@ -10,7 +10,7 @@ One codebase, three surfaces:
 |---|---|---|
 | **Public website** | `/` (hash routes `#/services`, `#/industries`, `#/work`, `#/blog`, …) | Marketing site, blog, case studies, contact intake → real lead in the CRM |
 | **Client portal** | `/#/portal` (Client ID + email/WhatsApp) | Projects, milestones, meetings, files, previews, approvals, payments, invoices, handover |
-| **Super Admin console** | `/#/admin` (role-based login) | CRM, projects, payments, invoices (official pad documents), internal automation & delivery tools (**dashboard-only — never mentioned on the public website**, see `docs/AI_VISIBILITY_POLICY.md`), **Media Studio**, **Feed Hub**, **Calls & SMS**, governance switches, ops monitor, analytics, logs |
+| **Super Admin console** | `/#/admin` (role-based login; `/admin` and `/super-admin` redirect here) | CRM, projects, payments, invoices (official pad documents), internal automation & delivery tools (**dashboard-only — never mentioned on the public website**, see `docs/AI_VISIBILITY_POLICY.md`), **Media Studio**, **Feed Hub**, **Calls & SMS**, governance switches, ops monitor, analytics, logs |
 | **Design kit** | `/#/design-kit` | The live design system: buttons, accessibly-labelled sequence/funnel/swimlane diagrams, infographics, interface mockups and tokens — the same components the site and generated client apps use |
 
 The official **company letterhead** (owner-provided pad + logo) drives every document the platform issues — SOW previews, tax invoices, the handover & acceptance certificate, printed legal policies (`src/lib/letterhead.ts`, see `OFFICIAL-DOCUMENTS.md`).
@@ -40,7 +40,7 @@ sign-in; without it the portal fails closed with `503` because no code-delivery 
 (production always requires a real one-time code).
 
 Then open `/#/` (website), `/#/portal` (client portal) and `/#/admin` (Super Admin console,
-`admin@tech360.local` / `Tech360-Demo-2026!`). Preview mode is refused when `NODE_ENV=production`
+`admin@tech360.local` / `Tech360-Demo-2026!`; Admin: `operations@tech360.local` with the same demo password). Preview mode is refused when `NODE_ENV=production`
 (`src/lib/preview-db.ts`) and `.preview/` is git-ignored — it is never production storage.
 
 A second, unused prototype that PR #39 merged into `main` is preserved **out of the build path** in

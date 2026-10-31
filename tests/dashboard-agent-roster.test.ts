@@ -2,8 +2,8 @@
  * TECH360 — AI agent roster on the ADMIN and SUPER_ADMIN dashboards.
  *
  * Both roles see every registered AI agent (identity and status). The rest of
- * the workforce surface (system prompts, tool and data permissions, memory,
- * run controls) stays SUPER_ADMIN only. These checks are static so they run
+ * Agent and command operation is ADMIN+. Infrastructure and governance
+ * remain SUPER_ADMIN-only on their separate routes. These checks are static so they run
  * in CI without a database or a browser.
  */
 import assert from 'node:assert/strict'
@@ -65,7 +65,8 @@ describe('dashboard roster: what it exposes', () => {
     assert.match(view, /\{isSuperAdmin \? <AiOpsCard loading=\{loading\} \/> : null\}/)
   })
 
-  it('the "Open AI Workforce" action is SUPER_ADMIN only', () => {
-    assert.match(view, /isSuperAdmin \? <Button size="sm" variant="outline" onClick=\{\(\) => onNavigate\('agents'\)\}>/)
+  it('the "Open AI Workforce" action is available to both operator roles', () => {
+    assert.match(view, /canOperate \? <Button size="sm" variant="outline" onClick=\{\(\) => onNavigate\('agents'\)\}>/)
+    assert.match(view, /canOperate=\{canSeeRoster\}/)
   })
 })
