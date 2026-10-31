@@ -5,6 +5,12 @@
 **Historical checkpoint:** 2026-09-30 · **Branch at that checkpoint:** `arena/01a0eebb-tech360`
 **Source set reviewed at that checkpoint:** owner prompt; repository documentation; `worklog.md`; `COVERAGE-AUDIT.md`; schema, routes, components, deployment scripts, environment template, and Git history available in that checkout.
 
+> **Current status (2026-10-30):** a fresh, command-based audit of the full
+> repository — including the requirement dispositions that supersede parts of the
+> historical table below — is in
+> [`docs/AUDIT_2026-10-30_GAP_REPORT.md`](docs/AUDIT_2026-10-30_GAP_REPORT.md).
+> Read that first; this file remains as the historical record.
+
 Status vocabulary used in the historical table: `VERIFIED_COMPLETE`, `PARTIALLY_IMPLEMENTED`, `MISSING`, `BROKEN`, `NOT_VERIFIED`, `BLOCKED`, `NOT_APPLICABLE`.
 
 > Historical statuses are not completion claims. A current `VERIFIED` status requires current code/data or a fresh executed check; production/provider claims remain blocked until tested against the real service.

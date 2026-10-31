@@ -20,6 +20,37 @@
 | B-011 | GATEWAY BUILT; NOT DEPLOYED | Shared AI Gateway complete in code with 25 passing tests; production registry digests/keys unset and deployment unverified | Gateway routes answer fail-closed (503/401) until the host env is configured | Owner sets `AI_GATEWAY_APPS` digests + provider keys on the host, deploys, and verifies `/api/ai-gateway/ready` returns 200 (see `docs/AI_GATEWAY.md`) |
 | B-009 | CONFIGURED IN CODE; KEY NOT SET | Free-model runtime is optional until the owner adds a key | `src/lib/agents/model-provider.ts` tries OpenRouter free models (`openrouter/free` + `:free` chain) when `OPENROUTER_API_KEY` is set, else the platform SDK. No key has been supplied in this session, so no free-model call has been exercised live. | Owner creates a free OpenRouter key, sets `OPENROUTER_API_KEY` (and optionally `OPENROUTER_MODELS`) in hPanel env, then runs one agent from the Admin dashboard and checks the execution record. |
 
+## B-005 evidence refresh — 2026-10-30 (branch `arena/35a29cec-tech360`)
+
+Re-tested from a clean `npm ci` in the Arena sandbox. **The blocker is
+unchanged; no workaround was applied and no Prisma client was fabricated.**
+
+| Check | Result |
+|---|---|
+| `prisma` / `@prisma/client` pinned version | `6.19.3` / `6.19.3` (unchanged, no 7.x installed) |
+| `@prisma/engines-version` | `7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7` |
+| Datasource | `provider = "mysql"` (`env("DATABASE_URL")`) — unmodified |
+| `prisma generate` | **FAILED** — engine download blocked |
+| `prisma generate --no-engine` | **FAILED** — same schema-engine download |
+| `binaries.prisma.sh` reachability | TLS handshake failure (`SSL_ERROR_SYSCALL`), HTTP `000` |
+| `registry.npmjs.org` reachability | HTTP `200` (npm installs work; engine CDN does not) |
+| Locally cached engine binary | none found on the filesystem |
+
+Consequences, stated precisely:
+
+- `node_modules/.prisma/client` remains the placeholder stub (`PrismaClient: any`).
+  `tsc --noEmit` therefore passes **without** validating any Prisma query shape.
+- Any route that touches the database returns 5xx in this sandbox. Observed and
+  expected: `GET /api/health` → 503 (`database: DOWN`), `GET /sitemap.xml` → 500
+  (`src/app/sitemap.ts` → `db`), `POST /api/contact` → 500 after validation.
+  Public pages, static assets and all validation/auth gates still respond normally.
+- Database-backed integration suites cannot pass here and are reported as
+  *blocked*, not as passing.
+
+Rules preserved: no engine mirror override, no TLS bypass, no downgrade/upgrade to
+an incompatible Prisma version, no hand-written client, and no production
+`DATABASE_URL` was set or read.
+
 ## Quality and security follow-up
 
 - Review the current test/QA report for suite results; a passing policy suite does not certify every route, database workflow, browser, or provider.

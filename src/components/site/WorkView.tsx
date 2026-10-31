@@ -11,6 +11,7 @@ import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
 import { WebsiteConceptMockup } from "./concepts";
 import { CardLinkAffordance, PrimaryLink } from "./buttons";
+import { WorkExamples } from "./WorkExamples";
 
 /**
  * Expanded illustrative scenario detail — not an audited customer case study
@@ -315,16 +316,24 @@ export default function WorkView() {
   return (
     <main id="main-content">
       <PageHero
-        eyebrow="Illustrative scenarios"
-        title="Example project scenarios"
-        description="These hypothetical examples show possible approaches across several industries. They are not verified client engagements, audited case studies, or measured outcomes."
+        eyebrow="Systems and scenarios"
+        title="What we build, and how a project can run"
+        description="The gallery below shows twelve systems Tech360 can deliver, each as a clearly labelled concept preview. The scenarios further down are illustrative project stories. Neither section is a verified client engagement or a measured outcome."
         breadcrumb={[{ label: "Work" }]}
       />
+
+      {/* Twelve premium system showcases with self-hosted concept visuals */}
+      <WorkExamples />
 
       <section aria-labelledby="scenarios-heading" className="bg-[#F4FAFF]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <Reveal>
-            <div className="mb-10 flex items-start gap-3 rounded-xl border border-[#E2E8F0] bg-white p-5">
+            <h2 id="scenarios-heading" className="text-2xl font-bold tracking-tight text-[#0B1F33] sm:text-3xl">
+              Illustrative project scenarios
+            </h2>
+          </Reveal>
+          <Reveal>
+            <div className="mb-10 mt-5 flex items-start gap-3 rounded-xl border border-[#E2E8F0] bg-white p-5">
               <Compass className="mt-0.5 size-5 shrink-0 text-[#009FE3]" aria-hidden="true" />
               <p className="text-sm leading-relaxed text-[#526173]">
                 <span className="font-semibold text-[#0B1F33]">How to read these:</span>{" "}
@@ -335,7 +344,6 @@ export default function WorkView() {
 
           <ConceptShowcase />
 
-          <h2 id="scenarios-heading" className="sr-only">Illustrative scenario list</h2>
           <RevealList className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {CASE_STUDIES.map((study) => (
               <RevealItem key={study.slug} className="h-full">

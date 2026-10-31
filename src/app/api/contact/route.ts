@@ -6,6 +6,8 @@ import { intakeLead } from '@/lib/journey'
 import { readJson, sanitizeText, sanitizeEmail, rateLimit, clientIp, logError, audit } from '@/lib/security'
 import { toE164 } from '@/lib/phone'
 import { hasExplicitContactConsent, CONTACT_CONSENT_VERSION, isValidClientRequestId } from '@/lib/contact-policy'
+import { buildIntakeContext, describeSource, hasAttribution } from '@/lib/intake-context'
+import { planFirstFollowUp, persistLeadFollowUp } from '@/lib/lead-followup'
 
 export const dynamic = 'force-dynamic'
 
@@ -125,16 +127,33 @@ export async function POST(req: NextRequest) {
   const rl = rateLimit(`contact:${ip}`, 5, 10 * 60_000)
   if (!rl.ok) return Response.json({ error: 'Too many submissions. Please try again later or email info@bdtech360.com.' }, { status: 429 })
 
+  // First-party intake context: allowlisted UTM/click-id attribution, device,
+  // browser, OS and coarse (header-derived) location. No external geo lookup,
+  // no raw User-Agent or full referrer URL is stored.
+  const intakeContext = buildIntakeContext({ headers: req.headers, tracking: raw.tracking })
+
   let submission = existing
   if (!submission) {
     const capturedAt = new Date()
-    const trackingInput = raw.tracking && typeof raw.tracking === 'object' && !Array.isArray(raw.tracking)
-      ? raw.tracking as Record<string, unknown>
-      : {}
     const tracking = JSON.stringify({
-      source: 'CONTACT_FORM',
-      referrer: sanitizeText(trackingInput.ref, 500) || null,
-      path: sanitizeText(trackingInput.path, 200) || null,
+      form: 'CONTACT_FORM',
+      attribution: {
+        source: intakeContext.source,
+        medium: intakeContext.medium,
+        campaign: intakeContext.campaign,
+        term: intakeContext.term,
+        content: intakeContext.content,
+        clickId: intakeContext.clickId,
+        referrer: intakeContext.referrer,
+        landingPath: intakeContext.landingPath,
+      },
+      client: {
+        device: intakeContext.device,
+        browser: intakeContext.browser,
+        os: intakeContext.os,
+      },
+      location: intakeContext.location,
+      secure: intakeContext.secure,
       consent: { contact: true, version: CONTACT_CONSENT_VERSION, capturedAt: capturedAt.toISOString() },
     })
     try {
@@ -202,7 +221,19 @@ export async function POST(req: NextRequest) {
         data: {
           status: 'PENDING_REVIEW',
           tracking: JSON.stringify({
-            source: 'CONTACT_FORM',
+            form: 'CONTACT_FORM',
+            attribution: {
+              source: intakeContext.source,
+              medium: intakeContext.medium,
+              campaign: intakeContext.campaign,
+              term: intakeContext.term,
+              content: intakeContext.content,
+              clickId: intakeContext.clickId,
+              referrer: intakeContext.referrer,
+              landingPath: intakeContext.landingPath,
+            },
+            client: { device: intakeContext.device, browser: intakeContext.browser, os: intakeContext.os },
+            location: intakeContext.location,
             consent: { contact: true, version: CONTACT_CONSENT_VERSION },
             identityReviewRequired: true,
           }),
@@ -254,18 +285,66 @@ export async function POST(req: NextRequest) {
       contactConsent: true,
       tracking: {
         source: 'CONTACT_FORM',
-        referrer: raw.tracking && typeof raw.tracking === 'object' && !Array.isArray(raw.tracking)
-          ? sanitizeText((raw.tracking as Record<string, unknown>).ref, 500) || null
-          : null,
-        path: raw.tracking && typeof raw.tracking === 'object' && !Array.isArray(raw.tracking)
-          ? sanitizeText((raw.tracking as Record<string, unknown>).path, 200) || null
-          : null,
+        form: 'CONTACT_FORM',
+        attribution: {
+          source: intakeContext.source,
+          medium: intakeContext.medium,
+          campaign: intakeContext.campaign,
+          term: intakeContext.term,
+          content: intakeContext.content,
+          clickId: intakeContext.clickId,
+          referrer: intakeContext.referrer,
+          landingPath: intakeContext.landingPath,
+        },
+        client: { device: intakeContext.device, browser: intakeContext.browser, os: intakeContext.os },
+        location: intakeContext.location,
         consent: { contact: true, version: CONTACT_CONSENT_VERSION },
       },
       formId: submission.id,
     })
 
-    await audit({ actor: 'public:form', action: 'CONTACT_FORM_SUBMITTED', clientId: result.clientId, ip, details: { formId: submission.id } })
+    // CRM task + follow-up schedule. The lead is already saved at this point, so
+    // a scheduling failure is recorded but never converts the submission into an
+    // error the visitor sees.
+    const followUpPlan = planFirstFollowUp({
+      source: 'WEBSITE',
+      businessType,
+      projectType,
+      budgetRange,
+      preferredContact,
+      hasEmail: Boolean(email),
+      hasWhatsapp: Boolean(whatsapp),
+      hasPhone: Boolean(phone),
+    })
+    const followUp = await persistLeadFollowUp({
+      clientRowId: result.clientRowId,
+      clientId: result.clientId,
+      plan: followUpPlan,
+      attribution: intakeContext,
+      isNewClient: true,
+    }).catch((error: unknown) => ({
+      stored: false,
+      taskCreated: false,
+      taskRef: null as string | null,
+      error: error instanceof Error ? error.message : 'follow-up scheduling failed',
+    }))
+
+    await audit({
+      actor: 'public:form',
+      action: 'CONTACT_FORM_SUBMITTED',
+      clientId: result.clientId,
+      ip,
+      details: {
+        formId: submission.id,
+        attributed: hasAttribution(intakeContext),
+        source: describeSource(intakeContext),
+        device: intakeContext.device,
+        followUpDueAt: followUpPlan.dueAt,
+        followUpStored: followUp.stored,
+        taskCreated: followUp.taskCreated,
+        followUpError: followUp.error ?? null,
+      },
+    })
     const emailDelivery = result.welcome?.deliveries.find((delivery) => delivery.channel === 'EMAIL')
     const emailDeliveryStatus = emailDelivery?.ok ? 'ACCEPTED_BY_PROVIDER' : emailDelivery ? 'NOT_CONFIRMED' : 'NOT_ATTEMPTED'
     return Response.json({

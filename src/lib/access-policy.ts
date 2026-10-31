@@ -129,6 +129,21 @@ export const ROLE_CAPABILITIES: Record<Role, ReadonlySet<Capability>> = {
     'comms.send',
     'project.read',
   ]),
+  // Campaigns, content and channel reporting. No finance, scope approval,
+  // handover release or governance capability.
+  MARKETING: new Set<Capability>([
+    'crm.read',
+    'crm.write',
+    'comms.send',
+    'project.read',
+  ]),
+  // Design and preview work on assigned projects only. Designers may manage
+  // previews but cannot approve scopes, release handovers or read finance.
+  DESIGNER: new Set<Capability>([
+    'crm.read',
+    'project.read',
+    'preview.manage',
+  ]),
 }
 
 export function isValidRole(role: string): role is Role {
