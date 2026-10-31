@@ -1,5 +1,6 @@
-import { completeWithFreeModels, openRouterConfigured, type ChatMessage } from './model-provider'
-import { gatewayComplete, gatewayConfigured } from '@/lib/ai-gateway/client'
+import { completeWithFreeModels, type ChatMessage } from './model-provider'
+import { gatewayComplete } from '@/lib/ai-gateway/client'
+import { resolveAgentProvider } from '@/lib/agents/provider-selection'
 import { db } from '@/lib/db'
 import { createZaiClient, ZaiProviderError } from '@/lib/ai-provider'
 import { withTimeout, resolveAgentTimeoutMs, isTransientRunError, MAX_RETRY_ATTEMPTS, RunTimeoutError } from '@/lib/agents/resilience'
@@ -237,11 +238,12 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
   try {
     for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt += 1) {
       try {
-        if (gatewayConfigured()) {
+        const selectedProvider = resolveAgentProvider()
+        if (selectedProvider === 'ai-gateway') {
           const result = await withTimeout(() => gatewayComplete(messages as ChatMessage[]), timeoutMs)
           output = result.output
           provider = result.provider
-        } else if (openRouterConfigured()) {
+        } else if (selectedProvider === 'openrouter') {
           const result = await withTimeout(() => completeWithFreeModels(messages as ChatMessage[]), timeoutMs)
           output = result.output
           provider = result.model

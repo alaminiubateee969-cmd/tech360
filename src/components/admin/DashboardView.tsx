@@ -66,6 +66,8 @@ import {
   type DashboardResponse,
   type RecentLead,
 } from '@/lib/admin-client'
+import { canAccessAdminView } from '@/lib/admin-view-policy'
+import { AgentProviderNotice } from './AgentProviderNotice'
 import { DataTable, type Column } from './shared/DataTable'
 import { EmptyState, KpiCard, PageHeader, SectionCard } from './shared/cards'
 import { StatusBadge } from './shared/StatusBadge'
@@ -107,6 +109,7 @@ type OpsStatus = {
   recentCycles: Array<{ id: string; at: string; status: string; summary: Record<string, unknown>; actions: string[] }>
   agents: { registered: number; totalExecutions: number; successes: number; failures: number; executions24h: number }
   unreadAlerts: number
+  provider?: { name: string; state: string; configured: boolean; detail: string }
 }
 
 function fmtAge(sec: number | null): string {
@@ -185,6 +188,7 @@ function AiOpsCard({ loading }: { loading: boolean }) {
                 ? `Cycle #${ops.cycles ?? '—'} · heartbeat ${fmtAge(ops.heartbeatAgeSec)} · beats every ${Math.round(ops.intervalSec / 60) || 1} min`
                 : 'Detect → Understand → Decide → Execute → Verify → Log → Learn'}
             </p>
+            {ops?.provider ? <p className="mt-1 text-[10px] text-slate-400">AI provider: {ops.provider.name} · {ops.provider.state}</p> : null}
           </div>
         </div>
 
@@ -289,10 +293,10 @@ const MODULE_DIRECTORY: Array<{ section: string; items: Array<{ id: string; labe
   },
 ]
 
-function AgentRosterCard({ data, loading, isSuperAdmin, onNavigate }: {
+function AgentRosterCard({ data, loading, canOperate, onNavigate }: {
   data: DashboardResponse['aiAgents'] | undefined
   loading: boolean
-  isSuperAdmin: boolean
+  canOperate: boolean
   onNavigate: (id: string) => void
 }) {
   const groups = new Map<string, DashboardAgentRow[]>()
@@ -306,7 +310,7 @@ function AgentRosterCard({ data, loading, isSuperAdmin, onNavigate }: {
     <SectionCard
       title="AI Workforce roster"
       description={data ? `${data.active} active of ${data.total} registered AI agents. Identity and status only.` : 'Every registered AI agent'}
-      actions={isSuperAdmin ? <Button size="sm" variant="outline" onClick={() => onNavigate('agents')}>Open AI Workforce</Button> : undefined}
+      actions={canOperate ? <Button size="sm" variant="outline" onClick={() => onNavigate('agents')}>Open AI Workforce</Button> : undefined}
     >
       {loading && !data ? (
         <Skeleton className="h-40 w-full" />
@@ -429,7 +433,8 @@ export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { ro
       {isSuperAdmin ? <AiOpsCard loading={loading} /> : null}
 
       {/* Every registered AI agent — ADMIN and SUPER_ADMIN */}
-      {canSeeRoster ? <AgentRosterCard data={data?.aiAgents} loading={loading} isSuperAdmin={isSuperAdmin} onNavigate={onNavigate} /> : null}
+      {canSeeRoster ? <AgentProviderNotice status={data?.aiProvider} /> : null}
+      {canSeeRoster ? <AgentRosterCard data={data?.aiAgents} loading={loading} canOperate={canSeeRoster} onNavigate={onNavigate} /> : null}
 
       {/* Module directory — one click to any operating module */}
       <SectionCard
@@ -438,7 +443,7 @@ export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { ro
         contentClassName="p-4"
       >
         <nav aria-label="Platform modules" className="space-y-4">
-          {MODULE_DIRECTORY.map((group) => (
+          {MODULE_DIRECTORY.map((group) => ({ ...group, items: group.items.filter((m) => canAccessAdminView(role, m.id)) })).filter((group) => group.items.length > 0).map((group) => (
             <div key={group.section}>
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{group.section}</p>
               <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">

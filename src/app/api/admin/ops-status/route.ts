@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
-import { getZaiProviderStatus } from '@/lib/ai-provider'
+import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
 import { getRegistryStatus } from '@/lib/agents/bootstrap'
 
 export const dynamic = 'force-dynamic'
@@ -61,10 +61,10 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  const provider = getZaiProviderStatus()
+  const provider = getAgentProviderStatus()
   return Response.json({
     status, // ACTIVE | STALE | OFFLINE — honest, never faked
-    provider: { state: provider.state, configured: provider.configured, detail: provider.detail },
+    provider: { name: provider.provider, state: provider.state, configured: provider.configured, detail: provider.detail },
     registry,
     heartbeatAgeSec,
     intervalSec,

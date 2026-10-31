@@ -2,6 +2,7 @@ import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
 import { modelServiceStatus, listLocalModels } from '@/lib/model/router'
+import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
     service: status.state,
     detail: status.detail,
     gateway: status.gateway,
+    agentProvider: getAgentProviderStatus(),
     providers: status.providers.map((provider) => ({
       kind: provider.kind,
       state: provider.state,

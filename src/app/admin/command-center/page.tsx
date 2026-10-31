@@ -63,8 +63,14 @@ export default function CommandCenterPage() {
         fetch('/api/admin/whatsapp/inbox?perPage=20', { cache: 'no-store' }),
         fetch('/api/admin/whatsapp/templates', { cache: 'no-store' }),
       ])
-      if (o.status === 401 || c.status === 401 || w.status === 401) {
-        setNotice('Please sign in to the Tech360 admin dashboard, then reload this page.')
+      const denied = [o, c, w, t].find((response) => response.status === 401 || response.status === 403)
+      if (denied) {
+        const data = await denied.json().catch(() => ({})) as { code?: string }
+        setNotice(denied.status === 401
+          ? 'Please sign in through the Admin / Super Admin console, then return here and refresh.'
+          : data.code === 'PASSWORD_CHANGE_REQUIRED'
+            ? 'Complete the first-login password change in the Admin / Super Admin console, then return here and refresh.'
+            : 'Your account role cannot access this dashboard. Ask a Super Admin to review your permissions.')
         return
       }
       if (o.ok) setOverview(await o.json())
@@ -171,9 +177,12 @@ export default function CommandCenterPage() {
             <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">AI Command Center</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-400">Manage brand content, review publishing drafts, and monitor WhatsApp CRM from one workspace.</p>
           </div>
-          <button onClick={() => void refresh()} disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50">
+          <div className="flex flex-wrap gap-2">
+            <a href="/#/admin" className="inline-flex items-center justify-center rounded-xl border border-cyan-300/30 px-4 py-2.5 text-sm font-semibold text-cyan-200 hover:bg-cyan-300/10">Admin sign in / account</a>
+            <button onClick={() => void refresh()} disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50">
             <RefreshCw className={busy ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} /> Refresh live data
-          </button>
+            </button>
+          </div>
         </header>
 
         {notice && <div role="status" className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-sm text-cyan-100">{notice}</div>}

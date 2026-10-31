@@ -34,6 +34,7 @@ import {
   type MeResponse,
   type ProjectSummary,
 } from '@/lib/admin-client'
+import { AgentProviderNotice } from './AgentProviderNotice'
 import { EmptyState, KpiCard, PageHeader } from './shared/cards'
 import { JsonView } from './shared/JsonView'
 import { Markdownish } from './shared/Markdownish'
@@ -241,6 +242,8 @@ export function AgentsView() {
           Could not load the workforce registry: {error}
         </div>
       ) : null}
+
+      <AgentProviderNotice status={data?.aiProvider} />
 
       <section aria-label="Workforce stats" className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Departments" value={stats.departments} icon={Sparkles} tone="accent" loading={loading} />

@@ -114,4 +114,3 @@ export function planFirstFollowUp(input: FollowUpInput): FollowUpPlan {
     rationale,
   }
 }
-

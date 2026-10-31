@@ -113,3 +113,40 @@ test('production runtime rejects an unknown AI operations driver', () => {
   assert.notEqual(result.status, 0)
   assert.match(result.stdout + result.stderr, /AI_OPS_DRIVER/)
 })
+
+test('production accepts OpenRouter without requiring an unused ZAI key', () => {
+  const result = validate({ ZAI_BASE_URL: undefined, ZAI_API_KEY: undefined, OPENROUTER_API_KEY: 'openrouter-test-only-secret' })
+  assert.equal(result.status, 0, result.stderr)
+  assert.doesNotMatch(result.stdout + result.stderr, /openrouter-test-only-secret/)
+})
+
+test('production accepts a complete AI Gateway configuration', () => {
+  const result = validate({
+    ZAI_BASE_URL: undefined, ZAI_API_KEY: undefined,
+    AI_GATEWAY_BASE_URL: 'https://gateway.invalid', AGENTOS_GATEWAY_TOKEN: 'gateway-test-only-secret',
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.doesNotMatch(result.stdout + result.stderr, /gateway-test-only-secret|gateway\.invalid/)
+})
+
+test('production still fails closed without any execution provider', () => {
+  const result = validate({
+    ZAI_BASE_URL: undefined, ZAI_API_KEY: undefined, OPENROUTER_API_KEY: undefined,
+    AI_GATEWAY_BASE_URL: undefined, AGENTOS_GATEWAY_TOKEN: undefined,
+  })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stdout + result.stderr, /AI provider \(configure/)
+})
+
+test('production rejects incomplete or unsafe gateway configuration without echoing secrets', () => {
+  for (const overrides of [
+    { AI_GATEWAY_BASE_URL: 'https://gateway.invalid', AGENTOS_GATEWAY_TOKEN: undefined },
+    { AI_GATEWAY_BASE_URL: undefined, AGENTOS_GATEWAY_TOKEN: 'gateway-test-only-secret' },
+    { AI_GATEWAY_BASE_URL: 'https://user:password@gateway.invalid', AGENTOS_GATEWAY_TOKEN: 'gateway-test-only-secret' },
+  ]) {
+    const result = validate({ ZAI_BASE_URL: undefined, ZAI_API_KEY: undefined, OPENROUTER_API_KEY: undefined, ...overrides })
+    assert.notEqual(result.status, 0)
+    assert.match(result.stdout + result.stderr, /AI_GATEWAY_BASE_URL|AGENTOS_GATEWAY_TOKEN/)
+    assert.doesNotMatch(result.stdout + result.stderr, /gateway-test-only-secret|user:password/)
+  }
+})

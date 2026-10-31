@@ -16,7 +16,7 @@
 
 import { db } from '@/lib/db'
 import { runAgent } from '@/lib/agents/engine'
-import { getZaiProviderStatus } from '@/lib/ai-provider'
+import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
 import { sanitizeText } from '@/lib/security'
 import { COMPANY } from '@/lib/constants'
 import { PUBLIC_CONTACT } from '@/lib/site-contact'
@@ -213,7 +213,7 @@ export async function handleCustomerMessage(input: {
   }
 
   // Check for AI provider availability
-  const providerStatus = getZaiProviderStatus()
+  const providerStatus = getAgentProviderStatus()
   const aiAvailable = providerStatus.configured
 
   // Try AI generation; if fails, provide honest fallback

@@ -50,6 +50,7 @@ type ModelsResponse = {
   detail: string
   gateway: { enabled: boolean; configured: boolean }
   providers: ProviderEntry[]
+  agentProvider: { provider: string; state: string; configured: boolean; detail: string }
   catalogue: CatalogueEntry[]
   installed: Array<{ name: string; sizeBytes?: number; family?: string; parameterSize?: string }>
   installedError: string | null
@@ -88,6 +89,19 @@ export default function ModelsView() {
           loading={loading}
           sub="present on the local server"
         />
+      </div>
+
+      <div className="mb-4" role="status" aria-label="AI workforce provider status">
+        <SectionCard title="AI workforce execution provider" description="Used by Core Agents, the Command Center and website chat. This is separate from the private model service below.">
+          <div className={CARD + ' p-4'}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-mono text-sm text-slate-200">{data?.agentProvider.provider ?? 'Checking configuration…'}</span>
+              <StatusBadge status={data?.agentProvider.state ?? 'CHECKING'} />
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-slate-400">{data?.agentProvider.detail ?? 'Reading server configuration without exposing credentials.'}</p>
+            <p className="mt-2 text-[11px] text-slate-500">Configuration is not a live health check. Run a read-only agent task to verify the provider. Keys are managed in the server environment, not in the browser.</p>
+          </div>
+        </SectionCard>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
