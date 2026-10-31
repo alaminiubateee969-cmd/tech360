@@ -433,6 +433,9 @@ export interface LeadRecord {
   budgetRange?: string | null
   projectType?: string | null
   interest?: string | null
+  /** JSON string: first-party attribution, device and follow-up schedule (see lib/intake-context.ts). */
+  tracking?: string | null
+  sourceDetails?: string | null
   contactedAt?: string | null
   qualifiedAt?: string | null
   createdAt?: string | null

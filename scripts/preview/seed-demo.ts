@@ -787,6 +787,31 @@ async function main() {
     })
   }
 
+  // Marketing review grid: a handful of fictional drafts, some reviewed and
+  // some deliberately not — the grid must show "Not rated yet" for those.
+  if ((await db.socialPost.count()) === 0) {
+    const drafts = [
+      { platform: 'FACEBOOK', text: 'Your leads are still sitting in a spreadsheet. Move them into a pipeline your team actually opens. Built for small businesses in Bangladesh — free setup this month. #CRM #SmallBusiness', status: 'DRAFT', reviews: [{ rating: 5, comment: 'Hook lands well. Swap the second sentence to lead with the setup offer.' }, { rating: 4 }] },
+      { platform: 'LINKEDIN', text: 'Every invoice you send late is a cash-flow decision you did not intend to make. TECH360 automates follow-ups, invoices and reporting in one workspace. #Operations #SME', status: 'APPROVED', reviews: [{ rating: 4, comment: 'Approved for publishing. Needs the hosted image before it goes out.' }] },
+      { platform: 'INSTAGRAM', text: 'One workspace. Every follow-up. No more sticky notes. #TECH360', status: 'DRAFT', reviews: [] },
+      { platform: 'X', text: 'Faster quotes, fewer missed follow-ups, one dashboard. Ask us how the factory builds it.', status: 'DRAFT', reviews: [{ rating: 3, comment: 'Too generic — name the outcome.' }] },
+      { platform: 'FACEBOOK', text: 'Predictive maintenance for your building plant: see the failure before the shutdown. #Maintenance', status: 'NOT_CONFIGURED', reviews: [] },
+    ]
+    for (const d of drafts) {
+      const created = await db.socialPost.create({
+        data: {
+          platform: d.platform,
+          text: d.text,
+          status: d.status,
+          createdBy: superAdmin.email,
+        },
+      })
+      for (const r of d.reviews) {
+        await db.postReview.create({ data: { postId: created.id, rating: r.rating, comment: r.comment ?? null, reviewer: superAdmin.name ?? 'Demo operator' } })
+      }
+    }
+  }
+
   const counts = {
     clients: await db.client.count(),
     leads: await db.lead.count(),

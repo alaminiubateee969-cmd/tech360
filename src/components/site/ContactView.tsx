@@ -34,6 +34,7 @@ import {
   BUDGET_RANGES,
   CONTACT_METHODS,
 } from "@/data/site";
+import { getContactTracking } from "@/lib/attribution-client";
 import { PageHero } from "./PageHero";
 import { Reveal } from "./Reveal";
 
@@ -140,10 +141,7 @@ export default function ContactView() {
           details: values.details,
           preferredContact: values.preferredContact,
           consent: true,
-          tracking: {
-            ref: typeof document !== "undefined" ? document.referrer || null : null,
-            path: typeof window !== "undefined" ? window.location.hash : null,
-          },
+          tracking: getContactTracking(),
         }),
       });
       const data = (await res.json().catch(() => null)) as

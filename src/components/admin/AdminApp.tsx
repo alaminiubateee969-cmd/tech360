@@ -69,6 +69,7 @@ import { CommunicationsView } from './CommunicationsView'
 import { ConversationsView } from './ConversationsView'
 import { ContentStudioView } from './ContentStudioView'
 import { FactoryView } from './FactoryView'
+import { MarketingDashboardView } from './MarketingDashboardView'
 import { FeedsView } from './FeedsView'
 import { MediaStudioView } from './MediaStudioView'
 import { TelephonyView } from './TelephonyView'
@@ -153,6 +154,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'blog', label: 'Blog Studio', icon: Newspaper },
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
       { id: 'seo', label: 'SEO Audit', icon: Search },
+      { id: 'marketingDashboard', label: 'Marketing Dashboard', icon: Radar },
       { id: 'marketing', label: 'Marketing Kit', icon: Megaphone },
       { id: 'prompts', label: 'Prompt Library', icon: Sparkles },
     ],
@@ -206,6 +208,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   newsletter: 'Newsletter',
   seo: 'SEO Audit',
   marketing: 'Marketing Kit',
+  marketingDashboard: 'Marketing Dashboard',
   prompts: 'Prompt Library',
   knowledge: 'Knowledge Base',
   models: 'AI Model Management',
@@ -614,6 +617,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <NewsletterView />
               ) : view === 'seo' ? (
                 <SeoAuditView />
+              ) : view === 'marketingDashboard' ? (
+                <MarketingDashboardView />
               ) : view === 'marketing' ? (
                 <MarketingKitView />
               ) : view === 'prompts' ? (

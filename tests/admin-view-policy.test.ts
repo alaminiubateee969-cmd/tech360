@@ -27,6 +27,17 @@ describe('Admin / Super Admin console access', () => {
     }
   })
 
+  it('keeps the marketing dashboard from main restricted to its API role', () => {
+    assert.equal(VIEW_MIN_ROLE.marketingDashboard, 'ADMIN')
+    assert.equal(canAccessAdminView('ADMIN', 'marketingDashboard'), true)
+    assert.equal(canAccessAdminView('SUPER_ADMIN', 'marketingDashboard'), true)
+    for (const role of ['STAFF', 'MANAGER', 'MARKETING', 'DESIGNER']) {
+      assert.equal(canAccessAdminView(role, 'marketingDashboard'), false, role)
+      assert.equal(canAccessAdminView(role, 'agents'), false, role)
+      assert.equal(canAccessAdminView(role, 'settings'), false, role)
+    }
+  })
+
   it('preserves specialized role restrictions and rejects unknown views', () => {
     assert.equal(canAccessAdminView('FINANCE', 'payments'), true)
     assert.equal(canAccessAdminView('FINANCE', 'projects'), false)

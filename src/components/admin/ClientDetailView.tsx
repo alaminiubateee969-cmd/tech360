@@ -629,6 +629,7 @@ export function ClientDetailView({
                 </div>
               ) : null}
               <p className="text-xs text-slate-600">Contacted: {fmtDateShort(data.lead.contactedAt)} · Qualified: {fmtDateShort(data.lead.qualifiedAt)}</p>
+              <LeadAttributionAndFollowUp tracking={data.lead.tracking} />
             </div>
           ) : (
             <EmptyState title="No lead details" />
@@ -2152,5 +2153,111 @@ export function ClientCommsInbox({ clientId, communications }: { clientId: strin
         </ol>
       )}
     </SectionCard>
+  )
+}
+
+// ---------------- Lead attribution + follow-up schedule ----------------
+// Renders only what was actually captured. Missing values read "Not captured"
+// rather than being hidden, so an operator can tell the difference between
+// "direct traffic" and "attribution not recorded".
+function parseTrackingObject(tracking: unknown): Record<string, unknown> {
+  if (!tracking) return {}
+  if (typeof tracking === 'object') return tracking as Record<string, unknown>
+  if (typeof tracking !== 'string') return {}
+  try {
+    const parsed = JSON.parse(tracking)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function readPath(source: Record<string, unknown>, path: string): unknown {
+  return path.split('.').reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === 'object') return (acc as Record<string, unknown>)[key]
+    return undefined
+  }, source)
+}
+
+function LeadAttributionAndFollowUp({ tracking }: { tracking: unknown }) {
+  const parsed = parseTrackingObject(tracking)
+  const attribution = {
+    source: (readPath(parsed, 'attribution.source') ?? parsed.source ?? null) as string | null,
+    medium: (readPath(parsed, 'attribution.medium') ?? null) as string | null,
+    campaign: (readPath(parsed, 'attribution.campaign') ?? null) as string | null,
+    referrer: (readPath(parsed, 'attribution.referrer') ?? null) as string | null,
+    landingPath: (readPath(parsed, 'attribution.landingPath') ?? null) as string | null,
+    clickId: readPath(parsed, 'attribution.clickId') as { type?: string; value?: string } | null,
+  }
+  const device = {
+    device: (readPath(parsed, 'client.device') ?? null) as string | null,
+    browser: (readPath(parsed, 'client.browser') ?? null) as string | null,
+    os: (readPath(parsed, 'client.os') ?? null) as string | null,
+  }
+  const location = {
+    country: (readPath(parsed, 'location.country') ?? null) as string | null,
+    region: (readPath(parsed, 'location.region') ?? null) as string | null,
+    city: (readPath(parsed, 'location.city') ?? null) as string | null,
+    source: (readPath(parsed, 'location.source') ?? null) as string | null,
+  }
+  const followUp = parsed.followUp as
+    | { action?: string; channel?: string; priority?: string; dueAt?: string; status?: string; rationale?: string }
+    | undefined
+
+  const hasAttribution = Boolean(attribution.source || attribution.medium || attribution.campaign || attribution.referrer || attribution.clickId)
+  const hasDevice = Boolean(device.device || device.browser || device.os)
+  const hasLocation = Boolean(location.country || location.region || location.city)
+
+  return (
+    <div className="mt-3 space-y-3 rounded-md border border-slate-800 bg-slate-950/50 p-3">
+      <div>
+        <p className="text-[11px] uppercase tracking-wider text-slate-500">Attribution</p>
+        {hasAttribution ? (
+          <div className="mt-1 space-y-1 text-[12.5px] text-slate-400">
+            <p><span className="text-slate-500">Source:</span> {[attribution.source, attribution.medium].filter(Boolean).join(' / ') || '—'}</p>
+            {attribution.campaign ? <p><span className="text-slate-500">Campaign:</span> {attribution.campaign}</p> : null}
+            {attribution.referrer ? <p><span className="text-slate-500">Referrer host:</span> {attribution.referrer}</p> : null}
+            {attribution.landingPath ? <p><span className="text-slate-500">Landing path:</span> {attribution.landingPath}</p> : null}
+            {attribution.clickId?.type ? <p><span className="text-slate-500">Click ID:</span> {attribution.clickId.type}</p> : null}
+          </div>
+        ) : (
+          <p className="mt-1 text-[12.5px] text-slate-600">Not captured (direct or pre-attribution record).</p>
+        )}
+      </div>
+
+      <div>
+        <p className="text-[11px] uppercase tracking-wider text-slate-500">Device</p>
+        <p className="mt-1 text-[12.5px] text-slate-400">
+          {hasDevice ? [device.device, device.browser, device.os].filter(Boolean).join(' · ') : 'Not captured'}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-[11px] uppercase tracking-wider text-slate-500">Location (coarse)</p>
+        <p className="mt-1 text-[12.5px] text-slate-400">
+          {hasLocation
+            ? [location.city, location.region, location.country].filter(Boolean).join(', ')
+            : 'Not provided by the edge (no geo-IP lookup is performed)'}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-[11px] uppercase tracking-wider text-slate-500">Follow-up schedule</p>
+        {followUp?.dueAt ? (
+          <div className="mt-1 space-y-1 text-[12.5px] text-slate-400">
+            <p className="text-slate-300">{followUp.action || 'Follow-up'}</p>
+            <p>
+              <span className="text-slate-500">Due:</span> {fmtDateShort(followUp.dueAt)}
+              {followUp.channel ? ` · ${followUp.channel}` : ''}
+              {followUp.priority ? ` · ${followUp.priority}` : ''}
+              {followUp.status ? ` · ${followUp.status}` : ''}
+            </p>
+            {followUp.rationale ? <p className="text-[11.5px] text-slate-500">{followUp.rationale}</p> : null}
+          </div>
+        ) : (
+          <p className="mt-1 text-[12.5px] text-slate-600">No schedule recorded for this lead.</p>
+        )}
+      </div>
+    </div>
   )
 }

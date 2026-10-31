@@ -5,7 +5,7 @@ export type AdminViewId =
   | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
   | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
-  | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts'
+  | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts' | 'marketingDashboard'
   | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
   | 'workforce' | 'pipeline'
 
@@ -26,6 +26,8 @@ export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 
   newsletter: 'MANAGER',
   seo: 'MANAGER',
   marketing: 'STAFF',
+  // Marketing dashboard APIs require ADMIN (integrated from main).
+  marketingDashboard: 'ADMIN',
   prompts: 'STAFF',
   knowledge: 'SUPER_ADMIN',
   content: 'ADMIN',

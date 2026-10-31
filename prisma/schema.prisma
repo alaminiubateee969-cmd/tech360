@@ -1356,10 +1356,27 @@ model SocialPost {
   createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  reviews     PostReview[]
 
   @@index([platform])
   @@index([status])
   @@index([campaignId])
+}
+
+// Team review of a drafted social post, shown in the marketing review grid.
+// A rating only exists when a signed-in operator actually recorded one — the
+// dashboard never displays a fabricated score for a post nobody reviewed.
+model PostReview {
+  id        String     @id @default(cuid())
+  postId    String
+  post      SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  rating    Int        // 1..5, validated server-side
+  comment   String? @db.Text
+  reviewer  String? // display label of the operator who reviewed (audit trail records the email)
+  createdAt DateTime   @default(now())
+
+  @@index([postId])
+  @@index([rating])
 }
 
 model MediaJob {

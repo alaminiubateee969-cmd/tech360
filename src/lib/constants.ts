@@ -174,6 +174,8 @@ export const ROLES = [
   'DEVELOPER',
   'SALES',
   'SUPPORT',
+  'MARKETING',
+  'DESIGNER',
   'AUDITOR',
   'STAFF',
 ] as const
@@ -192,6 +194,9 @@ export const ROLE_RANK: Record<string, number> = {
   DEVELOPER: 1,
   SALES: 1,
   SUPPORT: 1,
+  // Delivery craft roles: staff-level console access, no finance or governance.
+  MARKETING: 1,
+  DESIGNER: 1,
   STAFF: 1,
 }
 export type Role = (typeof ROLES)[number]

@@ -117,7 +117,7 @@ describe('operating model — concurrency-safe monotonic sequence allocator', ()
 // ============================================================
 
 describe('operating model — 10-role least-privilege RBAC and read-only Auditor', () => {
-  it('registers all 10 required enterprise roles with explicit capability sets', () => {
+  it('registers all required enterprise roles with explicit capability sets', () => {
     const expected = [
       'SUPER_ADMIN',
       'ADMIN',
@@ -128,6 +128,8 @@ describe('operating model — 10-role least-privilege RBAC and read-only Auditor
       'DEVELOPER',
       'SALES',
       'SUPPORT',
+      'MARKETING',
+      'DESIGNER',
       'STAFF',
     ]
     for (const r of expected) {
