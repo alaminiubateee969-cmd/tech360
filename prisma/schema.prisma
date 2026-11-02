@@ -1794,3 +1794,408 @@ model KnowledgeRelation {
   @@unique([fromKey, toKey, type])
   @@index([toKey, type])
 }
+
+// ============================================================
+// SOFTWARE FACTORY CONTROL CENTER (SFCC) — PRIVATE CONTROL PLANE
+// ------------------------------------------------------------
+// Additive tables only. The factory is deliberately kept SEPARATE from
+// the applications it creates: no table here is a CRM Client, and every
+// business-data row carries an immutable server-issued companyId.
+//
+// Isolation rule: a tenant/company id supplied by a UI is NEVER trusted.
+// Access is resolved from FactoryCompanyMember grants on the server; a
+// factory-level SUPER_ADMIN does NOT automatically gain access to a
+// company's private records. See src/lib/factory/control/access.ts.
+// ============================================================
+
+model FactoryCompany {
+  id                       String   @id @default(cuid())
+  code                     String   @unique
+  slug                     String   @unique
+  name                     String
+  legalName                String?
+  kind                     String   @default("CLIENT") // PARENT | SISTER | CLIENT | BUSINESS_UNIT
+  industry                 String?
+  status                   String   @default("DRAFT") // DRAFT | CONFIGURED | PROVISIONING | ACTIVE | SUSPENDED | RETIRED
+  isolationModel           String   @default("SHARED_TENANT") // SHARED_TENANT | DEDICATED
+  tenantKey                String   @unique
+  domain                   String?  @unique
+  currentDefinitionVersion Int      @default(1)
+  retentionDays            Int      @default(365)
+  backupPolicy             String   @default("DAILY")
+  contractStatus           String?
+  supportStatus            String?
+  createdBy                String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([status])
+  @@index([kind])
+}
+
+/// Explicit authorization grant. Membership is the ONLY path to a company's
+/// private data; privileged factory access needs a grantor, reason and expiry.
+model FactoryCompanyMember {
+  id           String    @id @default(cuid())
+  companyId    String
+  userEmail    String
+  role         String    @default("COMPANY_USER") // COMPANY_ADMIN | COMPANY_USER | COMPANY_AUDITOR | FACTORY_OPERATOR
+  status       String    @default("ACTIVE") // ACTIVE | REVOKED
+  privileged   Boolean   @default(false)
+  grantedBy    String?
+  grantReason  String? @db.Text
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([companyId, userEmail])
+  @@index([companyId])
+  @@index([userEmail])
+}
+
+/// Immutable, version-controlled company definition. Reusable for another
+/// instance only with a new slug, tenantKey, domain and credentials.
+model FactoryCompanyDefinition {
+  id         String   @id @default(cuid())
+  companyId  String
+  version    Int
+  definition String @db.LongText
+  checksum   String
+  status     String   @default("DRAFT") // DRAFT | VALIDATED | APPROVED
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  @@unique([companyId, version])
+  @@index([companyId])
+}
+
+model FactoryTemplate {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String
+  category       String
+  description    String? @db.Text
+  status         String   @default("DRAFT") // DRAFT | VALIDATED | PRODUCTION_READY | RETIRED
+  currentVersion Int      @default(0)
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+}
+
+/// A template version is production-ready ONLY when its required test
+/// results and approval are recorded. definition holds the complete
+/// template manifest (modules, roles, config schema, workflows, security,
+/// navigation, test definitions, acceptance criteria, upgrade/rollback docs).
+model FactoryTemplateVersion {
+  id          String    @id @default(cuid())
+  templateId  String
+  version     Int
+  semver      String
+  definition  String @db.LongText
+  checksum    String
+  status      String    @default("DRAFT") // DRAFT | VALIDATED | APPROVED | SUPERSEDED
+  testResults String? @db.LongText
+  releaseNotes String? @db.Text
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@index([status])
+}
+
+model FactoryModule {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String
+  category       String
+  capability     String
+  description    String? @db.Text
+  status         String   @default("DRAFT") // DRAFT | VALIDATED | PRODUCTION_READY | RETIRED
+  currentVersion Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([capability])
+  @@index([status])
+}
+
+model FactoryModuleVersion {
+  id           String    @id @default(cuid())
+  moduleId     String
+  version      Int
+  semver       String
+  manifest     String @db.LongText
+  checksum     String
+  status       String    @default("DRAFT") // DRAFT | VALIDATED | APPROVED | SUPERSEDED
+  breaking     Boolean   @default(false)
+  releaseNotes String? @db.Text
+  approvedBy   String?
+  approvedAt   DateTime?
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+
+  @@unique([moduleId, version])
+  @@index([moduleId])
+  @@index([status])
+}
+
+/// A template version composes shared modules. This is the dependency graph
+/// used by impact analysis when a shared module receives an approved update.
+model FactoryTemplateModule {
+  id                String   @id @default(cuid())
+  templateVersionId String
+  moduleId          String
+  required          Boolean  @default(true)
+  config            String? @db.LongText
+  createdAt         DateTime @default(now())
+
+  @@unique([templateVersionId, moduleId])
+  @@index([templateVersionId])
+  @@index([moduleId])
+}
+
+model FactoryApplication {
+  id                String    @id @default(cuid())
+  code              String    @unique
+  companyId         String
+  templateId        String
+  templateVersionId String
+  name              String
+  environment       String    @default("STAGING") // DEV | STAGING | PRODUCTION
+  deploymentModel   String    @default("SHARED_TENANT") // SHARED_TENANT | DEDICATED
+  status            String    @default("DRAFT") // DRAFT | VALIDATED | PROVISIONING | TEST_FAILED | STAGING | AWAITING_APPROVAL | LIVE | DEGRADED | ROLLED_BACK | RETIRED
+  config            String @db.LongText
+  configChecksum    String
+  definitionVersion Int       @default(1)
+  releaseVersion    String    @default("0.0.0")
+  domain            String?
+  healthStatus      String    @default("UNKNOWN") // UNKNOWN | HEALTHY | DEGRADED | DOWN
+  lastHealthAt      DateTime?
+  approvedBy        String?
+  approvedAt        DateTime?
+  activatedAt       DateTime?
+  createdBy         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([templateId])
+  @@index([status])
+  @@index([environment])
+}
+
+/// Every application pins exact module versions. A shared-module update is
+/// never pushed into a live application without a compatibility check.
+model FactoryAppModule {
+  id              String   @id @default(cuid())
+  applicationId   String
+  moduleId        String
+  moduleVersionId String
+  semver          String
+  enabled         Boolean  @default(true)
+  config          String? @db.LongText
+  createdAt       DateTime @default(now())
+
+  @@unique([applicationId, moduleId])
+  @@index([applicationId])
+  @@index([moduleId])
+}
+
+model FactoryConfigRevision {
+  id            String   @id @default(cuid())
+  applicationId String
+  version       Int
+  config        String @db.LongText
+  checksum      String
+  changeType    String   @default("CREATE") // CREATE | UPDATE | UPGRADE | ROLLBACK
+  changedBy     String?
+  note          String? @db.Text
+  createdAt     DateTime @default(now())
+
+  @@unique([applicationId, version])
+  @@index([applicationId])
+}
+
+model FactoryProvisionJob {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  companyId     String
+  applicationId String?
+  action        String    @default("PROVISION") // PROVISION | UPGRADE | ROLLBACK | RESTORE
+  status        String    @default("QUEUED") // QUEUED | RUNNING | PASSED | FAILED | AWAITING_APPROVAL | CANCELLED
+  steps         String @db.LongText
+  testResults   String? @db.LongText
+  error         String? @db.Text
+  requestedBy   String?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+}
+
+model FactoryRelease {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  applicationId   String
+  companyId       String
+  fromVersion     String?
+  toVersion       String
+  kind            String    @default("UPGRADE") // INITIAL | UPGRADE | HOTFIX | ROLLBACK
+  environment     String    @default("STAGING")
+  status          String    @default("DRAFT") // DRAFT | STAGING | APPROVED | DEPLOYED | ROLLED_BACK | FAILED
+  moduleVersions  String @db.LongText
+  compatibility   String? @db.LongText
+  migrationPlan   String? @db.Text
+  deploymentSpec  String? @db.LongText
+  releaseNotes    String? @db.Text
+  approvedBy      String?
+  approvedAt      DateTime?
+  deployedAt      DateTime?
+  rollbackOfId    String?
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+
+  @@index([applicationId])
+  @@index([companyId])
+  @@index([status])
+}
+
+/// Real, recomputed health checks. Nothing is reported HEALTHY without a
+/// persisted check row produced by the check runner.
+model FactoryHealthCheck {
+  id            String   @id @default(cuid())
+  applicationId String
+  companyId     String
+  status        String
+  checks        String @db.LongText
+  checkedBy     String?
+  checkedAt     DateTime @default(now())
+
+  @@index([applicationId])
+  @@index([companyId])
+}
+
+model FactoryIntegration {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  companyId     String?
+  providerKey   String
+  kind          String    @default("EXTERNAL") // INTERNAL | WEBHOOK | EXTERNAL
+  enabled       Boolean   @default(false)
+  configured    Boolean   @default(false)
+  status        String    @default("NOT_CONFIGURED") // DISABLED | NOT_CONFIGURED | AVAILABLE | UNAVAILABLE | ERROR
+  envKeys       String? @db.Text
+  config        String? @db.LongText
+  lastCheckedAt DateTime?
+  lastError     String? @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+  @@index([providerKey])
+}
+
+/// An application-level, self-contained export. payload is the complete
+/// portable archive; checksum proves integrity; verifiedAt is only set by a
+/// real verification, never by the existence of the row.
+model FactoryBackup {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  applicationId String
+  companyId     String
+  kind          String    @default("FULL") // FULL | CONFIG_ONLY | PRE_UPGRADE
+  status        String    @default("CREATED") // CREATED | VERIFIED | FAILED | RESTORED
+  payload       String @db.LongText
+  checksum      String
+  sizeBytes     Int       @default(0)
+  storagePath   String?
+  verifiedAt    DateTime?
+  restoredAt    DateTime?
+  restoreTarget String?
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+
+  @@index([applicationId])
+  @@index([companyId])
+}
+
+model FactoryChangeRequest {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  title           String
+  type            String    @default("CHANGE") // CHANGE | FEATURE | BUG | SECURITY | IMPROVEMENT
+  disposition     String    @default("PENDING_TRIAGE") // PENDING_TRIAGE | CORE | MODULE | CONFIG | CLIENT_EXTENSION | REJECTED
+  status          String    @default("OPEN") // OPEN | TRIAGED | APPROVED | IN_REVIEW | RELEASED | REJECTED
+  companyId       String?
+  requestedBy     String?
+  details         String? @db.LongText
+  decision        String? @db.Text
+  linkedReleaseId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([disposition])
+  @@index([companyId])
+}
+
+model FactoryAuditEvent {
+  id         String   @id @default(cuid())
+  companyId  String?
+  actor      String
+  action     String
+  targetType String
+  targetId   String
+  decision   String   @default("ALLOW") // ALLOW | DENY
+  detail     String? @db.LongText
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([companyId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+/// Tenant-owned business data. Every read/write is scoped server-side by
+/// companyId. This is the surface the cross-company leakage tests attack.
+model FactoryRecord {
+  id            String   @id @default(cuid())
+  applicationId String
+  companyId     String
+  moduleKey     String
+  entityType    String
+  data          String @db.LongText
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([applicationId])
+  @@index([companyId])
+  @@index([companyId, entityType])
+}
+
+model FactoryFile {
+  id            String   @id @default(cuid())
+  applicationId String
+  companyId     String
+  name          String
+  mimeType      String
+  sizeBytes     Int      @default(0)
+  content       String @db.LongText
+  checksum      String
+  uploadedBy    String?
+  createdAt     DateTime @default(now())
+
+  @@index([applicationId])
+  @@index([companyId])
+}

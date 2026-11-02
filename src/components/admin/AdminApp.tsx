@@ -38,8 +38,7 @@ import {
   Mail,
   MessagesSquare,
   PhoneCall,
-  Rss,
-} from 'lucide-react'
+  Rss, Layers3 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
@@ -69,6 +68,7 @@ import { CommunicationsView } from './CommunicationsView'
 import { ConversationsView } from './ConversationsView'
 import { ContentStudioView } from './ContentStudioView'
 import { FactoryView } from './FactoryView'
+import { ControlCenter } from './factory/ControlCenter'
 import { MarketingDashboardView } from './MarketingDashboardView'
 import { FeedsView } from './FeedsView'
 import { MediaStudioView } from './MediaStudioView'
@@ -143,6 +143,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     section: 'Product Factory',
     items: [
       { id: 'factory', label: 'App Factory', icon: Boxes },
+      { id: 'factoryControl', label: 'Software Factory Control Center', icon: Layers3 },
       { id: 'media', label: 'Media Studio', icon: Clapperboard },
     ],
   },
@@ -230,6 +231,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   settings: 'Settings',
   team: 'Team',
   factory: 'AI Software Factory',
+  factoryControl: 'Software Factory Control Center',
   media: 'Media Studio',
   feeds: 'Feed Hub',
   telephony: 'Calls & SMS',
@@ -627,6 +629,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <KnowledgeView />
               ) : view === 'factory' ? (
                 <FactoryView />
+              ) : view === 'factoryControl' ? (
+                <ControlCenter role={me.role ?? 'STAFF'} />
               ) : view === 'media' ? (
                 <MediaStudioView />
               ) : view === 'feeds' ? (
