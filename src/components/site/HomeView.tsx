@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, MotionConfig } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX, MessageCircle, Users, Mail, Smartphone, CreditCard, Workflow, Github, Layers, ShieldCheck, Globe, Bot } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX, MessageCircle, Users, Mail, Smartphone, CreditCard, Workflow, Github, Layers, ShieldCheck, Globe, Bot, Eye as EyeIcon, Lock as LockIcon, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1035,6 +1035,53 @@ export default function HomeView({
       <ResourcesGrid />
       <ClientReviews />
       <StatsBand />
+      {/* ---------------------------------------------------------------- */}
+      {/* Pipeline transparency — links the home page to the full 11-stage   */}
+      {/* communication contract instead of duplicating it.                  */}
+      {/* ---------------------------------------------------------------- */}
+      <section className="border-y border-[#E2E8F0] bg-[#F4FAFF] py-16 sm:py-20">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <Reveal>
+              <SectionHeading
+                align="left"
+                eyebrow="Transparent by design"
+                title="See every message before you send the first one."
+                description="Our AI Agent Communication Pipeline publishes all eleven stages — the exact WhatsApp and email replies, what gets saved in your CRM, which steps an admin must approve, and the two delivery gates."
+              />
+              <div className="mt-7 flex flex-wrap gap-3">
+                <PrimaryLink href="#/pipeline">
+                  Explore the pipeline <ArrowRight className="size-4" aria-hidden="true" />
+                </PrimaryLink>
+                <OutlineLink href="#/process">How we work</OutlineLink>
+              </div>
+              <p className="mt-5 flex items-center gap-2 text-xs font-semibold text-[#063B8F]">
+                <ShieldCheck className="size-4 text-[#009FE3]" aria-hidden="true" />
+                HTML Preview Before Payment. Source Code After Full Payment.
+              </p>
+            </Reveal>
+            <RevealList className="grid grid-cols-1 gap-3 sm:grid-cols-2" stagger={0.08}>
+              {[
+                { icon: MessageCircle, title: "10 channels", body: "WhatsApp, SMS, email, forms, five social channels and manual admin messages." },
+                { icon: Database, title: "One Client ID", body: "Every inbound and outbound message, status change and approval is attached to one profile." },
+                { icon: EyeIcon, title: "Preview first", body: "An HTML/demo preview is shared for review before any payment step." },
+                { icon: LockIcon, title: "Gated handover", body: "Source code, files and admin access are released after confirmed payment and admin approval." },
+              ].map((item) => (
+                <RevealItem key={item.title} className="h-full">
+                  <div className="flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-5 transition-shadow hover:shadow-[0_10px_28px_rgba(6,59,143,0.09)]">
+                    <span className="flex size-10 items-center justify-center rounded-lg bg-[#009FE3]/10 text-[#0079AC]">
+                      <item.icon className="size-5" aria-hidden="true" />
+                    </span>
+                    <h3 className="mt-4 text-sm font-bold text-[#0B1F33]">{item.title}</h3>
+                    <p className="mt-2 flex-1 text-xs leading-relaxed text-[#526173]">{item.body}</p>
+                  </div>
+                </RevealItem>
+              ))}
+            </RevealList>
+          </div>
+        </div>
+      </section>
+
       <CtaBand title="Ready to Make Your Business Work Smarter?" description="Discover how Tech360 can help connect your tools, streamline operations, and put AI to work across your business." primaryLabel="Book a Demo" />
     </main>
    </MotionConfig>

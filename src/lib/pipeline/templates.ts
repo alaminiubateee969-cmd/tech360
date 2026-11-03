@@ -135,6 +135,8 @@ Next steps: our team will review the requirements, ask any necessary follow-up q
 
 You can access the customer portal here: [Open the customer portal](${portalUrl}). Sign-in requires your Client ID and a one-time code sent to a contact on your record.
 
+No payment is due before the applicable preview approval. Any payment step follows the approved Scope of Work and an admin-reviewed instruction; an HTML/demo preview is shared for review before final source-code handover.
+
 For your security, never email passwords, API keys, online banking credentials, or payment-card security codes.
 
 ${COMPANY_BLOCK}`
@@ -638,6 +640,14 @@ Delivery may include:
 ✅ Source code where included in the approved scope
 ✅ Client-owned credentials identified in the scope, if applicable
 ✅ Deployment support and documentation, if included
+
+Approved-scope delivery checklist:
+
+✅ Final website/system files
+✅ Source code
+✅ Admin access, if included
+✅ Deployment support, if included
+✅ Basic handover documentation
 
 Please review the delivery carefully and confirm after checking.`,
   }

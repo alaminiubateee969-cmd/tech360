@@ -42,6 +42,7 @@ export const NAV_LINKS: { label: string; href: string }[] = [
   { label: "Technologies", href: "#/technologies" },
   { label: "Design Kit", href: "#/design-kit" },
   { label: "Process", href: "#/process" },
+  { label: "AI Agent Pipeline", href: "#/pipeline" },
   { label: "Blog", href: "#/blog" },
   { label: "Contact", href: "#/contact" },
 ];

@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import {
   ArrowRight, BarChart3, Bot, BookOpen, Briefcase, ChevronDown, GraduationCap,
   HeartPulse, Home, Layers, LifeBuoy, Mail, Menu, MessageCircle, MonitorSmartphone,
-  Newspaper, PanelsTopLeft, ShoppingBag, Sparkles, UserRound, Workflow,
+  GitBranch, Newspaper, PanelsTopLeft, ShoppingBag, Sparkles, UserRound, Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Resources",
     section: "blog",
     items: [
+      { label: "AI Agent Pipeline", href: "#/pipeline", desc: "All 11 stages, exact replies, CRM saves and admin gates", icon: GitBranch },
       { label: "Blog & Insights", href: "#/blog", desc: "Engineering notes and practical guides", icon: Newspaper },
       { label: "How We Work", href: "#/process", desc: "Seven phases, two gates, zero surprises", icon: BookOpen },
       { label: "FAQs", href: "#/faq", desc: "Answers on scope, pricing model and delivery", icon: LifeBuoy },
@@ -163,6 +164,7 @@ export default function SiteHeader({ currentHash }: { currentHash?: string }) {
           <NavDropdown group={NAV_GROUPS[2]} activeSection={activeSection} solid={solid} />
           <a href="#/services" aria-current={activeSection === "services" ? "page" : undefined} className={linkCls(activeSection === "services", solid)}>Services</a>
           <NavDropdown group={NAV_GROUPS[3]} activeSection={activeSection} solid={solid} />
+          <a href="#/pipeline" aria-current={activeSection === "pipeline" ? "page" : undefined} className={linkCls(activeSection === "pipeline", solid)}>Pipeline</a>
           <a href="#/about" aria-current={activeSection === "about" ? "page" : undefined} className={linkCls(activeSection === "about", solid)}>About Us</a>
           <a href="#/contact" aria-current={activeSection === "contact" ? "page" : undefined} className={linkCls(activeSection === "contact", solid)}>Contact</a>
         </nav>
@@ -205,6 +207,7 @@ export default function SiteHeader({ currentHash }: { currentHash?: string }) {
             <div className="mt-2">
               <p className="px-4 pb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#526173]">Company</p>
               <MobileLink href="#/services" label="Services" active={activeSection === "services"} onClick={() => setMenuOpen(false)} />
+              <MobileLink href="#/pipeline" label="AI Agent Pipeline" active={activeSection === "pipeline"} onClick={() => setMenuOpen(false)} />
               <MobileLink href="#/about" label="About Us" active={activeSection === "about"} onClick={() => setMenuOpen(false)} />
               <MobileLink href="#/contact" label="Contact" active={activeSection === "contact"} onClick={() => setMenuOpen(false)} />
               <MobileLink href="#/portal" label="Sign In" active={activeSection === "portal"} onClick={() => setMenuOpen(false)} />
