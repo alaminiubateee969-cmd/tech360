@@ -9,7 +9,8 @@ import { db } from '@/lib/db'
 import { canApproveRelease, writeFactoryAudit, type Actor } from './access'
 import { createBackup, verifyBackup } from './backup'
 import { runHealthChecks } from './health'
-import { canReleaseTransition, compatibilityReport } from './lifecycle'
+import { canReleaseTransition, compatibilityReport, RELEASE_TRANSITIONS } from './lifecycle'
+import { resolveRuntime, runFactoryTests } from './runtime'
 import type { ApplicationConfig } from './types'
 import { checksum, jsonText, parseJson } from './util'
 
@@ -158,8 +159,11 @@ export async function stageUpgradeRelease(releaseId: string, actor: Actor): Prom
   const spec = parseJson<{ proposedConfig?: ApplicationConfig; stagingApplicationId?: string | null }>(release.deploymentSpec, {})
   const nextConfig = spec.proposedConfig
   if (!nextConfig) return { ok: false, reason: 'Release has no proposed configuration', stagingApplicationId: null }
-  const decision = canReleaseTransition(release.status, 'STAGING', { testsPassed: true })
-  if (!decision.ok) return { ok: false, reason: decision.reason, stagingApplicationId: null }
+  // State-machine guard first; the EVIDENCE gate is evaluated after the
+  // staging instance actually exists and the executable suite has run.
+  if (!RELEASE_TRANSITIONS[release.status]?.includes('STAGING')) {
+    return { ok: false, reason: `${release.status} → STAGING is not an allowed release transition`, stagingApplicationId: null }
+  }
   const configText = jsonText(nextConfig)
   const hash = checksum(nextConfig)
   let stagingId = spec.stagingApplicationId ?? null
@@ -206,13 +210,30 @@ export async function stageUpgradeRelease(releaseId: string, actor: Actor): Prom
     await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_STAGE', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, decision: 'DENY', detail: { health: health.status, checks: health.checks } })
     return { ok: false, reason: `Staging health check failed (${health.status})`, stagingApplicationId: stagingId }
   }
+  // REAL, EXECUTABLE acceptance evidence (not a hardcoded `passed: true`).
+  const company = await db.factoryCompany.findUnique({ where: { id: app.companyId } })
+  let tests = { ok: false, passed: 0, failed: -1, jobId: null as string | null, checks: [] as Array<{ key: string; ok: boolean }> }
+  if (company) {
+    const staging = await resolveRuntime(actor, company.slug, 'write', stagingId)
+    if (staging.ok && staging.data) {
+      const result = await runFactoryTests(actor, staging.data)
+      tests = { ok: result.ok, passed: result.passed, failed: result.failed, jobId: result.jobId, checks: result.checks.map((c) => ({ key: c.key, ok: c.ok })) }
+    }
+  }
+  const decision = canReleaseTransition(release.status, 'STAGING', { testsPassed: tests.ok })
+  if (!decision.ok) {
+    await db.factoryRelease.update({ where: { id: release.id }, data: { status: 'FAILED',
+      compatibility: jsonText({ ...parseJson<Record<string, unknown>>(release.compatibility, {}), tests }) } })
+    await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_STAGE', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, decision: 'DENY', detail: { reason: decision.reason, tests } })
+    return { ok: false, reason: `Executable staging tests did not pass: ${decision.reason}`, stagingApplicationId: stagingId }
+  }
   await db.factoryRelease.update({ where: { id: release.id }, data: {
     status: 'STAGING',
-    deploymentSpec: jsonText({ ...spec, proposedConfig: nextConfig, stagingApplicationId: stagingId, honestState: 'STAGED_AND_TESTED' }),
-    compatibility: jsonText({ ...parseJson<Record<string, unknown>>(release.compatibility, {}), stagingHealth: health.status, stagedAt: new Date().toISOString() }),
+    deploymentSpec: jsonText({ ...spec, proposedConfig: nextConfig, stagingApplicationId: stagingId, honestState: 'STAGED_AND_TESTED', testJobId: tests.jobId }),
+    compatibility: jsonText({ ...parseJson<Record<string, unknown>>(release.compatibility, {}), stagingHealth: health.status, stagedAt: new Date().toISOString(), executableTests: { passed: tests.passed, failed: tests.failed, jobId: tests.jobId, checks: tests.checks } }),
   } })
-  await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_STAGE', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, detail: { stagingApplicationId: stagingId, health: health.status } })
-  return { ok: true, reason: 'Staging instance upgraded and health-checked', stagingApplicationId: stagingId }
+  await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_STAGE', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, detail: { stagingApplicationId: stagingId, health: health.status, testsPassed: tests.passed, testsFailed: tests.failed, testJobId: tests.jobId } })
+  return { ok: true, reason: `Staging instance upgraded, health-checked and ${tests.passed} executable acceptance checks passed`, stagingApplicationId: stagingId }
 }
 
 export async function approveRelease(releaseId: string, actor: Actor, note: string): Promise<{ ok: boolean; reason: string }> {
@@ -241,6 +262,10 @@ export async function deployRelease(releaseId: string, actor: Actor): Promise<{ 
   if (!spec.proposedConfig || !spec.stagingApplicationId) return { ok: false, reason: 'Release has not been staged and tested' }
   const staging = await db.factoryApplication.findUnique({ where: { id: spec.stagingApplicationId } })
   if (!staging || staging.healthStatus !== 'HEALTHY') return { ok: false, reason: 'Staging instance is not healthy' }
+  const testJob = await db.factoryProvisionJob.findFirst({
+    where: { applicationId: staging.id, action: 'TEST', status: 'PASSED' }, orderBy: { createdAt: 'desc' },
+  })
+  if (!testJob) return { ok: false, reason: 'No persisted, passing executable test run exists for the staged release' }
   const backup = await createBackup(app.id, 'PRE_UPGRADE', actor)
   const verification = await verifyBackup(backup.id, actor)
   const decision = canReleaseTransition(release.status, 'DEPLOYED', { approved: release.status === 'APPROVED', backupVerified: verification.ok })
@@ -264,12 +289,42 @@ export async function deployRelease(releaseId: string, actor: Actor): Promise<{ 
     await db.factoryAppModule.updateMany({ where: { applicationId: app.id, moduleId: m.code }, data: { moduleVersionId: version.id, semver: version.semver } })
   }
   const health = await runHealthChecks(app.id, actor)
-  await db.factoryRelease.update({ where: { id: release.id }, data: { status: 'DEPLOYED', deployedAt: new Date(), migrationPlan: `${release.migrationPlan ?? ''} Rollback point: ${backup.code}`.trim() } })
-  await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_DEPLOY', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, detail: { backup: backup.code, health: health.status } })
-  return { ok: true, reason: `Release deployed with verified backup ${backup.code}; health ${health.status}` }
+  // Re-run the executable suite against the LIVE application after deployment.
+  // If it fails, restore the previous known-good configuration immediately.
+  const liveCompany = await db.factoryCompany.findUnique({ where: { id: app.companyId } })
+  let postDeploy = { ok: true, passed: 0, failed: 0 }
+  if (liveCompany) {
+    const resolved = await resolveRuntime(actor, liveCompany.slug, 'write', app.id)
+    if (resolved.ok && resolved.data) {
+      const result = await runFactoryTests(actor, resolved.data)
+      postDeploy = { ok: result.ok, passed: result.passed, failed: result.failed }
+    }
+  }
+  if (!postDeploy.ok) {
+    const previous = await db.factoryConfigRevision.findFirst({ where: { applicationId: app.id, checksum: { not: hash } }, orderBy: { version: 'desc' } })
+    if (previous) await db.factoryApplication.update({ where: { id: app.id }, data: { config: previous.config, configChecksum: previous.checksum } })
+    await db.factoryRelease.update({ where: { id: release.id }, data: { status: 'FAILED' } })
+    await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_DEPLOY', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, decision: 'DENY', detail: { postDeploy, rolledBackTo: previous?.version ?? null } })
+    return { ok: false, reason: `Post-deployment acceptance tests failed (${postDeploy.failed}); configuration restored to the previous known-good revision` }
+  }
+  await db.factoryRelease.update({ where: { id: release.id }, data: {
+    status: 'DEPLOYED', deployedAt: new Date(),
+    deploymentSpec: jsonText({ ...spec, proposedConfig: spec.proposedConfig, stagingApplicationId: spec.stagingApplicationId, rollbackBackupId: backup.id }),
+    migrationPlan: `${release.migrationPlan ?? ''} Rollback point: ${backup.code}; post-deploy checks ${postDeploy.passed} passed`.trim(),
+  } })
+  await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_DEPLOY', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, detail: { backup: backup.code, health: health.status, stagingTestJobId: testJob.id, postDeploy } })
+  return { ok: true, reason: `Release deployed with verified backup ${backup.code}; health ${health.status}; ${postDeploy.passed} post-deploy checks passed` }
 }
 
-/** Rollback restores the previous known-good configuration revision. */
+/**
+ * Rollback restores the FULL PORTABLE PAYLOAD of the verified pre-upgrade
+ * backup: configuration revisions, exact module pins, records and file
+ * contents — not just the config document. Restoration is ADDITIVE and scoped
+ * to the SAME company: missing rows are re-created, newer rows are never
+ * deleted, and a cross-company payload is refused. This keeps a rollback
+ * safe to run against a live application while still recovering everything
+ * the portable archive contains.
+ */
 export async function rollbackRelease(releaseId: string, actor: Actor): Promise<{ ok: boolean; reason: string; restoredVersion: number | null }> {
   const release = await db.factoryRelease.findUnique({ where: { id: releaseId } })
   if (!release) return { ok: false, reason: 'Release not found', restoredVersion: null }
@@ -301,8 +356,83 @@ export async function rollbackRelease(releaseId: string, actor: Actor): Promise<
       moduleVersionId: version.id, semver: version.semver,
     } })
   }
+  // ---- Full portable-payload recovery from the verified rollback point ----
+  const spec = parseJson<{ rollbackBackupId?: string | null }>(release.deploymentSpec, {})
+  let restoredRecords = 0
+  let restoredFiles = 0
+  let restoredRevisions = 0
+  let payloadStatus = 'NO_PORTABLE_BACKUP_LINKED'
+  if (spec.rollbackBackupId) {
+    const backup = await db.factoryBackup.findUnique({ where: { id: spec.rollbackBackupId } })
+    if (!backup || backup.companyId !== app.companyId || !backup.verifiedAt) {
+      payloadStatus = 'ROLLBACK_BACKUP_UNVERIFIED_OR_FOREIGN'
+    } else {
+      const payload = parseJson<{
+        company?: { id?: string }
+        records?: Array<{ moduleKey?: string; entityType?: string; data?: string; createdBy?: string | null; companyId?: string }>
+        files?: Array<{ name?: string; mimeType?: string; sizeBytes?: number; content?: string; checksum?: string; uploadedBy?: string | null; companyId?: string }>
+        configRevisions?: Array<{ version?: number; config?: string; checksum?: string; changeType?: string; changedBy?: string | null; note?: string | null }>
+      } | null>(backup.payload, null)
+      if (!payload || String(payload.company?.id ?? '') !== app.companyId) {
+        payloadStatus = 'PAYLOAD_UNREADABLE_OR_FOREIGN'
+      } else {
+        const records = payload.records ?? []
+        const files = payload.files ?? []
+        if (records.some((r) => r.companyId && r.companyId !== app.companyId) || files.some((f) => f.companyId && f.companyId !== app.companyId)) {
+          payloadStatus = 'PAYLOAD_CONTAINS_FOREIGN_DATA'
+        } else {
+          const existingRecords = await db.factoryRecord.findMany({ where: { applicationId: app.id }, select: { moduleKey: true, entityType: true, data: true } })
+          const seenRecords = new Set(existingRecords.map((r) => `${r.moduleKey}|${r.entityType}|${r.data}`))
+          for (const r of records) {
+            const data = String(r.data ?? '{}')
+            const key = `${String(r.moduleKey ?? '')}|${String(r.entityType ?? '')}|${data}`
+            if (seenRecords.has(key)) continue
+            seenRecords.add(key)
+            await db.factoryRecord.create({ data: {
+              applicationId: app.id, companyId: app.companyId, moduleKey: String(r.moduleKey ?? ''),
+              entityType: String(r.entityType ?? ''), data, createdBy: r.createdBy ?? actor.email,
+            } })
+            restoredRecords++
+          }
+          const existingFiles = await db.factoryFile.findMany({ where: { applicationId: app.id }, select: { name: true, checksum: true } })
+          const seenFiles = new Set(existingFiles.map((f) => `${f.name}|${f.checksum}`))
+          for (const f of files) {
+            const content = String(f.content ?? '')
+            const sum = String(f.checksum ?? checksum(content))
+            const key = `${String(f.name ?? '')}|${sum}`
+            if (seenFiles.has(key)) continue
+            if (checksum(content) !== sum) continue // never restore corrupted content
+            seenFiles.add(key)
+            await db.factoryFile.create({ data: {
+              applicationId: app.id, companyId: app.companyId, name: String(f.name ?? 'file'),
+              mimeType: String(f.mimeType ?? 'application/octet-stream'), sizeBytes: Number(f.sizeBytes ?? content.length),
+              content, checksum: sum, uploadedBy: f.uploadedBy ?? actor.email,
+            } })
+            restoredFiles++
+          }
+          // Recover config revisions that may have been lost from the live app.
+          const existingRevisions = await db.factoryConfigRevision.findMany({ where: { applicationId: app.id }, select: { version: true } })
+          const seenVersions = new Set(existingRevisions.map((r) => r.version))
+          for (const r of payload.configRevisions ?? []) {
+            const version = Number(r.version ?? 0)
+            if (!version || seenVersions.has(version)) continue
+            const config = String(r.config ?? '{}')
+            seenVersions.add(version)
+            await db.factoryConfigRevision.create({ data: {
+              applicationId: app.id, version, config, checksum: String(r.checksum ?? checksum(config)),
+              changeType: String(r.changeType ?? 'CREATE'), changedBy: r.changedBy ?? actor.email,
+              note: r.note ? `${r.note} (recovered from ${backup.code})` : `Recovered from ${backup.code}`,
+            } })
+            restoredRevisions++
+          }
+          payloadStatus = 'PORTABLE_PAYLOAD_RESTORED'
+        }
+      }
+    }
+  }
   await db.factoryRelease.update({ where: { id: release.id }, data: { status: 'ROLLED_BACK' } })
   const health = await runHealthChecks(app.id, actor)
-  await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_ROLLBACK', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, detail: { restoredVersion: knownGood.version, health: health.status } })
-  return { ok: true, reason: `Rolled back to configuration revision v${knownGood.version}; health ${health.status}`, restoredVersion: knownGood.version }
+  const recovery = { restoredRecords, restoredFiles, restoredRevisions, payloadStatus, backupId: spec.rollbackBackupId ?? null }
+  await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_ROLLBACK', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, detail: { restoredVersion: knownGood.version, health: health.status, recovery } })
+  return { ok: true, reason: `Rolled back to configuration revision v${knownGood.version}; ${payloadStatus.toLowerCase()} (${restoredRecords} records, ${restoredFiles} files, ${restoredRevisions} revisions recovered); health ${health.status}`, restoredVersion: knownGood.version }
 }

@@ -9,7 +9,7 @@ import {
   COMPANY_KINDS, COMPANY_ROLES, ENVIRONMENTS, IMPLEMENTED_CAPABILITIES, ISOLATION_MODELS,
   type ApplicationConfig, type Capability, type CompanyDefinition, type CompanyKind,
   type CompanyRole, type Environment, type IsolationModel, type ModuleManifest,
-  type TemplateDefinition,
+  type TemplateDefinition, type ThemeTokens, type RuntimePage,
 } from './types'
 import { asRecord, asStringArray, isSafeObject, mergeConfig, secretLikeReason, slugify } from './util'
 
@@ -296,6 +296,35 @@ export function validateDefinition(def: CompanyDefinition, ctx: ValidationContex
 }
 
 /** Build the concrete configuration for one application from an approved template. */
+/** Derive a meaningful, module-backed page from a navigation label when an
+ * older approved template version does not declare explicit pages. This keeps
+ * the four original core templates fully operational in the shared runtime. */
+function fallbackPage(label: string, index: number, def: CompanyDefinition): RuntimePage {
+  const lower = label.toLowerCase()
+  const has = (code: string) => def.modules.some((m) => m.enabled && m.code === code)
+  const kind: RuntimePage['kind'] = index === 0 ? 'dashboard'
+    : /report|analytic|insight|finance|quality|statistic|progress/.test(lower) ? 'report'
+    : /board|pipeline|order|lead|booking|appointment|task|assessment|production|approval|viewing/.test(lower) ? 'board'
+    : /gallery|catalog|product|listing|program|course|campus|destination|gear|service|workout|specialist/.test(lower) ? 'gallery'
+    : /timeline|itinerar|schedule|delivery|message|campaign|history|activity/.test(lower) ? 'timeline'
+    : /form|inquiry|admission|intake|new |create|submit/.test(lower) ? 'form'
+    : 'list'
+  let moduleCode: string | undefined
+  let entityType: string | undefined
+  if (kind === 'report' && has('reporting')) moduleCode = 'reporting'
+  else if (/contact|client|customer|member|patient|student|traveller|user|people/.test(lower) && has('contacts')) { moduleCode = 'contacts'; entityType = 'CONTACT' }
+  else if (/lead|inquiry|admission/.test(lower) && has('contacts')) { moduleCode = 'contacts'; entityType = 'LEAD' }
+  else if (/document|file|certificate|attachment/.test(lower) && has('documents')) { moduleCode = 'documents'; entityType = 'DOCUMENT_META' }
+  else if (/notif|message|campaign|announcement/.test(lower) && has('notifications')) { moduleCode = 'notifications'; entityType = 'NOTIFICATION' }
+  else if (has('workflow') && ['board', 'timeline', 'form'].includes(kind)) { moduleCode = 'workflow'; entityType = 'TASK' }
+  else if (has('contacts') && kind !== 'report') { moduleCode = 'contacts'; entityType = 'ORGANIZATION' }
+  return {
+    key: `page-${index + 1}`, label, kind, module: moduleCode, entityType,
+    description: `${label} for ${def.identity.name}, composed from approved shared modules.`,
+    metrics: kind === 'dashboard' ? ['Records', 'Modules', 'Pages', 'Files'] : undefined,
+  }
+}
+
 export function buildApplicationConfig(def: CompanyDefinition, template: TemplateDefinition, modules: Map<string, ModuleRef>): ApplicationConfig {
   const defaults = asRecord(template.defaults)
   const overrides: Record<string, unknown> = {
@@ -309,6 +338,40 @@ export function buildApplicationConfig(def: CompanyDefinition, template: Templat
     retention: { days: def.policies.retentionDays, backupPolicy: def.policies.backupPolicy, dataResidency: def.policies.dataResidency },
   }
   const merged = mergeConfig(defaults, overrides)
+  // ---- configuration-driven presentation -------------------------------
+  // Theme tokens and page definitions come from the APPROVED template, are
+  // overridden by company branding, and are stored in the checksummed config.
+  // One runtime renderer serves every company; nothing here is code per app.
+  const rawTheme = asRecord(defaults.theme)
+  const hex = (v: unknown, fallback: string) => typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v) ? v : fallback
+  const theme: ThemeTokens = {
+    primary: hex(def.branding.primaryColor, hex(rawTheme.primary, '#063B8F')),
+    accent: hex(def.branding.accentColor, hex(rawTheme.accent, '#009FE3')),
+    surface: hex(rawTheme.surface, '#FFFFFF'),
+    background: hex(rawTheme.background, '#F4FAFF'),
+    text: hex(rawTheme.text, '#0B1F33'),
+    muted: hex(rawTheme.muted, '#526173'),
+    motif: typeof rawTheme.motif === 'string' ? rawTheme.motif.slice(0, 60) : 'grid',
+    radius: rawTheme.radius === 'sharp' ? 'sharp' : 'soft',
+    density: rawTheme.density === 'compact' ? 'compact' : 'comfortable',
+  }
+  const rawPages = Array.isArray(defaults.pages) ? defaults.pages : []
+  const nav = merged.navigation ? asStringArray(merged.navigation) : template.navigation
+  const pages: RuntimePage[] = rawPages.length
+    ? rawPages.map((raw, i) => {
+        const p = asRecord(raw)
+        const kind = String(p.kind ?? 'list')
+        return {
+          key: String(p.key ?? `page-${i + 1}`).slice(0, 60),
+          label: String(p.label ?? `Page ${i + 1}`).slice(0, 80),
+          kind: (['dashboard', 'list', 'board', 'gallery', 'report', 'form', 'timeline'] as const).includes(kind as RuntimePage['kind']) ? kind as RuntimePage['kind'] : 'list',
+          module: p.module ? String(p.module).slice(0, 60) : undefined,
+          entityType: p.entityType ? String(p.entityType).slice(0, 60) : undefined,
+          description: String(p.description ?? '').slice(0, 300),
+          metrics: Array.isArray(p.metrics) ? p.metrics.map((m) => String(m).slice(0, 80)).slice(0, 8) : undefined,
+        }
+      })
+    : nav.map((label, i) => fallbackPage(label, i, def))
   return {
     schemaVersion: 1,
     companySlug: def.identity.slug,
@@ -338,6 +401,8 @@ export function buildApplicationConfig(def: CompanyDefinition, template: Templat
     extensions: def.extensions,
     automatedSteps: [],
     manualSteps: [],
+    theme,
+    pages,
   }
 }
 

@@ -54,6 +54,26 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Private Software Factory surfaces must never be indexed: the control
+      // center, the company application portal and every factory API response.
+      {
+        source: "/factory/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
+      {
+        source: "/admin/factory-control",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        source: "/api/factory/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
       {
         source: "/:path*",
         headers: [

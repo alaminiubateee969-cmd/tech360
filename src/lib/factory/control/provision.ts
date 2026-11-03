@@ -335,7 +335,7 @@ export async function updateApplicationConfig(applicationId: string, patch: unkn
   if (!app) return { ok: false, errors: ['Application not found'], version: null }
   if (app.status === 'RETIRED') return { ok: false, errors: ['A retired application cannot be reconfigured'], version: null }
   const input = parseJson<Record<string, unknown>>(typeof patch === 'string' ? patch : stableStringify(patch), {})
-  const ALLOWED = new Set(['branding', 'navigation', 'fields', 'workflows', 'reports', 'integrations', 'retention', 'extensions', 'departments', 'teams'])
+  const ALLOWED = new Set(['branding', 'navigation', 'fields', 'workflows', 'reports', 'integrations', 'retention', 'extensions', 'departments', 'teams', 'theme', 'pages'])
   const unexpected = Object.keys(input).filter((k) => !ALLOWED.has(k))
   if (unexpected.length) return { ok: false, errors: [`Configuration-only keys allowed; unexpected: ${unexpected.join(', ')}`], version: null }
   const current = JSON.parse(app.config) as ApplicationConfig

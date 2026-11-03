@@ -152,3 +152,24 @@ infrastructure approval and are recorded as manual steps in the operator guide.
 | H — repeatability | second company from the same approved definition, no source changes, automated/manual steps recorded |
 
 Results are reported in `docs/SFCC_ACCEPTANCE_RESULTS.md` after the suites actually run.
+
+---
+
+## Resolution status — 2026-11-03 (additive update)
+
+The gaps identified in this historical analysis are now closed. The original
+control plane is preserved; the following was added on top of it.
+
+| Gap identified earlier | Resolution |
+| --- | --- |
+| No runtime consumes the generated configuration | `src/lib/factory/control/runtime.ts` + `/factory/apps/[slug]` render the checksummed theme, pages, navigation and pinned modules for every company. See `docs/SFCC_RUNTIME_ARCHITECTURE.md`. |
+| Acceptance evidence was not backed by an executable suite | `runFactoryTests` performs 11 real checks and persists them in a `TEST` provisioning job; staging and deployment gates require that job to have passed. |
+| Rollback restored configuration only | `rollbackRelease` recovers config revisions, exact module pins, records and file contents from the verified portable `PRE_UPGRADE` backup (additively, same-company only). |
+| No industry template library from the supplied design references | 11 new versioned industry templates; all 18 references catalogued and mapped; 11 curated previews in the private Template Library. |
+| DEDICATED runtime boundary was manual and undocumented | A real, checksummed, credential-free self-hosted deployment package is generated from live pinned state; the evidence-gated activation boundary remains explicit and honest. |
+| Full DB/API end-to-end verification | `node scripts/factory/verify-http.mjs` extended from 39 to 49 live checks, including the runtime API, both private pages and the deployment package. |
+
+Verification: `npm test` / `npm run test:offline` → 1,208/1,208; typecheck and
+lint clean; schema gates unchanged (96/96/1,280/259, 211 annotations, 20
+control tables); live HTTP runner 49/49. Full record:
+`docs/TECH360-SOFTWARE-FACTORY-COMPLETION.md`.

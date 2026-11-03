@@ -144,6 +144,35 @@ export interface CompanyDefinition {
 }
 
 /** The configuration actually applied to one application instance. */
+/**
+ * Design tokens and runtime pages are part of the VERSIONED CONFIGURATION.
+ * The runtime renderer reads them from the application's config; changing a
+ * company's theme or pages is a configuration-only change, not a code change.
+ * They are optional because applications provisioned before this capability
+ * still have valid, checksummed configurations.
+ */
+export interface ThemeTokens {
+  primary: string
+  accent: string
+  surface: string
+  background: string
+  text: string
+  muted: string
+  motif?: string
+  radius?: 'soft' | 'sharp'
+  density?: 'comfortable' | 'compact'
+}
+
+export interface RuntimePage {
+  key: string
+  label: string
+  kind: 'dashboard' | 'list' | 'board' | 'gallery' | 'report' | 'form' | 'timeline'
+  module?: string
+  entityType?: string
+  description: string
+  metrics?: string[]
+}
+
 export interface ApplicationConfig {
   schemaVersion: 1
   companySlug: string
@@ -162,6 +191,8 @@ export interface ApplicationConfig {
   extensions: Array<{ kind: 'CONFIG' | 'ENGINEERING'; note: string }>
   automatedSteps: string[]
   manualSteps: string[]
+  theme?: ThemeTokens
+  pages?: RuntimePage[]
 }
 
 export interface StepResult {

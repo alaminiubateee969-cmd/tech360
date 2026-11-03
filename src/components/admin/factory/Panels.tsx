@@ -2,12 +2,14 @@
 
 /** The thirteen real control-center panels. Every control calls a live API. */
 import { useState } from 'react'
+import Image from 'next/image'
 import {
   Activity, AlertTriangle, Boxes, Building2, DatabaseBackup, FileCode2, GitBranch,
   Layers, ListChecks, Plug, RefreshCw, ShieldCheck, Sparkles, Workflow,
 } from 'lucide-react'
 import { Btn, Field, JsonBlock, Notice, Panel, Pill, Select, Table, apiPatch, apiPost, fmtDate, short, useAction, useEndpoint, type Row } from './shared'
 import { Wizard } from './Wizard'
+import { DESIGN_REFERENCES, DESIGN_REFERENCE_COUNT, INDUSTRY_TEMPLATE_COUNT, TEMPLATE_PREVIEWS } from '@/lib/factory/control/design-references'
 
 type PanelProps = { tick: number; reloadAll: () => void; role: string }
 
@@ -228,7 +230,40 @@ export function TemplatesPanel({ tick, reloadAll }: PanelProps) {
           <Notice>Only implemented shared capabilities can be composed. A template with an unknown capability can never pass validation.</Notice>
         </Panel>
       </div>
+      <DesignReferencesPanel templates={templates} />
     </div>
+  )
+}
+
+/** Design references → working, versioned industry templates (not mock data). */
+function DesignReferencesPanel({ templates }: { templates: Row[] }) {
+  const [open, setOpen] = useState(false)
+  const entries = Object.entries(TEMPLATE_PREVIEWS)
+  return (
+    <Panel title="Industry design-reference library" description={`${DESIGN_REFERENCE_COUNT} supplied design references mapped to ${INDUSTRY_TEMPLATE_COUNT} real, versioned templates. Previews are curated; each template composes approved shared modules and is rendered by the one config-driven runtime.`}>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {entries.map(([code, preview]) => {
+          const registered = templates.find((t) => String(t.code) === code)
+          const refs = DESIGN_REFERENCES.filter((r) => r.template === code).length
+          return <div key={code} className="overflow-hidden rounded-lg border border-slate-700/60 bg-slate-900/40">
+            <div className="relative h-28 w-full"><Image src={preview.image} alt={`${preview.label} design reference`} fill sizes="320px" className="object-cover" /></div>
+            <div className="space-y-1.5 p-3">
+              <div className="flex items-center justify-between gap-2"><p className="truncate text-[12px] font-semibold text-slate-100">{preview.label}</p>
+                <span className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px]" style={{ background: `${preview.palette[0]}33`, color: preview.palette[1] }}>{registered ? registered.status ?? 'REGISTERED' : 'DRAFT SEED'}</span></div>
+              <p className="font-mono text-[10px] text-slate-500">{code}</p>
+              <p className="text-[10px] text-slate-400">{refs} reference{refs === 1 ? '' : 's'} · {registered ? `v${registered.currentVersion ?? 1} in library` : 'initialize library to register'}</p>
+              <div className="flex gap-1 pt-1">{preview.palette.map((c) => <span key={c} className="h-2.5 w-6 rounded-sm" style={{ background: c }} />)}</div>
+            </div>
+          </div>
+        })}
+      </div>
+      <div className="mt-3"><Btn onClick={() => setOpen((v) => !v)}>{open ? 'Hide' : 'Show'} all {DESIGN_REFERENCE_COUNT} reference mappings</Btn></div>
+      {open && <div className="mt-3 max-h-80 space-y-1.5 overflow-auto pr-1">{DESIGN_REFERENCES.map((r) => <div key={r.file} className="rounded-md border border-slate-700/50 bg-slate-900/30 px-3 py-2 text-[10px] leading-relaxed">
+        <p className="font-medium text-slate-200">{r.title} <span className="ml-1 font-mono text-slate-500">→ {r.template}</span></p>
+        <p className="mt-0.5 text-slate-400">{r.note}</p>
+        <p className="mt-0.5 truncate font-mono text-[9px] text-slate-600">{r.file}</p>
+      </div>)}</div>}
+    </Panel>
   )
 }
 
@@ -728,6 +763,7 @@ export { STATUS_OPTIONS }
 /* ------------------------------------------------------- Deployment Center */
 export function DeploymentsPanel({ tick }: PanelProps) {
   const { data, error } = useEndpoint<Row>('/api/factory/applications', tick)
+  const [packageApp, setPackageApp] = useState('')
   if (error) return <Notice tone="warn">{error}</Notice>
   const apps: Row[] = data?.applications ?? []
   return (
@@ -748,9 +784,19 @@ export function DeploymentsPanel({ tick }: PanelProps) {
           <p className="text-xs leading-relaxed text-slate-300">One installation; server-side company grants, scoped records, files, reports, jobs, audit events and integration credentials. A tenant identifier coming from a browser is never accepted as authorization.</p>
         </Panel>
         <Panel title="Model B — dedicated instance">
-          <p className="text-xs leading-relaxed text-slate-300">A distinct app instance and, where required, a separate database, object storage, credentials, deployment configuration and domain. The factory records the required manual steps and refuses to mark the application LIVE without recorded evidence; it does not pretend to have created infrastructure it cannot see.</p>
+          <p className="text-xs leading-relaxed text-slate-300">A distinct app instance and, where required, a separate database, object storage, credentials, deployment configuration and domain. The factory generates a checksummed deployment package, records the required manual steps and refuses to mark the application LIVE without recorded evidence; it does not pretend to have created infrastructure it cannot see.</p>
         </Panel>
       </div>
+      <Panel title="Self-hosted deployment package" description="A real, reproducible runbook generated from this application's pinned modules, configuration checksum, verified backup and release state. Contains no credentials or tenant secrets.">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[240px] flex-1"><Select label="Application" value={packageApp} onChange={setPackageApp} options={[{ value: '', label: 'Choose…' }, ...apps.map((a) => ({ value: String(a.id), label: `${a.name} (${a.code})` }))]} /></div>
+          <a href={packageApp ? `/api/factory/deployments/${packageApp}?download=1` : '#'}
+            className={`rounded-md border px-3 py-2 text-[11px] font-medium ${packageApp ? 'border-[#009FE3]/50 text-[#009FE3]' : 'pointer-events-none border-slate-700 text-slate-600'}`}
+            aria-disabled={!packageApp}>Download package (JSON)</a>
+          {packageApp ? <a href={`/api/factory/deployments/${packageApp}`} target="_blank" rel="noreferrer" className="rounded-md border border-slate-700 px-3 py-2 text-[11px] font-medium text-slate-300">Preview</a> : null}
+        </div>
+        <Notice>Requires an explicit, active company grant. Checksummed so the receiving host can verify it was not altered. External DNS, database, TLS and secret provisioning remain the operator's responsibility and must be evidenced before DEDICATED activation.</Notice>
+      </Panel>
     </div>
   )
 }

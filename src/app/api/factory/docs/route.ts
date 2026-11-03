@@ -7,6 +7,8 @@ export const dynamic = 'force-dynamic'
 
 const DOC_FILES = [
   'docs/SFCC_GAP_ANALYSIS_AND_PLAN.md',
+  'docs/SFCC_RUNTIME_ARCHITECTURE.md',
+  'docs/TECH360-SOFTWARE-FACTORY-COMPLETION.md',
   'docs/SFCC_OPERATIONS.md',
   'docs/SFCC_ACCEPTANCE_RESULTS.md',
   'docs/TECH360-FULL-PROJECT-COMPLETION.md',
@@ -26,16 +28,26 @@ export async function GET(req: NextRequest) {
   return noStore({
     documents: DOC_FILES.map((path) => ({ path, exists: existsSync(join(root, path)) })),
     pipeline: ['Select a template', 'Configure the company', 'Select modules', 'Validate', 'Provision', 'Test', 'Approve', 'Deploy', 'Monitor'],
+    runtime: {
+      portal: '/factory/apps',
+      application: '/factory/apps/[slug]',
+      stateApi: '/api/factory/runtime/[slug]',
+      deploymentPackage: '/api/factory/deployments/[applicationId]',
+      model: 'One checksummed configuration consumed by one shared renderer; no per-company code.',
+    },
     automatedSteps: [
       'Definition + dependency + compatibility validation',
       'Isolated identity, versioned definition, roles and grants',
       'Pinned module versions, generated configuration, seeded module entities',
       'Integration adapter registration with honest status',
       'Automated acceptance checks, verified backup, health checks',
+      'Executable, persisted runtime acceptance suite (11 real checks)',
+      'Config-driven runtime state: theme, pages, scoped records, files and reports',
+      'Self-hosted DEDICATED deployment package generated from pinned state',
     ],
     manualSteps: [
       'Review provisioning result and approve activation',
-      'Dedicated-instance infrastructure, DNS, TLS, credentials and evidence recording',
+      'Apply the generated deployment package on the authorized host: separate DB, DNS, TLS, credentials and evidence recording',
       'External provider accounts, approvals and fee arrangements',
       'New business logic, migrations or integrations that are not configuration-only',
     ],
