@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createHash, randomBytes } from 'node:crypto'
 import { after, before, describe, it } from 'node:test'
-import { PrismaClient } from '@prisma/client'
+import { db } from '../src/lib/db'
 import { NextRequest } from 'next/server'
 
 import { POST as confirmHandover } from '../src/app/api/handover/[token]/confirm/route'
@@ -14,7 +14,8 @@ import { AgentJobDecisionConflict, AgentJobIdempotencyConflict, claimNextAgentJo
 import { claimInboundWebhookEvent, finishInboundWebhookEvent, linkVerifiedIdentityToClient, resolveOrCreateVerifiedClient, VerifiedIdentityConflictError } from '../src/lib/identity-resolver'
 import { hashNormalizedIdentity, normalizeIdentity, type VerifiedIdentityProof } from '../src/lib/identity-policy'
 
-const db = new PrismaClient()
+// Use the application client so the offline preview adapter and the
+// production MySQL client are both honoured without a second engine.
 const run = `TEST-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 let alphaId = ''
 let betaId = ''

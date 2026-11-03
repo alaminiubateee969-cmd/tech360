@@ -13,7 +13,7 @@ import {
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
 import { LeadFunnel, ProjectSwimlane } from "./diagram-kit";
-import { ButtonGroup, GhostLink, SecondaryLink } from "./buttons";
+import { ButtonGroup, GhostLink, SecondaryLink, OutlineLink } from "./buttons";
 
 export default function ProcessView() {
   const gates = PROCESS.filter((p) => p.gate);
@@ -237,6 +237,17 @@ export default function ProcessView() {
               </Card>
             </RevealItem>
           </RevealList>
+        </div>
+      </section>
+
+      <section className="border-t border-[#E2E8F0] bg-[#F4FAFF] py-12">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-start justify-between gap-5 px-4 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#009FE3]">The communication layer</p>
+            <h2 className="mt-2 text-xl font-bold tracking-tight text-[#0B1F33] sm:text-2xl">This is the delivery process. The messages are documented too.</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#526173]">Read the exact eleven-stage AI Agent Communication Pipeline: every reply, every CRM save and every admin approval gate.</p>
+          </div>
+          <OutlineLink href="#/pipeline" className="shrink-0">Open the pipeline</OutlineLink>
         </div>
       </section>
 

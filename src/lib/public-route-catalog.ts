@@ -18,6 +18,7 @@ const SECTIONS: Record<string, Omit<PublicRouteInfo, 'path'>> = {
   technologies: { title: 'Technology Stack', description: 'Technology categories and tools described on the Tech360 website.', kind: 'section' },
   'design-kit': { title: 'Design Kit', description: 'A visual reference for the Tech360 website design system.', kind: 'section' },
   process: { title: 'Delivery Process', description: 'The delivery stages, client approvals, and review gates described by Tech360.', kind: 'section' },
+  pipeline: { title: 'AI Agent Communication Pipeline', description: 'The eleven-stage Tech360 client journey: exact messages, CRM saves, admin approval gates, HTML preview before payment and source-code handover after full payment.', kind: 'section' },
   blog: { title: 'Engineering Insights', description: 'Published engineering and delivery notes from Tech360.', kind: 'blog-index' },
   careers: { title: 'Careers', description: 'Career information and opportunities published by Tech360.', kind: 'section' },
   contact: { title: 'Contact Tech360', description: 'Contact TECH360 LLC about a project or service enquiry.', kind: 'section' },
@@ -73,7 +74,7 @@ export function resolvePublicRoute(pathSegments: readonly string[]): PublicRoute
 export function getStaticPublicRoutePaths(): string[] {
   const sections = [
     '/about', '/services', '/industries', '/work', '/technologies', '/design-kit',
-    '/process', '/blog', '/careers', '/contact', '/legal', '/faq', '/portal',
+    '/process', '/pipeline', '/blog', '/careers', '/contact', '/legal', '/faq', '/portal',
   ]
   return [
     ...sections,

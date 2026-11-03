@@ -25,6 +25,7 @@ import LegalView from '@/components/site/LegalView'
 import FaqView from '@/components/site/FaqView'
 import PortalView from '@/components/site/PortalView'
 import DesignKitView from '@/components/site/DesignKitView'
+import AgentPipelineView from '@/components/site/AgentPipelineView'
 
 // Private admin console (auth-gated internally)
 const AdminApp = lazy(() => import('@/components/admin/AdminApp'))
@@ -211,7 +212,7 @@ function parseHash(raw: string) {
   return { section, param, full: `/${parts.join('/')}` }
 }
 
-const PUBLIC_SECTIONS = new Set(['', 'about', 'services', 'industries', 'work', 'technologies', 'process', 'blog', 'careers', 'contact', 'legal', 'faq', 'portal'])
+const PUBLIC_SECTIONS = new Set(['', 'about', 'services', 'industries', 'work', 'technologies', 'process', 'blog', 'careers', 'contact', 'legal', 'faq', 'portal', 'design-kit', 'pipeline'])
 
 function UnknownPublicRoute({ navigate }: { navigate: (h: string) => void }) {
   return (
@@ -244,6 +245,7 @@ function PublicView({ section, param, navigate }: { section: string; param: stri
     case 'faq': return <FaqView />
     case 'design-kit': return <DesignKitView />
     case 'portal': return <PortalView />
+    case 'pipeline': return <AgentPipelineView />
     default: return <UnknownPublicRoute navigate={navigate} />
   }
 }
@@ -281,6 +283,14 @@ export default function Page({ initialHash = '/' }: { initialHash?: string }) {
     }
     description.content = legalDocument.summary
   }, [legalDocument])
+
+  // The hash-routed pipeline page has its own document title. The root
+  // document's metadata is restored automatically by the App Router when a
+  // clean public path (e.g. /pipeline) is used.
+  useEffect(() => {
+    if (section !== 'pipeline') return
+    document.title = 'AI Agent Communication Pipeline | TECH360'
+  }, [section])
 
   // analytics lifecycle
   useEffect(() => {

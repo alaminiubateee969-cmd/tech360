@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, it } from 'node:test'
-import { PrismaClient } from '@prisma/client'
+import { db } from '../src/lib/db'
 
 import { retryCommunicationOutbox } from '../src/lib/comms'
 import { executeGoverned, GovernanceDeniedError, type GovernedActionInput } from '../src/lib/governance/enforce'
@@ -10,7 +10,8 @@ import { outboundContentHash } from '../src/lib/governance/outbound'
 // disposable MySQL in CI. No provider is contacted: the lifecycle tests use a
 // stub side effect, and the retry test is refused before any dispatch.
 
-const db = new PrismaClient()
+// Use the application client so the offline preview adapter and the
+// production MySQL client are both honoured without a second engine.
 const run = `OUT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 let clientRowId = ''
 let superAdminId = ''

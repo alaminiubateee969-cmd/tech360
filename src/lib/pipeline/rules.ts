@@ -107,10 +107,17 @@ export type MessageGate = 'AUTO_SEND' | 'ADMIN_APPROVAL_REQUIRED'
 const CONTENT_MARKERS: Array<{ category: AdminApprovalCategory; pattern: RegExp }> = [
   // An invoice is never auto-sent. ("invoice" appears in no auto-send body.)
   { category: 'INVOICE', pattern: /\binvoices?\b|\bINV-\d{4}-\d{4}\b/i },
-  // A legal response. ("legal" appears in no auto-send body.)
-  { category: 'LEGAL_RESPONSE', pattern: /\b(legal|liabilit\w*|indemnit\w*|attorney|lawyer|arbitration|breach of contract|force majeure)\b/i },
-  // A refund response — but NOT the policy statement "non-refundable".
-  { category: 'REFUND_RESPONSE', pattern: /(?<!non-)\brefund\w*/i },
+  // A legal RESPONSE — not a policy statement such as "does not waive
+  // legal rights" or "applicable law". Those phrases appear in the
+  // auto-send copy and must stay auto-send. We only gate first-person
+  // legal positions, named proceedings and legal professionals.
+  { category: 'LEGAL_RESPONSE', pattern: /\b(?:our|we|tech360)\b[^.!?]{0,120}\b(?:legal\s+(?:position|claim|opinion|advice|action)|liabilit\w*|indemnit\w*|breach of contract|force majeure)\b/i },
+  { category: 'LEGAL_RESPONSE', pattern: /\b(?:attorney|lawyer|arbitrator|indemnification|legal proceedings)\b/i },
+  // A refund RESPONSE — "we processed your refund" — not a policy
+  // statement such as "Refund requests are reviewed under ..." or the
+  // word "non-refundable". Both appear in the auto-send copy.
+  { category: 'REFUND_RESPONSE', pattern: /\b(?:we|our|tech360)\b[^.!?]{0,100}\b(?:processed|approved|issued|granted|rejected|denied|refunded)\b[^.!?]{0,100}\brefund\w*/i },
+  { category: 'REFUND_RESPONSE', pattern: /\brefund\b[^.!?]{0,60}\b(?:has been|was|is)\s+(?:processed|approved|issued|granted|rejected|denied)\b/i },
   // A dispute response.
   { category: 'DISPUTE_RESPONSE', pattern: /\bdisput\w*/i },
 ]
@@ -289,8 +296,9 @@ const IDENTIFIER_PATTERNS: RegExp[] = [
   /\b(?:https?:\/\/|www\.)[^\s<>"]+/gi,
   // Email addresses
   /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g,
-  // ISO dates
+  // ISO dates and ISO datetimes (2026-11-03, 2026-11-03T09:12:44.123Z)
   /\b\d{4}-\d{2}-\d{2}\b/g,
+  /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})?\b/gi,
   // Invoice / project / order numbers, including a second segment
   // (INV-2026-0001, SOW-2026-0002)
   /\b(?:INV|PRJ|REF|ORD|SOW)[-\s]?\d{2,6}(?:[-\s]\d{2,6})?\b/gi,
