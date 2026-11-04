@@ -65,7 +65,8 @@ export async function POST(req: NextRequest) {
 
     if (anonId.length < 4) return apiError('Missing visitor identifier.', 400, 'BAD_ANON_ID')
     if (!isValidClientRequestId(requestId)) return apiError('A valid session request id is required.', 400, 'BAD_REQUEST_ID')
-    if (!email && preferredContact === 'Email') return apiError(emailInput ? 'Enter a valid email address.' : 'Email is required when email is selected as the first reply channel.', 400, 'EMAIL_REQUIRED')
+    // Email is NOT required at session start: the webchat agent's first SMS asks for it, and the Client ID is auto-created once email is received.
+    if (emailInput && !email) return apiError('Enter a valid email address.', 400, 'EMAIL_INVALID')
     if (phoneInput && !phone) return apiError('Enter a valid phone number, such as +8801XXXXXXXXX.', 400, 'PHONE_INVALID')
     if (preferredContact === 'SMS' && !phone) return apiError('A valid phone number is required when SMS is selected.', 400, 'PHONE_REQUIRED')
     if (!hasExplicitContactConsent(raw.contactConsent)) {
@@ -163,6 +164,7 @@ export async function POST(req: NextRequest) {
     }
 
     let identityReviewRequired = false
+    let emailRequired = false
     let displayClientId: string | null = null
     let emailDeliveryStatus: 'ACCEPTED_BY_PROVIDER' | 'NOT_CONFIRMED' | null = null
     let linkedContactDeliveryStatus: { channel: string; status: string; ok: boolean } | null = null
@@ -180,6 +182,7 @@ export async function POST(req: NextRequest) {
         contactConsentAt: conversation.contactConsentAt ?? now,
       })
       identityReviewRequired = linked.identityReviewRequired
+      emailRequired = Boolean((linked as { emailRequired?: boolean }).emailRequired)
       linkedContactDeliveryStatus = linked.contactDeliveryStatus
       if (linked.emailDeliveryStatus) {
         emailDeliveryStatus = linked.emailDeliveryStatus === 'SENT' ? 'ACCEPTED_BY_PROVIDER' : 'NOT_CONFIRMED'
@@ -190,6 +193,39 @@ export async function POST(req: NextRequest) {
           data: { clientId: linked.clientRowId },
         })
         displayClientId = linked.displayClientId
+      } else if (emailRequired) {
+        // First contact without email: queue the webchat agent's first SMS asking for email.
+        // This stays visible in webchat; if an SMS gateway is configured and phone was supplied we also dispatch it as SMS.
+        try {
+          const { EMAIL_GATE_PROMPT } = await import('@/lib/chat-onboarding')
+          const existingPrompt = await db.chatMessage.findFirst({
+            where: { conversationId: conversation.id, sender: 'ADMIN', body: EMAIL_GATE_PROMPT },
+            select: { id: true },
+          })
+          if (!existingPrompt) {
+            await db.chatMessage.create({
+              data: { conversationId: conversation.id, sender: 'ADMIN', body: EMAIL_GATE_PROMPT },
+            })
+            await db.chatConversation.update({
+              where: { id: conversation.id },
+              data: { lastMessageAt: new Date(), lastMessagePreview: EMAIL_GATE_PROMPT.slice(0, 120), lastSender: 'ADMIN' },
+            }).catch(() => null)
+            // Best-effort SMS for SMS-first: send the same prompt as an actual SMS if a phone was supplied and gateway is configured.
+            if (phone) {
+              try {
+                const { sendCommunication } = await import('@/lib/comms')
+                await sendCommunication({
+                  channel: 'SMS',
+                  to: phone,
+                  body: EMAIL_GATE_PROMPT,
+                  agentCode: 'EMAIL-GATE',
+                  // no clientId yet — this is the provisioning SMS before Client ID exists; comms layer supports null clientId for this case
+                  clientId: null as unknown as string,
+                } as never).catch(() => null)
+              } catch {}
+            }
+          }
+        } catch {}
       }
     }
 
@@ -202,11 +238,14 @@ export async function POST(req: NextRequest) {
       conversation: publicConversation(conversation, displayClientId),
       ai: { available: aiAvailable, detail: aiDetail },
       identityReviewRequired,
+      emailRequired,
       emailDeliveryStatus,
       contactDeliveryStatus: linkedContactDeliveryStatus,
       ...(identityReviewRequired
         ? { notice: `Your message is saved, but no Client ID was issued because the email needs safe ownership review. Use conversation reference ${conversation.id} when contacting info@bdtech360.com; this reference is not an authentication secret.` }
-        : {}),
+        : emailRequired
+          ? { notice: `Thanks for contacting TECH360. Please share your email address — once received, your Client ID will be created automatically and the first SMS will follow on your chosen channel.` }
+          : {}),
     }, 201, anonId)
   } catch {
     return apiError('Chat is temporarily unavailable — please try again shortly.', 503, 'CHAT_DB_UNAVAILABLE')

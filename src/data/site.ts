@@ -19,14 +19,126 @@ export const COMPANY = {
   address: "117 S Lexington St Ste 100, Harrisonville, MO 64701, USA",
   email: PUBLIC_CONTACT.email,
   founded: "2021",
-  // Canonical About-page facts — single source reused in AboutView (do not hardcode elsewhere).
+  // Global positioning — no country-focused marketing. Legal entity exists, but service is worldwide.
   bangladeshFoundedYear: "2021",
   usRegistrationYear: "2025",
-  registrationJurisdiction: "Missouri, United States",
+  registrationJurisdiction: "United States",
   serviceCoverage: "Worldwide",
   tagline: "Strategy. Software. Automation. Growth.",
   subline:
-    "Enterprise-grade websites, platforms and automation for ambitious businesses — engineered by a US-registered team delivering worldwide.",
+    "Your private, self-controlled Company-in-a-Box — engineered worldwide for businesses that need to own their software, their data, and their future.",
+} as const;
+
+// Software Factory Platform — Company-in-a-Box positioning (global, no country mention)
+export const PLATFORM_PILLARS = [
+  {
+    key: "template-library",
+    title: "Template Library",
+    icon: "Layers",
+    tagline: "Proven starting points, not blank canvases.",
+    description: "Industry-tested application templates for education, healthcare, real estate, hospitality, retail, logistics and more — each with roles, workflows, and data models ready to provision.",
+    provides: ["12+ production-ready templates", "Roles & permissions pre-wired", "Workflows & approval chains", "Industry data models"],
+    whyUsed: "Skip months of discovery. Start from what works in your industry and customize only what makes you different.",
+  },
+  {
+    key: "module-engine",
+    title: "Module Engine",
+    icon: "Puzzle",
+    tagline: "One capability, built once, reused everywhere.",
+    description: "Capabilities like identity, contacts, documents, workflow and audit are built as versioned modules. A fix in one module improves every company that uses it — no duplicate code, no drift.",
+    provides: ["8 core capabilities", "Versioned module library", "Dependency-aware composition", "Tested once, trusted everywhere"],
+    whyUsed: "Maintain one codebase for your entire portfolio instead of one-off apps that diverge and decay.",
+  },
+  {
+    key: "company-provisioning",
+    title: "Company Provisioning",
+    icon: "Building2",
+    tagline: "A new company in minutes, isolated by design.",
+    description: "Provision a dedicated, isolated company environment with its own branding, users, data and permissions — fully separated from other companies, auditable and recoverable.",
+    provides: ["Isolated data & access", "Branding & domain per company", "Department/team structure", "Explicit grant, expiring support access"],
+    whyUsed: "Serve multiple clients, brands or subsidiaries without cross-contamination — each company owns its data completely.",
+  },
+  {
+    key: "version-control",
+    title: "Version Control",
+    icon: "GitBranch",
+    tagline: "Every change is tracked, tested and reversible.",
+    description: "Template and module versions are explicit, tested and audited. Promote from draft to staging to production with approval gates — rollback is always one version behind, ready.",
+    provides: ["Template & module versioning", "Staging → production promotion", "Approval-gated releases", "Full audit trail per change"],
+    whyUsed: "Know exactly what changed, when, by whom and why — and undo it cleanly if needed.",
+  },
+  {
+    key: "deployment-recovery",
+    title: "Deployment & Recovery",
+    icon: "Rocket",
+    tagline: "Ship safely, recover instantly.",
+    description: "Deploy to staging, verify health, then promote to production. Automated backups, health monitoring and one-click rollback ensure your operations never wait on engineering.",
+    provides: ["Staging verification", "Health monitoring", "Automated backups", "One-click rollback & recovery"],
+    whyUsed: "Deploy with confidence. If anything degrades, restore service before your customers notice.",
+  },
+] as const;
+
+export const PRODUCED_SYSTEMS = [
+  {
+    slug: "education-campus-os",
+    title: "Campus OS",
+    category: "Education",
+    imageRef: "Aurora Modern Academy / Oakridge",
+    whatYouGet: "Enquiry → Admission → Academic → Alumni pipeline with guardian portal",
+    whyIndustry: "Schools lose admissions to slow follow-up; this automates it while keeping human approval on offers.",
+  },
+  {
+    slug: "healthcare-clinic-flow",
+    title: "Clinic Flow",
+    category: "Healthcare",
+    imageRef: "Consultant App / Medic Delivery",
+    whatYouGet: "Appointment, EMR, prescription and recall automation",
+    whyIndustry: "Clinics need no-shows down and records auditable — this gives both without extra staff.",
+  },
+  {
+    slug: "hospitality-stay-suite",
+    title: "Stay Suite",
+    category: "Hospitality",
+    imageRef: "Skyview Hotels / TrailPeak",
+    whatYouGet: "Booking, housekeeping, guest messaging and revenue dashboard",
+    whyIndustry: "Hotels compete on experience consistency; this makes every stay reliably excellent.",
+  },
+  {
+    slug: "property-deal-desk",
+    title: "Deal Desk",
+    category: "Real Estate",
+    imageRef: "Nestoria / Qvrenti",
+    whatYouGet: "Listing → Lead → Site visit → Booking → Installment tracking",
+    whyIndustry: "Real estate loses money on aged leads; this responds in under 5 minutes, every time.",
+  },
+  {
+    slug: "commerce-command",
+    title: "Commerce Command",
+    category: "Retail & Commerce",
+    imageRef: "Medichy Pharmacy / Lokma Food",
+    whatYouGet: "Catalog, orders, inventory, payments and delivery orchestration",
+    whyIndustry: "Commerce margins live on inventory accuracy and delivery promises — this keeps both true.",
+  },
+  {
+    slug: "field-ops-hub",
+    title: "Field Ops Hub",
+    category: "Services",
+    imageRef: "IT Empire / Smart ERP",
+    whatYouGet: "Jobs, crews, inventory and finance in one operational source of truth",
+    whyIndustry: "Manufacturing and services fail on disconnected data; this connects it end-to-end.",
+  },
+] as const;
+
+export const AI_NATIVE_MESSENGER = {
+  eyebrow: "AI-NATIVE MESSENGER",
+  title: "Human + AI Teams, One Inbox",
+  description: "Like Teamily.ai — WhatsApp, SMS and webchat in a single, AI-native messenger. AI drafts, humans approve, every message is logged under the Client ID.",
+  capabilities: [
+    { title: "WhatsApp + SMS + Webchat Unified", detail: "Every channel lands in one timeline per client — no missed messages across apps." },
+    { title: "AI Drafts, Human Approves", detail: "Nine AI auto-sends (first reply, scope questions, meeting links) and seven admin-gated sends (scope, invoice, handover)." },
+    { title: "Client ID as Source of Truth", detail: "Every message, scope, payment and delivery is saved under the Client ID — auditable by date and actor." },
+    { title: "First SMS → Email Gate → Auto Client ID", detail: "First SMS asks for email; once received, Client ID is auto-created and the full journey begins." },
+  ],
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -36,6 +148,7 @@ export const COMPANY = {
 export const NAV_LINKS: { label: string; href: string }[] = [
   { label: "Home", href: "#/" },
   { label: "About", href: "#/about" },
+  { label: "Platform", href: "#/platform" },
   { label: "Services", href: "#/services" },
   { label: "Industries", href: "#/industries" },
   { label: "Work", href: "#/work" },
@@ -147,7 +260,7 @@ export const SERVICES: Service[] = [
       "Test orders, launch, team training and handover",
     ],
     example:
-      "A Dhaka-based fashion retailer moving from social-media selling to a full store with automated order confirmations on WhatsApp and delivery-status tracking.",
+      "A fashion retailer moving from social-media selling to a full store with automated order confirmations on WhatsApp and delivery-status tracking — serving customers worldwide.",
   },
   {
     slug: "custom-crm-development",
@@ -687,7 +800,7 @@ export const INDUSTRIES: Industry[] = [
     solution:
       "A commerce platform with a conversion-engineered storefront, local payment integration, automated order communication and reporting that connects revenue to decisions.",
     exampleSystem:
-      "A Dhaka-based fashion retailer replaces social-media selling with a full store: automated order confirmations on WhatsApp, delivery-status tracking and a weekly sales report leadership actually reads.",
+      "A fashion retailer replaces social-media selling with a full store: automated order confirmations on WhatsApp, delivery-status tracking and a weekly sales report leadership actually reads — consistent across every market served.",
     recommended: ["ecommerce-platforms", "whatsapp-automation", "business-dashboards", "api-integrations"],
   },
   {
@@ -885,7 +998,7 @@ export const INDUSTRIES: Industry[] = [
     solution:
       "Automation covering the timezone gap: instant multi-channel enquiry response, structured CRM across markets, and reporting that keeps leadership in control from any country.",
     exampleSystem:
-      "An exporter automates enquiry response and quotation follow-up across three continents — a buyer in Vancouver and a buyer in Dhaka get the same five-minute answer.",
+      "An exporter automates enquiry response and quotation follow-up across continents — every buyer, in any timezone, gets the same five-minute answer.",
     recommended: ["custom-crm-development", "n8n-workflow-automation", "email-automation", "premium-business-websites"],
   },
   {
@@ -1406,7 +1519,7 @@ export const ROLES: Role[] = [
   {
     slug: "senior-fullstack-engineer",
     title: "Senior Full-Stack Engineer",
-    location: "Remote / Dhaka",
+    location: "Worldwide — Remote",
     type: "Full-time",
     summary:
       "Own complete product builds — from schema design to deployed interface — for client platforms across eCommerce, CRM and portals. You will work directly against written scopes and be accountable to milestone acceptance, not ticket counts.",
@@ -1428,7 +1541,7 @@ export const ROLES: Role[] = [
   {
     slug: "backend-engineer-laravel",
     title: "Backend Engineer (Laravel / PHP)",
-    location: "Remote / Dhaka",
+    location: "Worldwide — Remote",
     type: "Full-time",
     summary:
       "Build and maintain server-side systems for business applications and integrations — payment flows, order pipelines and APIs — with the reliability discipline our delivery policy promises clients.",
@@ -1450,7 +1563,7 @@ export const ROLES: Role[] = [
   {
     slug: "automation-engineer",
     title: "Automation Engineer (n8n / WhatsApp Cloud API)",
-    location: "Remote / Harrisonville, MO / Dhaka",
+    location: "Worldwide — Remote",
     type: "Full-time",
     summary:
       "Design and operate the automation backbone: n8n workflows, WhatsApp Cloud API integrations, notification pipelines and the monitoring that keeps all of it honest.",

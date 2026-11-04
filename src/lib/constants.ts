@@ -28,15 +28,20 @@ export const COMPANY = {
 
 // ------------------------------------------------------------
 // OFFICIAL INFO — exactly as printed on the owner-issued
-// company pad (TECH360_Official_A4_Letterhead.pdf, kept in
-// public/official/ + public/brand/), plus the platform
+// company pad (TECH360_Official_A4_Letterhead.pdf, archived in
+// private/official/ + public/brand/), plus the platform
 // contacts in live use. Single source for the login screen,
-// the Official Info document (/api/official-info), the admin
+// the Official Info document (/api/official-info — now
+// authenticated, anonymous returns 404), the admin
 // Official Info view, and the shareable PDF generator script
 // (scripts/generate-official-info-pdf.py mirrors this data).
 // NOTE: the pad prints tech360.com / info@tech360.com while
 // the operating platform runs on bdtech360.com — both are
 // published, labelled, and never conflated.
+// SECURITY (2026-11): Public static access to /official/*.pdf and
+// /api/official-info has been removed. Private copies are stored
+// under private/official/ and served only via
+// /api/admin/official-docs/[file] with Super Admin/Admin auth.
 // ------------------------------------------------------------
 export const OFFICIAL_INFO = {
   legalName: 'TECH360 LLC',
@@ -70,9 +75,13 @@ export const OFFICIAL_INFO = {
   ],
   adminLoginPath: '/#/admin',
   clientPortalPath: '/#/portal',
-  letterheadPdf: '/official/TECH360_Official_A4_Letterhead.pdf',
-  officialInfoPdf: '/official/TECH360-Official-Info.pdf',
+  // Public paths REMOVED (2026-11) — anonymous access now 404. Secured API is /api/admin/official-docs/* (auth required)
+  letterheadPdf: '/api/admin/official-docs/TECH360_Official_A4_Letterhead.pdf',
+  officialInfoPdf: '/api/admin/official-docs/TECH360-Official-Info.pdf',
   officialInfoDoc: '/api/official-info',
+  // Private storage locations (not public URLs):
+  privateLetterheadPath: 'private/official/TECH360_Official_A4_Letterhead.pdf',
+  privateOfficialInfoPath: 'private/official/TECH360-Official-Info.pdf',
 } as const
 
 /** Console roles that sign in at /#/admin — one login, role decides access. */

@@ -58,13 +58,15 @@ Facts extracted from it (verbatim) plus platform contacts live in
 | Tagline | CONNECT · INNOVATE · GROW / INNOVATE·AUTOMATE·TRANSFORM·SECURE | Web \| Cloud \| AI \| Data \| Tech |
 | Services | Digital Solutions · Website Design · SEO Optimization · Tech Integration · Global Connectivity · Cloud Services | + CRM, portals, dashboards, WhatsApp/n8n automation, AI agents |
 
-Shareable outputs:
+Shareable outputs (updated 2026-11 — public static access removed per security hardening):
 
-1. **Official Info Sheet (print/PDF):** `/api/official-info`
-2. **Official Info PDF:** `/official/TECH360-Official-Info.pdf`
-   (regenerate: `pip install pymupdf && python3 scripts/generate-official-info-pdf.py`)
-3. **Official Letterhead PDF:** `/official/TECH360_Official_A4_Letterhead.pdf`
+1. **Official Info Sheet (authenticated):** `/api/official-info` — **Super Admin/Admin auth required**, anonymous returns 404. Print to PDF via browser.
+2. **Official Info PDF (private):** `private/official/TECH360-Official-Info.pdf` — served only via `/api/admin/official-docs/TECH360-Official-Info.pdf` (role: ADMIN+). Public URL `/official/TECH360-Official-Info.pdf` now returns 404.
+   (regenerate: `pip install pymupdf && python3 scripts/generate-official-info-pdf.py` then copy to `private/official/`)
+3. **Official Letterhead PDF (private):** `private/official/TECH360_Official_A4_Letterhead.pdf` — served only via `/api/admin/official-docs/TECH360_Official_A4_Letterhead.pdf` (role: ADMIN+). Public URL `/official/TECH360_Official_A4_Letterhead.pdf` now returns 404.
+
+Branding configuration: **Super Admin → Settings → Document Branding** controls page size, header/footer spacing, approved header/footer/seal assets, seal toggles for SOW/Invoice, live preview, sample PDF generation, and restore of approved default template.
 
 The same info appears on the Super Admin & Admin login screen
-(pad header + ADDRESS/PHONE/WEBSITE/EMAIL footer), in the console
-under **System → Official Info**, and in the public site footer.
+(pad header + ADDRESS/PHONE/WEBSITE/EMAIL footer) and in the console
+under **Settings → Document Branding** and **System → Official Info** (authenticated). Public site footer no longer publishes official-info download links.

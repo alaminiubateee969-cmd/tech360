@@ -214,32 +214,11 @@ export function LoginScreen({ onExit, onLoggedIn }: { onExit: () => void; onLogg
           </div>
         </form>
 
-        {/* — Official downloads (pad documents) — */}
+        {/* — Authenticated console note — official docs available after login — */}
         <div className="mt-4 flex flex-wrap justify-center gap-2 text-[11px]">
-          <a
-            href={OFFICIAL_INFO.officialInfoDoc}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-300 hover:text-white"
-          >
-            <FileText className="size-3.5" aria-hidden="true" /> Official Info Sheet
-          </a>
-          <a
-            href={OFFICIAL_INFO.officialInfoPdf}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-300 hover:text-white"
-          >
-            <FileText className="size-3.5" aria-hidden="true" /> Official Info PDF
-          </a>
-          <a
-            href={OFFICIAL_INFO.letterheadPdf}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-300 hover:text-white"
-          >
-            <FileText className="size-3.5" aria-hidden="true" /> Official Letterhead PDF
-          </a>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-slate-400">
+            <FileText className="size-3.5" aria-hidden="true" /> Official documents available inside console (System → Official Info)
+          </span>
         </div>
 
         <div className="mt-5 flex items-center justify-between gap-3 text-[11px] text-slate-600">

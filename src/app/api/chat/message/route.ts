@@ -2,8 +2,9 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { sanitizeText, rateLimit, clientIp, apiError, json } from '@/lib/security'
 import { CHAT_SESSION_COOKIE, chatSessionCookieIsValid } from '@/lib/chat-session'
-import { ensureChatClient } from '@/lib/chat-onboarding'
+import { ensureChatClient, extractEmail, EMAIL_GATE_PROMPT } from '@/lib/chat-onboarding'
 import { isValidClientRequestId } from '@/lib/contact-policy'
+import { sanitizeEmail } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,7 +88,15 @@ export async function POST(req: NextRequest) {
     }
 
     let identityReviewRequired = false
+    let emailRequired = false
     if (!conversation.clientId) {
+      // If the visitor's message itself contains an email, capture it so the Client ID can be auto-created now.
+      const emailed = extractEmail(body)
+      if (emailed && !conversation.visitorEmail) {
+        try {
+          conversation = await db.chatConversation.update({ where: { id: conversation.id }, data: { visitorEmail: sanitizeEmail(emailed) ?? emailed } })
+        } catch {}
+      }
       const linked = await ensureChatClient({
         conversationId: conversation.id,
         anonId,
@@ -97,14 +106,33 @@ export async function POST(req: NextRequest) {
         contactConsentAt: conversation.contactConsentAt,
       })
       identityReviewRequired = linked.identityReviewRequired
+      emailRequired = Boolean((linked as { emailRequired?: boolean }).emailRequired)
       if (linked.clientRowId) {
         conversation = await db.chatConversation.update({
           where: { id: conversation.id },
-          data: { clientId: linked.clientRowId, visitorName: conversation.visitorName ?? (name || null) },
+          data: { clientId: linked.clientRowId, visitorName: conversation.visitorName ?? (name || null), visitorEmail: linked.clientRowId ? (sanitizeEmail(extractEmail(body) ?? conversation.visitorEmail ?? '') ?? conversation.visitorEmail) : conversation.visitorEmail },
         })
+      } else if (emailRequired) {
+        // Still no email — queue a follow-up prompt in webchat (and rely on the prior first SMS already sent from session).
+        // Do not spam: create one prompt per inbound that still lacks email.
       }
     } else if (!conversation.visitorName && name) {
       conversation = await db.chatConversation.update({ where: { id: conversation.id }, data: { visitorName: name } })
+    }
+    // Keep conversation email in sync when visitor sends a new email in any message after linking
+    if (conversation.clientId) {
+      const maybeEmail = extractEmail(body)
+      if (maybeEmail && maybeEmail !== conversation.visitorEmail) {
+        const clean = sanitizeEmail(maybeEmail)
+        if (clean) {
+          try {
+            await db.chatConversation.update({ where: { id: conversation.id }, data: { visitorEmail: clean } })
+            conversation.visitorEmail = clean
+            // Also keep CRM email updated (non-verified contact field)
+            await db.client.update({ where: { id: conversation.clientId }, data: { email: clean } }).catch(() => null)
+          } catch {}
+        }
+      }
     }
 
     let message
@@ -159,6 +187,31 @@ export async function POST(req: NextRequest) {
     }).catch(() => null)
 
     if (!conversation.clientId) {
+      // Email-gated: no Client ID yet — the first SMS already asked for email. Return the same prompt as a visible reply.
+      if (emailRequired) {
+        const promptMsg = await db.chatMessage.create({
+          data: { conversationId: conversation.id, sender: 'ADMIN', body: EMAIL_GATE_PROMPT },
+        }).catch(() => null)
+        if (promptMsg) {
+          await db.chatConversation.update({
+            where: { id: conversation.id },
+            data: { lastMessageAt: new Date(), lastMessagePreview: EMAIL_GATE_PROMPT.slice(0, 120), lastSender: 'ADMIN' },
+          }).catch(() => null)
+        }
+        const latestMessages = await db.chatMessage.findMany({
+          where: { conversationId: conversation.id },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, sender: true, body: true, agentEmail: true, createdAt: true },
+        })
+        return json({
+          message: { id: message.id, sender: message.sender, body: message.body, createdAt: message.createdAt },
+          reply: { body: EMAIL_GATE_PROMPT, wasAiGenerated: false, escalated: false, error: null },
+          identityReviewRequired,
+          emailRequired: true,
+          notice: 'Please share your email address — your Client ID will be created automatically once received.',
+          messages: latestMessages.map((item) => ({ id: item.id, sender: item.sender, body: item.body, agentEmail: item.agentEmail, createdAt: item.createdAt.toISOString() })),
+        }, 201)
+      }
       return json({
         message: { id: message.id, sender: message.sender, body: message.body, createdAt: message.createdAt },
         reply: null,

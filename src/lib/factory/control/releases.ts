@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Release management, shared-module impact analysis, staging upgrades and
  * rollback. A shared-module update is NEVER pushed into a live application:

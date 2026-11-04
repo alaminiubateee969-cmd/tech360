@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Database, Download, ExternalLink, Loader2, Package, RotateCcw, Server, ShieldAlert, TriangleAlert, XCircle } from 'lucide-react'
 
 import { fetchJson, num, prettify, useApi, type HealthResponse } from '@/lib/admin-client'
+import { DocumentBrandingView } from './DocumentBrandingView'
 import { EmptyState, KpiCard, PageHeader, SectionCard } from './shared/cards'
 import { StatusBadge } from './shared/StatusBadge'
 import { CARD } from './shared/styles'
@@ -441,6 +442,9 @@ export function SettingsView() {
         title="System Settings"
         description="Live system status and deployment configuration. Environment variables are read-only server-side; the Platform Governance switches below are live Super Admin controls."
       />
+
+      {/* Document Branding — Super Admin → Settings → Document Branding (single source for ALL docs) */}
+      <DocumentBrandingView />
 
       {/* Platform governance — feature flags + payment gateways (Super Admin) */}
       <PlatformGovernance />
