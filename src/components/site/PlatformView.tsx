@@ -22,11 +22,12 @@ export default function PlatformView() {
         title="Company-in-a-Box. Software Factory."
         description="A complete, private, self-controlled platform for businesses that need to own their software, their data, and their future. Five pillars — Template Library, Module Engine, Company Provisioning, Version Control, Deployment & Recovery — engineered for worldwide operations with no country lock-in."
         breadcrumb={[{ label: "Platform" }]}
-        actions={[
-          { label: "Explore Templates", href: "#templates", variant: "primary" },
-          { label: "See AI Messenger", href: "#messenger", variant: "secondary" },
-        ]}
-      />
+      >
+        <div className="flex flex-wrap gap-3">
+          <a href="#templates" className="inline-flex min-h-11 items-center rounded-lg bg-[#009FE3] px-6 text-sm font-semibold text-white hover:bg-[#0090CC]">Explore Templates</a>
+          <a href="#messenger" className="inline-flex min-h-11 items-center rounded-lg border border-white/30 px-6 text-sm font-semibold text-white hover:bg-white/10">See AI Messenger</a>
+        </div>
+      </PageHero>
 
       {/* AI-Native Messenger — Teamily.ai inspired */}
       <section id="messenger" className="bg-gradient-to-b from-[#0B1220] to-[#0F172A] py-16 sm:py-20">
