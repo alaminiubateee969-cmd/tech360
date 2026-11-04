@@ -87,6 +87,9 @@ export async function POST(req: NextRequest) {
       return apiError('This chat session cannot be verified in this browser. Please contact support.', 401, 'CHAT_SESSION_REQUIRED')
     }
 
+    // Preserve the validated consent timestamp across conversation updates.
+    const contactConsentAt = conversation.contactConsentAt
+
     let identityReviewRequired = false
     let emailRequired = false
     if (!conversation.clientId) {
@@ -103,7 +106,7 @@ export async function POST(req: NextRequest) {
         name: name || conversation.visitorName || 'Website Visitor',
         email: conversation.visitorEmail ?? '',
         firstMessage: body,
-        contactConsentAt: conversation.contactConsentAt,
+        contactConsentAt,
       })
       identityReviewRequired = linked.identityReviewRequired
       emailRequired = Boolean((linked as { emailRequired?: boolean }).emailRequired)
