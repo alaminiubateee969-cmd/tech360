@@ -2,11 +2,25 @@ import { db } from '@/lib/db'
 import { intakeLead } from '@/lib/journey'
 import { CONTACT_CONSENT_VERSION } from '@/lib/contact-policy'
 import { audit } from '@/lib/security'
+import { sanitizeEmail } from '@/lib/security'
+
+/** Extract first email address from free-text; used for the email-gated Client ID flow. */
+export function extractEmail(text: string): string | null {
+  const m = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
+  if (!m) return null
+  const candidate = m[0].trim()
+  return sanitizeEmail(candidate) ? candidate.trim() : null
+}
+
+/** Canonical first-contact prompt — the webchat agent's first SMS asks for email before issuing Client ID. */
+export const EMAIL_GATE_PROMPT =
+  'Thanks for reaching out to TECH360. To create your Client ID and keep your project securely on file, please share your email address. Once we have your email, your Client ID will be generated automatically and we will continue on your preferred channel.'
 
 export type ChatOnboardingResult = {
   clientRowId: string | null
   displayClientId: string | null
   identityReviewRequired: boolean
+  emailRequired?: boolean
   emailDeliveryStatus: string | null
   contactDeliveryStatus: { channel: string; status: string; ok: boolean } | null
 }
@@ -41,6 +55,38 @@ export async function ensureChatClient(input: {
   firstMessage: string
   contactConsentAt: Date
 }): Promise<ChatOnboardingResult> {
+  // Gate: no Client ID is issued until we have a valid email address.
+  // The webchat agent's first SMS asks for email; after the visitor replies with email we auto-create the Client.
+  let effectiveEmail = input.email?.trim() ?? null
+  if (!effectiveEmail || !sanitizeEmail(effectiveEmail)) {
+    const extracted = input.firstMessage ? extractEmail(input.firstMessage) : null
+    if (extracted) effectiveEmail = extracted
+  }
+  if (!effectiveEmail || !sanitizeEmail(effectiveEmail)) {
+    // Keep a pending FormSubmission so a later message with email can be claimed atomically via the same formId,
+    // but do NOT create a Client yet.
+    const formId = formIdForConversation(input.conversationId)
+    await db.formSubmission.upsert({
+      where: { id: formId },
+      create: {
+        id: formId,
+        form: 'CHAT',
+        name: input.name || 'Website Visitor',
+        email: input.email,
+        details: `Website chat (awaiting email): ${input.firstMessage.slice(0, 1500)}`,
+        preferredContact: input.preferredContact || 'Email',
+        contactConsentAt: input.contactConsentAt,
+        consentVersion: CONTACT_CONSENT_VERSION,
+        tracking: JSON.stringify({ source: 'WEB_CHAT', consentVersion: CONTACT_CONSENT_VERSION, pendingEmail: true }),
+        status: 'NEW',
+      },
+      update: {},
+    }).catch(() => null)
+    return { clientRowId: null, displayClientId: null, identityReviewRequired: false, emailRequired: true, emailDeliveryStatus: null, contactDeliveryStatus: null }
+  }
+  // Normalize to extracted/clean email when it came from free-text.
+  input.email = sanitizeEmail(effectiveEmail) ?? effectiveEmail
+
   const priorConversation = await db.chatConversation.findFirst({
     where: {
       anonId: input.anonId,

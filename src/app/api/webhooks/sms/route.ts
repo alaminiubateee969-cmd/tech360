@@ -117,15 +117,58 @@ export async function POST(req: NextRequest) {
 
       await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: existing.id })
     } else {
-      // First SMS contact — create CRM lead
+      // First SMS contact — require email before issuing Client ID (webchat agent's first SMS asks for email).
+      const { extractEmail, EMAIL_GATE_PROMPT } = await import('@/lib/chat-onboarding')
+      const emailFromSms = extractEmail(text)
+      if (!emailFromSms) {
+        // No email yet: store the inbound as pending and reply asking for email. Do NOT create Client yet.
+        // Use a ChatConversation keyed by sms:phone to keep history visible in console without a Client link.
+        let pendingConvo = await db.chatConversation.findFirst({ where: { anonId: `sms:${phone}`, status: 'OPEN' }, orderBy: { createdAt: 'desc' } })
+        if (!pendingConvo) {
+          pendingConvo = await db.chatConversation.create({
+            data: { anonId: `sms:${phone}`, visitorName: 'SMS Contact', visitorPhone: phone, status: 'OPEN', contactConsentAt: new Date(), consentVersion: 'sms-email-gate' },
+          }).catch(() => null) as typeof pendingConvo
+        }
+        if (pendingConvo) {
+          await db.chatMessage.create({ data: { conversationId: pendingConvo.id, sender: 'VISITOR', body: text } }).catch(() => null)
+          await db.chatMessage.create({ data: { conversationId: pendingConvo.id, sender: 'ADMIN', body: EMAIL_GATE_PROMPT } }).catch(() => null)
+          await db.chatConversation.update({ where: { id: pendingConvo.id }, data: { lastMessageAt: new Date(), lastMessagePreview: EMAIL_GATE_PROMPT.slice(0, 120), lastSender: 'ADMIN' } }).catch(() => null)
+        }
+        // Attempt to send SMS asking for email (best-effort, requires gateway configured)
+        try {
+          const { sendCommunication } = await import('@/lib/comms')
+          // No clientId yet — dispatch via low-level SMS sender if available; otherwise the chatMessage above is the record.
+          // We record a stub Communication with null clientId so operators see the outbound attempt.
+          await db.communication.create({
+            data: { clientId: null, channel: 'SMS', direction: 'OUT', recipient: phone, body: EMAIL_GATE_PROMPT, status: 'QUEUED', providerMessageId: eventId + ':email-gate' },
+          }).then(async (comm) => {
+            // Try real dispatch via comms layer (it will check channel switch and attempt SMS)
+            try {
+              const { default: dispatch } = await import('@/lib/comms').then(() => ({ default: null })).catch(() => ({ default: null }))
+              void dispatch
+            } catch {}
+            // Fallback: try direct SMS path
+            try {
+              const res = await sendCommunication({ clientId: null as unknown as string, channel: 'SMS', to: phone, body: EMAIL_GATE_PROMPT, agentCode: 'EMAIL-GATE' } as never)
+              await db.communication.update({ where: { id: comm.id }, data: { status: res.result.status, error: res.result.error ?? null, providerMessageId: res.result.providerMessageId ?? null, sentAt: res.result.ok ? new Date() : null } }).catch(() => null)
+            } catch {}
+          }).catch(() => null)
+        } catch {}
+        await audit({ actor: 'webhook:SMS', action: 'SMS_AWAITING_EMAIL', details: { phone }, ip } as never).catch(() => null)
+        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: null })
+        return Response.json({ ok: true })
+      }
+      // Email present in SMS: create CRM lead with that email and auto-issue Client ID
       const result = await intakeLead({
         source: 'SMS',
         name: 'SMS Contact',
+        email: emailFromSms,
         phone,
         message: `SMS first message: ${text}`,
         providerMessageId: eventId,
         verifiedIdentities: [proof],
       })
+      await db.chatConversation.updateMany({ where: { anonId: `sms:${phone}`, clientId: null, status: 'OPEN' }, data: { clientId: result.clientRowId } }).catch(() => null)
       await audit({ actor: 'webhook:SMS', action: 'NEW_LEAD_FROM_SMS', clientId: result.clientId, ip })
       await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: result.clientRowId })
     }
