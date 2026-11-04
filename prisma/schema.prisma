@@ -101,6 +101,7 @@ model Client {
   contentAssets   ContentAsset[]
   agentJobs       AgentJob[]
   identities      ClientIdentity[]
+  generatedDocuments GeneratedDocument[]
   inboundEvents   InboundWebhookReceipt[]
 
   @@index([pipelineStage])
@@ -166,6 +167,7 @@ model Project {
   files       FileRecord[]
   contentAssets ContentAsset[]
   agentJobs     AgentJob[]
+  generatedDocuments GeneratedDocument[]
 
   @@index([clientId])
   @@index([status])
