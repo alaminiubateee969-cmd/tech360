@@ -46,18 +46,18 @@ export function OfficialInfoView() {
 
       <div className="flex flex-wrap gap-2">
         <Button asChild className="bg-[#009FE3] hover:bg-[#063B8F]">
-          <a href={OFFICIAL_INFO.officialInfoPdf} target="_blank" rel="noreferrer">
-            <Download className="size-4" aria-hidden="true" /> Official Info PDF
+          <a href="/api/admin/official-docs/TECH360-Official-Info.pdf" target="_blank" rel="noreferrer">
+            <Download className="size-4" aria-hidden="true" /> Official Info PDF (secured)
           </a>
         </Button>
         <Button asChild variant="outline">
-          <a href={OFFICIAL_INFO.letterheadPdf} target="_blank" rel="noreferrer">
-            <FileText className="size-4" aria-hidden="true" /> Letterhead PDF (pad)
+          <a href="/api/admin/official-docs/TECH360_Official_A4_Letterhead.pdf" target="_blank" rel="noreferrer">
+            <FileText className="size-4" aria-hidden="true" /> Letterhead PDF (secured)
           </a>
         </Button>
         <Button asChild variant="outline">
-          <a href={OFFICIAL_INFO.officialInfoDoc} target="_blank" rel="noreferrer">
-            <Printer className="size-4" aria-hidden="true" /> Print sheet
+          <a href="/api/official-info" target="_blank" rel="noreferrer">
+            <Printer className="size-4" aria-hidden="true" /> Print sheet (auth required)
           </a>
         </Button>
         <Button asChild variant="outline">
@@ -66,6 +66,7 @@ export function OfficialInfoView() {
           </a>
         </Button>
       </div>
+      <p className="text-xs text-slate-500">Official documents are restricted to authenticated Super Admin / Admin. Anonymous public access is disabled (404). Secured PDFs are served via <code>/api/admin/official-docs/[file]</code> with role checks.</p>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

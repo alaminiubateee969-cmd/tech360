@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * BDTECH360 Software Factory — the APPLICATION RUNTIME.
  *

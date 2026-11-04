@@ -5,6 +5,7 @@ import { LEGAL_DOCS, getLegalDoc, COMPANY } from "@/data/site";
 import { PageHero } from "./PageHero";
 import { Reveal } from "./Reveal";
 import { cn } from "@/lib/utils";
+import { LetterheadHeader, LetterheadFooter } from "@/components/branding/DocumentShell";
 
 export default function LegalView({ slug }: { slug: string }) {
   const doc = getLegalDoc(slug);
@@ -76,29 +77,9 @@ export default function LegalView({ slug }: { slug: string }) {
             </div>
           </nav>
 
-          {/* Document body */}
+          {/* Document body — uses reusable branding engine (LetterheadHeader/Footer), same as SOW/Invoice/Proposal/Letter but NEVER seal */}
           <article className="min-w-0 lg:col-span-8 xl:col-span-9">
-            {/* Official company letterhead — printed on every policy PDF */}
-            <div data-print="pad" aria-hidden="true">
-              <div className="flex items-start justify-between gap-6">
-                <img src="/brand/tech360-logo-original.jpg" alt="" className="h-12 w-auto rounded-md" />
-                <div className="text-right">
-                  <div className="text-[17px] font-black tracking-[0.14em] text-[#0B1F33]">TECH360</div>
-                  <div className="mt-0.5 text-[9px] font-bold tracking-[0.22em] text-[#009FE3]">CONNECT · INNOVATE · GROW</div>
-                  <div className="mt-0.5 text-[8.5px] tracking-[0.05em] text-[#7C8DA0]">Web | Cloud | AI | Data | Tech</div>
-                  <div className="mt-1.5 text-[9.5px] leading-[1.6] text-[#526173]">
-                    <b className="text-[#0B1F33] tracking-wide">TECH360 LLC</b>
-                    <br />
-                    {COMPANY.email}
-                  </div>
-                </div>
-              </div>
-              <div className="pad-rule" />
-              <div className="pad-sub">
-                <span>Official company document</span>
-                <span>Legal &amp; policies · {doc ? `Effective ${doc.updated}` : "Policy"}</span>
-              </div>
-            </div>
+            <LetterheadHeader docKind={doc ? `Legal & policies · Effective ${doc.updated}` : "Legal & policies · Policy"} />
             {doc ? (
               <Reveal>
                 <div className="flex flex-wrap items-center gap-3">
@@ -161,11 +142,8 @@ export default function LegalView({ slug }: { slug: string }) {
                   </p>
                 </div>
 
-                {/* Official company footer — printed on every policy PDF */}
-                <div data-print="pad" className="pad-footer-line" aria-hidden="true">
-                  <span>{COMPANY.legalName} · {COMPANY.domain} · {COMPANY.email}</span>
-                  <span>Issued electronically by the Tech360 client platform</span>
-                </div>
+                {/* Reusable footer — same engine as all documents, never seal on legal */}
+                <LetterheadFooter note="Issued electronically by the Tech360 client platform" />
               </Reveal>
             ) : (
               <Reveal>

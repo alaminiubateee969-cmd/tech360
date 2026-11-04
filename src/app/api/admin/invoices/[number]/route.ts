@@ -56,6 +56,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ numb
 
   if (req.nextUrl.searchParams.get('format') === 'html') {
     const phrase = await acceptedMethodsPhrase()
+    let branding: import('@/lib/document-branding').DocumentBrandingConfig | null = null
+    try {
+      const { getDocumentBranding } = await import('@/lib/document-branding')
+      branding = await getDocumentBranding()
+    } catch { branding = null }
     const html = renderInvoiceDocumentHtml(
       {
         ...invoice,
@@ -64,6 +69,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ numb
         remainingMinor: settlement.remainingMinor,
       },
       phrase,
+      branding,
     )
     return new Response(html, { status: 200, headers: DOCUMENT_HTML_HEADERS })
   }

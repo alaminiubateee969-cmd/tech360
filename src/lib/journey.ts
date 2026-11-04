@@ -6,6 +6,7 @@ import { sendCommunication, emailTemplate, escapeHtml } from '@/lib/comms'
 import { newCorrelationId, logError, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES, COMPANY } from '@/lib/constants'
 import { PAD_CSS, padHeader, padMeta, padFooter, padSignatures, docDate } from '@/lib/letterhead'
+import { getDefaultBranding, brandingCss, brandingPadHeader, brandingPadFooter, sealHtmlFor } from '@/lib/document-branding'
 import { evaluateDeliveryAcceptance, evaluateProjectClosure } from '@/lib/lifecycle-policy'
 import { hasExplicitContactConsent, selectWelcomeChannel } from '@/lib/contact-policy'
 import { hasAcceptedPreviewDelivery } from '@/lib/preview-policy'
@@ -778,7 +779,13 @@ export async function generatePreview(clientRowId: string) {
 
   const existingCount = await db.preview.count({ where: { clientId: client.id } })
   const token = publicToken()
-  const html = buildPreviewHtml(client, content, existingCount + 1)
+  // Fetch latest approved branding (SOW uses seal when enabled)
+  let brandingForPreview: import('@/lib/document-branding').DocumentBrandingConfig | null = null
+  try {
+    const { getDocumentBranding } = await import('@/lib/document-branding')
+    brandingForPreview = await getDocumentBranding()
+  } catch { brandingForPreview = null }
+  const html = buildPreviewHtml(client, content, existingCount + 1, brandingForPreview)
   const preview = await db.preview.create({
     data: {
       token, clientId: client.id, projectId: null, scopeVersion: finalScope.version,
@@ -810,7 +817,7 @@ export async function generatePreview(clientRowId: string) {
   return { previewId: updated.id, token, link, status: updated.status, reused: false, delivery: attempts }
 }
 
-function buildPreviewHtml(client: { clientId: string; name: string; businessName: string | null }, content: Record<string, unknown>, version: number): string {
+function buildPreviewHtml(client: { clientId: string; name: string; businessName: string | null }, content: Record<string, unknown>, version: number, brandingOverride?: import('@/lib/document-branding').DocumentBrandingConfig | null): string {
   const items = Array.isArray(content.items) ? (content.items as Array<Record<string, string>>) : []
   const timeline = Array.isArray(content.timeline) ? (content.timeline as Array<Record<string, string>>) : []
   const pp = (content.paymentPolicy ?? {}) as Record<string, unknown>
@@ -818,12 +825,17 @@ function buildPreviewHtml(client: { clientId: string; name: string; businessName
   const timelineRows = timeline.map((t) => `<li><strong>${escapeHtml(t.phase ?? '')}</strong> <span>(${escapeHtml(String(t.weeks ?? '?'))} week${String(t.weeks ?? '') === '1' ? '' : 's'})</span><p>${escapeHtml(t.activities ?? '')}</p></li>`).join('')
   const clientDisplayName = escapeHtml(client.name)
   const issued = docDate()
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex,nofollow"/><title>Scope of Work — ${escapeHtml(client.clientId)} — Tech360</title><style>${PAD_CSS}
+  const branding = brandingOverride === undefined ? getDefaultBranding() : (brandingOverride ?? getDefaultBranding())
+  const css = brandingCss(branding)
+  const headerHtml = brandingPadHeader(branding, "Scope of Work — Project Preview")
+  const footerHtml = brandingPadFooter(branding, "This scope preview is confidential and intended for the addressed recipient only. Not a tax invoice.")
+  const sealHtml = sealHtmlFor('SOW' as never, branding)
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex,nofollow"/><title>Scope of Work — ${escapeHtml(client.clientId)} — Tech360</title><style>${css}
 .hello{margin:26px 0 6px;font-size:22px}
 .intro{color:#526173;font-size:14px;line-height:1.7;max-width:64ch}
 </style></head><body>
 <div class="sheet">
-${padHeader("Scope of Work — Project Preview")}
+${headerHtml}
 ${padMeta([
     { label: "Client reference", value: escapeHtml(client.clientId), brand: true },
     { label: "Document", value: `SOW Preview v${version}` },
@@ -842,10 +854,13 @@ ${padMeta([
 <div><b>${escapeHtml(String(pp.finalPct ?? '—'))}%</b><br/><small>On final delivery</small></div>
 </div>
 <div class="note"><strong>Project terms:</strong> HTML Preview where included in the agreed process · Final source-code handover after required payments have cleared unless otherwise agreed · Changes to approved scope may require an approved price or schedule adjustment.</div>
+<div style="position:relative">
 ${padSignatures(clientDisplayName, "Client approval of scope preview")}
+${sealHtml ? `<div style="position:absolute;right:0;bottom:-8px">${sealHtml}</div>` : ''}
+</div>
 <div class="acts no-print"><a class="btn btn-a" href="#approve" id="approveBtn">✓ Approve this preview</a><a class="btn btn-r" href="#revise" id="reviseBtn">Request changes</a></div>
 </main>
-${padFooter("This scope preview is confidential and intended for the addressed recipient only. Not a tax invoice.")}
+${footerHtml}
 </div>
 <script>
 (function(){

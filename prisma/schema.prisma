@@ -1155,6 +1155,40 @@ model Setting {
 }
 
 // ------------------------------------------------------------
+// Secure document storage — every generated document (spec §9)
+// ------------------------------------------------------------
+model GeneratedDocument {
+  id                 String   @id @default(cuid())
+  documentId         String   @unique // DOC-YYYY-NNNNNN or INV-YYYY-NNNN etc
+  documentType       String   // WORK_PROPOSAL | SOW | INVOICE | OFFICIAL_LETTER | HANDOVER_CERTIFICATE | TERMS | PRIVACY | REFUND | etc
+  clientId           String?
+  client             Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  projectId          String?
+  project            Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  version            Int      @default(1)
+  createdBy          String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  approvalStatus     String   @default("DRAFT") // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED | FINAL
+  finalizationStatus String   @default("DRAFT") // DRAFT | ISSUED | FINALIZED | ARCHIVED | SUPERSEDED
+  fileLocation       String?  @db.Text // private storage path — NEVER public URL
+  fileContent        Bytes?   @db.LongBlob // archived HTML/PDF snapshot (preserves original forever)
+  brandingVersion    Int      @default(1)
+  accessPermissions  String   @db.Text // JSON array of roles allowed: ["SUPER_ADMIN","ADMIN",...]
+  auditHistory       String   @db.LongText // JSON array of {at, actor, action}
+  relatedId          String?
+  sha256             String?
+  title              String?
+  isPublicTemplate   Boolean  @default(false)
+
+  @@index([documentType])
+  @@index([clientId])
+  @@index([projectId])
+  @@index([approvalStatus])
+  @@index([finalizationStatus])
+}
+
+// ------------------------------------------------------------
 // Live chat (round 11 — Chatwoot parity) + newsletter (Ghost parity)
 // ------------------------------------------------------------
 

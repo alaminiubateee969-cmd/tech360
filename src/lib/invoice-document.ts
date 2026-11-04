@@ -1,5 +1,7 @@
 import { escapeHtml } from '@/lib/comms'
 import { docDate, PAD, PAD_CSS, padFooter, padHeader, padMeta } from '@/lib/letterhead'
+import { getDefaultBranding, brandingCss, brandingPadHeader, brandingPadFooter, sealHtmlFor } from '@/lib/document-branding'
+import type { DocumentBrandingConfig } from '@/lib/document-branding'
 import {
   fromMinorUnits,
   parseStoredLineItems,
@@ -138,7 +140,11 @@ const EXTRA_CSS = `
 @media print{.print-hint{display:none!important}}
 `
 
-export function renderInvoiceDocumentHtml(inv: RenderableInvoice, currentPaymentReadinessPhrase: string): string {
+export function getBrandingForInvoice(branding?: DocumentBrandingConfig | null): DocumentBrandingConfig {
+  return branding ?? getDefaultBranding()
+}
+
+export function renderInvoiceDocumentHtml(inv: RenderableInvoice, currentPaymentReadinessPhrase: string, brandingOverride?: DocumentBrandingConfig | null): string {
   const totalMinor = resolveInvoiceTotalMinor({ totalMinor: inv.totalMinor, amount: inv.amount })
   const items: InvoiceLineItem[] = parseStoredLineItems(
     inv.lineItems,
@@ -176,6 +182,19 @@ export function renderInvoiceDocumentHtml(inv: RenderableInvoice, currentPayment
 
   const revisionLabel = inv.revision && inv.revision > 1 ? `Rev #${inv.revision}` : 'Rev #1'
   const docTitle = `Official Invoice · ${escapeHtml(inv.number)} (${revisionLabel})`
+  const branding = getBrandingForInvoice(brandingOverride)
+  // Reusable branding config — all documents share same header/footer/seal engine
+  const useBranding = brandingOverride !== null
+  const css = useBranding ? brandingCss(branding) : PAD_CSS
+  const headerHtml = useBranding ? brandingPadHeader(branding, docTitle) : padHeader(docTitle)
+  const metaHtml = padMeta([
+      { label: 'Invoice Number', value: escapeHtml(inv.number), brand: true },
+      { label: 'Client ID', value: escapeHtml(inv.client.clientId) },
+      { label: 'Issue Date', value: escapeHtml(fmtIsoDate(inv.issuedAt)) },
+      { label: 'Due Date', value: escapeHtml(fmtIsoDate(inv.dueAt)) },
+      { label: 'Status', value: escapeHtml(inv.status) },
+    ])
+  const sealHtml = useBranding ? sealHtmlFor('INVOICE' as never, branding) : ''
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -183,7 +202,7 @@ export function renderInvoiceDocumentHtml(inv: RenderableInvoice, currentPayment
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>${escapeHtml(inv.number)} — ${PAD.legalName}</title>
-  <style>${PAD_CSS}${EXTRA_CSS}</style>
+  <style>${css}${EXTRA_CSS}</style>
 </head>
 <body>
   <div class="print-hint no-print">
@@ -191,14 +210,8 @@ export function renderInvoiceDocumentHtml(inv: RenderableInvoice, currentPayment
     <span>Use browser Print (Ctrl+P / Cmd+P) → Save as PDF</span>
   </div>
   <main class="sheet">
-    ${padHeader(docTitle)}
-    ${padMeta([
-      { label: 'Invoice Number', value: escapeHtml(inv.number), brand: true },
-      { label: 'Client ID', value: escapeHtml(inv.client.clientId) },
-      { label: 'Issue Date', value: escapeHtml(fmtIsoDate(inv.issuedAt)) },
-      { label: 'Due Date', value: escapeHtml(fmtIsoDate(inv.dueAt)) },
-      { label: 'Status', value: escapeHtml(inv.status) },
-    ])}
+    ${headerHtml}
+    ${metaHtml}
     ${statusBanner}
     <section class="doc">
       <div class="inv-grid">
@@ -277,21 +290,27 @@ export function renderInvoiceDocumentHtml(inv: RenderableInvoice, currentPayment
         }
       </div>
     </section>
-    ${padFooter(`Invoice ${escapeHtml(inv.number)} · Client ${escapeHtml(inv.client.clientId)} · Confidential commercial record`)}
+    ${useBranding ? brandingPadFooter(branding, `Invoice ${escapeHtml(inv.number)} · Client ${escapeHtml(inv.client.clientId)} · Confidential commercial record`) : padFooter(`Invoice ${escapeHtml(inv.number)} · Client ${escapeHtml(inv.client.clientId)} · Confidential commercial record`)}
+    ${sealHtml ? `<div style="margin-top:18px;display:flex;justify-content:flex-end">${sealHtml}</div>` : ''}
   </main>
 </body>
 </html>`
 }
 
-export function renderReceiptDocumentHtml(rec: RenderableReceipt): string {
+export function renderReceiptDocumentHtml(rec: RenderableReceipt, brandingOverride?: DocumentBrandingConfig | null): string {
   const docTitle = `Official Payment Receipt · ${escapeHtml(rec.receiptNumber)}`
+  const branding = brandingOverride === undefined ? null : getBrandingForInvoice(brandingOverride)
+  const useBranding = branding !== null
+  const css = useBranding ? brandingCss(branding!) : PAD_CSS
+  const headerHtml = useBranding ? brandingPadHeader(branding!, docTitle) : padHeader(docTitle)
+  const footerHtml = useBranding ? brandingPadFooter(branding!, `Receipt ${escapeHtml(rec.receiptNumber)} · Client ${escapeHtml(rec.client.clientId)} · Verified financial record`) : padFooter(`Receipt ${escapeHtml(rec.receiptNumber)} · Client ${escapeHtml(rec.client.clientId)} · Verified financial record`)
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>${escapeHtml(rec.receiptNumber)} — ${PAD.legalName}</title>
-  <style>${PAD_CSS}${EXTRA_CSS}</style>
+  <style>${css}${EXTRA_CSS}</style>
 </head>
 <body>
   <div class="print-hint no-print">
@@ -299,7 +318,7 @@ export function renderReceiptDocumentHtml(rec: RenderableReceipt): string {
     <span>Use browser Print (Ctrl+P / Cmd+P) → Save as PDF</span>
   </div>
   <main class="sheet">
-    ${padHeader(docTitle)}
+    ${headerHtml}
     ${padMeta([
       { label: 'Receipt Number', value: escapeHtml(rec.receiptNumber), brand: true },
       { label: 'Client ID', value: escapeHtml(rec.client.clientId) },
@@ -341,7 +360,7 @@ export function renderReceiptDocumentHtml(rec: RenderableReceipt): string {
         <p>This receipt confirms verified settlement of the amount stated above. Source-code and credential handover packages unlock automatically only when the full contracted project balance has been settled and verified.</p>
       </div>
     </section>
-    ${padFooter(`Receipt ${escapeHtml(rec.receiptNumber)} · Client ${escapeHtml(rec.client.clientId)} · Verified financial record`)}
+    ${footerHtml}
   </main>
 </body>
 </html>`

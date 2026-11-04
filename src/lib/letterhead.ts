@@ -172,8 +172,9 @@ export function docDate(d = new Date()): string {
 // on the company pad: legal identity, registered address,
 // pad contacts + platform contacts, services, console logins
 // (Super Admin / Admin) and the official document set.
-// Served publicly at /api/official-info (print → PDF) and
-// mirrored by public/official/TECH360-Official-Info.pdf.
+// Served ONLY to authenticated Super Admin via
+// /api/official-info (print → PDF); private PDFs are
+// restricted to authorized admins via /api/admin/official-docs.
 // Passwords are NEVER printed here — login help is routing
 // only; credentials come from the seed env / Team console.
 // ------------------------------------------------------------
@@ -237,8 +238,8 @@ ${padMeta([
 
   <h2>Official documents</h2>
   <ol class="timeline">
-    <li><span>COMPANY PAD</span><p><b>Official A4 Letterhead (PDF)</b> — /official/TECH360_Official_A4_Letterhead.pdf — the owner-issued pad every document below is printed on.</p></li>
-    <li><span>THIS SHEET</span><p><b>Official Information Sheet</b> — /api/official-info (print to PDF) · shareable PDF: /official/TECH360-Official-Info.pdf</p></li>
+    <li><span>COMPANY PAD</span><p><b>Official A4 Letterhead</b> — issued on the approved TECH360 LLC letterhead (header + footer). Authorized copies are available to Super Admin via the secure console (Settings → Document Branding).</p></li>
+    <li><span>THIS SHEET</span><p><b>Official Information Sheet</b> — available to authorized administrators via the secure console (System → Official Info). Not publicly downloadable.</p></li>
     <li><span>CLIENT DOCUMENTS</span><p>SOW / project previews, tax invoices and the handover &amp; acceptance certificate are issued on this pad from the platform, each with its own reference and issue date.</p></li>
   </ol>
 
@@ -247,7 +248,6 @@ ${padMeta([
 ${padFooter("Official information sheet — verify the latest version at www." + PAD.domain)}
 <div class="acts no-print">
   <a class="btn btn-a" href="javascript:window.print()">Print / Save as PDF</a>
-  <a class="btn btn-r" href="/official/TECH360_Official_A4_Letterhead.pdf">Official Letterhead PDF</a>
   <a class="btn btn-r" href="${loginUrl}">Super Admin / Admin Login</a>
 </div>
 </main></body></html>`
