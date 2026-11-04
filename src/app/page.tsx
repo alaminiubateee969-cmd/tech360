@@ -26,6 +26,7 @@ import FaqView from '@/components/site/FaqView'
 import PortalView from '@/components/site/PortalView'
 import DesignKitView from '@/components/site/DesignKitView'
 import AgentPipelineView from '@/components/site/AgentPipelineView'
+import PlatformView from '@/components/site/PlatformView'
 
 // Private admin console (auth-gated internally)
 const AdminApp = lazy(() => import('@/components/admin/AdminApp'))
@@ -212,7 +213,7 @@ function parseHash(raw: string) {
   return { section, param, full: `/${parts.join('/')}` }
 }
 
-const PUBLIC_SECTIONS = new Set(['', 'about', 'services', 'industries', 'work', 'technologies', 'process', 'blog', 'careers', 'contact', 'legal', 'faq', 'portal', 'design-kit', 'pipeline'])
+const PUBLIC_SECTIONS = new Set(['', 'about', 'platform', 'services', 'industries', 'work', 'technologies', 'process', 'blog', 'careers', 'contact', 'legal', 'faq', 'portal', 'design-kit', 'pipeline'])
 
 function UnknownPublicRoute({ navigate }: { navigate: (h: string) => void }) {
   return (
@@ -233,6 +234,7 @@ function PublicView({ section, param, navigate }: { section: string; param: stri
   switch (section) {
     case '': return <HomeView onNavigate={navigate} />
     case 'about': return <AboutView />
+    case 'platform': return <PlatformView />
     case 'services': return param ? <ServiceDetailView slug={param} /> : <ServicesView />
     case 'industries': return param ? <IndustryDetailView slug={param} /> : <IndustriesView />
     case 'work': return <WorkView />
