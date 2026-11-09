@@ -53,13 +53,34 @@ export async function executeOpsAction(action: string, payload: OpsPayload): Pro
         if (!client) return fail(404, 'Client not found')
         const { loadCommState } = await import('@/lib/conversation-state')
         const communicationState = await loadCommState(client.id, client.clientId, client.pipelineStage)
-        if (!communicationState.followUpEnabled || communicationState.optedOut || communicationState.humanTakeover || communicationState.closed) {
+        const repliedSinceLastOutbound = Boolean(
+          communicationState.lastInboundAt &&
+          communicationState.lastOutboundAt &&
+          new Date(communicationState.lastInboundAt).getTime() > new Date(communicationState.lastOutboundAt).getTime(),
+        )
+        const stageChanged = Boolean(
+          communicationState.followUpStage &&
+          communicationState.currentStage !== communicationState.followUpStage,
+        )
+        if (
+          !communicationState.followUpEnabled ||
+          communicationState.optedOut ||
+          communicationState.humanTakeover ||
+          communicationState.closed ||
+          communicationState.nextPendingActor !== 'CLIENT' ||
+          repliedSinceLastOutbound ||
+          stageChanged
+        ) {
           return ok({
             action: 'FOLLOWUP_LEAD',
             sendStatus: 'SUPPRESSED',
             reason: communicationState.optedOut ? 'CUSTOMER_OPTED_OUT'
               : communicationState.humanTakeover ? 'HUMAN_TAKEOVER'
-                : communicationState.closed ? 'CLIENT_CLOSED' : 'FOLLOWUPS_DISABLED',
+                : communicationState.closed ? 'CLIENT_CLOSED'
+                  : repliedSinceLastOutbound ? 'CUSTOMER_REPLIED'
+                    : stageChanged ? 'STAGE_CHANGED'
+                      : communicationState.nextPendingActor !== 'CLIENT' ? 'WAITING_ON_TECH360'
+                        : 'FOLLOWUPS_DISABLED',
           })
         }
         const run = await runAgent('COM-010', {
