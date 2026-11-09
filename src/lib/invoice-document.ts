@@ -297,6 +297,25 @@ export function renderInvoiceDocumentHtml(inv: RenderableInvoice, currentPayment
 </html>`
 }
 
+/**
+ * Email-safe HTML fragment built from the canonical escaped invoice renderer,
+ * omitting the outer document shell and browser print-hint bar.
+ */
+export function renderInvoiceEmailBodyHtml(
+  inv: RenderableInvoice,
+  currentPaymentReadinessPhrase: string,
+  brandingOverride?: DocumentBrandingConfig | null,
+): string {
+  const document = renderInvoiceDocumentHtml(inv, currentPaymentReadinessPhrase, brandingOverride)
+  const styles = document.match(/<style>([\s\S]*?)<\/style>/i)?.[1]
+  const body = document.match(/<body>([\s\S]*?)<\/body>/i)?.[1]
+  if (!styles || !body) {
+    throw new Error('Invoice email fragment could not be rendered safely')
+  }
+  const content = body.replace(/<div class="print-hint no-print">[\s\S]*?<\/div>/i, '')
+  return `<style>${styles}</style>${content}`
+}
+
 export function renderReceiptDocumentHtml(rec: RenderableReceipt, brandingOverride?: DocumentBrandingConfig | null): string {
   const docTitle = `Official Payment Receipt · ${escapeHtml(rec.receiptNumber)}`
   const branding = brandingOverride === undefined ? null : getBrandingForInvoice(brandingOverride)

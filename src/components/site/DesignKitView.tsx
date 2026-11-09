@@ -93,6 +93,9 @@ function PlaygroundTabs() {
         ))}
         <span className="ml-auto hidden items-center gap-1.5 text-xs text-slate-500 sm:inline-flex"><Search className="size-3" /> Search <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5">Tags</span> <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">Badges</span></span>
       </div>
+      <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-2 text-xs text-slate-500">
+        Illustrative UI only — these example cards are static component previews, not live business records or operational metrics.
+      </div>
       <div className="p-5">
         {tab === 'crm' ? (
           <div className="space-y-3">

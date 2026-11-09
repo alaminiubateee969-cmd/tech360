@@ -5,6 +5,7 @@ import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText, audit } from '@/lib/security'
 import { normalizeBrief, buildPlan, buildFiles, summarizeFiles, assertNoSecrets, type FactoryBrief } from '@/lib/factory/blueprint'
 import { factoryBriefMatchesScopeManifest, factoryManifestFromScopeContent } from '@/lib/factory/scope-manifest'
+import { createWithUniqueCode } from '@/lib/factory/control/util'
 
 export const dynamic = 'force-dynamic'
 
@@ -172,44 +173,57 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'A client-bound application must reference a project with an approved scope.' }, { status: 400 })
   }
 
-  const count = await db.generatedApp.count()
-  const code = `AF-${String(count + 1).padStart(4, '0')}`
-
   // Tables are intentionally relation-free, so the app, its files and its first
-  // stage event are written as three explicit steps rather than a nested create.
-  const app = await db.generatedApp.create({
-    data: {
-      code,
-      name: brief.appName,
-      clientId,
-      projectId,
-      scopeId: scopeSnapshot?.id ?? null,
-      scopeVersion: scopeSnapshot?.version ?? null,
-      scopeHash: scopeSnapshot?.hash ?? null,
-      vertical: brief.vertical,
-      brief: JSON.stringify(brief),
-      plan: JSON.stringify(plan),
-      status: 'PLANNED',
-      stage: 'PLAN',
-      fileCount,
-      totalBytes,
-      createdBy: g.user.email,
-    },
-  })
-  await db.generatedAppFile.createMany({
-    data: files.map((f) => ({ appId: app.id, path: f.path, language: f.language, bytes: Buffer.byteLength(f.content, 'utf8'), content: f.content })),
-  })
-  await db.generatedAppEvent.create({
-    data: {
-      appId: app.id,
-      stage: 'PLAN',
-      status: 'PLANNED',
-      note: `Blueprint generated for ${brief.clientName}: ${plan.pages.length} pages, ${plan.models.length} models, ${plan.endpoints.length} endpoints, ${fileCount} files.`,
-      actor: g.user.email,
-    },
-  })
+  // stage event are written together inside a single transaction while retrying
+  // sequential AF-XXXX codes on concurrent unique collisions.
+  const app = await createWithUniqueCode(
+    'AF',
+    () => db.generatedApp.count(),
+    async (code) =>
+      db.$transaction(async (tx) => {
+        const created = await tx.generatedApp.create({
+          data: {
+            code,
+            name: brief.appName,
+            clientId,
+            projectId,
+            scopeId: scopeSnapshot?.id ?? null,
+            scopeVersion: scopeSnapshot?.version ?? null,
+            scopeHash: scopeSnapshot?.hash ?? null,
+            vertical: brief.vertical,
+            brief: JSON.stringify(brief),
+            plan: JSON.stringify(plan),
+            status: 'PLANNED',
+            stage: 'PLAN',
+            fileCount,
+            totalBytes,
+            createdBy: g.user.email,
+          },
+        })
+        await tx.generatedAppFile.createMany({
+          data: files.map((f) => ({
+            appId: created.id,
+            path: f.path,
+            language: f.language,
+            bytes: Buffer.byteLength(f.content, 'utf8'),
+            content: f.content,
+          })),
+        })
+        await tx.generatedAppEvent.create({
+          data: {
+            appId: created.id,
+            stage: 'PLAN',
+            status: 'PLANNED',
+            note: `Blueprint generated for ${brief.clientName}: ${plan.pages.length} pages, ${plan.models.length} models, ${plan.endpoints.length} endpoints, ${fileCount} files.`,
+            actor: g.user.email,
+          },
+        })
+        return created
+      }),
+    4,
+  )
 
-  await audit({ actor: g.user.email, action: 'FACTORY_APP_GENERATED', userId: g.user.id, details: `${code} ${brief.appName} (${brief.vertical}) → ${fileCount} files` })
+  await audit({ actor: g.user.email, action: 'FACTORY_APP_GENERATED', userId: g.user.id, details: `${app.code} ${brief.appName} (${brief.vertical}) → ${fileCount} files` })
 
   return Response.json({ app, plan, fileCount, totalBytes }, { status: 201 })
 }
