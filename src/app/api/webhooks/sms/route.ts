@@ -67,7 +67,11 @@ export async function POST(req: NextRequest) {
   } else if (inboundProvider === 'HTTPSMS' || inboundProvider === 'GENERIC') {
     const secret = process.env.SMS_WEBHOOK_SECRET ?? ''
     const got = req.headers.get('x-sms-webhook-secret') ?? ''
-    if (secret.length < 32 || !got || !constantTimeEquals(got, secret)) {
+    if (secret.length < 32) {
+      await logError({ source: 'WEBHOOK', code: 'SMS_WEBHOOK_SECRET_MISSING', message: 'SMS_WEBHOOK_SECRET must be configured with at least 32 characters' }).catch(() => null)
+      return Response.json({ ok: false, error: 'SMS provider authentication is not configured' }, { status: 503 })
+    }
+    if (!got || !constantTimeEquals(got, secret)) {
       await logError({ source: 'WEBHOOK', code: 'SMS_SIGNATURE_INVALID', message: 'SMS shared-secret authentication failed' }).catch(() => null)
       return Response.json({ ok: false, error: 'Invalid signature' }, { status: 401 })
     }
@@ -240,5 +244,5 @@ async function handleSmsReply(input: { client: { id: string; clientId: string; e
   }
 
   const { recordOutbound } = await import('@/lib/conversation-state')
-  await recordOutbound(input.client.id, input.client.clientId, outboundBody, 'SMS').catch(() => null)
+  await recordOutbound(input.client.id, input.client.clientId, outboundBody, 'SMS', input.client.pipelineStage, result.nextAction, result.nextActor, result.nextDueDate).catch(() => null)
 }
