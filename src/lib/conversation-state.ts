@@ -301,7 +301,7 @@ export function decideFollowUp(state: CommState, now: Date = new Date()): Follow
 
 function isQuietHour(now: Date, config: FollowUpConfig): boolean {
   const parseClock = (value: string): number | null => {
-    const match = /^(?:([01]\\d|2[0-3])):([0-5]\\d)$/.exec(value)
+    const match = /^(?:([01]\d|2[0-3])):([0-5]\d)$/.exec(value)
     return match ? Number(match[1]) * 60 + Number(match[2]) : null
   }
   const start = parseClock(config.quietHoursStart)
@@ -333,7 +333,7 @@ export async function recordReminderSent(clientRowId: string, clientId: string):
 export async function isDuplicateInbound(clientRowId: string, providerEventId: string, channel: string): Promise<boolean> {
   // Use the same domain-separated SHA-256 key as claimInboundWebhookEvent().
   const provider = channel.trim().toUpperCase()
-  const hash = createHash('sha256').update(provider + '\\0' + providerEventId.trim(), 'utf8').digest('hex')
+  const hash = createHash('sha256').update(provider + '\0' + providerEventId.trim(), 'utf8').digest('hex')
   const existing = await db.inboundWebhookReceipt.findUnique({
     where: { provider_eventIdHash: { provider, eventIdHash: hash } },
   })
