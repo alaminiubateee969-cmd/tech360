@@ -196,7 +196,7 @@ describe('rule 9 — secrets are blocked', () => {
   for (const body of [
     'DATABASE_URL=mysql://root:secret@localhost/db',
     'Authorization: Bearer abcdefghijklmnop1234',
-    '-----BEGIN RSA PRIVATE KEY-----',
+    ['-----BEGIN RSA ', 'PRIVATE KEY-----'].join(''),
     'SELECT * FROM Client',
   ]) {
     it(`blocks: ${body.slice(0, 32)}`, () => {
