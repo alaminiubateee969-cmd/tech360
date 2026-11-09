@@ -284,7 +284,7 @@ function WorkExampleDialog({ example, onClose }: { example: WorkExample | null; 
 
           <div className="mt-4 flex flex-wrap gap-2">
             <a
-              href="#/contact"
+              href="/contact"
               onClick={onClose}
               className="inline-flex items-center gap-2 rounded-lg bg-[#009FE3] px-4 py-2.5 text-sm font-semibold text-[#04121F] outline-none transition-colors hover:bg-[#33B5EA] focus-visible:ring-2 focus-visible:ring-white"
             >

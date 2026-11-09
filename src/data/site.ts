@@ -146,11 +146,11 @@ export const AI_NATIVE_MESSENGER = {
 /* ------------------------------------------------------------------ */
 
 export const NAV_LINKS: { label: string; href: string }[] = [
-  { label: "Solutions", href: "#/services" },
-  { label: "Industries", href: "#/industries" },
-  { label: "Work", href: "#/work" },
-  { label: "Resources", href: "#/blog" },
-  { label: "Company", href: "#/about" },
+  { label: "Solutions", href: "/services" },
+  { label: "Industries", href: "/industries" },
+  { label: "Work", href: "/work" },
+  { label: "Resources", href: "/blog" },
+  { label: "Company", href: "/about" },
 ];
 
 /* ------------------------------------------------------------------ */

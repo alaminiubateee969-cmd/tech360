@@ -119,7 +119,7 @@ export function SolutionsGrid() {
                     ))}
                   </ul>
                   <div className="mt-4">
-                    <LinkArrow href="#/services">
+                    <LinkArrow href="/services">
                       All {pillar.heading} services
                     </LinkArrow>
                   </div>
@@ -139,12 +139,12 @@ export function SolutionsGrid() {
 
 /* ---------------- Products / platform (§6) ---------------- */
 const PRODUCTS = [
-  { icon: PanelsTopLeft, title: "Client Portal", cat: "AI workspace", text: "Projects, files, invoices, approvals and updates in one signed-in home for your clients.", href: "#/portal", action: "Open the portal" },
-  { icon: UserRound, title: "CRM & Business Operations", cat: "Business operations", text: "Leads, clients, projects, tasks, invoices and payments with role-based access and audit trails.", href: "#/technologies", action: "See the platform" },
-  { icon: Workflow, title: "Automation Workflows", cat: "Workflow automation", text: "n8n-powered integrations and scheduled jobs connecting the tools you already use.", href: "#/services/n8n-workflow-automation", action: "Automate a workflow" },
-  { icon: Megaphone, title: "Marketing Operations", cat: "Marketing operations", text: "Content studio, media planning, newsletter and approve-first social publishing.", href: "#/services/email-automation", action: "Run marketing" },
-  { icon: BarChart3, title: "Analytics & Reporting", cat: "Analytics and reporting", text: "Dashboards, SEO audits and scheduled reports built from your real business data.", href: "#/services/business-dashboards", action: "Get visibility" },
-  { icon: Code2, title: "Platform & Developer Tooling", cat: "Integrations and developer tools", text: "Modular application scaffolds, staged environments, and source-code handover under the approved Scope of Work.", href: "#/platform", action: "Explore the platform" },
+  { icon: PanelsTopLeft, title: "Client Portal", cat: "AI workspace", text: "Projects, files, invoices, approvals and updates in one signed-in home for your clients.", href: "/portal", action: "Open the portal" },
+  { icon: UserRound, title: "CRM & Business Operations", cat: "Business operations", text: "Leads, clients, projects, tasks, invoices and payments with role-based access and audit trails.", href: "/technologies", action: "See the platform" },
+  { icon: Workflow, title: "Automation Workflows", cat: "Workflow automation", text: "n8n-powered integrations and scheduled jobs connecting the tools you already use.", href: "/services/n8n-workflow-automation", action: "Automate a workflow" },
+  { icon: Megaphone, title: "Marketing Operations", cat: "Marketing operations", text: "Content studio, media planning, newsletter and approve-first social publishing.", href: "/services/email-automation", action: "Run marketing" },
+  { icon: BarChart3, title: "Analytics & Reporting", cat: "Analytics and reporting", text: "Dashboards, SEO audits and scheduled reports built from your real business data.", href: "/services/business-dashboards", action: "Get visibility" },
+  { icon: Code2, title: "Platform & Developer Tooling", cat: "Integrations and developer tools", text: "Modular application scaffolds, staged environments, and source-code handover under the approved Scope of Work.", href: "/platform", action: "Explore the platform" },
 ];
 export function PlatformGrid() {
   return (
@@ -195,7 +195,7 @@ export function HowItWorks() {
             </Reveal>
           ))}
         </ol>
-        <p className="mt-8 text-center"><LinkArrow href="#/process">See the full delivery process</LinkArrow></p>
+        <p className="mt-8 text-center"><LinkArrow href="/process">See the full delivery process</LinkArrow></p>
       </div>
     </section>
   );
@@ -249,8 +249,8 @@ export function DashboardShowcase() {
                 ))}
               </ul>
               <div className="mt-7 flex flex-wrap gap-3">
-                <a href="#/contact" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white transition hover:bg-[#0090CC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">Book a Demo <ArrowRight className="size-4" aria-hidden="true" /></a>
-                <a href="#/portal" className="inline-flex min-h-11 items-center rounded-lg border border-[#CBD5E1] px-5 text-sm font-semibold text-[#0B1F33] transition hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]">Client Sign In</a>
+                <a href="/contact" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white transition hover:bg-[#0090CC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">Book a Demo <ArrowRight className="size-4" aria-hidden="true" /></a>
+                <a href="/portal" className="inline-flex min-h-11 items-center rounded-lg border border-[#CBD5E1] px-5 text-sm font-semibold text-[#0B1F33] transition hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]">Client Sign In</a>
               </div>
             </div>
           </Reveal>
@@ -358,7 +358,7 @@ export function PricingSection() {
                       <li key={i} className="flex gap-2 text-sm text-[#33475B]"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />{i}</li>
                     ))}
                   </ul>
-                  <a href="#/contact" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#063B8F] px-5 text-sm font-semibold text-white transition hover:bg-[#052f72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]">{e.cta}</a>
+                  <a href="/contact" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#063B8F] px-5 text-sm font-semibold text-white transition hover:bg-[#052f72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]">{e.cta}</a>
                 </div>
               </article>
             </Reveal>
@@ -371,12 +371,12 @@ export function PricingSection() {
 
 /* ---------------- Resources (§15) ---------------- */
 const RESOURCES = [
-  { icon: Newspaper, cat: "Articles & insights", title: "Blog", text: "Engineering notes, delivery lessons and practical guides from real builds.", href: "#/blog" },
-  { icon: BookOpen, cat: "Guides & tutorials", title: "How We Work", text: "The seven-phase delivery process, approval gates and handover, explained.", href: "#/process" },
-  { icon: PanelsTopLeft, cat: "Platform documentation", title: "Platform Overview", text: "The template library, module engine, tenant provisioning and version-control pillars behind every build.", href: "#/platform" },
-  { icon: LifeBuoy, cat: "FAQs", title: "Questions, Answered", text: "Scope, pricing model, timelines, ownership and support — answered plainly.", href: "#/faq" },
-  { icon: Briefcase, cat: "Work", title: "Selected Work", text: "Illustrative system scenarios and delivery blueprints — clearly labelled, never presented as client endorsements.", href: "#/work" },
-  { icon: Layers, cat: "AI implementation", title: "AI Solutions", text: "Where AI genuinely helps a business — and where it should stay supervised.", href: "#/services/ai-business-automation" },
+  { icon: Newspaper, cat: "Articles & insights", title: "Blog", text: "Engineering notes, delivery lessons and practical guides from real builds.", href: "/blog" },
+  { icon: BookOpen, cat: "Guides & tutorials", title: "How We Work", text: "The seven-phase delivery process, approval gates and handover, explained.", href: "/process" },
+  { icon: PanelsTopLeft, cat: "Platform documentation", title: "Platform Overview", text: "The template library, module engine, tenant provisioning and version-control pillars behind every build.", href: "/platform" },
+  { icon: LifeBuoy, cat: "FAQs", title: "Questions, Answered", text: "Scope, pricing model, timelines, ownership and support — answered plainly.", href: "/faq" },
+  { icon: Briefcase, cat: "Work", title: "Selected Work", text: "Illustrative system scenarios and delivery blueprints — clearly labelled, never presented as client endorsements.", href: "/work" },
+  { icon: Layers, cat: "AI implementation", title: "AI Solutions", text: "Where AI genuinely helps a business — and where it should stay supervised.", href: "/services/ai-business-automation" },
 ];
 export function ResourcesGrid() {
   return (

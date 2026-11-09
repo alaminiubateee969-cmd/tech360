@@ -50,17 +50,17 @@ export const SOLUTIONS_MEGA_COLUMNS: NavColumnGroup[] = [
     items: [
       {
         label: "AI Agent Systems",
-        href: "#/services/ai-agent-systems",
+        href: "/services/ai-agent-systems",
         description: "Scoped customer & operational assistants with approval guardrails",
       },
       {
         label: "AI Business Automation",
-        href: "#/services/ai-business-automation",
+        href: "/services/ai-business-automation",
         description: "Document triage, routing, classification & human-verified actions",
       },
       {
         label: "WhatsApp-First AI Sales CRM",
-        href: "#/services/whatsapp-ai-sales-crm",
+        href: "/services/whatsapp-ai-sales-crm",
         description: "Shared conversational inbox, qualification & sales pipeline",
       },
     ],
@@ -72,27 +72,27 @@ export const SOLUTIONS_MEGA_COLUMNS: NavColumnGroup[] = [
     items: [
       {
         label: "eCommerce Platforms",
-        href: "#/services/ecommerce-platforms",
+        href: "/services/ecommerce-platforms",
         description: "High-conversion storefronts, checkout, inventory & order tracking",
       },
       {
         label: "Client Portals",
-        href: "#/services/client-portals",
+        href: "/services/client-portals",
         description: "Authenticated customer workspaces for approvals, files & billing",
       },
       {
         label: "Business Dashboards",
-        href: "#/services/business-dashboards",
+        href: "/services/business-dashboards",
         description: "Role-scoped executive KPIs, finance & live operations reporting",
       },
       {
         label: "Custom Software Development",
-        href: "#/services/custom-software-development",
+        href: "/services/custom-software-development",
         description: "Bespoke multi-role web applications tailored to your domain",
       },
       {
         label: "Database Systems",
-        href: "#/services/database-systems",
+        href: "/services/database-systems",
         description: "Relational data modeling, migrations, auditability & backups",
       },
     ],
@@ -104,32 +104,32 @@ export const SOLUTIONS_MEGA_COLUMNS: NavColumnGroup[] = [
     items: [
       {
         label: "Custom CRM Development",
-        href: "#/services/custom-crm-development",
+        href: "/services/custom-crm-development",
         description: "Pipeline, approvals, invoices & history under one Client ID",
       },
       {
         label: "WhatsApp Automation",
-        href: "#/services/whatsapp-automation",
+        href: "/services/whatsapp-automation",
         description: "Automated order, booking & milestone updates with opt-in control",
       },
       {
         label: "WhatsApp Cloud API Integration",
-        href: "#/services/whatsapp-cloud-api-integration",
+        href: "/services/whatsapp-cloud-api-integration",
         description: "Official Meta Cloud API webhooks, templates & shared inbox sync",
       },
       {
         label: "Email Automation",
-        href: "#/services/email-automation",
+        href: "/services/email-automation",
         description: "Transactional receipts, onboarding sequences & deliverability setup",
       },
       {
         label: "SMS Automation",
-        href: "#/services/sms-automation",
+        href: "/services/sms-automation",
         description: "OTP verification, appointment reminders & time-critical alerts",
       },
       {
         label: "n8n Workflow Automation",
-        href: "#/services/n8n-workflow-automation",
+        href: "/services/n8n-workflow-automation",
         description: "Self-hosted multi-system orchestration with retry & error logs",
       },
     ],
@@ -141,37 +141,37 @@ export const SOLUTIONS_MEGA_COLUMNS: NavColumnGroup[] = [
     items: [
       {
         label: "Premium Business Websites",
-        href: "#/services/premium-business-websites",
+        href: "/services/premium-business-websites",
         description: "Fast, conversion-architected corporate sites with clean SEO",
       },
       {
         label: "Enterprise Websites",
-        href: "#/services/enterprise-websites",
+        href: "/services/enterprise-websites",
         description: "Multi-team governance, staging workflows & multi-region scale",
       },
       {
         label: "API Integrations",
-        href: "#/services/api-integrations",
+        href: "/services/api-integrations",
         description: "Payment gateways, ERPs, couriers & third-party webhook bridges",
       },
       {
         label: "Cloud Deployment (Google Cloud)",
-        href: "#/services/cloud-deployment-google-cloud",
+        href: "/services/cloud-deployment-google-cloud",
         description: "Cloud Run, managed SQL, Secret Manager, TLS & observability",
       },
       {
         label: "cPanel / StackCP Deployment",
-        href: "#/services/cpanel-stackcp-deployment",
+        href: "/services/cpanel-stackcp-deployment",
         description: "Pragmatic shared/VPS hosting setup, SSL, cron & domain cutover",
       },
       {
         label: "Maintenance & Support",
-        href: "#/services/maintenance-support",
+        href: "/services/maintenance-support",
         description: "Scoped SLA patching, monitoring, backups & post-launch updates",
       },
       {
         label: "Digital Transformation Consulting",
-        href: "#/services/digital-transformation-consulting",
+        href: "/services/digital-transformation-consulting",
         description: "Process audit, architecture roadmap & phased SOW planning",
       },
     ],
@@ -183,50 +183,50 @@ export const INDUSTRIES_MEGA_COLUMNS: NavColumnGroup[] = [
     id: "commerce-hospitality",
     heading: "Commerce & Hospitality",
     items: [
-      { label: "eCommerce", href: "#/industries/ecommerce", description: "Storefronts, fulfillment & retention" },
-      { label: "Retail", href: "#/industries/retail", description: "POS sync, multi-store stock & loyalty" },
-      { label: "Restaurants & Food", href: "#/industries/restaurants-food", description: "Direct ordering, kitchen & dispatch" },
-      { label: "Travel & Hospitality", href: "#/industries/travel-hospitality", description: "Direct bookings, guest ops & Folios" },
+      { label: "eCommerce", href: "/industries/ecommerce", description: "Storefronts, fulfillment & retention" },
+      { label: "Retail", href: "/industries/retail", description: "POS sync, multi-store stock & loyalty" },
+      { label: "Restaurants & Food", href: "/industries/restaurants-food", description: "Direct ordering, kitchen & dispatch" },
+      { label: "Travel & Hospitality", href: "/industries/travel-hospitality", description: "Direct bookings, guest ops & Folios" },
     ],
   },
   {
     id: "healthcare-education",
     heading: "Healthcare & Education",
     items: [
-      { label: "Healthcare", href: "#/industries/healthcare", description: "Patient intake, scheduling & portals" },
-      { label: "Hospitals & Clinics", href: "#/industries/hospitals-clinics", description: "Multi-department OPD, EMR & billing" },
-      { label: "Education", href: "#/industries/education", description: "Admissions CRM, LMS & student lifecycle" },
-      { label: "Schools & Training", href: "#/industries/schools-training", description: "Batch scheduling, fees & guardian apps" },
+      { label: "Healthcare", href: "/industries/healthcare", description: "Patient intake, scheduling & portals" },
+      { label: "Hospitals & Clinics", href: "/industries/hospitals-clinics", description: "Multi-department OPD, EMR & billing" },
+      { label: "Education", href: "/industries/education", description: "Admissions CRM, LMS & student lifecycle" },
+      { label: "Schools & Training", href: "/industries/schools-training", description: "Batch scheduling, fees & guardian apps" },
     ],
   },
   {
     id: "industrial-built-logistics",
     heading: "Industrial, Built & Logistics",
     items: [
-      { label: "Manufacturing", href: "#/industries/manufacturing", description: "MRP, shop-floor MES, QA & dealer portals" },
-      { label: "Construction", href: "#/industries/construction", description: "BOQ, subcontractor, RFI & site progress" },
-      { label: "Real Estate", href: "#/industries/real-estate", description: "Lead-to-site-visit CRM & payment schedules" },
-      { label: "Logistics", href: "#/industries/logistics", description: "Dispatch, fleet tracking, POD & COD settlement" },
+      { label: "Manufacturing", href: "/industries/manufacturing", description: "MRP, shop-floor MES, QA & dealer portals" },
+      { label: "Construction", href: "/industries/construction", description: "BOQ, subcontractor, RFI & site progress" },
+      { label: "Real Estate", href: "/industries/real-estate", description: "Lead-to-site-visit CRM & payment schedules" },
+      { label: "Logistics", href: "/industries/logistics", description: "Dispatch, fleet tracking, POD & COD settlement" },
     ],
   },
   {
     id: "finance-legal-professional",
     heading: "Finance, Legal & Enterprise",
     items: [
-      { label: "Finance", href: "#/industries/finance", description: "KYC onboarding, audit trails & reporting" },
-      { label: "Legal Services", href: "#/industries/legal-services", description: "Conflict checks, matter portals & billing" },
-      { label: "Professional Services", href: "#/industries/professional-services", description: "Proposals, milestones & retainer ops" },
-      { label: "International SMEs", href: "#/industries/international-smes", description: "Multi-currency & cross-border operations" },
+      { label: "Finance", href: "/industries/finance", description: "KYC onboarding, audit trails & reporting" },
+      { label: "Legal Services", href: "/industries/legal-services", description: "Conflict checks, matter portals & billing" },
+      { label: "Professional Services", href: "/industries/professional-services", description: "Proposals, milestones & retainer ops" },
+      { label: "International SMEs", href: "/industries/international-smes", description: "Multi-currency & cross-border operations" },
     ],
   },
   {
     id: "technology-agencies-local",
     heading: "Tech, Agencies & Growth",
     items: [
-      { label: "Technology Companies", href: "#/industries/technology-companies", description: "SaaS control planes, billing & docs" },
-      { label: "Agencies", href: "#/industries/agencies", description: "Client workspaces, approvals & retainers" },
-      { label: "Marketing Agencies", href: "#/industries/marketing-agencies", description: "Lead attribution, reporting & campaign ops" },
-      { label: "Local Businesses", href: "#/industries/local-businesses", description: "Bookings, reviews, invoicing & repeat sales" },
+      { label: "Technology Companies", href: "/industries/technology-companies", description: "SaaS control planes, billing & docs" },
+      { label: "Agencies", href: "/industries/agencies", description: "Client workspaces, approvals & retainers" },
+      { label: "Marketing Agencies", href: "/industries/marketing-agencies", description: "Lead attribution, reporting & campaign ops" },
+      { label: "Local Businesses", href: "/industries/local-businesses", description: "Bookings, reviews, invoicing & repeat sales" },
     ],
   },
 ];
@@ -235,26 +235,26 @@ export const PRIMARY_NAV_GROUPS: PrimaryNavGroup[] = [
   {
     key: "solutions",
     label: "Solutions",
-    defaultHref: "#/services",
+    defaultHref: "/services",
     kind: "mega-solutions",
     summary: "21 custom software, CRM, AI, web, and cloud capabilities — scoped in writing and built for full client ownership.",
     columns: SOLUTIONS_MEGA_COLUMNS,
-    footerLink: { label: "View all 21 solutions", href: "#/services" },
-    secondaryFooterLink: { label: "Company-in-a-Box Platform", href: "#/platform" },
+    footerLink: { label: "View all 21 solutions", href: "/services" },
+    secondaryFooterLink: { label: "Company-in-a-Box Platform", href: "/platform" },
   },
   {
     key: "industries",
     label: "Industries",
-    defaultHref: "#/industries",
+    defaultHref: "/industries",
     kind: "mega-industries",
     summary: "20 sector-specific operating blueprints with domain workflows, role permissions, integrations, and compliance guardrails.",
     columns: INDUSTRIES_MEGA_COLUMNS,
-    footerLink: { label: "Explore all 20 industries", href: "#/industries" },
+    footerLink: { label: "Explore all 20 industries", href: "/industries" },
   },
   {
     key: "work",
     label: "Work",
-    defaultHref: "#/work",
+    defaultHref: "/work",
     kind: "dropdown",
     summary: "Representative software architectures, system scenarios, and delivery blueprints.",
     columns: [
@@ -264,28 +264,28 @@ export const PRIMARY_NAV_GROUPS: PrimaryNavGroup[] = [
         items: [
           {
             label: "Portfolio",
-            href: "#/work",
+            href: "/work",
             description: "Capabilities showcase across web, CRM, portals & automation",
           },
           {
             label: "Projects",
-            href: "#/work/projects",
+            href: "/work/projects",
             description: "12 illustrative system scenarios & architecture breakdowns",
           },
           {
             label: "Case Studies",
-            href: "#/work/case-studies",
+            href: "/work/case-studies",
             description: "Problem-to-architecture delivery blueprints by sector",
           },
         ],
       },
     ],
-    footerLink: { label: "Browse all work & scenarios", href: "#/work" },
+    footerLink: { label: "Browse all work & scenarios", href: "/work" },
   },
   {
     key: "resources",
     label: "Resources",
-    defaultHref: "#/blog",
+    defaultHref: "/blog",
     kind: "dropdown",
     summary: "Engineering notes, technology choices, delivery governance, and answers before you commit.",
     columns: [
@@ -295,22 +295,22 @@ export const PRIMARY_NAV_GROUPS: PrimaryNavGroup[] = [
         items: [
           {
             label: "Blog",
-            href: "#/blog",
+            href: "/blog",
             description: "Architecture, CRM design, cloud deployment & automation articles",
           },
           {
             label: "FAQ",
-            href: "#/faq",
+            href: "/faq",
             description: "Clear answers on HTML previews, SOW scope, payments & handover",
           },
           {
             label: "Technologies",
-            href: "#/technologies",
+            href: "/technologies",
             description: "Next.js, TypeScript, PostgreSQL, Google Cloud & n8n stack",
           },
           {
             label: "Delivery Process",
-            href: "#/process",
+            href: "/process",
             description: "Our 7-step customer journey from enquiry to source handover",
           },
         ],
@@ -320,7 +320,7 @@ export const PRIMARY_NAV_GROUPS: PrimaryNavGroup[] = [
   {
     key: "company",
     label: "Company",
-    defaultHref: "#/about",
+    defaultHref: "/about",
     kind: "dropdown",
     summary: "Who we are, how TECH360 LLC operates globally, open roles, and binding project policies.",
     columns: [
@@ -330,22 +330,22 @@ export const PRIMARY_NAV_GROUPS: PrimaryNavGroup[] = [
         items: [
           {
             label: "About",
-            href: "#/about",
+            href: "/about",
             description: "Company background, engineering principles & global delivery",
           },
           {
             label: "Careers",
-            href: "#/careers",
+            href: "/careers",
             description: "Open engineering, product & operations positions",
           },
           {
             label: "Contact",
-            href: "#/contact",
+            href: "/contact",
             description: "Start a written project scope or speak with our team",
           },
           {
             label: "Legal & Policies",
-            href: "#/legal",
+            href: "/legal",
             description: "Terms, Privacy, Refund, Delivery, Payment & Handover policies",
           },
         ],
@@ -355,8 +355,8 @@ export const PRIMARY_NAV_GROUPS: PrimaryNavGroup[] = [
 ];
 
 export const HEADER_UTILITY_LINKS = {
-  clientPortal: { label: "Client Portal", href: "#/portal" },
-  primaryCta: { label: "Start a Project", href: "#/contact" },
+  clientPortal: { label: "Client Portal", href: "/portal" },
+  primaryCta: { label: "Start a Project", href: "/contact" },
 } as const;
 
 /**
@@ -364,7 +364,7 @@ export const HEADER_UTILITY_LINKS = {
  */
 export function getSolutionGroupForService(slug: string): string {
   for (const col of SOLUTIONS_MEGA_COLUMNS) {
-    if (col.items.some((i) => i.href === `#/services/${slug}`)) {
+    if (col.items.some((i) => i.href === `/services/${slug}` || i.href === `/services/${slug}`)) {
       return col.heading;
     }
   }
@@ -376,7 +376,7 @@ export function getSolutionGroupForService(slug: string): string {
  */
 export function getSectorGroupForIndustry(slug: string): string {
   for (const col of INDUSTRIES_MEGA_COLUMNS) {
-    if (col.items.some((i) => i.href === `#/industries/${slug}`)) {
+    if (col.items.some((i) => i.href === `/industries/${slug}` || i.href === `/industries/${slug}`)) {
       return col.heading;
     }
   }

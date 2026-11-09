@@ -29,14 +29,20 @@ export async function GET(req: NextRequest) {
   let posts: Array<{ slug: string; title: string; excerpt: string | null; publishedAt: Date }> = []
   if (blogOn) {
     await publishDueBlogPosts().catch(() => 0)
-    posts = await db.blogPost
-      .findMany({
+    // `db` is a lazy proxy: a missing driver adapter throws synchronously on
+    // property access, before `.catch()` can be attached. A try/catch keeps the
+    // feed a valid, empty channel instead of a 500 — a feed that advertises
+    // nothing is honest; a feed that errors is a broken discovery surface.
+    try {
+      posts = await db.blogPost.findMany({
         where: { status: 'PUBLISHED', publishedAt: { lte: new Date() } },
         orderBy: { publishedAt: 'desc' },
         take: 8,
         select: { slug: true, title: true, excerpt: true, publishedAt: true },
       })
-      .catch(() => [])
+    } catch {
+      posts = []
+    }
   }
 
   const origin = (process.env.APP_PUBLIC_URL ?? new URL(req.url).origin).replace(/\/+$/, '')

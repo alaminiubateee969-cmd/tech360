@@ -312,7 +312,7 @@ export default function BlogPostView({
   const header = (
     <nav aria-label="Breadcrumb" className="mb-8">
       <a
-        href="#/blog"
+        href="/blog"
         className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#009FE3] outline-none transition-colors hover:text-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
@@ -345,7 +345,7 @@ export default function BlogPostView({
                 <CircleAlert className="size-8 text-[#B4472A]" aria-hidden="true" />
                 <p className="text-sm text-[#526173]">{error}</p>
                 <Button variant="outline" className="min-h-11 rounded-lg" asChild>
-                  <a href="#/blog" className="focus-visible:outline-none">
+                  <a href="/blog" className="focus-visible:outline-none">
                     Back to all articles
                   </a>
                 </Button>

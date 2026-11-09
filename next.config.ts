@@ -74,6 +74,14 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-store, max-age=0" },
         ],
       },
+      // Content negotiation: the same URL serves HTML or Markdown depending on
+      // `Accept` (see src/proxy.ts). Shared caches must key on that header, so
+      // it is declared here — the framework rewrites `Vary` on its own
+      // responses, which would otherwise drop the value set in middleware.
+      {
+        source: "/:path*",
+        headers: [{ key: "Vary", value: "Accept" }],
+      },
       {
         source: "/:path*",
         headers: [

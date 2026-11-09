@@ -568,9 +568,9 @@ export function SettingsView() {
           <SectionCard title="Legal & Policies" description="Public documentation">
             <ul className="space-y-2">
               {[
-                ['#/legal/privacy', 'Privacy Policy'],
-                ['#/legal/terms', 'Terms of Service'],
-                ['#/legal/refund', 'Refund Policy'],
+                ['/legal/privacy', 'Privacy Policy'],
+                ['/legal/terms', 'Terms of Service'],
+                ['/legal/refund', 'Refund Policy'],
               ].map(([href, label]) => (
                 <li key={href}>
                   <a

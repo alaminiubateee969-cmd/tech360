@@ -149,9 +149,14 @@ export function resolvePublicRoute(pathSegments: readonly string[]): PublicRoute
   if (segments.length === 1) {
     const section = segments[0]
     if (section === 'legal') {
-      const terms = LEGAL_DOCS.find((doc) => doc.slug === 'terms')
-      if (!terms) return null
-      return { path: '/legal', title: terms.title, description: terms.summary, kind: 'legal' }
+      // The hub has its own identity: reusing the Terms title made /legal and
+      // /legal/terms indistinguishable to a crawler.
+      return {
+        path: '/legal',
+        title: 'Legal & Project Policies',
+        description: `${LEGAL_DOCS.length} published TECH360 policies: terms, privacy, refunds, delivery, payment, client approval and source-code handover.`,
+        kind: 'legal',
+      }
     }
     const route = SECTIONS[section]
     return route ? { path: `/${section}`, ...route } : null

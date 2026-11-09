@@ -69,7 +69,7 @@ function writeSeenId(id: string | null) {
 function isHashRouteHidden(): boolean {
   if (typeof window === 'undefined') return true
   const hash = window.location.hash || ''
-  return hash.startsWith('#/admin') || hash.startsWith('#/portal')
+  return hash.startsWith('/admin') || hash.startsWith('/portal')
 }
 
 // Analytics — fire and forget; must never break the chat.
@@ -664,7 +664,7 @@ export default function ChatWidget() {
                   />
                   <span>
                     I consent to TECH360 LLC storing this enquiry and using my selected first-reply channel ({preferredContact}) for service-related updates about this request. If I selected SMS, I agree to receive service-related texts at the number provided; message/data rates may apply. No marketing messages without separate opt-in. See the{" "}
-                    <a href="#/legal/privacy" className="font-semibold underline underline-offset-2">Privacy Policy</a>.
+                    <a href="/legal/privacy" className="font-semibold underline underline-offset-2">Privacy Policy</a>.
                   </span>
                 </label>
                 {sessionError && (
@@ -777,7 +777,7 @@ export default function ChatWidget() {
                 )}
                 {clientId && (
                   <p className="border-t border-slate-100 bg-slate-50 px-4 py-1 text-center text-[10px] text-slate-400">
-                    Reference <span className="font-mono text-slate-500">{clientId}</span> · Replies may be assisted by AI — <a href="#/legal/privacy" className="underline">learn more</a>
+                    Reference <span className="font-mono text-slate-500">{clientId}</span> · Replies may be assisted by AI — <a href="/legal/privacy" className="underline">learn more</a>
                   </p>
                 )}
 

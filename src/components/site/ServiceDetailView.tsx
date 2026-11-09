@@ -36,12 +36,12 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
           eyebrow="Service not found"
           title="This service does not exist"
           description={`The service you are looking for may have been renamed or the link is outdated. Browse all ${SERVICES.length} services instead.`}
-          breadcrumb={[{ label: "Services", href: "#/services" }, { label: "Not found" }]}
+          breadcrumb={[{ label: "Services", href: "/services" }, { label: "Not found" }]}
         />
         <section className="bg-white">
           <div className="mx-auto w-full max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
             <Button asChild variant="outline" className="min-h-11 rounded-lg">
-              <a href="#/services" className="focus-visible:outline-none">
+              <a href="/services" className="focus-visible:outline-none">
                 <ArrowLeft className="size-4" aria-hidden="true" />
                 All services
               </a>
@@ -72,7 +72,7 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
         eyebrow="Service"
         title={service.title}
         description={service.tagline}
-        breadcrumb={[{ label: "Services", href: "#/services" }, { label: service.title }]}
+        breadcrumb={[{ label: "Services", href: "/services" }, { label: service.title }]}
       >
         <div className="flex flex-wrap items-center gap-2">
           {service.tech.map((tech) => (
@@ -290,7 +290,7 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
               </ul>
               <div className="mt-8">
                 <a
-                  href="#/process"
+                  href="/process"
                   className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/25 px-5 text-sm font-semibold text-white outline-none transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/70"
                 >
                   See the seven delivery steps
@@ -347,7 +347,7 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
               {relatedIndustries.map((entry) => (
                 <RevealItem key={entry.slug} className="h-full">
                   <a
-                    href={`#/industries/${entry.slug}`}
+                    href={`/industries/${entry.slug}`}
                     className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-5 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-[0_12px_30px_rgba(6,59,143,0.08)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                   >
                     <Boxes className="size-5 text-[#009FE3]" aria-hidden="true" />
@@ -422,7 +422,7 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <PrimaryLink href="#/contact">
+                <PrimaryLink href="/contact">
                   Start Your Project
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </PrimaryLink>
@@ -446,7 +446,7 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
             {related.map((s) => (
               <RevealItem key={s.slug} className="h-full">
                 <a
-                  href={`#/services/${s.slug}`}
+                  href={`/services/${s.slug}`}
                   className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-5 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                 >
                   <span className="flex size-10 items-center justify-center rounded-lg bg-[#063B8F]/10 text-[#063B8F]">

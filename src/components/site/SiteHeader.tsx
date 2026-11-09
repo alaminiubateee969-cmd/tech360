@@ -156,7 +156,7 @@ export function SiteHeader({
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <a
-          href="#/"
+          href="/"
           onClick={closeAllMenus}
           aria-label="TECH360 Home"
           className="flex shrink-0 items-center gap-2.5 rounded-lg py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#063B8F]"
@@ -403,7 +403,7 @@ export function SiteHeader({
                       )}
                     </div>
                     <a
-                      href="#/process"
+                      href="/process"
                       onClick={closeAllMenus}
                       className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 hover:text-[#063B8F]"
                     >
@@ -495,7 +495,7 @@ export function SiteHeader({
                       </a>
                     )}
                     <a
-                      href="#/contact"
+                      href="/contact"
                       onClick={closeAllMenus}
                       className="text-xs font-semibold text-slate-700 hover:text-[#063B8F]"
                     >

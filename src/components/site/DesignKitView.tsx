@@ -183,18 +183,18 @@ export default function DesignKitView() {
           description="One primary action per screen, outlined and secondary actions beside it, and a visible focus ring on every control. All buttons meet a 44px minimum touch target."
         >
           <Showcase label="Primary · one per screen" note="Used for the single most important action.">
-            <PrimaryLink href="#/contact">Start a project</PrimaryLink>
-            <PrimaryLink href="#/work">See our work</PrimaryLink>
+            <PrimaryLink href="/contact">Start a project</PrimaryLink>
+            <PrimaryLink href="/work">See our work</PrimaryLink>
           </Showcase>
           <Showcase label="Secondary · supporting actions">
-            <SecondaryLink href="#/services">Explore services</SecondaryLink>
-            <OutlineLink href="#/process">How we work</OutlineLink>
-            <GhostLink href="#/faq">Read the FAQ</GhostLink>
+            <SecondaryLink href="/services">Explore services</SecondaryLink>
+            <OutlineLink href="/process">How we work</OutlineLink>
+            <GhostLink href="/faq">Read the FAQ</GhostLink>
           </Showcase>
           <Showcase label="Grouped actions" note="Stacked on mobile, inline from the small breakpoint.">
             <ButtonGroup>
-              <PrimaryLink href="#/contact">Book a consultation</PrimaryLink>
-              <OutlineLink href="#/legal/privacy">Privacy policy</OutlineLink>
+              <PrimaryLink href="/contact">Book a consultation</PrimaryLink>
+              <OutlineLink href="/legal/privacy">Privacy policy</OutlineLink>
               <AIAssistantLink compact />
             </ButtonGroup>
           </Showcase>
@@ -203,7 +203,7 @@ export default function DesignKitView() {
               <span className="text-sm font-semibold text-[#0B1F33]">Industry pages</span>
               <span className="block text-xs text-slate-500">20 verticals with their own intake flow</span>
             </CardLinkAffordance>
-            <LinkArrow href="#/process">Read the delivery process</LinkArrow>
+            <LinkArrow href="/process">Read the delivery process</LinkArrow>
           </Showcase>
           <Showcase
             label="Honest-by-default components"

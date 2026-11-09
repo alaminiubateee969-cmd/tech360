@@ -51,8 +51,8 @@ export default function PlatformView() {
                 ))}
               </div>
               <div className="mt-8 flex flex-wrap gap-3">
-                <a href="#/contact" className="inline-flex min-h-11 items-center rounded-lg bg-[#009FE3] px-6 text-sm font-semibold text-white hover:bg-[#0090CC]">Start a project</a>
-                <a href="#/process" className="inline-flex min-h-11 items-center rounded-lg border border-white/20 bg-transparent px-6 text-sm font-semibold text-white hover:bg-white/10">See how delivery works</a>
+                <a href="/contact" className="inline-flex min-h-11 items-center rounded-lg bg-[#009FE3] px-6 text-sm font-semibold text-white hover:bg-[#0090CC]">Start a project</a>
+                <a href="/process" className="inline-flex min-h-11 items-center rounded-lg border border-white/20 bg-transparent px-6 text-sm font-semibold text-white hover:bg-white/10">See how delivery works</a>
               </div>
             </div>
             <div className="relative">

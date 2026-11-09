@@ -1,5 +1,15 @@
+# TECH360 LLC — https://bdtech360.com
+#
+# Public marketing pages are crawlable. Authenticated dashboards, internal
+# operator surfaces and APIs are disallowed, but robots.txt is a crawl
+# preference only: it is NOT an authentication or access-control mechanism.
+# Those paths are protected by session auth + RBAC on the server, and they
+# additionally send `X-Robots-Tag: noindex, nofollow, noarchive`.
+
 User-agent: *
 Allow: /
+
+# Private / authenticated surfaces (never indexable)
 Disallow: /admin
 Disallow: /super-admin
 Disallow: /portal
@@ -7,5 +17,20 @@ Disallow: /pipeline
 Disallow: /design-kit
 Disallow: /factory
 Disallow: /api/
+Disallow: /login
+Disallow: /reset-password
+Disallow: /verify
+
+# Sensitive static files and internal documentation
+Disallow: /private/
+Disallow: /official/
+Disallow: /.env
+Disallow: /README.md
+
+# Content-Signal (emerging, non-standardised proposal — Cloudflare's convention).
+# It expresses a preference, not a technical restriction: nothing here prevents
+# a crawler from ingesting content. Real protection is contractual (see
+# /legal/terms) plus rate limiting and bot rules at the edge.
+Content-Signal: search=yes, ai-train=no
 
 Sitemap: https://bdtech360.com/sitemap.xml

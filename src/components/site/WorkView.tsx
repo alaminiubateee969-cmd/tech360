@@ -147,7 +147,7 @@ function CaseStudyDialog({
               <span className="font-semibold text-white">Discuss a similar requirement.</span>{" "}
               We will assess fit and scope; any client reference requires explicit permission and may not be available.
             </p>
-            <PrimaryLink href="#/contact" className="shrink-0">
+            <PrimaryLink href="/contact" className="shrink-0">
               Start your version
               <ArrowRight className="size-4" aria-hidden="true" />
             </PrimaryLink>
@@ -320,7 +320,7 @@ export default function WorkView({ subView = "" }: { subView?: string }) {
           title: "Illustrative System Scenarios & Projects",
           description:
             "Twelve representative software, CRM, portal, eCommerce, and workflow systems TECH360 can engineer — presented as transparent concept previews rather than named client endorsements.",
-          breadcrumb: [{ label: "Work", href: "#/work" }, { label: "Projects" }],
+          breadcrumb: [{ label: "Work", href: "/work" }, { label: "Projects" }],
         }
       : subView === "case-studies"
       ? {
@@ -328,7 +328,7 @@ export default function WorkView({ subView = "" }: { subView?: string }) {
           title: "Delivery Case Frameworks & Architecture Blueprints",
           description:
             "Problem-to-architecture blueprints showing how TECH360 scopes business constraints, designs data models, gates approvals, and hands over source code.",
-          breadcrumb: [{ label: "Work", href: "#/work" }, { label: "Case Studies" }],
+          breadcrumb: [{ label: "Work", href: "/work" }, { label: "Case Studies" }],
         }
       : {
           eyebrow: "Work · Portfolio & Scenarios",
@@ -354,12 +354,12 @@ export default function WorkView({ subView = "" }: { subView?: string }) {
       <div className="border-b border-[#E2E8F0] bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-3.5 sm:px-6 lg:px-8">
           {[
-            { key: "", label: "Portfolio Overview", href: "#/work" },
-            { key: "projects", label: "System Scenarios (12)", href: "#/work/projects" },
+            { key: "", label: "Portfolio Overview", href: "/work" },
+            { key: "projects", label: "System Scenarios (12)", href: "/work/projects" },
             {
               key: "case-studies",
               label: `Delivery Blueprints (${CASE_STUDIES.length})`,
-              href: "#/work/case-studies",
+              href: "/work/case-studies",
             },
           ].map((tab) => {
             const active = subView === tab.key;
@@ -502,7 +502,7 @@ export default function WorkView({ subView = "" }: { subView?: string }) {
             {SERVICES.slice(0, 3).map((service) => (
               <RevealItem key={service.slug} className="h-full">
                 <a
-                  href={`#/services/${service.slug}`}
+                  href={`/services/${service.slug}`}
                   className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-5 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                 >
                   <h3 className="text-base font-semibold text-[#0B1F33]">{service.title}</h3>

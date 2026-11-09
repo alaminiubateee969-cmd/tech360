@@ -168,11 +168,11 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
           transition={{ duration: 0.6, delay: 1.05 }}
           className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4"
         >
-          <PrimaryLink href="#/services">
+          <PrimaryLink href="/services">
             Explore all 21 solutions
             <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-1" aria-hidden="true" />
           </PrimaryLink>
-          <OutlineLink href="#/work" dark>
+          <OutlineLink href="/work" dark>
             See illustrative work
           </OutlineLink>
           <AIAssistantLink label="Talk to Tech360" />
@@ -258,7 +258,7 @@ function IntegrationShowcase() {
             <p className="mt-2 text-lg font-semibold tracking-tight text-[#0B1F33]">Plays with the tools you already use</p>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[#526173]">Honest states — nothing is shown as connected until credentials are verified. WhatsApp, Email and SMS require setup; Stripe, n8n and GitHub are ready to connect.</p>
           </div>
-          <a href="#/technologies" className="hidden text-sm font-semibold text-[#009FE3] hover:text-[#063B8F] sm:inline-flex">View stack →</a>
+          <a href="/technologies" className="hidden text-sm font-semibold text-[#009FE3] hover:text-[#063B8F] sm:inline-flex">View stack →</a>
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           {INTEGRATIONS.map((it) => (
@@ -472,8 +472,8 @@ function FlagshipServices() {
                         ))}
                       </ul>
                       <div className="flex flex-wrap gap-2 pt-1">
-                        <a href={`#/services/${service.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#009FE3] px-4 text-sm font-semibold text-white hover:bg-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3]">View service <ArrowRight className="size-4" /></a>
-                        <a href="#/contact" className="inline-flex min-h-10 items-center rounded-lg border border-[#E2E8F0] bg-white px-4 text-sm font-semibold text-[#0B1F33] hover:border-[#009FE3]/30">Start this project</a>
+                        <a href={`/services/${service.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#009FE3] px-4 text-sm font-semibold text-white hover:bg-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3]">View service <ArrowRight className="size-4" /></a>
+                        <a href="/contact" className="inline-flex min-h-10 items-center rounded-lg border border-[#E2E8F0] bg-white px-4 text-sm font-semibold text-[#0B1F33] hover:border-[#009FE3]/30">Start this project</a>
                       </div>
                     </div>
                   </div>
@@ -498,7 +498,7 @@ function FlagshipServices() {
           })}
         </div>
         <div className="mt-10 text-center">
-          <OutlineLink href="#/services">All {SERVICES.length} services</OutlineLink>
+          <OutlineLink href="/services">All {SERVICES.length} services</OutlineLink>
         </div>
       </div>
     </section>
@@ -514,25 +514,25 @@ const DIFFERENTIATORS = [
     icon: "Eye",
     title: "HTML preview where included",
     text: "Where included in the agreed process, review an HTML Preview of the approved scope before the applicable project payment.",
-    link: { label: "Delivery Policy", href: "#/legal/delivery" },
+    link: { label: "Delivery Policy", href: "/legal/delivery" },
   },
   {
     icon: "FileCheck",
     title: "Agreed source code after verified payment",
     text: "After the final payment has been verified and cleared, TECH360 delivers the agreed source-code package, project documentation, and Client-owned credentials specifically identified in the approved Scope of Work. TECH360 internal secrets and shared infrastructure credentials are excluded.",
-    link: { label: "Handover Policy", href: "#/legal/source-code-handover" },
+    link: { label: "Handover Policy", href: "/legal/source-code-handover" },
   },
   {
     icon: "ShieldCheck",
     title: "US LLC, on-record operations",
     text: "TECH360 LLC records relevant project scopes, approvals, payments, and delivery evidence to support clear project administration.",
-    link: { label: "About the company", href: "#/about" },
+    link: { label: "About the company", href: "/about" },
   },
   {
     icon: "Layers",
     title: "Full-stack delivery, web to AI",
     text: "One accountable team from your public website to your CRM, automation and AI systems — designed, built, deployed and handed over as one coherent platform.",
-    link: { label: "Explore services", href: "#/services" },
+    link: { label: "Explore services", href: "/services" },
   },
 ];
 
@@ -607,7 +607,7 @@ function IndustriesPreview() {
           {tiles.map((industry) => (
             <RevealItem key={industry.slug}>
               <a
-                href={`#/industries/${industry.slug}`}
+                href={`/industries/${industry.slug}`}
                 className="group block overflow-hidden rounded-xl border border-[#E2E8F0] bg-white outline-none transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(6,59,143,0.12)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
               >
                 <div className="relative">
@@ -633,7 +633,7 @@ function IndustriesPreview() {
           ))}
         </RevealList>
         <div className="mt-10 text-center">
-          <OutlineLink href="#/industries">All 20 industries</OutlineLink>
+          <OutlineLink href="/industries">All 20 industries</OutlineLink>
         </div>
       </div>
     </section>
@@ -678,7 +678,7 @@ function ProcessStrip() {
           </ol>
         </Reveal>
         <div className="mt-10 text-center">
-          <LinkArrow href="#/process" className="text-sm">
+          <LinkArrow href="/process" className="text-sm">
             See the full 7-phase process with approval gates
           </LinkArrow>
         </div>
@@ -730,7 +730,7 @@ function SelectedWork() {
           ))}
         </RevealList>
         <div className="mt-10 text-center">
-          <OutlineLink href="#/work">All illustrative scenarios</OutlineLink>
+          <OutlineLink href="/work">All illustrative scenarios</OutlineLink>
         </div>
       </div>
     </section>
@@ -976,7 +976,7 @@ function LatestInsights() {
             {posts.slice(0, 3).map((post) => (
               <RevealItem key={post.slug} className="h-full">
                   <a
-                    href={`#/blog/${post.slug}`}
+                    href={`/blog/${post.slug}`}
                     className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-6 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/40 hover:shadow-[0_12px_32px_rgba(6,59,143,0.1)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                   >
                     <div className="flex items-center gap-3">
@@ -1003,7 +1003,7 @@ function LatestInsights() {
 
         {posts && posts.length > 0 ? (
           <div className="mt-10 text-center">
-            <OutlineLink href="#/blog">All articles</OutlineLink>
+            <OutlineLink href="/blog">All articles</OutlineLink>
           </div>
         ) : null}
       </div>
@@ -1025,25 +1025,25 @@ const CLIENT_AI_CAPABILITIES = [
     icon: Bot,
     title: "AI assistants inside your product",
     body: "Support and sales assistants that answer from your own content, escalate to a person, and log every conversation against the customer record.",
-    href: "#/services/ai-agent-systems",
+    href: "/services/ai-agent-systems",
   },
   {
     icon: Workflow,
     title: "Approval-gated automation",
     body: "Document, invoice and onboarding flows that pause for human approval before anything that matters leaves the building.",
-    href: "#/services/ai-business-automation",
+    href: "/services/ai-business-automation",
   },
   {
     icon: MessageCircle,
     title: "Conversational sales on WhatsApp",
     body: "Qualify and route inbound WhatsApp enquiries into your CRM with the same audit trail as your website forms.",
-    href: "#/services/whatsapp-cloud-api-integration",
+    href: "/services/whatsapp-cloud-api-integration",
   },
   {
     icon: Database,
     title: "Data you can actually query",
     body: "Dashboards and reporting built on your operational data, with role-based visibility instead of exported spreadsheets.",
-    href: "#/services/business-dashboards",
+    href: "/services/business-dashboards",
   },
 ] as const;
 
@@ -1061,8 +1061,8 @@ function ClientAiCapabilities() {
               description="We build AI into your systems where it does something measurable: answering from your own content, drafting inside a workflow, or catching exceptions before a person has to. Every deployment names who approves what, and what happens when the model is wrong."
             />
             <div className="mt-7 flex flex-wrap gap-3">
-              <PrimaryLink href="#/services/ai-business-automation">Automation services</PrimaryLink>
-              <OutlineLink href="#/faq">Read the FAQs</OutlineLink>
+              <PrimaryLink href="/services/ai-business-automation">Automation services</PrimaryLink>
+              <OutlineLink href="/faq">Read the FAQs</OutlineLink>
             </div>
             <p className="mt-6 flex items-start gap-2 text-xs leading-relaxed text-[#526173]">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
@@ -1138,7 +1138,7 @@ function DeliveryJourney() {
         </ol>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <a
-            href="#/process"
+            href="/process"
             className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#0090CC] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1F33]"
           >
             Read the full delivery process
@@ -1187,7 +1187,7 @@ function FaqPreview() {
           ))}
         </div>
         <div className="mt-8 text-center">
-          <LinkArrow href="#/faq">All frequently asked questions</LinkArrow>
+          <LinkArrow href="/faq">All frequently asked questions</LinkArrow>
         </div>
       </div>
     </section>

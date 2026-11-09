@@ -24,10 +24,37 @@ import { PUBLIC_CONTACT, SITE_URL } from '@/lib/site-contact'
 
 const CONTACT_FOOTER = `\n\n---\nContact: ${PUBLIC_CONTACT.email} · ${SITE_URL}\nClient enquiries: ${SITE_URL}/contact\nFull site index: ${SITE_URL}/llms.txt\n`
 
-/** RFC 8288 Link header advertised on every public HTML response. */
-export const AGENT_LINK_HEADER =
-  `<${SITE_URL}/llms.txt>; rel="llms.txt", ` +
-  `<${SITE_URL}/>; rel="alternate"; type="text/markdown"; title="Markdown version"`
+/**
+ * RFC 8288 Link header advertised on every public HTML response.
+ *
+ * Every target is checked to actually exist and return 200:
+ *   /llms.txt                  static Markdown index
+ *   /llms-full.txt             static extended index
+ *   /.well-known/ai-catalog.json   AI catalog → MCP server card
+ *   /rss.xml                   published engineering notes
+ *
+ * `rel="alternate"; type="text/markdown"` is per-route: the same URL, negotiated
+ * with `Accept: text/markdown` (see src/proxy.ts), so the advertised alternate
+ * is always a truthful representation of the page being served.
+ */
+export function agentLinkHeader(pathname = '/'): string {
+  const markdownUrl = `${SITE_URL}${pathname === '/' ? '/' : pathname}`
+  // `/about.md`-style URLs are cacheable representations of the same facts; the
+  // negotiated form (`Accept: text/markdown`) is advertised too. The homepage's
+  // explicit form is `/index.md`, which the proxy maps back to `/`.
+  const explicitMarkdownUrl = pathname === '/' ? `${SITE_URL}/index.md` : `${markdownUrl}.md`
+  return [
+    `<${SITE_URL}/llms.txt>; rel="llms.txt"; type="text/markdown"`,
+    `<${SITE_URL}/llms-full.txt>; rel="describedby"; type="text/markdown"`,
+    `<${explicitMarkdownUrl}>; rel="alternate"; type="text/markdown"; title="Markdown version"`,
+    `<${markdownUrl}>; rel="alternate"; type="text/markdown"; title="Markdown version (content negotiation)"`,
+    `<${SITE_URL}/.well-known/ai-catalog.json>; rel="ai-catalog"; type="application/ai-catalog+json"`,
+    `<${SITE_URL}/rss.xml>; rel="alternate"; type="application/rss+xml"; title="Engineering notes"`,
+  ].join(', ')
+}
+
+/** Homepage Link header (kept for callers that do not know the path). */
+export const AGENT_LINK_HEADER = agentLinkHeader('/')
 
 const list = (items: readonly string[]) => items.map((i) => `- ${i}`).join('\n')
 
@@ -218,6 +245,58 @@ export function sectionMarkdown(pathname: string): string {
   }
 
   return `# ${section.title}\n\n${section.summary}\n\nCanonical URL: ${SITE_URL}${pathname}\nContact: ${PUBLIC_CONTACT.email}\n\nFull site index: ${SITE_URL}/llms.txt\n`
+}
+
+/**
+ * The extended index behind `/llms-full.txt`.
+ *
+ * Same facts as `public/llms.txt` plus every service, industry and policy with
+ * its one-line description, so an agent that wants the whole public surface can
+ * read one document. Generated from the same registries as the HTML, which is
+ * why it cannot drift from the site.
+ */
+export function llmsFullMarkdown(): string {
+  return [
+    `# ${COMPANY.legalName} — extended index`,
+    `> ${COMPANY.subline}`,
+    [
+      `Website: ${SITE_URL}`,
+      `Email: ${PUBLIC_CONTACT.email}`,
+      `Telephone: +1 (816) 380-8660`,
+      `Registered address: ${COMPANY.address}`,
+      `Missouri LLC: ${COMPANY.missouriLLC}`,
+      'Language: English · Currency: USD',
+      'Content signal: search=yes, ai-train=no (emerging, non-standardised preference — not a legal or technical restriction).',
+    ].join('\n'),
+    `## Services (${SERVICES.length})`,
+    SERVICES.map(
+      (s) =>
+        `### ${s.title}\n${s.tagline}\n\n${s.solution}\n\n- URL: ${SITE_URL}/services/${s.slug}\n- Capabilities: ${s.features.join('; ')}\n- Technology: ${s.tech.join(', ')}`,
+    ).join('\n\n'),
+    `## Industries (${INDUSTRIES.length})`,
+    INDUSTRIES.map((i) => {
+      const rich = getIndustryBySlug(i.slug)
+      const counts = rich ? ` (${rich.data.workflows.length} workflows, ${rich.data.modules.length} modules)` : ''
+      return `- ${i.title}${counts}: ${i.description} — ${SITE_URL}/industries/${i.slug}`
+    }).join('\n'),
+    `## Delivery process (${PROCESS.length} steps)`,
+    PROCESS.map((p) => `- ${p.step}. ${p.name} — ${p.title} (${p.duration})`).join('\n'),
+    `## Public policies (${LEGAL_DOCS.length})`,
+    LEGAL_DOCS.map((d) => `- ${d.title}: ${d.summary} — ${SITE_URL}/legal/${d.slug} (effective ${d.updated})`).join('\n'),
+    `## Machine-readable resources`,
+    [
+      `- ${SITE_URL}/llms.txt`,
+      `- ${SITE_URL}/llms-full.txt`,
+      `- ${SITE_URL}/sitemap.xml`,
+      `- ${SITE_URL}/rss.xml`,
+      `- ${SITE_URL}/.well-known/ai-catalog.json`,
+      `- ${SITE_URL}/.well-known/mcp/server-card.json (legacy SEP-1649 shape)`,
+      `- ${SITE_URL}/api/mcp/server-card (SEP-2127 card of record)`,
+      `- ${SITE_URL}/api/mcp (MCP Streamable HTTP, read-only tools)`,
+      '- Any public URL with `Accept: text/markdown` returns the Markdown representation.',
+    ].join('\n'),
+    CONTACT_FOOTER.trim(),
+  ].join('\n\n')
 }
 
 /** Rough token estimate for a Markdown document (4 bytes ≈ 1 token). */

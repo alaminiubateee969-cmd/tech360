@@ -109,7 +109,7 @@ function ConsentBanner({ onDecide }: { onDecide: (g: boolean) => void }) {
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-slate-600">
           If you accept analytics and advertising technologies, the site may load Google Tag Manager and Meta Pixel. These services may receive technical, browser, and event data according to the live configuration and their own policies.{' '}
-          <a href="#/legal/privacy" className="font-medium text-[#009FE3] underline underline-offset-2">Privacy Policy</a>
+          <a href="/legal/privacy" className="font-medium text-[#009FE3] underline underline-offset-2">Privacy Policy</a>
         </p>
         <div className="flex shrink-0 gap-2">
           <button onClick={() => onDecide(false)} className="h-11 rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Decline</button>
@@ -282,6 +282,19 @@ export default function Page({
 
   useEffect(() => {
     const fallbackHash = `#${initialHash.startsWith('/') ? initialHash : `/${initialHash}`}`
+    /**
+     * Legacy hash-form bookmarks (`#/route`) are permanent: canonicalise them to
+     * the real path form (`/route`) once, using replaceState so the back button
+     * is not polluted and no extra history entry is created. In-page anchors
+     * (`#main-content`, `#workflows`) are untouched.
+     */
+    const raw = window.location.hash
+    if (raw.startsWith('#/') && window.location.pathname === '/' && typeof history !== 'undefined') {
+      const legacyPath = '/' + raw.slice(2).split('?')[0].replace(/^\/+/, '')
+      if (legacyPath !== '/') history.replaceState(history.state, '', legacyPath)
+      else if (raw !== '#/') history.replaceState(history.state, '', '/')
+    }
+
     const onHash = () => {
       const raw = window.location.hash
       // Preserve current SPA route if a non-route in-page anchor (#main-content, #workflows, etc.) is triggered
@@ -302,6 +315,44 @@ export default function Page({
     onHash()
     return () => window.removeEventListener('hashchange', onHash)
   }, [initialHash])
+
+  /**
+   * Plain-path navigation.
+   *
+   * Every public page now has two equivalent URLs: the crawlable document
+   * (`/services/whatsapp-automation`, server-rendered by src/app/[...path]) and
+   * the in-app route (the hash the SPA already understands). Anchors are
+   * emitted as real paths so crawlers and no-JS visitors can follow them; this
+   * delegated handler then keeps a click inside the running app instead of
+   * forcing a full document load, and pushes the hash form so deep links and the
+   * back button keep working exactly as before.
+   */
+  useEffect(() => {
+    const onDocumentClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const anchor = (event.target as Element | null)?.closest?.('a')
+      if (!anchor) return
+      const href = anchor.getAttribute('href')
+      if (!href || !href.startsWith('/') || href.startsWith('//')) return
+      if (anchor.getAttribute('target') && anchor.getAttribute('target') !== '_self') return
+      if (anchor.hasAttribute('download')) return
+      // A path we cannot render in-app (e.g. /api/...) must do a real request.
+      const [rawPath] = href.split('#')
+      const cleanPath = rawPath.split('?')[0].replace(/\/+$/, '') || '/'
+      if (cleanPath !== '/' && !resolvePublicRoute(cleanPath.split('/').filter(Boolean))) return
+      event.preventDefault()
+      const target = cleanPath === '/' ? '#/' : `#${cleanPath}`
+      if (window.location.hash === target) {
+        setHash(cleanPath)
+        window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+      } else {
+        window.location.hash = target
+      }
+    }
+    document.addEventListener('click', onDocumentClick)
+    return () => document.removeEventListener('click', onDocumentClick)
+  }, [])
 
   const { section, param, parts } = useMemo(() => parseHash(hash), [hash])
   const isAdmin = section === 'admin'

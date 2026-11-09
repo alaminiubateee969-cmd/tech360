@@ -66,7 +66,7 @@ export default function IndustryExperience({ slug }: { slug: string }) {
             <h2 id="experience-heading" className="mt-4 max-w-lg text-3xl font-semibold tracking-tight sm:text-4xl">{concept.title}</h2>
             <p className="mt-5 max-w-lg leading-relaxed text-slate-300">{concept.description}</p>
             <p className="mt-6 text-sm text-slate-300"><span className="font-semibold text-white">Designed for: </span>{concept.roles}</p>
-            <a href="#/contact" className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f9b85c] px-5 py-3 text-sm font-semibold text-[#102b38] outline-none hover:bg-[#ffd08a] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#061d2b]">Discuss your project <ArrowRight className="size-4" aria-hidden="true" /></a>
+            <a href="/contact" className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f9b85c] px-5 py-3 text-sm font-semibold text-[#102b38] outline-none hover:bg-[#ffd08a] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#061d2b]">Discuss your project <ArrowRight className="size-4" aria-hidden="true" /></a>
           </div>
           <div className="rounded-2xl border border-white/15 bg-[#0b3141] p-4 shadow-2xl sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">

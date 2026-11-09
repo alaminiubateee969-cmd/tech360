@@ -145,7 +145,7 @@ export default function IndustriesView() {
               return (
                 <RevealItem key={industry.slug}>
                   <a
-                    href={`#/industries/${industry.slug}`}
+                    href={`/industries/${industry.slug}`}
                     className="group block h-full overflow-hidden rounded-xl border border-[#E2E8F0] bg-white outline-none transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(6,59,143,0.12)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                   >
                     <div className="relative">
@@ -207,7 +207,7 @@ export default function IndustriesView() {
 
           <div className="mt-10 text-center">
             <a
-              href="#/contact"
+              href="/contact"
               className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#063B8F]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#063B8F] outline-none transition-colors hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
             >
               Don&apos;t see your sector? Ask us

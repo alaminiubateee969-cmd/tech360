@@ -172,8 +172,8 @@ export default function ProcessView() {
             <ProjectSwimlane />
           </div>
           <ButtonGroup className="mt-8">
-            <SecondaryLink href="#/portal">Open the client portal</SecondaryLink>
-            <GhostLink href="#/legal/terms">Read the delivery &amp; payment policy</GhostLink>
+            <SecondaryLink href="/portal">Open the client portal</SecondaryLink>
+            <GhostLink href="/legal/terms">Read the delivery &amp; payment policy</GhostLink>
           </ButtonGroup>
         </div>
       </section>
@@ -247,7 +247,7 @@ export default function ProcessView() {
             <h2 className="mt-2 text-xl font-bold tracking-tight text-[#0B1F33] sm:text-2xl">Every stage has a written record you can point to.</h2>
             <p className="mt-2 text-sm leading-relaxed text-[#526173]">Each milestone produces an approved Scope of Work, a dated change record and a written confirmation before the next payment step. Nothing is agreed verbally.</p>
           </div>
-          <OutlineLink href="#/contact" className="shrink-0">Start a project</OutlineLink>
+          <OutlineLink href="/contact" className="shrink-0">Start a project</OutlineLink>
         </div>
       </section>
 

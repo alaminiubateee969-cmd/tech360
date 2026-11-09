@@ -31,8 +31,10 @@ describe('services catalogue mirrors the four Solutions pillars', () => {
     for (const column of SOLUTIONS_MEGA_COLUMNS) {
       assert.ok(column.items.length > 0, `${column.heading} must list services`)
       for (const item of column.items) {
-        assert.match(item.href, /^#\/services\/[a-z0-9-]+$/)
-        placed.push(item.href.replace('#/services/', ''))
+        // Public routes are emitted as real paths (crawlable) and the SPA also
+        // accepts the legacy hash form. Both must be handled here.
+        assert.match(item.href, /^(?:#)?\/services\/[a-z0-9-]+$/)
+        placed.push(item.href.replace(/^#?\/services\//, ''))
       }
     }
     assert.equal(placed.length, new Set(placed).size, 'a service may not appear in two pillars')

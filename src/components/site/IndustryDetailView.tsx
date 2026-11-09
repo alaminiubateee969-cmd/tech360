@@ -27,12 +27,12 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
           eyebrow="Industry not found"
           title="This industry page does not exist"
           description="The sector you are looking for may have been renamed or the link is outdated. Browse all twenty industries instead."
-          breadcrumb={[{ label: "Industries", href: "#/industries" }, { label: "Not found" }]}
+          breadcrumb={[{ label: "Industries", href: "/industries" }, { label: "Not found" }]}
         />
         <section className="bg-white">
           <div className="mx-auto w-full max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
             <Button asChild variant="outline" className="min-h-11 rounded-lg">
-              <a href="#/industries" className="focus-visible:outline-none">
+              <a href="/industries" className="focus-visible:outline-none">
                 <ArrowLeft className="size-4" aria-hidden="true" />
                 All industries
               </a>
@@ -76,7 +76,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
             <ol className="flex flex-wrap items-center gap-1.5 text-sm text-white/60">
               <li>
                 <a
-                  href="#/"
+                  href="/"
                   className="rounded-sm outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   Home
@@ -85,7 +85,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
               <li className="flex items-center gap-1.5">
                 <ArrowRight className="size-3.5 opacity-50" aria-hidden="true" />
                 <a
-                  href="#/industries"
+                  href="/industries"
                   className="rounded-sm outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   Industries
@@ -218,7 +218,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
             {recommended.map((service) => (
               <RevealItem key={service.slug} className="h-full">
                 <a
-                  href={`#/services/${service.slug}`}
+                  href={`/services/${service.slug}`}
                   className="group flex h-full flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                 >
                   <ImageView
@@ -267,7 +267,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <PrimaryLink href="#/contact">
+                <PrimaryLink href="/contact">
                   Start Your Project
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </PrimaryLink>
@@ -288,7 +288,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
             {others.map((other) => (
               <RevealItem key={other.slug}>
                 <a
-                  href={`#/industries/${other.slug}`}
+                  href={`/industries/${other.slug}`}
                   className="inline-flex min-h-11 items-center rounded-lg border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-medium text-[#063B8F] outline-none transition-colors hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                 >
                   {other.title}
@@ -297,7 +297,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
             ))}
             <RevealItem>
               <a
-                href="#/industries"
+                href="/industries"
                 className="inline-flex min-h-11 items-center rounded-lg bg-[#063B8F]/8 px-4 py-2 text-sm font-semibold text-[#063B8F] outline-none transition-colors hover:bg-[#063B8F]/15 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
               >
                 All 20 industries

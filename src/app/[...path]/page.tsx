@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import PublicSitePage from '../page'
 import type { BlogPost } from '@/components/site/BlogPostView'
 import { getStaticPublicRoutePaths, resolvePublicRoute } from '@/lib/public-route-catalog'
+import { jsonLdDocument, pageGraph } from '@/lib/structured-data'
 
 export const dynamicParams = true
 
@@ -81,5 +82,23 @@ export default async function PublicPathPage({ params }: { params: Promise<{ pat
     }
   }
 
-  return <PublicSitePage initialHash={route.path} initialBlogPost={initialBlogPost} />
+  // Server-rendered page-level structured data. The same nodes are re-emitted
+  // by RouteStructuredData after hydration for in-app navigation, so a crawler
+  // that never runs JavaScript still receives WebPage + BreadcrumbList (+ FAQ,
+  // Service, Article or SoftwareApplication where the page shows that content).
+  const nodes = pageGraph(route.path, { title: route.title, description: route.description })
+
+  return (
+    <>
+      {nodes ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jsonLdDocument(nodes)).replace(/</g, '\\u003c'),
+          }}
+        />
+      ) : null}
+      <PublicSitePage initialHash={route.path} initialBlogPost={initialBlogPost} />
+    </>
+  )
 }

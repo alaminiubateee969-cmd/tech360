@@ -32,13 +32,13 @@ const PILLARS = SOLUTIONS_MEGA_COLUMNS.map((col) => ({
   id: col.id,
   name: col.heading,
   blurb: PILLAR_BLURBS[col.id] ?? col.description,
-  slugs: col.items.map((item) => item.href.replace("#/services/", "")),
+  slugs: col.items.map((item) => item.href.replace(/^#?\/services\//, "")),
 }));
 
 function ServiceCard({ service }: { service: Service }) {
   return (
     <a
-      href={`#/services/${service.slug}`}
+      href={`/services/${service.slug}`}
       className="group flex h-full flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-[0_12px_32px_rgba(6,59,143,0.1)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
     >
       <ImageView
@@ -218,7 +218,7 @@ export default function ServicesView() {
                   Try a broader keyword, or tell us what you need — custom builds are a service too.
                 </p>
                 <a
-                  href="#/contact"
+                  href="/contact"
                   className="mt-1 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#009FE3] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0090CC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
                 >
                   Describe your need
@@ -278,7 +278,7 @@ export default function ServicesView() {
                 writing, and you decide with a preview in hand.
               </p>
               <a
-                href="#/contact"
+                href="/contact"
                 className="mt-7 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#009FE3] px-6 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#0090CC] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
               >
                 Get a scoped recommendation

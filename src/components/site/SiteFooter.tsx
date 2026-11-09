@@ -7,46 +7,46 @@ import { BrandMark } from "./BrandMark";
 import { ChatButton, PrimaryButton, PrimaryLink } from "./buttons";
 
 const FOOTER_SOLUTIONS = [
-  { label: "AI Agent Systems", href: "#/services/ai-agent-systems" },
-  { label: "AI Business Automation", href: "#/services/ai-business-automation" },
-  { label: "WhatsApp-First AI Sales CRM", href: "#/services/whatsapp-ai-sales-crm" },
-  { label: "Custom CRM Development", href: "#/services/custom-crm-development" },
-  { label: "Client Portals", href: "#/services/client-portals" },
-  { label: "eCommerce Platforms", href: "#/services/ecommerce-platforms" },
-  { label: "Enterprise Websites", href: "#/services/enterprise-websites" },
-  { label: "n8n Workflow Automation", href: "#/services/n8n-workflow-automation" },
-  { label: "Cloud Deployment (Google Cloud)", href: "#/services/cloud-deployment-google-cloud" },
-  { label: "Company-in-a-Box Platform", href: "#/platform" },
+  { label: "AI Agent Systems", href: "/services/ai-agent-systems" },
+  { label: "AI Business Automation", href: "/services/ai-business-automation" },
+  { label: "WhatsApp-First AI Sales CRM", href: "/services/whatsapp-ai-sales-crm" },
+  { label: "Custom CRM Development", href: "/services/custom-crm-development" },
+  { label: "Client Portals", href: "/services/client-portals" },
+  { label: "eCommerce Platforms", href: "/services/ecommerce-platforms" },
+  { label: "Enterprise Websites", href: "/services/enterprise-websites" },
+  { label: "n8n Workflow Automation", href: "/services/n8n-workflow-automation" },
+  { label: "Cloud Deployment (Google Cloud)", href: "/services/cloud-deployment-google-cloud" },
+  { label: "Company-in-a-Box Platform", href: "/platform" },
 ];
 
 const FOOTER_INDUSTRIES = [
-  { label: "Manufacturing", href: "#/industries/manufacturing" },
-  { label: "Healthcare", href: "#/industries/healthcare" },
-  { label: "Hospitals & Clinics", href: "#/industries/hospitals-clinics" },
-  { label: "Education", href: "#/industries/education" },
-  { label: "eCommerce", href: "#/industries/ecommerce" },
-  { label: "Retail", href: "#/industries/retail" },
-  { label: "Real Estate", href: "#/industries/real-estate" },
-  { label: "Finance", href: "#/industries/finance" },
-  { label: "Logistics", href: "#/industries/logistics" },
-  { label: "Technology Companies", href: "#/industries/technology-companies" },
+  { label: "Manufacturing", href: "/industries/manufacturing" },
+  { label: "Healthcare", href: "/industries/healthcare" },
+  { label: "Hospitals & Clinics", href: "/industries/hospitals-clinics" },
+  { label: "Education", href: "/industries/education" },
+  { label: "eCommerce", href: "/industries/ecommerce" },
+  { label: "Retail", href: "/industries/retail" },
+  { label: "Real Estate", href: "/industries/real-estate" },
+  { label: "Finance", href: "/industries/finance" },
+  { label: "Logistics", href: "/industries/logistics" },
+  { label: "Technology Companies", href: "/industries/technology-companies" },
 ];
 
 const FOOTER_RESOURCES = [
-  { label: "Portfolio Overview", href: "#/work" },
-  { label: "System Scenarios", href: "#/work/projects" },
-  { label: "Case Study Blueprints", href: "#/work/case-studies" },
-  { label: "Delivery Process", href: "#/process" },
-  { label: "Technologies & Stack", href: "#/technologies" },
-  { label: "Blog & Engineering Notes", href: "#/blog" },
-  { label: "Frequently Asked Questions", href: "#/faq" },
+  { label: "Portfolio Overview", href: "/work" },
+  { label: "System Scenarios", href: "/work/projects" },
+  { label: "Case Study Blueprints", href: "/work/case-studies" },
+  { label: "Delivery Process", href: "/process" },
+  { label: "Technologies & Stack", href: "/technologies" },
+  { label: "Blog & Engineering Notes", href: "/blog" },
+  { label: "Frequently Asked Questions", href: "/faq" },
 ];
 
 const FOOTER_COMPANY = [
-  { label: "About TECH360", href: "#/about" },
-  { label: "Careers", href: "#/careers" },
-  { label: "Contact", href: "#/contact" },
-  { label: "Client Portal", href: "#/portal" },
+  { label: "About TECH360", href: "/about" },
+  { label: "Careers", href: "/careers" },
+  { label: "Contact", href: "/contact" },
+  { label: "Client Portal", href: "/portal" },
 ];
 
 export function SiteFooter() {
@@ -100,7 +100,7 @@ export function SiteFooter() {
             </h2>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <PrimaryLink href="#/contact" size="md">
+            <PrimaryLink href="/contact" size="md">
               Start a Project
             </PrimaryLink>
             <ChatButton size="md" variant="onDark" label="Live Support" />
@@ -113,7 +113,7 @@ export function SiteFooter() {
         <div className="grid gap-10 lg:grid-cols-12">
           {/* Column 1: Brand + Contact + Newsletter */}
           <div className="lg:col-span-4">
-            <a href="#/" className="inline-flex items-center gap-2.5 text-white">
+            <a href="/" className="inline-flex items-center gap-2.5 text-white">
               <BrandMark className="h-9 w-9" />
               <span className="text-lg font-extrabold tracking-tight">
                 TECH<span className="text-[#009FE3]">360</span>
@@ -144,7 +144,7 @@ export function SiteFooter() {
               </div>
               <div>
                 <a
-                  href="#/portal"
+                  href="/portal"
                   className="inline-flex items-center gap-2 text-slate-300 transition hover:text-white"
                 >
                   <UserCheck className="h-4 w-4 text-[#18B83A]" aria-hidden="true" />
@@ -193,7 +193,7 @@ export function SiteFooter() {
                 />
                 <span>
                   I agree to receive TECH360 engineering updates in accordance with the{" "}
-                  <a href="#/legal/privacy" className="text-slate-200 underline hover:text-white">
+                  <a href="/legal/privacy" className="text-slate-200 underline hover:text-white">
                     Privacy Policy
                   </a>
                   .
@@ -222,7 +222,7 @@ export function SiteFooter() {
               ))}
               <li className="pt-1">
                 <a
-                  href="#/services"
+                  href="/services"
                   className="inline-flex items-center gap-1 text-xs font-semibold text-[#009FE3] hover:text-white"
                 >
                   All 21 solutions
@@ -245,7 +245,7 @@ export function SiteFooter() {
               ))}
               <li className="pt-1">
                 <a
-                  href="#/industries"
+                  href="/industries"
                   className="inline-flex items-center gap-1 text-xs font-semibold text-[#009FE3] hover:text-white"
                 >
                   All 20 industries
@@ -291,7 +291,7 @@ export function SiteFooter() {
               {LEGAL_DOCS.map((doc) => (
                 <li key={doc.slug}>
                   <a
-                    href={`#/legal/${doc.slug}`}
+                    href={`/legal/${doc.slug}`}
                     className="text-slate-400 transition hover:text-white"
                   >
                     {doc.title}

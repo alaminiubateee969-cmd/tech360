@@ -11,7 +11,7 @@ export function CtaBand({
   title = "Ready to discuss your project?",
   description = "Send an enquiry to discuss your requirements. We will document the proposed scope, pricing, schedule, and any preview or milestones included in the agreed process.",
   primaryLabel = "Start Your Project",
-  primaryHref = "#/contact",
+  primaryHref = "/contact",
 }: {
   title?: string;
   description?: string;
