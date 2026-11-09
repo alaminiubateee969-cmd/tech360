@@ -216,6 +216,6 @@ async function handleWhatsAppReply(input: { client: { id: string; clientId: stri
   }
 
   const { recordOutbound } = await import('@/lib/conversation-state')
-  await recordOutbound(input.client.id, input.client.clientId, outboundBody, 'WHATSAPP').catch(() => null)
+  await recordOutbound(input.client.id, input.client.clientId, outboundBody, 'WHATSAPP', input.client.pipelineStage, result.nextAction, result.nextActor, result.nextDueDate).catch(() => null)
 }
 
