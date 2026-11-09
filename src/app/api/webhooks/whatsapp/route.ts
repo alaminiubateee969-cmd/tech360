@@ -193,36 +193,29 @@ async function handleWhatsAppReply(input: { client: { id: string; clientId: stri
   const isFormalStage = ['SCOPE_REVIEW', 'FINAL_SCOPE', 'CLIENT_APPROVAL', 'PAYMENT_PENDING', 'PROJECT_ACTIVE', 'DELIVERY', 'HANDOVER'].includes(input.client.pipelineStage)
   const emailCanonical = Boolean(input.client.email) && isFormalStage
 
-  if (emailCanonical) {
-    // Formal detail should go to email — send concise WhatsApp notice
-    const { sendCommunication } = await import('@/lib/comms')
-    await sendCommunication({
-      clientId: input.client.id,
-      channel: 'WHATSAPP',
-      to: input.phone,
-      body: `Tech360 · Ref ${input.client.clientId}\nWe sent details to your email (${input.client.email}). Please check it and reply there when a detailed answer is needed.\n\n${result.reply.slice(0, 500)}`,
-      agentCode: 'CHAT-AI',
-    })
-    const { recordOutbound } = await import('@/lib/conversation-state')
-    await recordOutbound(input.client.id, input.client.clientId, result.reply, 'WHATSAPP').catch(() => null)
-  } else {
-    const { sendCommunication } = await import('@/lib/comms')
-    const sendRes = await sendCommunication({
-      clientId: input.client.id,
-      channel: 'WHATSAPP',
-      to: input.phone,
-      body: result.reply.slice(0, 4000),
-      agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
-    })
-    // Honest status: only claim sent if provider accepted
-    const { recordOutbound } = await import('@/lib/conversation-state')
-    await recordOutbound(input.client.id, input.client.clientId, result.reply, 'WHATSAPP').catch(() => null)
-    // Persist delivery status already handled by sendCommunication
-    if (!sendRes.result.ok) {
-      // Log the honest failure; customer already has SYSTEM message explaining fallback
-      const { logError: le } = await import('@/lib/security')
-      await le({ source: 'WEBHOOK', code: `WA_SEND_${sendRes.result.status}`, message: `Outbound WhatsApp ${sendRes.result.status}: ${sendRes.result.error ?? 'unknown'}`, clientId: input.client.clientId }).catch(() => null)
-    }
+  const { sendCommunication } = await import('@/lib/comms')
+  const outboundBody = emailCanonical
+    ? `Tech360 · Ref ${input.client.clientId}\nWe sent details to your email (${input.client.email}). Please check it and reply there when a detailed answer is needed.\n\n${result.reply.slice(0, 500)}`
+    : result.reply.slice(0, 4000)
+  const sendRes = await sendCommunication({
+    clientId: input.client.id,
+    channel: 'WHATSAPP',
+    to: input.phone,
+    body: outboundBody,
+    agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
+  })
+  if (!sendRes.result.ok) {
+    const { logError: le } = await import('@/lib/security')
+    await le({
+      source: 'WEBHOOK',
+      code: `WA_SEND_${sendRes.result.status}`,
+      message: `Outbound WhatsApp ${sendRes.result.status}: ${sendRes.result.error ?? 'unknown'}`,
+      clientId: input.client.clientId,
+    }).catch(() => null)
+    return
   }
+
+  const { recordOutbound } = await import('@/lib/conversation-state')
+  await recordOutbound(input.client.id, input.client.clientId, outboundBody, 'WHATSAPP').catch(() => null)
 }
 
