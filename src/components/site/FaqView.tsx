@@ -29,7 +29,7 @@ export default function FaqView() {
   }, [query]);
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="FAQ"
         title="The questions serious clients ask first"
@@ -123,7 +123,7 @@ export default function FaqView() {
                 back in writing, and if it belongs in a policy, it gets added.
               </p>
               <a
-                href="#/contact"
+                href="/contact"
                 className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#009FE3] px-6 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#0090CC] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
               >
                 Ask your question
@@ -137,6 +137,6 @@ export default function FaqView() {
         title="Convinced? Start with a scope, not a contract"
         description="One message about your project — written scope, HTML preview, milestone plan. Payment only after you approve what you see."
       />
-    </main>
+    </div>
   );
 }

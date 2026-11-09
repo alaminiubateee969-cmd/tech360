@@ -7,7 +7,7 @@ export type AdminViewId =
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
   | 'factory' | 'factoryControl' | 'media' | 'feeds' | 'telephony' | 'prompts' | 'marketingDashboard'
   | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
-  | 'workforce' | 'pipeline'
+  | 'workforce' | 'pipeline' | 'designKit'
 
 export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN'> = {
   dashboard: 'STAFF',
@@ -53,6 +53,7 @@ export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 
   dcc: 'SUPER_ADMIN',
   workforce: 'SUPER_ADMIN',
   pipeline: 'MANAGER',
+  designKit: 'ADMIN',
 }
 
 const ROLE_VIEWS: Record<string, readonly AdminViewId[]> = {

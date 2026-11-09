@@ -301,7 +301,7 @@ export function BlogStudioView() {
           </Button>
           {p.status === 'PUBLISHED' ? (
             <a
-              href={`#/blog/${p.slug}`}
+              href={`/blog/${p.slug}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex size-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-[#009FE3]"

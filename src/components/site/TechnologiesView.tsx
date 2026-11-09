@@ -17,7 +17,7 @@ import {
 
 export default function TechnologiesView() {
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Technologies"
         title="A deliberate stack — boring in the best way"
@@ -172,6 +172,6 @@ export default function TechnologiesView() {
         title="Want this stack working for your business?"
         description="We will recommend the right subset — or tell you honestly when something simpler serves you better. Written scope first, preview second, payment last."
       />
-    </main>
+    </div>
   );
 }

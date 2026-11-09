@@ -16,7 +16,7 @@ const pillarIcons: Record<string, typeof Layers> = {
 
 export default function PlatformView() {
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Platform"
         title="Company-in-a-Box. Software Factory."
@@ -51,8 +51,8 @@ export default function PlatformView() {
                 ))}
               </div>
               <div className="mt-8 flex flex-wrap gap-3">
-                <a href="#/contact" className="inline-flex min-h-11 items-center rounded-lg bg-[#009FE3] px-6 text-sm font-semibold text-white hover:bg-[#0090CC]">Start with Messenger</a>
-                <a href="#/pipeline" className="inline-flex min-h-11 items-center rounded-lg border border-white/20 bg-transparent px-6 text-sm font-semibold text-white hover:bg-white/10">View Pipeline</a>
+                <a href="/contact" className="inline-flex min-h-11 items-center rounded-lg bg-[#009FE3] px-6 text-sm font-semibold text-white hover:bg-[#0090CC]">Start a project</a>
+                <a href="/process" className="inline-flex min-h-11 items-center rounded-lg border border-white/20 bg-transparent px-6 text-sm font-semibold text-white hover:bg-white/10">See how delivery works</a>
               </div>
             </div>
             <div className="relative">
@@ -242,6 +242,6 @@ export default function PlatformView() {
           description="Tell us your industry and what you need to run — we will provision your private system from proven templates and stay with you from setup to scale."
         />
       </Reveal>
-    </main>
+    </div>
   );
 }

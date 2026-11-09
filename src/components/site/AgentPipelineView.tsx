@@ -226,7 +226,7 @@ function ChannelsSection() {
                 Webhooks are fail-closed and idempotent; unverified identity claims are never merged into an existing client.
               </p>
             </div>
-            <OutlineLink href="#/process" className="shrink-0">See our process <ArrowRight className="size-4" aria-hidden="true" /></OutlineLink>
+            <OutlineLink href="/process" className="shrink-0">See our process <ArrowRight className="size-4" aria-hidden="true" /></OutlineLink>
           </div>
         </Reveal>
       </div>
@@ -637,7 +637,7 @@ function PolicySection() {
                 acknowledges a payment that has already been recorded.
               </p>
             </div>
-            <OutlineLink href="#/legal/terms" className="shrink-0">Read the terms <ArrowRight className="size-4" aria-hidden="true" /></OutlineLink>
+            <OutlineLink href="/legal/terms" className="shrink-0">Read the terms <ArrowRight className="size-4" aria-hidden="true" /></OutlineLink>
           </div>
         </Reveal>
       </div>
@@ -750,7 +750,7 @@ function StartProjectSection() {
               ))}
             </ul>
             <div className="mt-8 flex flex-wrap gap-3">
-              <PrimaryLink href="#/portal">Track an existing project <ArrowRight className="size-4" aria-hidden="true" /></PrimaryLink>
+              <PrimaryLink href="/portal">Track an existing project <ArrowRight className="size-4" aria-hidden="true" /></PrimaryLink>
               <AIAssistantLink label="Chat with the AI agent" />
             </div>
           </Reveal>
@@ -816,7 +816,7 @@ function StartProjectSection() {
                     />
                     <span className="text-xs leading-relaxed text-[#526173]">
                       I consent to Tech360 storing this enquiry, creating a Client ID and contacting me about my project.
-                      I understand the <a href="#/legal/privacy" className="font-semibold text-[#063B8F] underline">privacy policy</a> applies.
+                      I understand the <a href="/legal/privacy" className="font-semibold text-[#063B8F] underline">privacy policy</a> applies.
                     </span>
                   </label>
                   {status === "error" && result?.message ? (
@@ -844,10 +844,10 @@ function StartProjectSection() {
 
 function CoordinationSection() {
   const links = [
-    { icon: PackageCheck, title: "Client portal", body: "Sign in with your Client ID to see status, approvals and delivery history.", href: "#/portal" },
-    { icon: Workflow, title: "How we work", body: "The seven-phase production process behind every approved Scope of Work.", href: "#/process" },
-    { icon: FileText, title: "Scope & policy", body: "Read the terms, privacy policy and payment/handover terms in one place.", href: "#/legal/terms" },
-    { icon: Star, title: "Reviews & referrals", body: "Stage 11 closes the project with a review request and an optional recommendation.", href: "#/contact" },
+    { icon: PackageCheck, title: "Client portal", body: "Sign in with your Client ID to see status, approvals and delivery history.", href: "/portal" },
+    { icon: Workflow, title: "How we work", body: "The seven-phase production process behind every approved Scope of Work.", href: "/process" },
+    { icon: FileText, title: "Scope & policy", body: "Read the terms, privacy policy and payment/handover terms in one place.", href: "/legal/terms" },
+    { icon: Star, title: "Reviews & referrals", body: "Stage 11 closes the project with a review request and an optional recommendation.", href: "/contact" },
   ];
   return (
     <section className="border-t border-[#E2E8F0] bg-white py-16 sm:py-20" aria-labelledby="coordination-title">
@@ -885,7 +885,7 @@ function CoordinationSection() {
 
 export default function AgentPipelineView() {
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="AI Agent Communication Pipeline"
         title="From the first SMS to final delivery — on record, every step."
@@ -900,13 +900,13 @@ export default function AgentPipelineView() {
         </div>
         <div className="mt-7 flex flex-wrap gap-3">
           <PrimaryLink
-            href="#/pipeline"
+            href="/pipeline"
             onClick={(e) => { e.preventDefault(); document.getElementById("pipeline-start")?.scrollIntoView({ behavior: "smooth" }); }}
           >
             Start your project <ArrowRight className="size-4" aria-hidden="true" />
           </PrimaryLink>
           <OutlineLink
-            href="#/pipeline"
+            href="/pipeline"
             dark
             onClick={(e) => { e.preventDefault(); document.getElementById("pipeline-stages")?.scrollIntoView({ behavior: "smooth" }); }}
           >
@@ -932,8 +932,8 @@ export default function AgentPipelineView() {
         title="Ready to start at stage one?"
         description="Send one enquiry. We will create your Client ID, save every message, share a preview before payment and hand over source code only after full payment."
         primaryLabel="Start Your Project"
-        primaryHref="#/contact"
+        primaryHref="/contact"
       />
-    </main>
+    </div>
   );
 }

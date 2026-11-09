@@ -19,7 +19,7 @@ export default function ProcessView() {
   const gates = PROCESS.filter((p) => p.gate);
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Delivery process"
         title="Seven phases. Two gates. Zero surprises."
@@ -172,8 +172,8 @@ export default function ProcessView() {
             <ProjectSwimlane />
           </div>
           <ButtonGroup className="mt-8">
-            <SecondaryLink href="#/portal">Open the client portal</SecondaryLink>
-            <GhostLink href="#/legal/terms">Read the delivery &amp; payment policy</GhostLink>
+            <SecondaryLink href="/portal">Open the client portal</SecondaryLink>
+            <GhostLink href="/legal/terms">Read the delivery &amp; payment policy</GhostLink>
           </ButtonGroup>
         </div>
       </section>
@@ -244,10 +244,10 @@ export default function ProcessView() {
         <div className="mx-auto flex w-full max-w-7xl flex-col items-start justify-between gap-5 px-4 sm:flex-row sm:items-center sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#009FE3]">The communication layer</p>
-            <h2 className="mt-2 text-xl font-bold tracking-tight text-[#0B1F33] sm:text-2xl">This is the delivery process. The messages are documented too.</h2>
-            <p className="mt-2 text-sm leading-relaxed text-[#526173]">Read the exact eleven-stage AI Agent Communication Pipeline: every reply, every CRM save and every admin approval gate.</p>
+            <h2 className="mt-2 text-xl font-bold tracking-tight text-[#0B1F33] sm:text-2xl">Every stage has a written record you can point to.</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#526173]">Each milestone produces an approved Scope of Work, a dated change record and a written confirmation before the next payment step. Nothing is agreed verbally.</p>
           </div>
-          <OutlineLink href="#/pipeline" className="shrink-0">Open the pipeline</OutlineLink>
+          <OutlineLink href="/contact" className="shrink-0">Start a project</OutlineLink>
         </div>
       </section>
 
@@ -255,6 +255,6 @@ export default function ProcessView() {
         title="See the process work on your project"
         description="Start with an enquiry. TECH360 can assess the requirements and provide a written proposal; an HTML Preview is supplied where included in the agreed process."
       />
-    </main>
+    </div>
   );
 }

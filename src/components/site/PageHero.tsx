@@ -46,7 +46,7 @@ export function PageHero({
             <ol className="flex flex-wrap items-center gap-1.5 text-sm text-white/60">
               <li>
                 <a
-                  href="#/"
+                  href="/"
                   className="rounded-sm outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   Home

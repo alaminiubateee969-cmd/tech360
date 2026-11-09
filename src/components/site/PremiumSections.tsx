@@ -9,6 +9,7 @@ import { imageFor } from "@/data/images";
 import { SectionHeading } from "./SectionHeading";
 import { Reveal } from "./Reveal";
 import { LinkArrow } from "./buttons";
+import { SOLUTIONS_MEGA_COLUMNS } from "./nav-structure";
 
 /* Premium homepage sections built from real Tech360 capabilities.
    No invented customers, metrics, prices, or integrations: anything
@@ -48,40 +49,89 @@ export function TrustRow() {
   );
 }
 
-/* ---------------- AI Solutions (§5) ---------------- */
-const SOLUTIONS = [
-  { icon: Workflow, img: imageFor("tech", 0), title: "AI Business Automation", desc: "Automate repetitive tasks and coordinate workflows across business operations.", caps: ["Workflow orchestration across tools", "Approval gates before anything sends", "Full activity and error logs"], href: "#/services/ai-business-automation", cta: "Explore automation" },
-  { icon: Bot, img: imageFor("professional", 0), title: "AI Agents and Assistants", desc: "Use specialized AI assistants to support research, operations, analysis, and customer service.", caps: ["Specialized assistants per department", "Human approval for external actions", "Evidence-based activity records"], href: "#/services/ai-agent-systems", cta: "Meet the assistants" },
-  { icon: MessagesSquare, img: imageFor("localbusiness", 0), title: "Customer Engagement", desc: "Improve customer communication through connected messaging, response assistance, and workflow automation.", caps: ["Multichannel inbox in one place", "Draft replies prepared for review", "Conversation history in the CRM"], href: "#/services/whatsapp-automation", cta: "See engagement" },
-  { icon: BarChart3, img: imageFor("finance", 0), title: "Business Intelligence", desc: "Turn business information into actionable insights and more informed decisions.", caps: ["KPI dashboards and reports", "One reconciled source of truth", "Scheduled summaries for leaders"], href: "#/services/business-dashboards", cta: "View dashboards" },
-  { icon: Megaphone, img: imageFor("marketing", 0), title: "Marketing Automation", desc: "Coordinate content planning, campaign workflows, and performance reporting.", caps: ["Idea-to-draft campaign generation", "Approve-first social publishing", "Content and newsletter studios"], href: "#/services/email-automation", cta: "Plan campaigns" },
-  { icon: Code2, img: imageFor("tech", 1), title: "AI-Powered Development", desc: "Accelerate product development and streamline software workflows with AI-assisted tools.", caps: ["App factory with exportable source", "Architecture and deployment stages", "Review gates before release"], href: "#/services/custom-software-development", cta: "Build with AI" },
-];
+/* ---------------- Core solutions: 4 pillars, 21 services (§5) ---------------- */
+
+/**
+ * The homepage solutions grid mirrors the Solutions mega-menu exactly, so a
+ * buyer sees the same four buyer-centric pillars in both places. Service names
+ * and one-line descriptions come from SOLUTIONS_MEGA_COLUMNS (the navigation
+ * source of truth) and every pillar links to its full catalogue section.
+ */
+const PILLAR_META: Record<string, { icon: typeof Workflow; blurb: string }> = {
+  "ai-solutions": {
+    icon: Bot,
+    blurb: "AI you control: human-approved assistants and automation that read and write your real systems.",
+  },
+  "software-products": {
+    icon: PanelsTopLeft,
+    blurb: "Software you own: storefronts, portals, dashboards and internal tools built on your data model.",
+  },
+  "crm-automation": {
+    icon: Workflow,
+    blurb: "One Client ID behind every message, with event-driven follow-up that never double-sends.",
+  },
+  "engineering-services": {
+    icon: Code2,
+    blurb: "The engineering under it all: fast websites, integrations, cloud deployment and ongoing care.",
+  },
+};
+
 export function SolutionsGrid() {
   return (
     <section aria-labelledby="solutions-h" className="bg-[#F7FAFC]">
       <div className={wrap}>
-        <SectionHeading id="solutions-h" eyebrow="AI Solutions" title="AI Solutions for Every Business Challenge" description="Six solution areas proposed and scoped in writing; preview, delivery, and source-code handover follow the approved project terms." />
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {SOLUTIONS.map((s) => (
-            <Reveal key={s.title}>
-              <article className={cardCls}>
-                <Img src={s.img} alt={`${s.title} — illustrative business photograph`} />
-                <div className="flex grow flex-col p-6">
-                  <s.icon className="size-6 text-[#009FE3]" aria-hidden="true" />
-                  <h3 className="mt-3 text-lg font-bold text-[#0B1F33]">{s.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[#526173]">{s.desc}</p>
-                  <ul className="mt-4 space-y-1.5">
-                    {s.caps.map((c) => (
-                      <li key={c} className="flex gap-2 text-sm text-[#33475B]"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />{c}</li>
+        <SectionHeading
+          id="solutions-h"
+          eyebrow="Solutions"
+          title="Four pillars. Twenty-one services. One written scope."
+          description="Every service below is scoped in writing before work starts. Nothing here is a price or a promise of a specific outcome — the approved Scope of Work names the deliverables, the review points and the commercial terms that apply."
+        />
+        <div className="mt-12 grid gap-6 md:grid-cols-2">
+          {SOLUTIONS_MEGA_COLUMNS.map((pillar) => {
+            const meta = PILLAR_META[pillar.id] ?? { icon: Code2, blurb: pillar.description };
+            const Icon = meta.icon;
+            return (
+              <Reveal key={pillar.id}>
+                <article className={`${cardCls} p-6 sm:p-7`}>
+                  <div className="flex items-start gap-3">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#009FE3]/10 text-[#0079AC]">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <h3 className="text-lg font-bold text-[#0B1F33]">{pillar.heading}</h3>
+                      <p className="mt-1 text-sm leading-6 text-[#526173]">{meta.blurb}</p>
+                    </div>
+                  </div>
+                  <ul className="mt-5 divide-y divide-[#EDF2F7] border-y border-[#EDF2F7]">
+                    {pillar.items.map((item) => (
+                      <li key={item.href}>
+                        <a
+                          href={item.href}
+                          className="group flex items-start justify-between gap-3 rounded-md py-2.5 outline-none transition-colors hover:text-[#0079AC] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+                        >
+                          <span>
+                            <span className="block text-sm font-semibold text-[#0B1F33] group-hover:text-[#0079AC]">{item.label}</span>
+                            <span className="mt-0.5 block text-xs leading-5 text-[#526173]">{item.description}</span>
+                          </span>
+                          <ArrowRight className="mt-1 size-4 shrink-0 text-[#B6C6D6] transition-transform group-hover:translate-x-0.5 group-hover:text-[#009FE3]" aria-hidden="true" />
+                        </a>
+                      </li>
                     ))}
                   </ul>
-                  <div className="mt-auto pt-5"><LinkArrow href={s.href}>{s.cta}</LinkArrow></div>
-                </div>
-              </article>
-            </Reveal>
-          ))}
+                  <div className="mt-4">
+                    <LinkArrow href="/services">
+                      All {pillar.heading} services
+                    </LinkArrow>
+                  </div>
+                </article>
+              </Reveal>
+            );
+          })}
         </div>
+        <p className="mt-8 flex items-start gap-2 text-xs leading-5 text-[#526173]">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
+          Twenty-one service descriptions are defined in the public catalogue. Availability, timeline and cost are confirmed per engagement in the written proposal — never inferred from this page.
+        </p>
       </div>
     </section>
   );
@@ -89,12 +139,12 @@ export function SolutionsGrid() {
 
 /* ---------------- Products / platform (§6) ---------------- */
 const PRODUCTS = [
-  { icon: PanelsTopLeft, title: "Client Portal", cat: "AI workspace", text: "Projects, files, invoices, approvals and updates in one signed-in home for your clients.", href: "#/portal", action: "Open the portal" },
-  { icon: UserRound, title: "CRM & Business Operations", cat: "Business operations", text: "Leads, clients, projects, tasks, invoices and payments with role-based access and audit trails.", href: "#/technologies", action: "See the platform" },
-  { icon: Workflow, title: "Automation Workflows", cat: "Workflow automation", text: "n8n-powered integrations and scheduled jobs connecting the tools you already use.", href: "#/services/n8n-workflow-automation", action: "Automate a workflow" },
-  { icon: Megaphone, title: "Marketing Operations", cat: "Marketing operations", text: "Content studio, media planning, newsletter and approve-first social publishing.", href: "#/services/email-automation", action: "Run marketing" },
-  { icon: BarChart3, title: "Analytics & Reporting", cat: "Analytics and reporting", text: "Dashboards, SEO audits and scheduled reports built from your real business data.", href: "#/services/business-dashboards", action: "Get visibility" },
-  { icon: Code2, title: "App Factory & Developer Tools", cat: "Integrations and developer tools", text: "Generate application scaffolds, preview them live, and export source or deploy packages.", href: "#/design-kit", action: "Explore the factory" },
+  { icon: PanelsTopLeft, title: "Client Portal", cat: "AI workspace", text: "Projects, files, invoices, approvals and updates in one signed-in home for your clients.", href: "/portal", action: "Open the portal" },
+  { icon: UserRound, title: "CRM & Business Operations", cat: "Business operations", text: "Leads, clients, projects, tasks, invoices and payments with role-based access and audit trails.", href: "/technologies", action: "See the platform" },
+  { icon: Workflow, title: "Automation Workflows", cat: "Workflow automation", text: "n8n-powered integrations and scheduled jobs connecting the tools you already use.", href: "/services/n8n-workflow-automation", action: "Automate a workflow" },
+  { icon: Megaphone, title: "Marketing Operations", cat: "Marketing operations", text: "Content studio, media planning, newsletter and approve-first social publishing.", href: "/services/email-automation", action: "Run marketing" },
+  { icon: BarChart3, title: "Analytics & Reporting", cat: "Analytics and reporting", text: "Dashboards, SEO audits and scheduled reports built from your real business data.", href: "/services/business-dashboards", action: "Get visibility" },
+  { icon: Code2, title: "Platform & Developer Tooling", cat: "Integrations and developer tools", text: "Modular application scaffolds, staged environments, and source-code handover under the approved Scope of Work.", href: "/platform", action: "Explore the platform" },
 ];
 export function PlatformGrid() {
   return (
@@ -145,7 +195,7 @@ export function HowItWorks() {
             </Reveal>
           ))}
         </ol>
-        <p className="mt-8 text-center"><LinkArrow href="#/process">See the full delivery process</LinkArrow></p>
+        <p className="mt-8 text-center"><LinkArrow href="/process">See the full delivery process</LinkArrow></p>
       </div>
     </section>
   );
@@ -199,8 +249,8 @@ export function DashboardShowcase() {
                 ))}
               </ul>
               <div className="mt-7 flex flex-wrap gap-3">
-                <a href="#/contact" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white transition hover:bg-[#0090CC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">Book a Demo <ArrowRight className="size-4" aria-hidden="true" /></a>
-                <a href="#/portal" className="inline-flex min-h-11 items-center rounded-lg border border-[#CBD5E1] px-5 text-sm font-semibold text-[#0B1F33] transition hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]">Client Sign In</a>
+                <a href="/contact" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white transition hover:bg-[#0090CC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">Book a Demo <ArrowRight className="size-4" aria-hidden="true" /></a>
+                <a href="/portal" className="inline-flex min-h-11 items-center rounded-lg border border-[#CBD5E1] px-5 text-sm font-semibold text-[#0B1F33] transition hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]">Client Sign In</a>
               </div>
             </div>
           </Reveal>
@@ -308,7 +358,7 @@ export function PricingSection() {
                       <li key={i} className="flex gap-2 text-sm text-[#33475B]"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />{i}</li>
                     ))}
                   </ul>
-                  <a href="#/contact" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#063B8F] px-5 text-sm font-semibold text-white transition hover:bg-[#052f72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]">{e.cta}</a>
+                  <a href="/contact" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#063B8F] px-5 text-sm font-semibold text-white transition hover:bg-[#052f72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]">{e.cta}</a>
                 </div>
               </article>
             </Reveal>
@@ -321,12 +371,12 @@ export function PricingSection() {
 
 /* ---------------- Resources (§15) ---------------- */
 const RESOURCES = [
-  { icon: Newspaper, cat: "Articles & insights", title: "Blog", text: "Engineering notes, delivery lessons and practical guides from real builds.", href: "#/blog" },
-  { icon: BookOpen, cat: "Guides & tutorials", title: "How We Work", text: "The seven-phase delivery process, approval gates and handover, explained.", href: "#/process" },
-  { icon: PanelsTopLeft, cat: "Product documentation", title: "Design Kit", text: "Live diagrams, components and interface patterns used across the platform.", href: "#/design-kit" },
-  { icon: LifeBuoy, cat: "FAQs", title: "Questions, Answered", text: "Scope, pricing model, timelines, ownership and support — answered plainly.", href: "#/faq" },
-  { icon: Briefcase, cat: "Case studies", title: "Selected Work", text: "Representative engagements and what was actually delivered.", href: "#/work" },
-  { icon: Layers, cat: "AI implementation", title: "AI Solutions", text: "Where AI genuinely helps a business — and where it should stay supervised.", href: "#/services/ai-business-automation" },
+  { icon: Newspaper, cat: "Articles & insights", title: "Blog", text: "Engineering notes, delivery lessons and practical guides from real builds.", href: "/blog" },
+  { icon: BookOpen, cat: "Guides & tutorials", title: "How We Work", text: "The seven-phase delivery process, approval gates and handover, explained.", href: "/process" },
+  { icon: PanelsTopLeft, cat: "Platform documentation", title: "Platform Overview", text: "The template library, module engine, tenant provisioning and version-control pillars behind every build.", href: "/platform" },
+  { icon: LifeBuoy, cat: "FAQs", title: "Questions, Answered", text: "Scope, pricing model, timelines, ownership and support — answered plainly.", href: "/faq" },
+  { icon: Briefcase, cat: "Work", title: "Selected Work", text: "Illustrative system scenarios and delivery blueprints — clearly labelled, never presented as client endorsements.", href: "/work" },
+  { icon: Layers, cat: "AI implementation", title: "AI Solutions", text: "Where AI genuinely helps a business — and where it should stay supervised.", href: "/services/ai-business-automation" },
 ];
 export function ResourcesGrid() {
   return (

@@ -1,132 +1,104 @@
 'use client'
 
 import { useEffect } from 'react'
-import { SERVICES, INDUSTRIES, FAQS } from '@/data/site'
-import { COMPANY } from '@/lib/constants'
+import { PUBLIC_AGENT_TOOLS } from '@/lib/agent-tools'
 
 /**
- * WebMCP — in-browser agent tools.
+ * WebMCP — in-browser agent tools (progressive enhancement).
  *
- * On page load, registers read-only tools through
- * `navigator.modelContext.registerTool()` (guarded: browsers without the
- * WebMCP API simply skip registration). Tools only expose public marketing
- * and contact information; they never mutate anything.
+ * Spec status: W3C Web Machine Learning Community Group draft
+ * (`navigator.modelContext`). A native implementation shipped in Chrome 146 and
+ * Edge 147 behind a flag; other browsers have none. The current surface after
+ * the March 2026 revision is `registerTool()` / `unregisterTool()` —
+ * `provideContext()` and `clearContext()` were removed, so this component uses
+ * per-tool registration and unregisters on unmount.
+ *
+ * Design decisions:
+ *  - Feature-detect only. `typeof navigator.modelContext?.registerTool ===
+ *    'function'`. If the API is missing (the normal case today) the site behaves
+ *    exactly as before — nothing is fetched, nothing throws.
+ *  - `navigator.modelContext` is SecureContext-gated by the browser, so this is
+ *    inert over plain HTTP and active over HTTPS (production and previews).
+ *  - Tools are the same five read-only tools served by the MCP endpoint
+ *    (`src/lib/agent-tools.ts`). Same validation, same data, no second copy.
+ *  - Every tool is annotated `readOnlyHint: true`. None sends a message, writes a
+ *    record, or reaches CRM/portal data. `open_contact_page` returns the contact
+ *    URL and hands control back to the user.
+ *  - Registration is additive and namespaced: a name clash replaces only our own
+ *    tool, and we never touch tools registered by other scripts.
  */
 
-type RegisteredTool = {
+type WebMcpTool = {
   name: string
   description: string
   inputSchema: Record<string, unknown>
+  annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean; idempotentHint?: boolean }
   execute: (args: Record<string, unknown>) => unknown
 }
 
 type ModelContextLike = {
-  registerTool?: (tool: RegisteredTool) => unknown
-}
-
-const SITE = 'https://bdtech360.com'
-
-function text(result: string) {
-  return { content: [{ type: 'text' as const, text: result }] }
+  registerTool?: (tool: WebMcpTool) => unknown
+  unregisterTool?: (name: string) => unknown
 }
 
 export default function WebMCPTools() {
   useEffect(() => {
-    const nav = navigator as Navigator & { modelContext?: ModelContextLike }
-    const mc = nav.modelContext
-    if (!mc || typeof mc.registerTool !== 'function') return
+    const modelContext = (navigator as Navigator & { modelContext?: ModelContextLike }).modelContext
+    if (!modelContext || typeof modelContext.registerTool !== 'function') return
 
-    const tools: RegisteredTool[] = [
-      {
-        name: 'get_site_summary',
-        description:
-          'Return a short factual summary of TECH360 LLC: what the company does, where it is registered, and how to contact it. All amounts are USD.',
-        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-        execute: () =>
-          text(
-            [
-              `TECH360 LLC (${COMPANY.domain})`,
-              'Builds: enterprise websites, eCommerce platforms, custom CRMs, AI-assisted applications, and business automation.',
-              `Registered: ${COMPANY.address}`,
-              `Email: ${COMPANY.email}`,
-              `Phone: ${COMPANY.phone}`,
-              `Website: ${SITE}`,
-              'Money amounts on this site are quoted in USD.',
-            ].join('\n'),
-          ),
-      },
-      {
-        name: 'list_services',
-        description: `List all ${SERVICES.length} TECH360 services with title, tagline, and URL. Optional "prefix" filters by title.`,
-        inputSchema: {
-          type: 'object',
-          properties: { prefix: { type: 'string', description: 'Case-insensitive title prefix filter' } },
-          additionalProperties: false,
-        },
-        execute: (args) => {
-          const prefix = typeof args.prefix === 'string' ? args.prefix.toLowerCase() : ''
-          const rows = SERVICES.filter((s) => s.title.toLowerCase().startsWith(prefix))
-          return text(
-            rows.map((s) => `${s.title} — ${s.tagline} (${SITE}/services/${s.slug})`).join('\n') || 'No matching services.',
-          )
-        },
-      },
-      {
-        name: 'list_industries',
-        description: `List all ${INDUSTRIES.length} industry solution patterns with title and URL. Optional "prefix" filters by title.`,
-        inputSchema: {
-          type: 'object',
-          properties: { prefix: { type: 'string', description: 'Case-insensitive title prefix filter' } },
-          additionalProperties: false,
-        },
-        execute: (args) => {
-          const prefix = typeof args.prefix === 'string' ? args.prefix.toLowerCase() : ''
-          const rows = INDUSTRIES.filter((i) => i.title.toLowerCase().startsWith(prefix))
-          return text(
-            rows.map((i) => `${i.title} — ${i.description} (${SITE}/industries/${i.slug})`).join('\n') ||
-              'No matching industries.',
-          )
-        },
-      },
-      {
-        name: 'list_faqs',
-        description: `Return frequently asked questions and answers (default 5, max ${FAQS.length}). Optional "limit" adjusts the count.`,
-        inputSchema: {
-          type: 'object',
-          properties: { limit: { type: 'number', description: `How many FAQs to return (1-${FAQS.length})` } },
-          additionalProperties: false,
-        },
-        execute: (args) => {
-          const limit = Math.max(1, Math.min(FAQS.length, typeof args.limit === 'number' ? Math.floor(args.limit) : 5))
-          return text(
-            FAQS.slice(0, limit)
-              .map((f, idx) => `${idx + 1}. Q: ${f.q}\nA: ${f.a}`)
-              .join('\n\n'),
-          )
-        },
-      },
-      {
-        name: 'get_contact_info',
-        description: 'Return TECH360 public contact details (email, phone, postal address, contact page URL).',
-        inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-        execute: () =>
-          text(
-            [
-              `Company: ${COMPANY.legalName}`,
-              `Email: ${COMPANY.email}`,
-              `Phone: ${COMPANY.phone}`,
-              `Address: ${COMPANY.address}`,
-              `Contact form: ${SITE}/contact`,
-            ].join('\n'),
-          ),
-      },
-    ]
+    const registered: string[] = []
 
-    for (const tool of tools) {
+    for (const tool of PUBLIC_AGENT_TOOLS) {
       try {
-        mc.registerTool(tool)
+        modelContext.registerTool({
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema as unknown as Record<string, unknown>,
+          annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+          },
+          execute: (args: Record<string, unknown>) => {
+            // Reject unknown keys exactly like the server transport does, so a
+            // browser agent cannot smuggle arguments past validation.
+            const allowed = new Set(Object.keys(tool.inputSchema.properties))
+            const unexpected = Object.keys(args ?? {}).filter((key) => !allowed.has(key))
+            if (unexpected.length > 0) {
+              return {
+                content: [
+                  {
+                    type: 'text' as const,
+                    text: `Error (INVALID_ARGUMENT): Unknown argument(s): ${unexpected.join(', ')}`,
+                  },
+                ],
+                isError: true,
+              }
+            }
+            const result = tool.run(args ?? {})
+            return result.ok
+              ? { content: [{ type: 'text' as const, text: result.text }], isError: false }
+              : {
+                  content: [{ type: 'text' as const, text: `Error (${result.error.code}): ${result.error.message}` }],
+                  isError: true,
+                }
+          },
+        })
+        registered.push(tool.name)
       } catch {
-        // Registration rejected (duplicate or API quirk) — continue with the rest.
+        // A browser that implements an older/newer shape must never break the
+        // page: skip that tool and continue.
+      }
+    }
+
+    return () => {
+      if (typeof modelContext.unregisterTool !== 'function') return
+      for (const name of registered) {
+        try {
+          modelContext.unregisterTool(name)
+        } catch {
+          /* ignore — teardown must not throw */
+        }
       }
     }
   }, [])

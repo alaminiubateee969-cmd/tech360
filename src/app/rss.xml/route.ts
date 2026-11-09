@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { publishDueBlogPosts } from '@/lib/blog'
 import { featureEnabled } from '@/lib/features'
+import { orEmpty } from '@/lib/safe-db-read'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,14 +30,19 @@ export async function GET(req: NextRequest) {
   let posts: Array<{ slug: string; title: string; excerpt: string | null; publishedAt: Date }> = []
   if (blogOn) {
     await publishDueBlogPosts().catch(() => 0)
-    posts = await db.blogPost
-      .findMany({
+    // `db` is a lazy proxy: a missing driver adapter throws synchronously on
+    // property access, before `.catch()` can be attached. `orEmpty` passes the
+    // read as a thunk so the throwing access happens inside the guard, keeping
+    // the feed a valid, empty channel instead of a 500 — a feed that advertises
+    // nothing is honest; a feed that errors is a broken discovery surface.
+    posts = await orEmpty(() =>
+      db.blogPost.findMany({
         where: { status: 'PUBLISHED', publishedAt: { lte: new Date() } },
         orderBy: { publishedAt: 'desc' },
         take: 8,
         select: { slug: true, title: true, excerpt: true, publishedAt: true },
-      })
-      .catch(() => [])
+      }),
+    )
   }
 
   const origin = (process.env.APP_PUBLIC_URL ?? new URL(req.url).origin).replace(/\/+$/, '')

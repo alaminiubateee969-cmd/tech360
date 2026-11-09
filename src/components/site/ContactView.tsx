@@ -172,7 +172,7 @@ export default function ContactView() {
   };
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Contact"
         title="Start your project — the scoped way"
@@ -240,7 +240,7 @@ export default function ContactView() {
                             Chat with our team
                           </button>
                           <a
-                            href="#/process"
+                            href="/process"
                             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#063B8F]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#063B8F] outline-none transition-colors hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
                           >
                             What happens next
@@ -513,7 +513,7 @@ export default function ContactView() {
                                 <Label className="text-sm font-normal leading-relaxed text-[#526173]">
                                   I consent to TECH360 LLC storing this enquiry and using my email (and the contact method I select, if any) to respond and send service-related updates about this request. Marketing messages require a separate opt-in. See the{" "}
                                   <a
-                                    href="#/legal/privacy"
+                                    href="/legal/privacy"
                                     className="font-semibold text-[#009FE3] underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-[#009FE3] rounded-sm outline-none"
                                   >
                                     Privacy Policy
@@ -677,6 +677,6 @@ export default function ContactView() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

@@ -13,6 +13,7 @@ import {
 } from '../src/lib/pipeline/rules'
 import { getStaticPublicRoutePaths, resolvePublicRoute } from '../src/lib/public-route-catalog'
 import { GET } from '../src/app/api/pipeline/public/route'
+import { PUBLIC_JOURNEY } from '../src/lib/public-journey'
 
 const ROOT = path.resolve(__dirname, '..')
 const read = (file: string) => fs.readFileSync(path.join(ROOT, file), 'utf8')
@@ -141,30 +142,29 @@ describe('master specification copy is complete and safe to publish', () => {
   })
 })
 
-describe('the pipeline is coordinated into the public website', () => {
-  it('resolves a clean /pipeline route and publishes it in the sitemap', () => {
+describe('the operator pipeline stays private and out of the public website', () => {
+  it('resolves /pipeline as a noindex operator surface that is excluded from the sitemap', () => {
     const route = resolvePublicRoute(['pipeline'])
     assert.ok(route)
     assert.equal(route.path, '/pipeline')
-    assert.match(route.title, /AI Agent Communication Pipeline/)
+    assert.equal(route.noIndex, true)
+    assert.match(route.title, /Operator|Workspace/i)
     assert.ok(getStaticPublicRoutePaths().includes('/pipeline'))
-    assert.match(read('src/app/sitemap.ts'), /\$\{SITE_URL\}\/pipeline/)
+    assert.ok(!/\$\{SITE_URL\}\/pipeline/.test(read('src/app/sitemap.ts')), 'private operator surfaces must not be published in the sitemap')
   })
 
-  it('is routed in the hash SPA, linked from the header, footer and site data', () => {
+  it('is routed in the hash SPA but never linked from public chrome', () => {
     const page = read('src/app/page.tsx')
     assert.match(page, /case 'pipeline': return <AgentPipelineView \/>/)
     assert.match(page, /import AgentPipelineView from '@\/components\/site\/AgentPipelineView'/)
-    assert.match(page, /'pipeline'/)
     const header = read('src/components/site/SiteHeader.tsx')
-    assert.match(header, /href="#\/pipeline"/)
-    assert.match(header, /activeSection === "pipeline"/)
+    assert.ok(!/#\/pipeline/.test(header), 'the public header must not advertise the operator pipeline')
     const footer = read('src/components/site/SiteFooter.tsx')
-    assert.match(footer, /AI Agent Pipeline/)
-    assert.match(footer, /\/api\/pipeline\/public/)
-    assert.match(read('src/data/site.ts'), /AI Agent Pipeline/)
-    assert.match(read('src/components/site/HomeView.tsx'), /Explore the pipeline/)
-    assert.match(read('src/components/site/ProcessView.tsx'), /Open the pipeline/)
+    assert.ok(!/#\/pipeline/.test(footer), 'the public footer must not advertise the operator pipeline')
+    assert.ok(!/#\/design-kit/.test(header + footer), 'the public chrome must not advertise the design kit')
+    for (const file of ['src/data/site.ts', 'src/components/site/HomeView.tsx', 'src/components/site/ProcessView.tsx']) {
+      assert.ok(!/#\/pipeline/.test(read(file)), `${file} must not link the private operator pipeline`)
+    }
   })
 
   it('renders a real, consent-gated intake form and an interactive stage explorer', () => {
@@ -184,25 +184,35 @@ describe('the pipeline is coordinated into the public website', () => {
     assert.match(view, /HTML Preview Before Payment/)
   })
 
-  it('serves a read-only public contract API with no client records or secrets', async () => {
+  it('serves a sanitized public journey API with no internal operator mechanics', async () => {
     const res = await GET()
     assert.equal(res.status, 200)
     assert.match(res.headers.get('cache-control') ?? '', /public/)
     const body = await res.json() as Record<string, unknown>
     assert.equal(body.brand, 'Tech360')
     assert.equal(body.coreRule, PIPELINE_CORE_RULE)
-    assert.equal((body.meta as Record<string, unknown>).stageCount, 11)
-    assert.equal((body.meta as Record<string, unknown>).messageVariantCount, 13)
-    assert.equal(body.gatePartitionIsComplete, true)
-    assert.equal((body.stages as unknown[]).length, 13)
-    assert.equal((body.channels as unknown[]).length, 10)
-    assert.equal((body.crmProfileFields as unknown[]).length, 14)
-    assert.equal((body.autoSendMessages as unknown[]).length, 9)
-    assert.equal((body.adminApprovalMessages as unknown[]).length, 7)
+
+    // The public contract is the SEVEN-step customer journey only.
+    const journey = body.journey as Array<Record<string, unknown>>
+    assert.equal(journey.length, 7)
+    assert.equal((body.meta as Record<string, unknown>).journeyStepCount, 7)
+    assert.deepEqual(
+      journey.map((step) => step.number),
+      [1, 2, 3, 4, 5, 6, 7],
+    )
+    assert.deepEqual([...PUBLIC_JOURNEY.map((s) => s.key)], journey.map((s) => s.key))
+
+    // Internal operator mechanics must NOT be published.
+    for (const internal of [
+      'stages', 'stageGroups', 'groupTitles', 'autoSendMessages', 'adminApprovalMessages',
+      'adminApprovalStages', 'adminApprovalCategories', 'autoSendStages', 'crmSaveFields',
+      'crmProfileFields', 'actionSaveFields', 'alwaysSave', 'gatePartitionIsComplete',
+      'agentRules', 'clientId', 'systemChannels',
+    ]) {
+      assert.ok(!(internal in body), `public API must not publish ${internal}`)
+    }
+
     const serialized = JSON.stringify(body)
-    // The words "password" and "approval" legitimately appear in the approved
-    // client copy (stage 10 asks the client to change passwords). What must
-    // never appear is a real secret value, a credential or a client record.
     for (const secret of [
       process.env.DATABASE_URL, process.env.SOCIAL_WEBHOOK_SECRET,
       process.env.WHATSAPP_ACCESS_TOKEN, process.env.HOSTINGER_MAIL_PASSWORD,
@@ -217,6 +227,18 @@ describe('the pipeline is coordinated into the public website', () => {
     assert.ok(!('messages' in body))
     assert.ok(!('approvals' in body))
     assert.deepEqual(findPhoneNumbers(serialized), [])
+  })
+
+  it('keeps the full operator specification behind an authenticated route', () => {
+    const spec = read('src/app/api/admin/pipeline/spec/route.ts')
+    assert.match(spec, /guard\(req, \{ minRole: 'MANAGER' \}\)/)
+    assert.match(spec, /SPEC_STAGES/)
+    assert.match(spec, /AI_AGENT_RULES/)
+    assert.match(spec, /'Cache-Control': 'private, no-store'/)
+
+    const kit = read('src/app/api/admin/design-kit/route.ts')
+    assert.match(kit, /guard\(req, \{ minRole: 'ADMIN' \}\)/)
+    assert.match(kit, /'Cache-Control': 'private, no-store'/)
   })
 
   it('registers the new completion record in the private control-center document list', () => {

@@ -1,0 +1,100 @@
+# TECH360 LLC
+
+> TECH360 LLC designs and builds custom websites, CRM systems, client portals, eCommerce platforms, business dashboards and workflow automation for organisations worldwide. Every engagement is governed by a written Scope of Work: deliverables, USD price, schedule and payment milestones are agreed in writing, an HTML preview is supplied before the applicable payment only where the agreed process includes one, and source code is handed over after all required payments are verified and cleared.
+
+- Legal name: TECH360 LLC (Missouri LLC LC014737249)
+- Website: https://bdtech360.com
+- Email: info@bdtech360.com
+- Telephone: +1 (816) 380-8660
+- Registered address: 117 S Lexington St Ste 100, Harrisonville, MO 64701, USA
+- Language: English · Currency: USD
+
+## Core AI and automation solutions
+
+- [AI Agent Systems](https://bdtech360.com/services/ai-agent-systems): bounded assistants with defined tools, permissions, execution history and human approval gates for sensitive actions.
+- [AI Business Automation](https://bdtech360.com/services/ai-business-automation): document intake, classification, routing and approval-gated back-office workflows.
+- [WhatsApp AI Sales CRM](https://bdtech360.com/services/whatsapp-ai-sales-crm): one shared conversational inbox, qualification and a sales pipeline recorded against a single Client ID.
+- [WhatsApp Automation](https://bdtech360.com/services/whatsapp-automation): opted-in order, booking and milestone messaging with delivery records.
+- [WhatsApp Cloud API Integration](https://bdtech360.com/services/whatsapp-cloud-api-integration): official Meta Cloud API webhooks, templates and shared-inbox sync.
+- [n8n Workflow Automation](https://bdtech360.com/services/n8n-workflow-automation): self-hosted multi-system orchestration with retry, idempotency and error logs.
+- [Email Automation](https://bdtech360.com/services/email-automation): transactional receipts, onboarding sequences and deliverability setup.
+- [SMS Automation](https://bdtech360.com/services/sms-automation): OTP verification, appointment reminders and time-critical alerts.
+
+## Products and services (21 in total)
+
+Full catalogue: https://bdtech360.com/services
+
+**Software products**
+- [eCommerce Platforms](https://bdtech360.com/services/ecommerce-platforms)
+- [Client Portals](https://bdtech360.com/services/client-portals)
+- [Business Dashboards](https://bdtech360.com/services/business-dashboards)
+- [Custom Software Development](https://bdtech360.com/services/custom-software-development)
+- [Database Systems](https://bdtech360.com/services/database-systems)
+
+**CRM and business automation**
+- [Custom CRM Development](https://bdtech360.com/services/custom-crm-development)
+- [API Integrations](https://bdtech360.com/services/api-integrations)
+
+**Engineering services**
+- [Premium Business Websites](https://bdtech360.com/services/premium-business-websites)
+- [Enterprise Websites](https://bdtech360.com/services/enterprise-websites)
+- [Cloud Deployment (Google Cloud)](https://bdtech360.com/services/cloud-deployment-google-cloud)
+- [cPanel / StackCP Deployment](https://bdtech360.com/services/cpanel-stackcp-deployment)
+- [Maintenance & Support](https://bdtech360.com/services/maintenance-support)
+- [Digital Transformation Consulting](https://bdtech360.com/services/digital-transformation-consulting)
+
+**Platform**
+- [Company-in-a-Box Platform](https://bdtech360.com/platform): template library, versioned modules, isolated tenant provisioning, staging promotion and deployment/rollback.
+
+## Industries (20 sector blueprints)
+
+Directory: https://bdtech360.com/industries
+
+Each industry page documents the sector's departments, roles, workflows, modules, integrations, exception paths and approval points.
+
+- [eCommerce](https://bdtech360.com/industries/ecommerce) · [Retail](https://bdtech360.com/industries/retail) · [Restaurants & Food](https://bdtech360.com/industries/restaurants-food) · [Travel & Hospitality](https://bdtech360.com/industries/travel-hospitality)
+- [Education](https://bdtech360.com/industries/education) · [Schools & Training](https://bdtech360.com/industries/schools-training)
+- [Healthcare](https://bdtech360.com/industries/healthcare) · [Hospitals & Clinics](https://bdtech360.com/industries/hospitals-clinics)
+- [Real Estate](https://bdtech360.com/industries/real-estate) · [Construction](https://bdtech360.com/industries/construction) · [Logistics](https://bdtech360.com/industries/logistics) · [Manufacturing](https://bdtech360.com/industries/manufacturing)
+- [Agencies](https://bdtech360.com/industries/agencies) · [Marketing Agencies](https://bdtech360.com/industries/marketing-agencies) · [Professional Services](https://bdtech360.com/industries/professional-services) · [Legal Services](https://bdtech360.com/industries/legal-services)
+- [Finance](https://bdtech360.com/industries/finance) · [Technology Companies](https://bdtech360.com/industries/technology-companies) · [International SMEs](https://bdtech360.com/industries/international-smes) · [Local Businesses](https://bdtech360.com/industries/local-businesses)
+
+## About, contact and delivery
+
+- [About TECH360](https://bdtech360.com/about): company profile, registration details and operating principles.
+- [Start a Project / Contact](https://bdtech360.com/contact): project enquiry form and public contact channels.
+- [7-Step Delivery Process](https://bdtech360.com/process): enquiry, written proposal, approved Scope of Work, review, verified payment, delivery and handover.
+- [Technologies](https://bdtech360.com/technologies): Next.js, TypeScript, Node.js, PostgreSQL, Prisma, Google Cloud Run and n8n.
+- [Selected Work](https://bdtech360.com/work): illustrative system scenarios and delivery blueprints — not audited customer case studies or measured results.
+- [Engineering Insights](https://bdtech360.com/blog): published architecture and delivery notes.
+- [Careers](https://bdtech360.com/careers): open engineering and operations roles.
+- [FAQ](https://bdtech360.com/faq): scope approvals, previews, payments, revisions and source ownership.
+
+## Public policies
+
+- [Terms & Conditions](https://bdtech360.com/legal/terms)
+- [Privacy Policy](https://bdtech360.com/legal/privacy)
+- [Refund Policy](https://bdtech360.com/legal/refund)
+- [Delivery Policy](https://bdtech360.com/legal/delivery)
+- [Payment Policy](https://bdtech360.com/legal/payment)
+- [Client Approval Policy](https://bdtech360.com/legal/client-approval)
+- [Source Code Handover Policy](https://bdtech360.com/legal/source-code-handover)
+
+## Machine-readable resources
+
+- [llms.txt](https://bdtech360.com/llms.txt) — this file
+- [llms-full.txt](https://bdtech360.com/llms-full.txt) — extended index of services, industries and policies
+- [sitemap.xml](https://bdtech360.com/sitemap.xml) — every indexable public URL
+- [rss.xml](https://bdtech360.com/rss.xml) — published engineering notes
+- Markdown representation: send `Accept: text/markdown` to any public URL to receive the same information as `text/markdown; charset=utf-8`
+- MCP server card: https://bdtech360.com/.well-known/mcp/server-card.json
+- MCP server card (SEP-2127 extension): https://bdtech360.com/api/mcp/server-card
+- AI catalog: https://bdtech360.com/.well-known/ai-catalog.json
+- MCP endpoint (Streamable HTTP, public read-only tools): https://bdtech360.com/api/mcp
+
+## Usage notes for agents
+
+- All published information is public marketing and contact information. No customer records, invoices, credentials or private project data are exposed by any public endpoint.
+- Prices are quoted per engagement in a written proposal; nothing on this site is a price, quote or guarantee of a specific outcome.
+- `/portal`, `/admin` and `/pipeline` are authenticated surfaces and are not part of this index.
+- `robots.txt` carries `Content-Signal: search=yes, ai-train=no`. This is an emerging, non-standardised preference. It is not a technical or legal restriction on training.

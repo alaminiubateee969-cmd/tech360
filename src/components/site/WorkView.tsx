@@ -147,7 +147,7 @@ function CaseStudyDialog({
               <span className="font-semibold text-white">Discuss a similar requirement.</span>{" "}
               We will assess fit and scope; any client reference requires explicit permission and may not be available.
             </p>
-            <PrimaryLink href="#/contact" className="shrink-0">
+            <PrimaryLink href="/contact" className="shrink-0">
               Start your version
               <ArrowRight className="size-4" aria-hidden="true" />
             </PrimaryLink>
@@ -310,21 +310,81 @@ function WorkReviews() {
   );
 }
 
-export default function WorkView() {
+export default function WorkView({ subView = "" }: { subView?: string }) {
   const [activeStudy, setActiveStudy] = useState<CaseStudy | null>(null);
 
+  const heroMeta =
+    subView === "projects"
+      ? {
+          eyebrow: "Work · System Scenarios",
+          title: "Illustrative System Scenarios & Projects",
+          description:
+            "Twelve representative software, CRM, portal, eCommerce, and workflow systems TECH360 can engineer — presented as transparent concept previews rather than named client endorsements.",
+          breadcrumb: [{ label: "Work", href: "/work" }, { label: "Projects" }],
+        }
+      : subView === "case-studies"
+      ? {
+          eyebrow: "Work · Delivery Blueprints",
+          title: "Delivery Case Frameworks & Architecture Blueprints",
+          description:
+            "Problem-to-architecture blueprints showing how TECH360 scopes business constraints, designs data models, gates approvals, and hands over source code.",
+          breadcrumb: [{ label: "Work", href: "/work" }, { label: "Case Studies" }],
+        }
+      : {
+          eyebrow: "Work · Portfolio & Scenarios",
+          title: "What we build, and how a project is structured",
+          description:
+            "Explore twelve representative software system previews and structured delivery blueprints. All examples are clearly labeled illustrative scenarios — client confidentiality is protected unless written permission is granted.",
+          breadcrumb: [{ label: "Work" }],
+        };
+
+  const showProjects = subView === "" || subView === "projects";
+  const showCaseStudies = subView === "" || subView === "case-studies";
+
   return (
-    <main id="main-content">
+    <div>
       <PageHero
-        eyebrow="Systems and scenarios"
-        title="What we build, and how a project can run"
-        description="The gallery below shows twelve systems Tech360 can deliver, each as a clearly labelled concept preview. The scenarios further down are illustrative project stories. Neither section is a verified client engagement or a measured outcome."
-        breadcrumb={[{ label: "Work" }]}
+        eyebrow={heroMeta.eyebrow}
+        title={heroMeta.title}
+        description={heroMeta.description}
+        breadcrumb={heroMeta.breadcrumb}
       />
 
-      {/* Twelve premium system showcases with self-hosted concept visuals */}
-      <WorkExamples />
+      {/* Work Sub-Navigation Bar */}
+      <div className="border-b border-[#E2E8F0] bg-white">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-3.5 sm:px-6 lg:px-8">
+          {[
+            { key: "", label: "Portfolio Overview", href: "/work" },
+            { key: "projects", label: "System Scenarios (12)", href: "/work/projects" },
+            {
+              key: "case-studies",
+              label: `Delivery Blueprints (${CASE_STUDIES.length})`,
+              href: "/work/case-studies",
+            },
+          ].map((tab) => {
+            const active = subView === tab.key;
+            return (
+              <a
+                key={tab.href}
+                href={tab.href}
+                aria-current={active ? "page" : undefined}
+                className={`inline-flex min-h-[40px] items-center rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                  active
+                    ? "bg-[#063B8F] text-white shadow-sm"
+                    : "border border-[#E2E8F0] bg-[#F8FAFC] text-[#0B1F33] hover:border-[#009FE3]/50 hover:text-[#063B8F]"
+                }`}
+              >
+                {tab.label}
+              </a>
+            );
+          })}
+        </div>
+      </div>
 
+      {/* Twelve premium system showcases with self-hosted concept visuals */}
+      {showProjects && <WorkExamples />}
+
+      {showCaseStudies && (
       <section aria-labelledby="scenarios-heading" className="bg-[#F4FAFF]">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <Reveal>
@@ -424,6 +484,7 @@ export default function WorkView() {
           </RevealList>
         </div>
       </section>
+      )}
 
       {/* Client reviews — REAL published reviews only, honest empty state otherwise */}
       <WorkReviews />
@@ -441,7 +502,7 @@ export default function WorkView() {
             {SERVICES.slice(0, 3).map((service) => (
               <RevealItem key={service.slug} className="h-full">
                 <a
-                  href={`#/services/${service.slug}`}
+                  href={`/services/${service.slug}`}
                   className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-5 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                 >
                   <h3 className="text-base font-semibold text-[#0B1F33]">{service.title}</h3>
@@ -469,6 +530,6 @@ export default function WorkView() {
         open={activeStudy !== null}
         onClose={() => setActiveStudy(null)}
       />
-    </main>
+    </div>
   );
 }

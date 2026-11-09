@@ -2,16 +2,16 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json",
   "version": "1.0",
   "protocolVersion": "2025-06-18",
-  "name": "com.bdtech360.site",
+  "name": "com.bdtech360/site",
   "serverInfo": {
     "name": "bdtech360-site-mcp",
     "title": "TECH360 Site MCP",
-    "version": "1.0.0",
-    "description": "Read-only public information about TECH360 LLC: services, industries, FAQs, and contact details.",
-    "homepage": "https://bdtech360.com"
+    "version": "1.1.0",
+    "description": "Read-only public TECH360 LLC information: services, products, contact and FAQs.",
+    "homepage": "https://bdtech360.com/"
   },
-  "description": "Read-only public information about TECH360 LLC: services, industries, FAQs, and contact details.",
-  "websiteUrl": "https://bdtech360.com",
+  "description": "Read-only public TECH360 LLC information: services, products, contact and FAQs.",
+  "websiteUrl": "https://bdtech360.com/",
   "endpointUrl": "https://bdtech360.com/api/mcp",
   "transport": {
     "type": "streamable-http",
@@ -20,7 +20,8 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://bdtech360.com/api/mcp"
+      "url": "https://bdtech360.com/api/mcp",
+      "supportedProtocolVersions": ["2025-06-18", "2025-03-26"]
     }
   ],
   "capabilities": {
@@ -33,6 +34,8 @@
     "schemes": []
   },
   "tools": "dynamic",
-  "instructions": "Read-only tools that return public marketing and contact information. No authentication required; no data is modified.",
-  "documentationUrl": "https://bdtech360.com/llms.txt"
+  "instructions": "Read-only tools that return public marketing and contact information only. No tool writes data, sends messages, or exposes customer records or credentials. All money amounts are USD.",
+  "documentationUrl": "https://bdtech360.com/llms.txt",
+  "supersededBy": "https://bdtech360.com/api/mcp/server-card",
+  "note": "SEP-1649 shape, retained for clients that still probe /.well-known/mcp/server-card.json. SEP-1649 was closed on 2026-01-26 and continues as SEP-2127; the card of record is /api/mcp/server-card (application/mcp-server-card+json) and this document is advertised in /.well-known/ai-catalog.json."
 }

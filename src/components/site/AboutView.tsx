@@ -16,28 +16,28 @@ const PRINCIPLES = [
     icon: Eye,
     title: "Preview where included",
     text: "Where included in the agreed process, clients can review an HTML Preview against the approved scope before the applicable project payment.",
-    link: "#/legal/delivery",
+    link: "/legal/delivery",
     label: "Read our Delivery Policy",
   },
   {
     icon: FileText,
     title: "Everything in writing",
     text: "Project scope, deliverables, milestones, approvals, payment records and important decisions are documented and traceable to the relevant Client ID.",
-    link: "#/legal/client-approval",
+    link: "/legal/client-approval",
     label: "Read our Client Approval Policy",
   },
   {
     icon: Lock,
     title: "Clear ownership and handover",
     text: "Following verification of the final payment and completion of the applicable handover requirements, we provide the agreed source code, documentation and Client-owned credentials specifically identified in the approved SOW.",
-    link: "#/legal/source-code-handover",
+    link: "/legal/source-code-handover",
     label: "Read our Source Code Handover Policy",
   },
   {
     icon: ShieldCheck,
     title: "One accountable company",
     text: "Our client engagements are managed through documented scopes, project records, invoices, approvals and handover procedures. TECH360 LLC is our Missouri-registered US entity.",
-    link: "#/legal/terms",
+    link: "/legal/terms",
     label: "Read our Terms and Conditions",
   },
 ];
@@ -82,7 +82,7 @@ const WORKING_STEPS = [
 
 export default function AboutView() {
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="About TECH360"
         title="Built in Bangladesh. Expanded to the United States. Delivering worldwide."
@@ -416,7 +416,7 @@ export default function AboutView() {
           </RevealList>
           <Reveal delay={0.2} className="mt-8 text-center">
             <a
-              href="#/services"
+              href="/services"
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white px-6 text-sm font-semibold text-[#0B1F33] outline-none transition hover:border-[#009FE3]/40 hover:bg-[#F8FCFF] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
             >
               Explore all services
@@ -429,7 +429,7 @@ export default function AboutView() {
         title="Put our process to the test"
         description="Start with a conversation, not a commitment. Tell us what you want to build, improve, or automate. We will work with you to understand the requirements, explain the next steps, and document a proposed scope for your review. You should know what is being proposed, how the work will be reviewed, and what the handover will include before you make a decision."
         primaryLabel="Contact TECH360"
-        primaryHref="#/contact"
+        primaryHref="/contact"
       />
 
       {/* Closing identity line — as in the brief */}
@@ -438,6 +438,6 @@ export default function AboutView() {
           TECH360 — Founded in Bangladesh in {COMPANY.bangladeshFoundedYear}. Expanded to the United States in {COMPANY.usRegistrationYear}. Delivering {COMPANY.serviceCoverage.toLowerCase()}.
         </p>
       </div>
-    </main>
+    </div>
   );
 }

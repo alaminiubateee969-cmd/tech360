@@ -18,7 +18,7 @@ function applyHref(roleTitle: string) {
 
 export default function CareersView() {
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Careers"
         title="Build systems people can trust — and be measured by it"
@@ -159,6 +159,6 @@ export default function CareersView() {
         description="Tell us what you would build here. Speculative introductions with substance get real replies."
         primaryLabel="Introduce yourself"
       />
-    </main>
+    </div>
   );
 }

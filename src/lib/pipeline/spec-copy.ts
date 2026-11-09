@@ -19,7 +19,7 @@
 export const PIPELINE_BRAND = 'Tech360'
 export const PIPELINE_DOMAIN = 'https://bdtech360.com'
 export const PIPELINE_EMAIL = 'info@bdtech360.com'
-export const PIPELINE_WEBCHAT = 'AI agent'
+export const PIPELINE_WEBCHAT = 'Live Support'
 export const PIPELINE_CORE_RULE = 'HTML Preview Before Payment. Source Code After Full Payment.'
 export const CLIENT_ID_FORMAT = 'TECH-2026-000001'
 export const CLIENT_ID_PATTERN = 'TECH-YYYY-NNNNNN'

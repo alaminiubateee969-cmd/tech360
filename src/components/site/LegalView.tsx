@@ -2,16 +2,17 @@
 
 import { FileCheck, Printer, ShieldCheck } from "lucide-react";
 import { LEGAL_DOCS, getLegalDoc, COMPANY } from "@/data/site";
+import { normalizeLegalSlug } from "@/lib/public-route-catalog";
 import { PageHero } from "./PageHero";
 import { Reveal } from "./Reveal";
 import { cn } from "@/lib/utils";
 import { LetterheadHeader, LetterheadFooter } from "@/components/branding/DocumentShell";
 
 export default function LegalView({ slug }: { slug: string }) {
-  const doc = getLegalDoc(slug);
+  const doc = getLegalDoc(normalizeLegalSlug(slug) ?? slug);
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Legal & policies"
         title={doc ? doc.title : "Policy not found"}
@@ -21,7 +22,7 @@ export default function LegalView({ slug }: { slug: string }) {
             : "The document you requested does not exist. The sidebar below lists every published policy — select one to read it."
         }
         breadcrumb={[
-          { label: "Legal", href: "#/legal/terms" },
+          { label: "Legal", href: "/legal/terms" },
           { label: doc ? doc.title : "Not found" },
         ]}
       />
@@ -40,7 +41,7 @@ export default function LegalView({ slug }: { slug: string }) {
                   return (
                     <li key={d.slug} className="shrink-0 lg:shrink">
                       <a
-                        href={`#/legal/${d.slug}`}
+                        href={`/legal/${d.slug}`}
                         aria-current={isActive ? "page" : undefined}
                         className={cn(
                           "flex min-h-11 items-center gap-2.5 rounded-lg border px-4 text-sm font-medium outline-none transition-colors lg:border-transparent lg:bg-transparent",
@@ -99,9 +100,9 @@ export default function LegalView({ slug }: { slug: string }) {
                     Print / save as PDF
                   </button>
                 </div>
-                <h1 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">
                   {doc.title}
-                </h1>
+                </h2>
                 <p className="mt-3 max-w-2xl text-base leading-relaxed text-[#526173]">
                   {doc.summary}
                 </p>
@@ -159,13 +160,13 @@ export default function LegalView({ slug }: { slug: string }) {
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <a
-                    href="#/legal/terms"
+                    href="/legal/terms"
                     className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#009FE3] px-5 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#0090CC] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
                   >
                     Read the Terms &amp; Conditions
                   </a>
                   <a
-                    href="#/faq"
+                    href="/faq"
                     className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#063B8F]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#063B8F] outline-none transition-colors hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
                   >
                     Common questions instead
@@ -176,6 +177,6 @@ export default function LegalView({ slug }: { slug: string }) {
           </article>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
