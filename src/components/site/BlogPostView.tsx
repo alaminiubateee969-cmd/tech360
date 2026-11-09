@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CtaBand } from "./CtaBand";
 import { Reveal } from "./Reveal";
 
-interface BlogPost {
+export interface BlogPost {
   slug: string;
   title: string;
   excerpt: string;
@@ -222,19 +222,30 @@ function formatDate(value: string) {
   }
 }
 
-export default function BlogPostView({ slug }: { slug: string }) {
-  // Derived-loading pattern: the cache records which slug it belongs to, so
-  // "loading" is computed by comparing slugs — no setState in the effect body.
+export default function BlogPostView({
+  slug,
+  initialPost,
+}: {
+  slug: string;
+  initialPost?: BlogPost | null;
+}) {
+  // Derived-loading pattern: initialize from SSR post when matching slug so
+  // initial HTML renders the article H1 immediately without waiting on fetch.
   const [cache, setCache] = useState<{
     slug: string;
     post: BlogPost | null;
     notFound: boolean;
     error: string | null;
-  }>({ slug: "", post: null, notFound: false, error: null });
+  }>(() =>
+    initialPost && initialPost.slug === slug
+      ? { slug, post: initialPost, notFound: false, error: null }
+      : { slug: "", post: null, notFound: false, error: null }
+  );
 
   const fresh = cache.slug === slug;
 
   useEffect(() => {
+    if (initialPost && initialPost.slug === slug) return;
     let cancelled = false;
     fetch(`/api/blog/${encodeURIComponent(slug)}`)
       .then(async (res) => {
@@ -264,9 +275,16 @@ export default function BlogPostView({ slug }: { slug: string }) {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, initialPost]);
 
-  const post = fresh ? cache.post : null;
+  const post = fresh ? cache.post : initialPost && initialPost.slug === slug ? initialPost : null;
+
+  useEffect(() => {
+    if (!post) return;
+    document.title = `${post.title} | TECH360`;
+    const desc = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (desc && post.excerpt) desc.content = post.excerpt;
+  }, [post]);
   const notFound = fresh && cache.notFound;
   const error = fresh ? cache.error : null;
 
@@ -304,7 +322,7 @@ export default function BlogPostView({ slug }: { slug: string }) {
   );
 
   return (
-    <main id="main-content">
+    <div>
       {notFound ? (
         <section className="bg-[#F4FAFF]">
           <div className="mx-auto w-full max-w-3xl px-4 py-24 sm:px-6 lg:px-8">
@@ -405,8 +423,8 @@ export default function BlogPostView({ slug }: { slug: string }) {
 
       <CtaBand
         title="Turn the idea into a system"
-        description="Every article on this site reflects how we actually deliver. If one of these problems is yours, start the conversation — scope and preview first, payment after."
+        description="Every article on this site reflects how we actually deliver. If one of these problems is yours, start the conversation — written scope first, HTML preview where agreed, and handover after verified payment."
       />
-    </main>
+    </div>
   );
 }

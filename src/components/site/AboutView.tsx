@@ -82,7 +82,7 @@ const WORKING_STEPS = [
 
 export default function AboutView() {
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="About TECH360"
         title="Built in Bangladesh. Expanded to the United States. Delivering worldwide."
@@ -438,6 +438,6 @@ export default function AboutView() {
           TECH360 — Founded in Bangladesh in {COMPANY.bangladeshFoundedYear}. Expanded to the United States in {COMPANY.usRegistrationYear}. Delivering {COMPANY.serviceCoverage.toLowerCase()}.
         </p>
       </div>
-    </main>
+    </div>
   );
 }

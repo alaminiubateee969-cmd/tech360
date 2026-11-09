@@ -885,7 +885,7 @@ function CoordinationSection() {
 
 export default function AgentPipelineView() {
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="AI Agent Communication Pipeline"
         title="From the first SMS to final delivery — on record, every step."
@@ -934,6 +934,6 @@ export default function AgentPipelineView() {
         primaryLabel="Start Your Project"
         primaryHref="#/contact"
       />
-    </main>
+    </div>
   );
 }

@@ -29,7 +29,7 @@ export default function FaqView() {
   }, [query]);
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="FAQ"
         title="The questions serious clients ask first"
@@ -137,6 +137,6 @@ export default function FaqView() {
         title="Convinced? Start with a scope, not a contract"
         description="One message about your project — written scope, HTML preview, milestone plan. Payment only after you approve what you see."
       />
-    </main>
+    </div>
   );
 }

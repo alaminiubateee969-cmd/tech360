@@ -95,7 +95,7 @@ export default function BlogView() {
   }, [posts, query, category]);
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Insights"
         title="Engineering notes and delivery thinking"
@@ -262,6 +262,6 @@ export default function BlogView() {
         title="Reading is good — building is better"
         description="If any of these ideas apply to your business, the next step is a written scope. One message starts it."
       />
-    </main>
+    </div>
   );
 }

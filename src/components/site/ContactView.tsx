@@ -172,7 +172,7 @@ export default function ContactView() {
   };
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Contact"
         title="Start your project — the scoped way"
@@ -677,6 +677,6 @@ export default function ContactView() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

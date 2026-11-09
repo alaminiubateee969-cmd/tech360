@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, MotionConfig } from "framer-motion";
-import { ArrowRight, CheckCircle2, Star, Volume2, VolumeX, MessageCircle, Users, Mail, Smartphone, CreditCard, Workflow, Github, Layers, ShieldCheck, Globe, Bot, Eye as EyeIcon, Lock as LockIcon, Database } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, Star, Volume2, VolumeX, MessageCircle, Users, Mail, Smartphone, CreditCard, Workflow, Github, Layers, ShieldCheck, Globe, Bot, Eye as EyeIcon, Lock as LockIcon, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SERVICES, INDUSTRIES, CASE_STUDIES, PROCESS, STATS, TRUST_POINTS, COMPANY } from "@/data/site";
+import { SERVICES, INDUSTRIES, CASE_STUDIES, PROCESS, STATS, TRUST_POINTS, COMPANY, FAQS } from "@/data/site";
 import { imageFor } from "@/data/images";
-import { industryImage } from "@/data/industry-images";
+import { industryImage, industryImageAlt } from "@/data/industry-images";
 import { Icon } from "./icons";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
@@ -25,7 +25,11 @@ import { PrimaryLink, OutlineLink, AIAssistantLink, LinkArrow } from "./buttons"
 /* Buffer-grade hero — spec §4 headline                               */
 /* ------------------------------------------------------------------ */
 
-const HERO_WORDS_NEW = ["One Platform.", "Your Entire Business.", "Powered by AI."] as const;
+const HERO_WORDS_NEW = [
+  "Custom software,",
+  "engineered around",
+  "how your business runs.",
+] as const;
 
 function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -139,7 +143,7 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
               transition={{ duration: 0.65, delay: 0.15 + i * 0.14, ease: [0.21, 0.47, 0.32, 0.98] }}
               className={cn(
                 "block font-bold leading-[1.08] tracking-tight",
-                i === 2 ? "text-[#009FE3] text-4xl sm:text-6xl lg:text-7xl" : i === 1 ? "text-white text-3xl sm:text-5xl lg:text-6xl" : "text-white text-4xl sm:text-6xl lg:text-7xl"
+                i === 2 ? "text-[#009FE3] text-2xl sm:text-4xl lg:text-5xl" : i === 1 ? "text-white text-2xl sm:text-4xl lg:text-5xl" : "text-white text-2xl sm:text-4xl lg:text-5xl"
               )}
             >
               {word}
@@ -153,7 +157,9 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
           transition={{ duration: 0.6, delay: 0.85 }}
           className="mt-6 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg"
         >
-          Unify intelligent automation, business operations, customer engagement, and AI-powered workflows in one connected platform.
+          TECH360 builds websites, CRM systems, client portals, eCommerce platforms, dashboards and
+          business workflow automation — scoped in writing, reviewed before payment where a preview is
+          agreed, and handed over with the source code once payments are verified and cleared.
         </motion.p>
 
         <motion.div
@@ -163,11 +169,11 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
           className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4"
         >
           <PrimaryLink href="#/services">
-            Explore AI Solutions
+            Explore all 21 solutions
             <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-1" aria-hidden="true" />
           </PrimaryLink>
-          <OutlineLink href="#/contact" dark>
-            Book a Demo
+          <OutlineLink href="#/work" dark>
+            See illustrative work
           </OutlineLink>
           <AIAssistantLink label="Talk to Tech360" />
         </motion.div>
@@ -607,7 +613,7 @@ function IndustriesPreview() {
                 <div className="relative">
                   <ImageView
                     src={industryImage(industry.slug) ?? imageFor(industry.imageKey)}
-                    alt={`${industry.title} — representative photography`}
+                    alt={industryImageAlt(industry.title)}
                     aspect="16/10"
                     imgClassName="transition-transform duration-500 group-hover:scale-105"
                   />
@@ -1006,6 +1012,189 @@ function LatestInsights() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Customer AI & automation capabilities (§5)                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * These are systems TECH360 BUILDS FOR CLIENTS — never a description of how
+ * TECH360 delivers its own work. Owner directive (docs/AI_VISIBILITY_POLICY.md)
+ * forbids disclosing internal AI operation on any public surface.
+ */
+const CLIENT_AI_CAPABILITIES = [
+  {
+    icon: Bot,
+    title: "AI assistants inside your product",
+    body: "Support and sales assistants that answer from your own content, escalate to a person, and log every conversation against the customer record.",
+    href: "#/services/ai-agent-systems",
+  },
+  {
+    icon: Workflow,
+    title: "Approval-gated automation",
+    body: "Document, invoice and onboarding flows that pause for human approval before anything that matters leaves the building.",
+    href: "#/services/ai-business-automation",
+  },
+  {
+    icon: MessageCircle,
+    title: "Conversational sales on WhatsApp",
+    body: "Qualify and route inbound WhatsApp enquiries into your CRM with the same audit trail as your website forms.",
+    href: "#/services/whatsapp-cloud-api-integration",
+  },
+  {
+    icon: Database,
+    title: "Data you can actually query",
+    body: "Dashboards and reporting built on your operational data, with role-based visibility instead of exported spreadsheets.",
+    href: "#/services/business-dashboards",
+  },
+] as const;
+
+function ClientAiCapabilities() {
+  return (
+    <section aria-labelledby="ai-capabilities-heading" className="bg-white">
+      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-16">
+          <Reveal>
+            <SectionHeading
+              align="left"
+              id="ai-capabilities-heading"
+              eyebrow="AI & automation, applied"
+              title="AI where it removes real work — with a person still in the loop."
+              description="We build AI into your systems where it does something measurable: answering from your own content, drafting inside a workflow, or catching exceptions before a person has to. Every deployment names who approves what, and what happens when the model is wrong."
+            />
+            <div className="mt-7 flex flex-wrap gap-3">
+              <PrimaryLink href="#/services/ai-business-automation">Automation services</PrimaryLink>
+              <OutlineLink href="#/faq">Read the FAQs</OutlineLink>
+            </div>
+            <p className="mt-6 flex items-start gap-2 text-xs leading-relaxed text-[#526173]">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
+              Model choice, hosting, data handling and the human-approval points are written into the
+              Scope of Work — never assumed.
+            </p>
+          </Reveal>
+          <RevealList className="grid grid-cols-1 gap-4 sm:grid-cols-2" stagger={0.07}>
+            {CLIENT_AI_CAPABILITIES.map((item) => (
+              <RevealItem key={item.title} className="h-full">
+                <a
+                  href={item.href}
+                  className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-[#F8FBFF] p-5 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-[0_12px_30px_rgba(6,59,143,0.10)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+                >
+                  <span className="flex size-10 items-center justify-center rounded-lg bg-[#009FE3]/10 text-[#0079AC]">
+                    <item.icon className="size-5" aria-hidden="true" />
+                  </span>
+                  <h3 className="mt-4 text-sm font-bold text-[#0B1F33]">{item.title}</h3>
+                  <p className="mt-2 flex-1 text-xs leading-relaxed text-[#526173]">{item.body}</p>
+                  <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#009FE3]">
+                    Service detail
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                  </span>
+                </a>
+              </RevealItem>
+            ))}
+          </RevealList>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 7-step customer delivery journey (§8)                               */
+/* ------------------------------------------------------------------ */
+
+function DeliveryJourney() {
+  return (
+    <section aria-labelledby="journey-heading" className="bg-[#0B1F33]">
+      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <SectionHeading
+          align="left"
+          id="journey-heading"
+          eyebrow="How a project actually runs"
+          title="Seven steps, each ending in something you can read and approve."
+          description="No stage moves forward on a verbal agreement. You get the written artefact named against each step, and the two commercial promises only apply where the approved Scope of Work says they do."
+          dark
+        />
+        <ol className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {PROCESS.map((phase, index) => (
+            <li key={phase.step} className="h-full">
+              <div className="flex h-full flex-col rounded-xl border border-white/12 bg-white/[0.04] p-5">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#009FE3] text-xs font-bold text-white">
+                    {index + 1}
+                  </span>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
+                    {phase.duration}
+                  </p>
+                </div>
+                <h3 className="mt-4 text-base font-bold text-white">{phase.name}</h3>
+                <p className="mt-1 text-sm font-medium text-[#7FD4FF]">{phase.title}</p>
+                <p className="mt-3 flex-1 text-xs leading-relaxed text-white/70">{phase.description}</p>
+                {phase.gate ? (
+                  <p className="mt-4 rounded-lg border border-[#18B83A]/30 bg-[#18B83A]/10 px-3 py-2 text-[11px] font-semibold leading-relaxed text-[#8DE8A2]">
+                    {phase.gate.label}
+                  </p>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-10 flex flex-wrap items-center gap-4">
+          <a
+            href="#/process"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#0090CC] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1F33]"
+          >
+            Read the full delivery process
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </a>
+          <p className="text-xs font-semibold text-white/70">
+            HTML Preview Before Payment. Source Code After Full Payment.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* FAQ preview (§12)                                                   */
+/* ------------------------------------------------------------------ */
+
+const HOME_FAQ_COUNT = 5;
+
+function FaqPreview() {
+  return (
+    <section aria-labelledby="home-faq-heading" className="bg-[#F4FAFF]">
+      <div className="mx-auto w-full max-w-4xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <SectionHeading
+          id="home-faq-heading"
+          eyebrow="Questions we get first"
+          title="The answers, before you ask."
+          description="Scope, previews, payments and handover — the questions that decide whether a project starts well."
+        />
+        <div className="mt-10 space-y-3">
+          {FAQS.slice(0, HOME_FAQ_COUNT).map((faq) => (
+            <details
+              key={faq.q}
+              className="group rounded-xl border border-[#E2E8F0] bg-white px-5 py-4 transition-colors open:border-[#009FE3]/40"
+            >
+              <summary className="flex cursor-pointer list-none items-start justify-between gap-4 text-sm font-semibold text-[#0B1F33] outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">
+                {faq.q}
+                <ChevronDown
+                  className="mt-0.5 size-4 shrink-0 text-[#009FE3] transition-transform group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-[#526173]">{faq.a}</p>
+            </details>
+          ))}
+        </div>
+        <div className="mt-8 text-center">
+          <LinkArrow href="#/faq">All frequently asked questions</LinkArrow>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Home view                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -1016,75 +1205,43 @@ export default function HomeView({
 }) {
   return (
    <MotionConfig reducedMotion="user">
-    <main id="main-content">
+    <div>
+      {/* 1 — Hero */}
       <Hero onNavigate={onNavigate} />
+      {/* 2 — Trust & capability strip */}
       <TrustRow />
+      {/* 3 — Core solutions (4 pillars, 21 services) */}
       <SolutionsGrid />
-      <PlatformGrid />
-      <WhyTech360 />
+      {/* 4 — Featured software products */}
+      <FlagshipServices />
+      {/* 5 — Customer AI & automation capabilities */}
+      <ClientAiCapabilities />
+      {/* 6 — Industry solutions showcase */}
       <IndustriesPreview />
-      <HowItWorks />
+      {/* 7 — Illustrative work scenarios */}
+      <SelectedWork />
+      {/* 8 — 7-step customer delivery journey */}
+      <DeliveryJourney />
+      {/* 9 — Platform, technology & security capability */}
+      <PlatformGrid />
       <FeaturesGrid />
       <DashboardShowcase />
-      <ProcessStrip />
       <IntegrationsGrid />
+      {/* 10 — Why TECH360 */}
+      <WhyTech360 />
       <BenefitsGrid />
-      <FlagshipServices />
-      <SelectedWork />
-      <PricingSection />
+      {/* 11 — Engineering insights */}
       <LatestInsights />
       <ResourcesGrid />
-      <ClientReviews />
-      <StatsBand />
-      {/* ---------------------------------------------------------------- */}
-      {/* Pipeline transparency — links the home page to the full 11-stage   */}
-      {/* communication contract instead of duplicating it.                  */}
-      {/* ---------------------------------------------------------------- */}
-      <section className="border-y border-[#E2E8F0] bg-[#F4FAFF] py-16 sm:py-20">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
-            <Reveal>
-              <SectionHeading
-                align="left"
-                eyebrow="Transparent by design"
-                title="See every message before you send the first one."
-                description="Our AI Agent Communication Pipeline publishes all eleven stages — the exact WhatsApp and email replies, what gets saved in your CRM, which steps an admin must approve, and the two delivery gates."
-              />
-              <div className="mt-7 flex flex-wrap gap-3">
-                <PrimaryLink href="#/pipeline">
-                  Explore the pipeline <ArrowRight className="size-4" aria-hidden="true" />
-                </PrimaryLink>
-                <OutlineLink href="#/process">How we work</OutlineLink>
-              </div>
-              <p className="mt-5 flex items-center gap-2 text-xs font-semibold text-[#063B8F]">
-                <ShieldCheck className="size-4 text-[#009FE3]" aria-hidden="true" />
-                HTML Preview Before Payment. Source Code After Full Payment.
-              </p>
-            </Reveal>
-            <RevealList className="grid grid-cols-1 gap-3 sm:grid-cols-2" stagger={0.08}>
-              {[
-                { icon: MessageCircle, title: "10 channels", body: "WhatsApp, SMS, email, forms, five social channels and manual admin messages." },
-                { icon: Database, title: "One Client ID", body: "Every inbound and outbound message, status change and approval is attached to one profile." },
-                { icon: EyeIcon, title: "Preview first", body: "An HTML/demo preview is shared for review before any payment step." },
-                { icon: LockIcon, title: "Gated handover", body: "Source code, files and admin access are released after confirmed payment and admin approval." },
-              ].map((item) => (
-                <RevealItem key={item.title} className="h-full">
-                  <div className="flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-5 transition-shadow hover:shadow-[0_10px_28px_rgba(6,59,143,0.09)]">
-                    <span className="flex size-10 items-center justify-center rounded-lg bg-[#009FE3]/10 text-[#0079AC]">
-                      <item.icon className="size-5" aria-hidden="true" />
-                    </span>
-                    <h3 className="mt-4 text-sm font-bold text-[#0B1F33]">{item.title}</h3>
-                    <p className="mt-2 flex-1 text-xs leading-relaxed text-[#526173]">{item.body}</p>
-                  </div>
-                </RevealItem>
-              ))}
-            </RevealList>
-          </div>
-        </div>
-      </section>
-
-      <CtaBand title="Ready to Make Your Business Work Smarter?" description="Discover how Tech360 can help connect your tools, streamline operations, and put AI to work across your business." primaryLabel="Book a Demo" />
-    </main>
+      {/* 12 — FAQ preview */}
+      <FaqPreview />
+      {/* 13 — Final conversion CTA (below) */}
+      <CtaBand
+        title="Start with the requirement, not the sales call."
+        description="Tell us what the system has to do and the constraints you already know about. You will get a written response covering scope, the providers involved, what a preview would include, and how success is measured — before any payment."
+        primaryLabel="Start a project"
+      />
+    </div>
    </MotionConfig>
   );
 }

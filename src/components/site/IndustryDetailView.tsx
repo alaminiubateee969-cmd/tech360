@@ -4,8 +4,9 @@ import { ArrowRight, ArrowLeft, CircleAlert, CheckCircle2, Lightbulb } from "luc
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { INDUSTRIES, getIndustry, getService } from "@/data/site";
+import { getIndustryBySlug } from "@/data/industries";
 import { imageFor } from "@/data/images";
-import { industryImage } from "@/data/industry-images";
+import { industryImage, industryImageAlt } from "@/data/industry-images";
 import { PageHero } from "./PageHero";
 import IndustryExperience from "./IndustryExperience";
 import EducationSolutions from "./EducationSolutions";
@@ -21,7 +22,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
 
   if (!industry) {
     return (
-      <main id="main-content">
+      <div>
         <PageHero
           eyebrow="Industry not found"
           title="This industry page does not exist"
@@ -38,9 +39,14 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
             </Button>
           </div>
         </section>
-      </main>
+      </div>
     );
   }
+
+  // The registry carries the full 21-section blueprint (hero, departments, roles,
+  // data model, workflows, modules, security, analytics, roadmap). The lighter
+  // `INDUSTRIES` record stays the fallback, so a page can never render empty.
+  const blueprint = getIndustryBySlug(industry.slug);
 
   const recommended = industry.recommended
     .map((s) => getService(s))
@@ -49,13 +55,13 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
   const others = INDUSTRIES.filter((i) => i.slug !== industry.slug).slice(0, 4);
 
   return (
-    <main id="main-content">
+    <div>
       {/* Image hero */}
       <section className="relative overflow-hidden bg-[#0B1F33]">
         <div className="absolute inset-0">
           <ImageView
             src={industryImage(industry.slug) ?? imageFor(industry.imageKey)}
-            alt={`${industry.title} — illustrative imagery`}
+            alt={industryImageAlt(industry.title)}
             className="h-full w-full"
             imgClassName="opacity-45"
             eager
@@ -95,14 +101,31 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
           </nav>
           <Reveal>
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[#7FD4FF]">
-              Industry focus
+              {blueprint?.data.hero.eyebrow ?? "Industry focus"}
             </p>
-            <h1 className="max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
-              {industry.title}
+            <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              {blueprint?.name ?? industry.title}
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg">
-              {industry.description}
+              {blueprint?.data.hero.subhead ?? industry.description}
             </p>
+            {blueprint ? (
+              <dl className="mt-8 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label: "Workflows", value: blueprint.data.workflows.length },
+                  { label: "Modules", value: blueprint.data.modules.length },
+                  { label: "Departments", value: blueprint.data.departments.length },
+                  { label: "Roles", value: blueprint.data.roles.length },
+                ].map((stat) => (
+                  <div key={stat.label} className="rounded-xl border border-white/15 bg-white/5 px-4 py-3">
+                    <dt className="text-[11px] font-semibold uppercase tracking-wider text-white/60">
+                      {stat.label}
+                    </dt>
+                    <dd className="mt-1 text-xl font-bold text-white">{stat.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
           </Reveal>
         </div>
       </section>
@@ -200,7 +223,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
                 >
                   <ImageView
                     src={industryImage(industry.slug) ?? imageFor(industry.imageKey)}
-                    alt=""
+                    alt={industryImageAlt(industry.title)}
                     aspect="16/9"
                     imgClassName="transition-transform duration-500 group-hover:scale-105"
                   />
@@ -285,6 +308,6 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
       </section>
 
       <CtaBand />
-    </main>
+    </div>
   );
 }

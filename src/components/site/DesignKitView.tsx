@@ -161,7 +161,7 @@ import { DiagramGallery } from './DiagramGallery'
 
 export default function DesignKitView() {
   return (
-    <main id="main-content" className="bg-[#F7FAFC] px-5 pb-20 pt-28 sm:px-8">
+    <div className="bg-[#F7FAFC] px-5 pb-20 pt-28 sm:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="max-w-3xl">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#009FE3]">Design system</p>
@@ -184,7 +184,7 @@ export default function DesignKitView() {
         >
           <Showcase label="Primary · one per screen" note="Used for the single most important action.">
             <PrimaryLink href="#/contact">Start a project</PrimaryLink>
-            <PrimaryLink href="#/work" onClick={(e) => e.preventDefault()}>See our work</PrimaryLink>
+            <PrimaryLink href="#/work">See our work</PrimaryLink>
           </Showcase>
           <Showcase label="Secondary · supporting actions">
             <SecondaryLink href="#/services">Explore services</SecondaryLink>
@@ -321,6 +321,6 @@ export default function DesignKitView() {
           </div>
         </Section>
       </div>
-    </main>
+    </div>
   )
 }

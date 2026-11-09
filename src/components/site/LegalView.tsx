@@ -2,16 +2,17 @@
 
 import { FileCheck, Printer, ShieldCheck } from "lucide-react";
 import { LEGAL_DOCS, getLegalDoc, COMPANY } from "@/data/site";
+import { normalizeLegalSlug } from "@/lib/public-route-catalog";
 import { PageHero } from "./PageHero";
 import { Reveal } from "./Reveal";
 import { cn } from "@/lib/utils";
 import { LetterheadHeader, LetterheadFooter } from "@/components/branding/DocumentShell";
 
 export default function LegalView({ slug }: { slug: string }) {
-  const doc = getLegalDoc(slug);
+  const doc = getLegalDoc(normalizeLegalSlug(slug) ?? slug);
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Legal & policies"
         title={doc ? doc.title : "Policy not found"}
@@ -99,9 +100,9 @@ export default function LegalView({ slug }: { slug: string }) {
                     Print / save as PDF
                   </button>
                 </div>
-                <h1 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">
                   {doc.title}
-                </h1>
+                </h2>
                 <p className="mt-3 max-w-2xl text-base leading-relaxed text-[#526173]">
                   {doc.summary}
                 </p>
@@ -176,6 +177,6 @@ export default function LegalView({ slug }: { slug: string }) {
           </article>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

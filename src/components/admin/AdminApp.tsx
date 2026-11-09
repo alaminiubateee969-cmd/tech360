@@ -38,7 +38,7 @@ import {
   Mail,
   MessagesSquare,
   PhoneCall,
-  Rss, Layers3 } from 'lucide-react'
+  Rss, Layers3, Palette } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
@@ -59,6 +59,7 @@ import IntegrationsView from './IntegrationsView'
 import BackupRecoveryView from './BackupRecoveryView'
 import WorkforceView from './WorkforceView'
 import { PipelineView } from './PipelineView'
+import { DesignKitView } from './DesignKitView'
 import { AnalyticsView } from './AnalyticsView'
 import { ApprovalsView } from './ApprovalsView'
 import { BlogStudioView } from './BlogStudioView'
@@ -145,6 +146,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'factory', label: 'App Factory', icon: Boxes },
       { id: 'factoryControl', label: 'Software Factory Control Center', icon: Layers3 },
       { id: 'media', label: 'Media Studio', icon: Clapperboard },
+      { id: 'designKit', label: 'Design Kit', icon: Palette },
     ],
   },
   {
@@ -235,6 +237,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   integrations: 'CRM Integrations',
   workforce: 'Configured Org Chart Profiles',
   pipeline: 'Communication Pipeline',
+  designKit: 'Design Kit & UI Governance',
   backup: 'Backup & Recovery',
   dcc: 'Department Capability Certification',
   content: 'Content Studio',
@@ -627,6 +630,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <WorkforceView />
               ) : view === 'pipeline' ? (
                 <PipelineView />
+              ) : view === 'designKit' ? (
+                <DesignKitView />
               ) : view === 'command' ? (
                 <CommandCenterView />
               ) : view === 'memory' ? (

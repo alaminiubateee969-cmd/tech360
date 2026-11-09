@@ -568,7 +568,9 @@ export default function ChatWidget() {
             {!showThread && !showClosed && (
               <form onSubmit={startConversation} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
                 <p className="text-sm leading-relaxed text-slate-600">
-                  Welcome to TECH360. Our webchat agent sends a first SMS asking for your email — once you share your email, your Client ID is created automatically and we continue on your chosen channel to prepare a proposal and refine the scope.
+                  Welcome to TECH360. Share your email (and a phone number if you prefer SMS) and our team
+                  will reply on the channel you choose to understand the project and prepare a written
+                  proposal. Prefer email? Write to info@bdtech360.com at any time.
                 </p>
                 <div className="space-y-1">
                   <label htmlFor="chat-name" className="text-xs font-medium text-slate-700">
@@ -588,7 +590,7 @@ export default function ChatWidget() {
                   <label htmlFor="chat-email" className="text-xs font-medium text-slate-700">
                     Email {preferredContact === 'Email'
                       ? <><span className="text-[#EF4444]" aria-hidden="true">*</span><span className="sr-only">(required)</span></>
-                      : <span className="font-normal text-slate-400">(optional for SMS-first — share now or reply to our first SMS)</span>}
+                      : <span className="font-normal text-slate-400">(optional for SMS-first — share it now or reply to our follow-up message)</span>}
                   </label>
                   <input
                     id="chat-email"
@@ -601,7 +603,7 @@ export default function ChatWidget() {
                     placeholder="you@company.com"
                     className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#009FE3] focus:outline-none focus:ring-2 focus:ring-[#009FE3]/30"
                   />
-                  <p className="text-[11px] leading-relaxed text-slate-500">{preferredContact === 'Email' ? 'Service follow-up will use email and create your Client ID once identity is checked. A typed address is contact info only — portal sign-in uses a one-time code.' : 'If you provide email now, your Client ID is created immediately; otherwise our first SMS will ask for it and create the Client ID once received. A typed address is contact info only — portal sign-in uses a one-time code.'}</p>
+                  <p className="text-[11px] leading-relaxed text-slate-500">{preferredContact === 'Email' ? 'Service follow-up uses email. A typed address is contact information only — portal sign-in always requires a one-time code.' : 'If you provide an email now we will use it for follow-up; otherwise our first SMS will ask for it. A typed address is contact information only — portal sign-in always requires a one-time code.'}</p>
                 </div>
                 <fieldset className="space-y-2">
                   <legend className="text-xs font-medium text-slate-700">First service reply</legend>

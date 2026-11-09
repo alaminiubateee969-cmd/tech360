@@ -130,14 +130,14 @@ export const PRODUCED_SYSTEMS = [
 ] as const;
 
 export const AI_NATIVE_MESSENGER = {
-  eyebrow: "AI-NATIVE MESSENGER",
-  title: "Human + AI Teams, One Inbox",
-  description: "Like Teamily.ai — WhatsApp, SMS and webchat in a single, AI-native messenger. AI drafts, humans approve, every message is logged under the Client ID.",
+  eyebrow: "UNIFIED CLIENT MESSAGING",
+  title: "Every Client Conversation in One Shared Timeline",
+  description: "Unify webchat, email, SMS, and official WhatsApp Cloud API channels into a single auditable client workspace — with role-based assignments, human approval checkpoints, and full Client ID history.",
   capabilities: [
-    { title: "WhatsApp + SMS + Webchat Unified", detail: "Every channel lands in one timeline per client — no missed messages across apps." },
-    { title: "AI Drafts, Human Approves", detail: "Nine AI auto-sends (first reply, scope questions, meeting links) and seven admin-gated sends (scope, invoice, handover)." },
-    { title: "Client ID as Source of Truth", detail: "Every message, scope, payment and delivery is saved under the Client ID — auditable by date and actor." },
-    { title: "First SMS → Email Gate → Auto Client ID", detail: "First SMS asks for email; once received, Client ID is auto-created and the full journey begins." },
+    { title: "Omnichannel Shared Inbox", detail: "Webchat, email, SMS, and WhatsApp conversations appear in one structured timeline per client — zero lost context across personal devices." },
+    { title: "Human-Controlled Approvals", detail: "Draft responses, scope summaries, and milestone updates pass through explicit role-based review before critical client communications go out." },
+    { title: "Client ID as Source of Truth", detail: "Every enquiry, approved Scope of Work, invoice, and handover record is linked to a single Client ID — auditable by timestamp and actor." },
+    { title: "Verified Contact Onboarding", detail: "Structured intake links verified email and phone contacts to a dedicated Client ID so project updates and portal access stay consistent." },
   ],
 } as const;
 
@@ -146,18 +146,11 @@ export const AI_NATIVE_MESSENGER = {
 /* ------------------------------------------------------------------ */
 
 export const NAV_LINKS: { label: string; href: string }[] = [
-  { label: "Home", href: "#/" },
-  { label: "About", href: "#/about" },
-  { label: "Platform", href: "#/platform" },
-  { label: "Services", href: "#/services" },
+  { label: "Solutions", href: "#/services" },
   { label: "Industries", href: "#/industries" },
   { label: "Work", href: "#/work" },
-  { label: "Technologies", href: "#/technologies" },
-  { label: "Design Kit", href: "#/design-kit" },
-  { label: "Process", href: "#/process" },
-  { label: "AI Agent Pipeline", href: "#/pipeline" },
-  { label: "Blog", href: "#/blog" },
-  { label: "Contact", href: "#/contact" },
+  { label: "Resources", href: "#/blog" },
+  { label: "Company", href: "#/about" },
 ];
 
 /* ------------------------------------------------------------------ */

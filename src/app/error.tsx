@@ -9,7 +9,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   }, [error])
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#F7FAFC] px-6 text-[#0B1F33]">
+    <main id="main-content" className="grid min-h-screen place-items-center bg-[#F7FAFC] px-6 text-[#0B1F33]">
       <section role="alert" className="w-full max-w-xl rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm sm:p-12">
         <p className="text-sm font-bold uppercase tracking-[0.22em] text-red-600">Something went wrong</p>
         <h1 className="mt-4 text-3xl font-bold tracking-tight">We could not load this page.</h1>

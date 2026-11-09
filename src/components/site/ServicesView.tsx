@@ -13,57 +13,27 @@ import { ImageView } from "./ImageView";
 import { FeaturesModulesDiagram } from "./diagrams";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
+import { SOLUTIONS_MEGA_COLUMNS } from "./nav-structure";
 
-const GROUPS: { name: string; blurb: string; slugs: string[] }[] = [
-  {
-    name: "Websites & Platforms",
-    blurb: "The public face and the structural backbone — engineered together.",
-    slugs: [
-      "premium-business-websites",
-      "enterprise-websites",
-      "ecommerce-platforms",
-      "client-portals",
-    ],
-  },
-  {
-    name: "CRM, Dashboards & Data",
-    blurb: "Systems of record that make every decision answerable.",
-    slugs: [
-      "custom-crm-development",
-      "whatsapp-ai-sales-crm",
-      "business-dashboards",
-      "database-systems",
-      "api-integrations",
-    ],
-  },
-  {
-    name: "Automation & AI",
-    blurb: "Governed automation: logged, retried, auditable and honest.",
-    slugs: [
-      "whatsapp-automation",
-      "whatsapp-cloud-api-integration",
-      "email-automation",
-      "sms-automation",
-      "n8n-workflow-automation",
-      "ai-agent-systems",
-      "ai-business-automation",
-    ],
-  },
-  {
-    name: "Deployment & Care",
-    blurb: "Production-grade infrastructure and living-system maintenance.",
-    slugs: [
-      "cloud-deployment-google-cloud",
-      "cpanel-stackcp-deployment",
-      "maintenance-support",
-    ],
-  },
-  {
-    name: "Custom Software & Consulting",
-    blurb: "When the process is the advantage — or the map must come first.",
-    slugs: ["custom-software-development", "digital-transformation-consulting"],
-  },
-];
+/**
+ * The services catalogue mirrors the four Solutions pillars used by the header
+ * mega-menu (SOLUTIONS_MEGA_COLUMNS), so the grouping a buyer sees in
+ * navigation is exactly the grouping they get on /services. Coverage is
+ * asserted by tests/service-pillars.test.ts: 4 pillars, 21 services, no gaps.
+ */
+const PILLAR_BLURBS: Record<string, string> = {
+  "ai-solutions": "Human-approved assistants and automation that read and write your real systems.",
+  "software-products": "Software you own: storefronts, portals, dashboards and internal tools.",
+  "crm-automation": "One Client ID behind every message, with follow-up that never double-sends.",
+  "engineering-services": "Fast websites, integrations, cloud deployment and ongoing care.",
+};
+
+const PILLARS = SOLUTIONS_MEGA_COLUMNS.map((col) => ({
+  id: col.id,
+  name: col.heading,
+  blurb: PILLAR_BLURBS[col.id] ?? col.description,
+  slugs: col.items.map((item) => item.href.replace("#/services/", "")),
+}));
 
 function ServiceCard({ service }: { service: Service }) {
   return (
@@ -73,7 +43,7 @@ function ServiceCard({ service }: { service: Service }) {
     >
       <ImageView
         src="/images/services-workspace.jpg"
-        alt=""
+        alt={`${service.title} — workspace illustration`}
         aspect="16/9"
         imgClassName="transition-transform duration-500 group-hover:scale-105"
       />
@@ -118,8 +88,11 @@ function ServiceCard({ service }: { service: Service }) {
 export default function ServicesView() {
   // Client-side search across the catalogue (title, tagline, problem, technology).
   const [query, setQuery] = useState("");
+  const [pillar, setPillar] = useState<string>("all");
   const q = query.trim().toLowerCase();
   const searching = q.length > 0;
+
+  const visiblePillars = pillar === "all" ? PILLARS : PILLARS.filter((p) => p.id === pillar);
 
   const matches = useMemo(() => {
     if (!q) return SERVICES;
@@ -133,7 +106,7 @@ export default function ServicesView() {
   }, [q]);
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Services"
         title={`${SERVICES.length} engineering services. One delivery standard.`}
@@ -172,6 +145,54 @@ export default function ServicesView() {
               </Button>
             ) : null}
           </div>
+
+          {/* Four-pillar filter — same grouping as the Solutions mega-menu */}
+          <div
+            role="group"
+            aria-label="Filter services by solution pillar"
+            className="mt-6 flex flex-wrap gap-2"
+          >
+            <button
+              type="button"
+              onClick={() => setPillar("all")}
+              aria-pressed={pillar === "all"}
+              className={cn(
+                "inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2",
+                pillar === "all"
+                  ? "border-[#009FE3] bg-[#009FE3] text-white"
+                  : "border-[#E2E8F0] bg-white text-[#0B1F33] hover:border-[#009FE3]/50 hover:text-[#0079AC]",
+              )}
+            >
+              All services
+              <span className={cn("text-xs font-bold", pillar === "all" ? "text-white/80" : "text-[#7A8CA0]")}>
+                {SERVICES.length}
+              </span>
+            </button>
+            {PILLARS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPillar(p.id)}
+                aria-pressed={pillar === p.id}
+                className={cn(
+                  "inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2",
+                  pillar === p.id
+                    ? "border-[#009FE3] bg-[#009FE3] text-white"
+                    : "border-[#E2E8F0] bg-white text-[#0B1F33] hover:border-[#009FE3]/50 hover:text-[#0079AC]",
+                )}
+              >
+                {p.name}
+                <span className={cn("text-xs font-bold", pillar === p.id ? "text-white/80" : "text-[#7A8CA0]")}>
+                  {p.slugs.length}
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-[#7A8CA0]" role="status">
+            {pillar === "all"
+              ? `Showing all ${SERVICES.length} services across four pillars.`
+              : `Showing ${visiblePillars[0]?.slugs.length ?? 0} services in ${visiblePillars[0]?.name ?? ""}.`}
+          </p>
         </div>
       </section>
 
@@ -208,7 +229,7 @@ export default function ServicesView() {
         </section>
       ) : (
         <>
-      {GROUPS.map((group) => {
+      {visiblePillars.map((group) => {
         const services = group.slugs
           .map((slug) => SERVICES.find((s) => s.slug === slug))
           .filter((s): s is Service => Boolean(s));
@@ -269,6 +290,6 @@ export default function ServicesView() {
       </section>
 
       <CtaBand />
-    </main>
+    </div>
   );
 }

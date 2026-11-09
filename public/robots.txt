@@ -1,10 +1,11 @@
 User-agent: *
 Allow: /
-Disallow: /api/
 Disallow: /admin
+Disallow: /super-admin
 Disallow: /portal
-
-# Content signals: how this site's content may be used by AI agents.
-Content-Signal: search=yes, ai-train=no
+Disallow: /pipeline
+Disallow: /design-kit
+Disallow: /factory
+Disallow: /api/
 
 Sitemap: https://bdtech360.com/sitemap.xml

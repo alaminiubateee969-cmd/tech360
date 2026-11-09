@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import PublicSitePage from '../page'
+import type { BlogPost } from '@/components/site/BlogPostView'
 import { getStaticPublicRoutePaths, resolvePublicRoute } from '@/lib/public-route-catalog'
 
 export const dynamicParams = true
@@ -15,7 +16,15 @@ async function publishedBlogPost(slug: string) {
   const { db } = await import('@/lib/db')
   return db.blogPost.findFirst({
     where: { slug, status: 'PUBLISHED', publishedAt: { lte: new Date() } },
-    select: { title: true, excerpt: true, publishedAt: true },
+    select: {
+      slug: true,
+      title: true,
+      excerpt: true,
+      content: true,
+      category: true,
+      author: true,
+      publishedAt: true,
+    },
   })
 }
 
@@ -30,7 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<{ path: str
       if (!post) return { title: 'Article not found', robots: { index: false, follow: false } }
       return {
         title: post.title,
-        description: post.excerpt ?? 'A published engineering insight from Tech360.',
+        description: post.excerpt ?? 'A published engineering insight from TECH360.',
         alternates: { canonical: route.path },
         openGraph: { type: 'article', url: route.path, title: post.title, description: post.excerpt ?? undefined },
       }
@@ -53,13 +62,24 @@ export default async function PublicPathPage({ params }: { params: Promise<{ pat
   const route = resolvePublicRoute(path)
   if (!route) notFound()
 
+  let initialBlogPost: BlogPost | null = null
   if (route.kind === 'blog-post') {
     try {
-      if (!(await publishedBlogPost(path[1]))) notFound()
+      const found = await publishedBlogPost(path[1])
+      if (!found) notFound()
+      initialBlogPost = {
+        slug: found.slug,
+        title: found.title,
+        excerpt: found.excerpt ?? '',
+        content: found.content,
+        category: found.category ?? 'Engineering',
+        author: found.author ?? 'TECH360 Engineering',
+        publishedAt: (found.publishedAt ?? new Date()).toISOString(),
+      }
     } catch {
       notFound()
     }
   }
 
-  return <PublicSitePage initialHash={route.path} />
+  return <PublicSitePage initialHash={route.path} initialBlogPost={initialBlogPost} />
 }
