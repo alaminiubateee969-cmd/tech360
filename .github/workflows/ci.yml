@@ -133,6 +133,16 @@ jobs:
       - name: Verify industry payload assets exist under public/
         run: node scripts/verify-industry-assets.mjs
 
+      # A published migration is a contract with every database that already
+      # applied it: Prisma records migrations BY NAME, so renaming one makes
+      # already-migrated databases re-attempt it from scratch, fail, and then
+      # refuse every later migration with P3009 (the 93_post_review_grid
+      # incident — docs/HOSTINGER_SSH_RECOVERY.md §5). New migrations must also
+      # sort after the published ones, because Prisma applies them in
+      # directory-name order.
+      - name: Published migrations are immutable and correctly ordered
+        run: node scripts/check-migration-immutability.mjs
+
       - name: Verify the scoped Next ESLint glob API
         run: |
           node <<'NODE'
