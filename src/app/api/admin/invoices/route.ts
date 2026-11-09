@@ -3,12 +3,13 @@ import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { acceptedMethodsPhrase } from '@/lib/features'
 import { nextInvoiceNumber } from '@/lib/ids'
-import { createHash } from 'node:crypto'
 import { GovernanceDeniedError, ensureGovernedApproval, executeGoverned, findApprovedGovernedApproval } from '@/lib/governance/enforce'
 import {
   computeInvoiceSettlement,
   computeInvoiceTotals,
   fromMinorUnits,
+  invoiceGenerationResourceKey,
+  isFinancialInvoiceStatus,
   parseStoredLineItems,
   resolveInvoiceTotalMinor,
   toMinorUnits,
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
       payments: inv.payments,
     })
 
-    if (inv.status !== 'VOID' && inv.status !== 'CANCELLED' && inv.status !== 'DRAFT') {
+    if (isFinancialInvoiceStatus(inv.status)) {
       totalInvoicedMinor += totalMinor
       totalCollectedMinor += settlement.paidMinor
       totalOutstandingMinor += settlement.remainingMinor
@@ -276,10 +277,32 @@ export async function POST(req: NextRequest) {
   // project, currency, totals, line items, scope version, billing and due date.
   // The approval is consumed in the same transaction as the insert, so a
   // refused or replayed request creates no invoice and burns no invoice number.
-  const contentHash = createHash('sha256')
-    .update(JSON.stringify({ clientId: client.id, projectId, currency: calc.currency, totalMinor: calc.totalMinor, lineItems: calc.lineItems, scopeVersion, billingName, billingEmail, dueAt: dueAt ?? null }), 'utf8')
-    .digest('hex')
-  const resourceKey = `invoice:${client.id}:${contentHash}`
+  const resourceKey = invoiceGenerationResourceKey({
+    clientId: client.id,
+    projectId,
+    currency: calc.currency,
+    subtotalMinor: calc.subtotalMinor,
+    discountMinor: calc.discountMinor,
+    discountReason,
+    taxRateBps: calc.taxRateBps,
+    taxLabel: calc.taxLabel,
+    taxMinor: calc.taxMinor,
+    totalMinor: calc.totalMinor,
+    lineItems: calc.lineItems,
+    description,
+    scopeVersion,
+    billingName,
+    billingBusiness,
+    billingEmail,
+    billingAddress,
+    billingCountry,
+    paymentTerms,
+    paymentMethodsSnapshot: methodsSnapshot,
+    termsVersion,
+    customerNotes,
+    dueAt,
+    initialStatus,
+  })
   const approvalId = sanitizeText(raw.approvalId, 40) || (await findApprovedGovernedApproval('invoice.generate', resourceKey))
   const created = await executeGoverned(
     {

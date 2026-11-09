@@ -240,11 +240,11 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
       try {
         const selectedProvider = resolveAgentProvider()
         if (selectedProvider === 'ai-gateway') {
-          const result = await withTimeout(() => gatewayComplete(messages as ChatMessage[]), timeoutMs)
+          const result = await withTimeout((signal) => gatewayComplete(messages as ChatMessage[], process.env, signal), timeoutMs)
           output = result.output
           provider = result.provider
         } else if (selectedProvider === 'openrouter') {
-          const result = await withTimeout(() => completeWithFreeModels(messages as ChatMessage[]), timeoutMs)
+          const result = await withTimeout((signal) => completeWithFreeModels(messages as ChatMessage[], process.env, signal), timeoutMs)
           output = result.output
           provider = result.model
         } else {

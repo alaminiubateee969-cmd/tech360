@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SERVICES, INDUSTRIES, CASE_STUDIES, PROCESS, STATS, TRUST_POINTS, COMPANY } from "@/data/site";
 import { imageFor } from "@/data/images";
+import { industryImage } from "@/data/industry-images";
 import { Icon } from "./icons";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
@@ -605,7 +606,7 @@ function IndustriesPreview() {
               >
                 <div className="relative">
                   <ImageView
-                    src={imageFor(industry.imageKey)}
+                    src={industryImage(industry.slug) ?? imageFor(industry.imageKey)}
                     alt={`${industry.title} — representative photography`}
                     aspect="16/10"
                     imgClassName="transition-transform duration-500 group-hover:scale-105"

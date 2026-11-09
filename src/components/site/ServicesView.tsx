@@ -9,6 +9,7 @@ import { SERVICES, type Service } from "@/data/site";
 import { PageHero } from "./PageHero";
 import { CtaBand } from "./CtaBand";
 import { Icon } from "./icons";
+import { ImageView } from "./ImageView";
 import { FeaturesModulesDiagram } from "./diagrams";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
@@ -68,38 +69,48 @@ function ServiceCard({ service }: { service: Service }) {
   return (
     <a
       href={`#/services/${service.slug}`}
-      className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-6 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-[0_12px_32px_rgba(6,59,143,0.1)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+      className="group flex h-full flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-[0_12px_32px_rgba(6,59,143,0.1)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
     >
-      <div className="flex items-start justify-between gap-4">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#009FE3]/10 text-[#009FE3] transition-colors group-hover:bg-[#009FE3] group-hover:text-white">
-          <Icon name={service.icon} className="size-5" />
-        </span>
-        <span className="rounded-md border border-[#E2E8F0] bg-[#F4FAFF] px-2 py-1 text-[11px] font-medium text-[#526173]">
-          {service.tech.slice(0, 2).join(" · ")}
-        </span>
-      </div>
-      <h3 className="mt-5 text-lg font-semibold text-[#0B1F33]">{service.title}</h3>
-      <p className="mt-1 text-sm font-medium text-[#009FE3]">{service.tagline}</p>
-      <p className="mt-3 line-clamp-3 flex-1 text-sm leading-relaxed text-[#526173]">
-        {service.problem}
-      </p>
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {service.features.slice(0, 3).map((f) => (
-          <span
-            key={f}
-            className="line-clamp-1 rounded-md bg-[#F4FAFF] px-2 py-1 text-[11px] font-medium text-[#526173]"
-          >
-            {f}
+      <ImageView
+        src="/images/services-workspace.jpg"
+        alt=""
+        aspect="16/9"
+        imgClassName="transition-transform duration-500 group-hover:scale-105"
+      />
+      <div className="flex flex-1 flex-col p-6">
+        <div className="flex items-start justify-between gap-4">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#009FE3]/10 text-[#009FE3] transition-colors group-hover:bg-[#009FE3] group-hover:text-white">
+            <Icon name={service.icon} className="size-5" />
           </span>
-        ))}
-        <span className="rounded-md bg-[#F4FAFF] px-2 py-1 text-[11px] font-semibold text-[#009FE3]">
-          +{service.features.length - 3} more
+          <span className="rounded-md border border-[#E2E8F0] bg-[#F4FAFF] px-2 py-1 text-[11px] font-medium text-[#526173]">
+            {service.tech.slice(0, 2).join(" · ")}
+          </span>
+        </div>
+        <h3 className="mt-5 text-lg font-semibold text-[#0B1F33]">{service.title}</h3>
+        <p className="mt-1 text-sm font-medium text-[#009FE3]">{service.tagline}</p>
+        <p className="mt-3 line-clamp-3 flex-1 text-sm leading-relaxed text-[#526173]">
+          {service.problem}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {service.features.slice(0, 3).map((f) => (
+            <span
+              key={f}
+              className="line-clamp-1 rounded-md bg-[#F4FAFF] px-2 py-1 text-[11px] font-medium text-[#526173]"
+            >
+              {f}
+            </span>
+          ))}
+          {service.features.length > 3 ? (
+            <span className="rounded-md bg-[#F4FAFF] px-2 py-1 text-[11px] font-semibold text-[#009FE3]">
+              +{service.features.length - 3} more
+            </span>
+          ) : null}
+        </div>
+        <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#009FE3]">
+          Service detail
+          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
         </span>
       </div>
-      <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#009FE3]">
-        Service detail
-        <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-      </span>
     </a>
   );
 }

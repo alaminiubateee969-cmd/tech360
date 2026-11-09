@@ -14,7 +14,15 @@ export async function GET(req: NextRequest) {
     // Return 404 for anonymous to hide existence, 403 body is also acceptable per spec
     return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain' } })
   }
-  const origin = process.env.APP_PUBLIC_URL?.replace(/\/$/, '') || req.nextUrl.origin
+  // Use APP_PUBLIC_URL when configured, otherwise relative links (avoids reflecting untrusted Host headers).
+  let origin = ''
+  if (process.env.APP_PUBLIC_URL) {
+    try {
+      origin = new URL(process.env.APP_PUBLIC_URL).origin
+    } catch {
+      origin = ''
+    }
+  }
   return new Response(officialInfoHtml(origin), {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',

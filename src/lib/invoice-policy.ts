@@ -18,6 +18,8 @@
 //      below total project value.
 // ============================================================
 
+import { createHash } from 'node:crypto'
+
 export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'BDT', 'CAD', 'AUD', 'SGD', 'AED'] as const
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number]
 
@@ -54,6 +56,42 @@ export interface InvoiceLineItem {
   quantity: number
   unitMinor: number
   amountMinor: number
+}
+
+/**
+ * Every customer-visible field that influences an invoice document or its
+ * initial lifecycle state is bound into the independent approval key.
+ */
+export interface InvoiceApprovalContent {
+  clientId: string
+  projectId: string | null
+  currency: string
+  subtotalMinor: number
+  discountMinor: number
+  discountReason: string | null
+  taxRateBps: number
+  taxLabel: string | null
+  taxMinor: number
+  totalMinor: number
+  lineItems: InvoiceLineItem[]
+  description: string | null
+  scopeVersion: number | null
+  billingName: string
+  billingBusiness: string | null
+  billingEmail: string | null
+  billingAddress: string | null
+  billingCountry: string | null
+  paymentTerms: string
+  paymentMethodsSnapshot: string
+  termsVersion: string
+  customerNotes: string | null
+  dueAt: Date | null
+  initialStatus: string
+}
+
+export function invoiceGenerationResourceKey(content: InvoiceApprovalContent): string {
+  const digest = createHash('sha256').update(JSON.stringify(content), 'utf8').digest('hex')
+  return `invoice:${content.clientId}:${digest}`
 }
 
 export interface InvoiceCalculationInput {
@@ -349,6 +387,15 @@ export function canEditInvoiceFields(status: string): boolean {
  */
 export function isCustomerVisibleInvoiceStatus(status: string): boolean {
   return status !== 'DRAFT' && status !== 'AWAITING_APPROVAL' && status !== 'APPROVED'
+}
+
+/**
+ * Only issued active invoices contribute to finance dashboard totals;
+ * pre-issue drafts/approvals, disputed, voided, cancelled and refunded
+ * states do not.
+ */
+export function isFinancialInvoiceStatus(status: string): boolean {
+  return ['ISSUED', 'SENT', 'VIEWED', 'PARTIAL', 'PAID', 'OVERDUE'].includes(status)
 }
 
 /**

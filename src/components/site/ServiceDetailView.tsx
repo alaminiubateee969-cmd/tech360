@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SERVICES, getService } from "@/data/site";
 import { PageHero } from "./PageHero";
+import ServiceJourney from "./ServiceJourney";
 import { CtaBand } from "./CtaBand";
 import { Icon } from "./icons";
 import { AdminDashboardConcept, CrmConsoleConcept } from "./concepts";
@@ -75,6 +76,8 @@ export default function ServiceDetailView({ slug }: { slug: string }) {
           ))}
         </div>
       </PageHero>
+
+      <ServiceJourney key={service.slug} slug={service.slug} />
 
       {/* Problem & solution */}
       <section aria-labelledby="problem-solution-heading" className="bg-white">

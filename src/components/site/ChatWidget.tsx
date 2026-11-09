@@ -402,6 +402,8 @@ export default function ChatWidget() {
       if (data.ai) {
         setAiStatus(data.ai.available ? 'ready' : 'unavailable')
         if (!data.ai.available) setAiError(data.ai.detail)
+      } else {
+        setAiStatus('unknown')
       }
       if (data.identityReviewRequired && data.notice) {
         setAiError(data.notice)
@@ -420,6 +422,7 @@ export default function ChatWidget() {
       setSubject('')
       requestAnimationFrame(() => composerRef.current?.focus())
     } catch (error) {
+      setAiStatus('unknown')
       setSessionError(error instanceof Error ? error.message : 'Could not start the chat. Please try again.')
       setConnIssue(true)
     } finally {
