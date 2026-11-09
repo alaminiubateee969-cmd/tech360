@@ -67,7 +67,7 @@ export async function executeOpsAction(action: string, payload: OpsPayload): Pro
           communicationState.optedOut ||
           communicationState.humanTakeover ||
           communicationState.closed ||
-          communicationState.nextPendingActor !== 'CLIENT' ||
+          communicationState.nextPendingActor === 'TECH360' ||
           repliedSinceLastOutbound ||
           stageChanged
         ) {
@@ -79,7 +79,7 @@ export async function executeOpsAction(action: string, payload: OpsPayload): Pro
                 : communicationState.closed ? 'CLIENT_CLOSED'
                   : repliedSinceLastOutbound ? 'CUSTOMER_REPLIED'
                     : stageChanged ? 'STAGE_CHANGED'
-                      : communicationState.nextPendingActor !== 'CLIENT' ? 'WAITING_ON_TECH360'
+                      : communicationState.nextPendingActor === 'TECH360' ? 'WAITING_ON_TECH360'
                         : 'FOLLOWUPS_DISABLED',
           })
         }
