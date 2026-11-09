@@ -212,29 +212,22 @@ async function handleSmsReply(input: { client: { id: string; clientId: string; e
   const isFormalStage = ['SCOPE_REVIEW', 'FINAL_SCOPE', 'CLIENT_APPROVAL', 'PAYMENT_PENDING', 'PROJECT_ACTIVE', 'DELIVERY', 'HANDOVER'].includes(input.client.pipelineStage)
   const emailCanonical = Boolean(input.client.email) && isFormalStage
 
-  if (emailCanonical) {
-    const { sendCommunication } = await import('@/lib/comms')
-    await sendCommunication({
-      clientId: input.client.id,
-      channel: 'SMS',
-      to: input.phone,
-      body: `Tech360 ${input.client.clientId}: Details sent to ${input.client.email}. ${result.reply.slice(0, 250)}`,
-      agentCode: 'CHAT-AI',
-    })
-  } else {
-    const { sendCommunication } = await import('@/lib/comms')
-    const res = await sendCommunication({
-      clientId: input.client.id,
-      channel: 'SMS',
-      to: input.phone,
-      body: result.reply.slice(0, 1600),
-      agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
-    })
-    if (!res.result.ok) {
-      await logError({ source: 'WEBHOOK', code: `SMS_SEND_${res.result.status}`, message: res.result.error ?? 'SMS send failed', clientId: input.client.clientId }).catch(() => null)
-    }
+  const { sendCommunication } = await import('@/lib/comms')
+  const outboundBody = emailCanonical
+    ? `Tech360 ${input.client.clientId}: Details sent to ${input.client.email}. ${result.reply.slice(0, 250)}`
+    : result.reply.slice(0, 1600)
+  const sendRes = await sendCommunication({
+    clientId: input.client.id,
+    channel: 'SMS',
+    to: input.phone,
+    body: outboundBody,
+    agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
+  })
+  if (!sendRes.result.ok) {
+    await logError({ source: 'WEBHOOK', code: `SMS_SEND_${sendRes.result.status}`, message: sendRes.result.error ?? 'SMS send failed', clientId: input.client.clientId }).catch(() => null)
+    return
   }
 
   const { recordOutbound } = await import('@/lib/conversation-state')
-  await recordOutbound(input.client.id, input.client.clientId, result.reply, 'SMS').catch(() => null)
+  await recordOutbound(input.client.id, input.client.clientId, outboundBody, 'SMS').catch(() => null)
 }
