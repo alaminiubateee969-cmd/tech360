@@ -234,7 +234,11 @@ What was verified instead: a **production build** (`next build --webpack` + `out
 
 Two deployment defects were found and fixed while doing this:
 
-1. **`cp -r public .next/standalone/` double-nested on rebuild.** The first build produced a correct bundle; every subsequent build produced `.next/standalone/public/public/…`, leaving the top-level `public/` stale. Newly added static files (`robots.txt`, `.well-known/mcp/server-card.json`, brand assets) therefore 404ed in production. Replaced by `scripts/copy-standalone-assets.mjs`, which removes the destination first and then asserts the tree is flat and contains `robots.txt`.
+1. **`cp -r public .next/standalone/` accumulated stale files on rebuild.** `cp -r` *merges* into an existing destination and never removes anything, so every file deleted from the source tree survived in `.next/standalone/` and kept being served. (An earlier draft of this report described the symptom as a nested `public/public`; that was **wrong** — GNU `cp` merges and does not nest, verified by running the original build commands three times. The correction matters because it changes the guard: the invariant that actually fails is source/destination parity, not flatness.)
+
+   The failure is concrete on this branch, which moves `public/llms.txt` to `content/llms.txt`: a rebuild on a tree still holding a previous `public/` copy left `.next/standalone/public/llms.txt` in place, where it shadows the new `src/app/llms.txt/route.ts` handler and serves superseded content to crawlers. Reproduced directly — after deleting `public/llms.txt` from the source, `cp -r` left the standalone copy intact while remove-then-copy did not.
+
+   Replaced by `scripts/copy-standalone-assets.mjs`, which removes each destination before copying and then asserts the copied tree matches its source exactly (reporting stale *and* missing files). `next build` on its own ships neither `public/` nor `.next/static`, so the step is mandatory, not cosmetic. The guard is covered by tests that fail if the `rm`-before-copy or the comparison is removed.
 2. **`/rss.xml` and `/sitemap.xml` threw with `PrismaClientInitializationError` when no driver adapter was configured.** The lazy `db` proxy raises synchronously on property access, before `.catch()` can attach, so the guard did not work. A crawler surface now degrades to an empty-but-valid document instead of a 500.
 
 ---
@@ -261,6 +265,48 @@ Two deployment defects were found and fixed while doing this:
 | MCP `resources` / `prompts` | **OUT OF SCOPE** | Only `tools` is advertised, because only tools are implemented. `tools/list` is `dynamic`, and the server card's `_meta` lists the five tool names so a client sees no contradiction between card and runtime. |
 | Production database workflows | **UNTOUCHED** | No seeding, no reset, no destructive command, no migration rename. Verified by the immutability check. |
 
+
+---
+
+## 10a. Review pass — regressions found and fixed before merge
+
+A line-by-line audit of `85c3843` and `73700bd` against `origin/main` (`fc66262`) found `main` to be a strict ancestor, so the merge is a clean fast-forward with **no conflicts** and no duplicate functionality (the old WebMCP tool names are fully gone from `src/`). `prisma/`, `api-guard`, `auth`, `access-policy` and `ai-workforce-policy` are untouched, and every RBAC `minRole` is unchanged.
+
+Four real defects surfaced during review. All are fixed and each fix is pinned by a test that fails if the bug returns.
+
+| # | Defect | Evidence | Fix |
+|---|---|---|---|
+| 1 | **Internal deep link 404.** The fragment-link codemod rewrote `href="#/admin/prompt-library"` to `/admin/prompt-library` in `MediaStudioView.tsx`. That path has no route and no redirect. | `curl` → **404** on the production build. A scan of 628 files / 40 internal hrefs found this as the only genuine break. | Restored the hash form; internal surfaces keep `#/`, since only `/admin`, `/admin/command-center` and `/admin/factory-control` are real path routes. |
+| 2 | **Operator console advertised as indexable.** `/admin/command-center` is a `'use client'` component that cannot export `metadata`, so it inherited `robots: index, follow` and the **homepage canonical** from the root layout. | `curl` → `<meta name="robots" content="index, follow">` on an authenticated surface. | Added `src/app/admin/layout.tsx` with `index: false, follow: false, noimageindex: true`. Public pages are unaffected. |
+| 3 | **A false claim in `robots.txt`.** The new comment stated these paths "additionally send `X-Robots-Tag: noindex, nofollow, noarchive`", but `next.config.ts` only sent it for `/factory/*`. | `curl -I` → **no** `X-Robots-Tag` on `/admin/command-center`, `/pipeline`, `/design-kit`, `/portal`. | Added header rules for `/admin/:path*`, `/pipeline/:path*`, `/design-kit/:path*`, `/portal/:path*`. All five now send it. |
+| 4 | **The static-copy guard tested the wrong invariant** (see §8.1) and the same `try/catch` was duplicated per call site. | `cp -r` never nests; it retains stale files. | Parity-based guard in the copy script; one tested `orEmpty()` helper in `src/lib/safe-db-read.ts` used by both crawler surfaces. |
+
+### 10a.1 RSS / sitemap database-error fallback — fault-injected, not just inspected
+
+The fallback was previously only read, not exercised. It was verified by running the production bundle against a deliberately broken database, and the hazard was confirmed independently:
+
+| Scenario | `/rss.xml` | `/sitemap.xml` | `/llms.txt` | `/llms-full.txt` | `/.well-known/ai-catalog.json` |
+|---|---|---|---|---|---|
+| Healthy DB | 200, 6 items | 200, 69 URLs | 200 | 200 | 200 |
+| **Corrupt DB** (4 KB random bytes) | 200, 0 items, valid XML | 200, 64 URLs, valid XML | 200 | — | — |
+| **No DB configured** | 200, 0 items, valid XML | 200, 64 URLs, valid XML | 200 | 200, 23 127 b | 200, valid JSON |
+
+`db.blogPost.findMany(...)` with no adapter throws `PrismaClientInitializationError` **synchronously**, so `.catch()` can never attach — confirmed by capturing the throw before any promise exists. Removing the guard makes `listPublishedBlogSlugs()` throw, which would turn all three crawler surfaces into 500s; with it, they degrade to an empty-but-valid document. Output is byte-identical before and after the `orEmpty()` refactor.
+
+### 10a.2 Gates re-run on the final tree
+
+| Gate | Result |
+|---|---|
+| `npm test` | **1365 pass / 0 fail** (303 suites, 0 skipped) — up from 1351; 14 new assertions |
+| `npm run typecheck` | clean |
+| `npx eslint .` | clean (exit 0) |
+| `next build --webpack` | ✓ compiled, **77/77** static pages |
+| `check-migration-immutability.mjs` | 18 published migrations unchanged, 18 on disk, none out of order |
+| `check-conflict-markers.mjs` | pass (1478 tracked files) |
+| `verify-industry-assets.mjs` | pass (20 slugs, 103 public files) |
+
+**Every result above is local. None of it is evidence about production.**
+
 ---
 
 ## 11. Rollback
@@ -268,7 +314,7 @@ Two deployment defects were found and fixed while doing this:
 The change is additive and reversible; nothing was deleted from production.
 
 1. **Revert the code:** `git revert 85c3843` (agent readiness) — or `git revert 85c3843 95ab0c8` to also drop the public-site reconstruction.
-2. **Rebuild and restart** with the existing procedure (`npm run build`, then `npm start`). Confirm `node scripts/copy-standalone-assets.mjs` reports `static tree is flat and complete`.
+2. **Rebuild and restart** with the existing procedure (`npm run build`, then `npm start`). Confirm `node scripts/copy-standalone-assets.mjs` reports `static tree matches source`.
 3. **No database action is required.** No migration, seed or data change was introduced.
 4. **DNS/redirects are unchanged.** `next.config.ts` gained one `Vary: Accept` header rule and lost nothing.
 5. **Assume-static surfaces are self-healing:** `/llms.txt`, `/llms-full.txt`, `/.well-known/ai-catalog.json` and `/api/mcp/server-card` are generated routes and disappear cleanly when their files are reverted.

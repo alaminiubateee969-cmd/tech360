@@ -63,8 +63,24 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-store, max-age=0" },
         ],
       },
+      // Every operator/admin surface, not just the factory control center.
+      // `public/robots.txt` states that these paths send this header, so the
+      // claim has to be true for all of them. Note this is a crawl directive,
+      // never an access control — the API guards remain authoritative.
       {
-        source: "/admin/factory-control",
+        source: "/admin/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        source: "/pipeline/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        source: "/design-kit/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        source: "/portal/:path*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
       },
       {

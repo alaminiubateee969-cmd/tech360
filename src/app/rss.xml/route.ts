@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { publishDueBlogPosts } from '@/lib/blog'
 import { featureEnabled } from '@/lib/features'
+import { orEmpty } from '@/lib/safe-db-read'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,19 +31,18 @@ export async function GET(req: NextRequest) {
   if (blogOn) {
     await publishDueBlogPosts().catch(() => 0)
     // `db` is a lazy proxy: a missing driver adapter throws synchronously on
-    // property access, before `.catch()` can be attached. A try/catch keeps the
-    // feed a valid, empty channel instead of a 500 — a feed that advertises
+    // property access, before `.catch()` can be attached. `orEmpty` passes the
+    // read as a thunk so the throwing access happens inside the guard, keeping
+    // the feed a valid, empty channel instead of a 500 — a feed that advertises
     // nothing is honest; a feed that errors is a broken discovery surface.
-    try {
-      posts = await db.blogPost.findMany({
+    posts = await orEmpty(() =>
+      db.blogPost.findMany({
         where: { status: 'PUBLISHED', publishedAt: { lte: new Date() } },
         orderBy: { publishedAt: 'desc' },
         take: 8,
         select: { slug: true, title: true, excerpt: true, publishedAt: true },
-      })
-    } catch {
-      posts = []
-    }
+      }),
+    )
   }
 
   const origin = (process.env.APP_PUBLIC_URL ?? new URL(req.url).origin).replace(/\/+$/, '')

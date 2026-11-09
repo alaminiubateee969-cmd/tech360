@@ -272,7 +272,7 @@ export function MediaStudioView() {
               </div>
             )
           })()}
-          <p className="rounded-lg border border-slate-800 bg-slate-900/40 p-2 text-xs text-slate-500"><Check className="mr-1 inline size-3 text-emerald-400" /> Deep link <a href="/admin/prompt-library" className="font-semibold text-[#009FE3] hover:underline">#/admin/prompt-library</a> still works — this tab is the merged Mureka-style Library inside the studio.</p>
+          <p className="rounded-lg border border-slate-800 bg-slate-900/40 p-2 text-xs text-slate-500"><Check className="mr-1 inline size-3 text-emerald-400" /> Deep link <a href="#/admin/prompt-library" className="font-semibold text-[#009FE3] hover:underline">#/admin/prompt-library</a> still works — this tab is the merged Mureka-style Library inside the studio.</p>
         </TabsContent>
 
         <TabsContent value="workspace" className="mt-3 space-y-3">

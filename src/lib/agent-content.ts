@@ -17,7 +17,7 @@ import { PUBLIC_CONTACT, SITE_URL } from '@/lib/site-contact'
 /**
  * Agent-facing Markdown representations, served by `src/proxy.ts` when a client
  * sends `Accept: text/markdown` (content negotiation for LLM crawlers), and
- * cross-linked from `public/llms.txt`.
+ * cross-linked from `content/llms.txt`.
  *
  * Pure data only — no DB, no Node-only APIs, safe for the proxy runtime.
  */
@@ -250,7 +250,7 @@ export function sectionMarkdown(pathname: string): string {
 /**
  * The extended index behind `/llms-full.txt`.
  *
- * Same facts as `public/llms.txt` plus every service, industry and policy with
+ * Same facts as `content/llms.txt` plus every service, industry and policy with
  * its one-line description, so an agent that wants the whole public surface can
  * read one document. Generated from the same registries as the HTML, which is
  * why it cannot drift from the site.

@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { featureEnabled } from '@/lib/features'
+import { orEmpty } from './safe-db-read'
 
 /**
  * Published-blog lookup for crawler-facing surfaces (sitemap, llms.txt).
@@ -20,17 +21,14 @@ export async function listPublishedBlogSlugs(limit = 500): Promise<PublishedBlog
   // error is raised synchronously on property access, before `.catch()` can be
   // attached. A try/catch around the whole call keeps the crawler-facing
   // surfaces (sitemap.xml, rss.xml, llms.txt) renderable regardless.
-  let posts: Array<{ slug: string; publishedAt: Date | null; updatedAt: Date | null }> = []
-  try {
-    posts = await db.blogPost.findMany({
+  const posts = await orEmpty(() =>
+    db.blogPost.findMany({
       where: { status: 'PUBLISHED', publishedAt: { lte: new Date() } },
       orderBy: { publishedAt: 'desc' },
       take: limit,
       select: { slug: true, publishedAt: true, updatedAt: true },
-    })
-  } catch {
-    posts = []
-  }
+    }),
+  )
 
   return posts.map((post) => ({
     slug: post.slug,

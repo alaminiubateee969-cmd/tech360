@@ -6,7 +6,7 @@ export const dynamic = 'force-static'
 // GET /llms-full.txt
 //
 // Extended, machine-readable index of the whole public surface. Generated from
-// the same registries as the HTML pages and as `public/llms.txt`, so the three
+// the same registries as the HTML pages and as `content/llms.txt`, so the three
 // representations cannot contradict each other.
 //
 // Public only: no customer records, credentials, private endpoints or

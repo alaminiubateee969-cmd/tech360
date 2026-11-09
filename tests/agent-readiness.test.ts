@@ -28,6 +28,8 @@ import { PUBLIC_AGENT_TOOLS, PUBLIC_AGENT_TOOL_NAMES, getAgentTool } from '../sr
 import { agentLinkHeader, renderMarkdownForPath, llmsFullMarkdown } from '../src/lib/agent-content'
 import { resolvePublicRoute, getStaticPublicRoutePaths } from '../src/lib/public-route-catalog'
 import { pageGraph, siteGraph } from '../src/lib/structured-data'
+import { diffTrees } from '../scripts/copy-standalone-assets.mjs'
+import { orEmpty } from '../src/lib/safe-db-read'
 
 const ROOT = join(__dirname, '..')
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8')
@@ -292,6 +294,34 @@ describe('5 — crawlable company, contact and legal navigation', () => {
   it('keeps the skip link as the only in-page fragment in the shell', () => {
     assert.match(read('src/app/page.tsx'), /href="#main-content"/)
   })
+
+  /**
+   * Regression guard for the fragment-link codemod.
+   *
+   * The codemod rewrote `#/<route>` anchors to `/<route>` across the whole of
+   * `src/`, which is correct for public pages but wrong for internal surfaces:
+   * `/admin/prompt-library` has no route and no redirect, so the admin deep link
+   * 404ed. Internal surfaces keep the hash form, which the SPA understands.
+   */
+  it('never emits a path-form link to an internal surface without a route', () => {
+    const guarded = ['MediaStudioView.tsx', 'SettingsView.tsx', 'BlogStudioView.tsx', 'AdminApp.tsx']
+    for (const file of guarded) {
+      const source = read(`src/components/admin/${file}`)
+      for (const match of source.matchAll(/href=(?:"|\{`)(\/[^"'`$\s]+)/g)) {
+        const href = match[1]
+        if (!href.startsWith('/admin/') && !href.startsWith('/pipeline') && !href.startsWith('/design-kit')) continue
+        // Only the two real documents (and their redirects) may be path-linked.
+        assert.ok(
+          ['/admin', '/admin/factory-control', '/admin/command-center'].includes(href),
+          `${file} links ${href}, which has no route or redirect — use the hash form instead`,
+        )
+      }
+    }
+    assert.ok(
+      read('src/components/admin/MediaStudioView.tsx').includes('href="#/admin/prompt-library"'),
+      'the described admin deep link must keep its hash form',
+    )
+  })
 })
 
 // ------------------------------------------------------------------
@@ -543,5 +573,153 @@ describe('10 — MCP server card, AI catalog and protocol', () => {
 
   it('keeps the MCP transport path out of the public Markdown representation', () => {
     assert.equal(renderMarkdownForPath('/api/mcp'), null)
+  })
+})
+
+// ------------------------------------------------------------------
+// 11 — standalone bundle copy is exact, not merge-append
+// ------------------------------------------------------------------
+describe('standalone static bundle', () => {
+  const script = read('scripts/copy-standalone-assets.mjs')
+
+  it('removes the destination before copying, so deleted files cannot linger', () => {
+    assert.match(script, /await rm\(destination, \{ recursive: true, force: true \}\)/)
+    // A merge-style copy would let a file the repo deleted keep being served.
+    assert.ok(
+      !/cp -r public \.next\/standalone/.test(read('package.json')),
+      'build must not fall back to merge-style `cp -r`',
+    )
+  })
+
+  it('flags a stale file left behind by a previous build', () => {
+    // Reproduces the real defect: `public/llms.txt` was deleted from source,
+    // but a merge-style copy leaves the old copy in the bundle.
+    const { extra, missing } = diffTrees(
+      ['robots.txt', '.well-known/mcp/server-card.json'],
+      ['robots.txt', '.well-known/mcp/server-card.json', 'llms.txt'],
+    )
+    assert.deepEqual(extra, ['llms.txt'])
+    assert.deepEqual(missing, [])
+  })
+
+  it('flags a copy that did not complete', () => {
+    const { extra, missing } = diffTrees(['robots.txt', 'tech360-logo.png'], ['robots.txt'])
+    assert.deepEqual(extra, [])
+    assert.deepEqual(missing, ['tech360-logo.png'])
+  })
+
+  it('reports a faithful copy as clean', () => {
+    const { extra, missing } = diffTrees(['robots.txt'], ['robots.txt'])
+    assert.deepEqual(extra, [])
+    assert.deepEqual(missing, [])
+  })
+
+  it('does not confuse llms.txt in content/ with the retired public file', () => {
+    // The route handler is the only source of /llms.txt now.
+    assert.ok(existsSync(join(ROOT, 'content/llms.txt')))
+    assert.ok(!existsSync(join(ROOT, 'public/llms.txt')))
+  })
+})
+
+// ------------------------------------------------------------------
+// 12 — crawler surfaces survive a broken database
+// ------------------------------------------------------------------
+describe('database-error fallback', () => {
+  it('returns the rows when the read succeeds', async () => {
+    const rows = await orEmpty(async () => [{ id: 1 }, { id: 2 }])
+    assert.deepEqual(rows, [{ id: 1 }, { id: 2 }])
+  })
+
+  it('returns an empty list when the read throws SYNCHRONOUSLY', async () => {
+    // This is the real Prisma failure: the lazy `db` proxy throws during
+    // property access, before any promise exists. A `.catch()` cannot attach
+    // to it, which is why the read is passed as a thunk.
+    const rows = await orEmpty<{ id: number }>(() => {
+      throw new Error('Missing configured driver adapter.')
+    })
+    assert.deepEqual(rows, [])
+  })
+
+  it('returns an empty list when the promise rejects', async () => {
+    const rows = await orEmpty(async () => {
+      throw new Error('connection refused')
+    })
+    assert.deepEqual(rows, [])
+  })
+
+  it('never lets the feed or sitemap read run unguarded', () => {
+    // Both crawler surfaces must go through the guard, and must pass a thunk —
+    // calling `orEmpty(db.x.findMany(...))` would throw before the guard ran.
+    const rss = read('src/app/rss.xml/route.ts')
+    const blog = read('src/lib/public-blog.ts')
+    assert.match(rss, /orEmpty\(\(\) =>/)
+    assert.match(blog, /orEmpty\(\(\) =>/)
+    for (const [name, source] of [
+      ['rss.xml', rss],
+      ['public-blog', blog],
+    ] as const) {
+      assert.ok(
+        !/orEmpty\(\s*db\./.test(source),
+        `${name} must pass a thunk to orEmpty, not an already-evaluated read`,
+      )
+    }
+  })
+
+  it('does not silently swallow errors on the mutation paths', () => {
+    // The fallback is for read-only crawler surfaces. If it ever appears in an
+    // admin or write path, a failed save would look like success.
+    const offenders = ['src/lib/features.ts', 'src/lib/agent-tools.ts']
+    for (const file of offenders) {
+      assert.ok(!read(file).includes('orEmpty'), `${file} must not use the read fallback`)
+    }
+  })
+})
+
+// ------------------------------------------------------------------
+// 13 — operator surfaces are not advertised as indexable
+// ------------------------------------------------------------------
+describe('operator surface indexability', () => {
+  it('sends X-Robots-Tag for every path robots.txt claims', () => {
+    const config = read('next.config.ts')
+    // robots.txt states these surfaces "additionally send X-Robots-Tag".
+    // Before this was pinned, only /factory/* actually did — the claim was false
+    // for /admin/command-center, /pipeline, /design-kit and /portal.
+    for (const source of ["/admin/:path*", "/pipeline/:path*", "/design-kit/:path*", "/portal/:path*"]) {
+      assert.ok(
+        config.includes(`source: "${source}"`),
+        `next.config.ts must send X-Robots-Tag for ${source}`,
+      )
+    }
+    assert.match(config, /X-Robots-Tag", value: "noindex, nofollow, noarchive"/)
+  })
+
+  it('marks the admin console layout noindex so it cannot inherit index, follow', () => {
+    // /admin/command-center is a client component, so it cannot export metadata
+    // itself. Without a layout it inherited the root layout's `index, follow`
+    // and the homepage canonical.
+    const layout = read('src/app/admin/layout.tsx')
+    assert.match(layout, /index: false/)
+    assert.match(layout, /follow: false/)
+    assert.match(layout, /noimageindex: true/)
+  })
+
+  it('never lets an operator surface inherit the homepage canonical', () => {
+    // The root layout sets a canonical of `${SITE_URL}/` for the homepage. Any
+    // route that does not override it would advertise itself as the homepage.
+    const layout = read('src/app/layout.tsx')
+    assert.match(layout, /canonical: `\$\{SITE_URL}\/`/)
+    const adminLayout = read('src/app/admin/layout.tsx')
+    assert.ok(
+      !/alternates/.test(adminLayout),
+      'admin layout must not add a canonical that competes with the root one',
+    )
+  })
+
+  it('states that robots.txt is a preference, not access control', () => {
+    const robots = read('public/robots.txt')
+    assert.match(robots, /NOT an authentication or access-control mechanism/i)
+    assert.match(robots, /Content-Signal: search=yes, ai-train=no/)
+    // The Content-Signal must be described as a preference, never as a restriction.
+    assert.match(robots, /not a technical restriction/i)
   })
 })
