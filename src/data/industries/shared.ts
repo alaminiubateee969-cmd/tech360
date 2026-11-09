@@ -9,6 +9,7 @@ import type {
   VisualAsset,
   ItOtBoundary,
 } from "./types";
+import { INDUSTRY_IMAGES } from "../industry-images";
 
 /**
  * Shared builders for the 19 non-flagship industry payloads.
@@ -22,12 +23,45 @@ export function money(amount: number, display: string): Money {
   return { amount, currency: "USD", display };
 }
 
+/**
+ * Self-hosted imagery actually committed under `public/images/`.
+ *
+ * The per-industry `…/industries/<slug>-hero.jpg` files these builders used to
+ * point at were never committed, so every payload advertised 81 image paths
+ * that 404'd. Until dedicated per-industry art exists, every slot resolves to
+ * a real, already-shipped photograph: the industry hero reuses the industry's
+ * own photograph from `src/data/industry-images.ts` (a single source of truth),
+ * and the UI screens reuse the closest committed screen/mockup.
+ * `scripts/verify-industry-assets.mjs` fails the build if a referenced path
+ * stops existing on disk, so this can never silently drift back to broken paths.
+ */
+const HERO_FALLBACK_IMAGE = "/images/industry-business.jpg";
+
+/** Committed UI-screen placeholders, used when no dedicated screen art ships. */
+const COMMITTED_UI_IMAGES = [
+  "/images/website-mockup.png",
+  "/images/admin-dashboard.png",
+  "/images/crm-dashboard.png",
+  "/images/automation-workflow.png",
+] as const;
+
+/** The hero photograph for an industry slug (always a committed file). */
+export function committedIndustryHero(slug: string): string {
+  return INDUSTRY_IMAGES[slug] ?? HERO_FALLBACK_IMAGE;
+}
+
+/** A committed UI-screen image for the 1-based screen index of an industry. */
+export function committedIndustryUi(slug: string, idx: number): string {
+  const offset = [...slug].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return COMMITTED_UI_IMAGES[(offset + idx - 1) % COMMITTED_UI_IMAGES.length];
+}
+
 export function heroImage(slug: string, alt: string, caption: string): VisualAsset {
   return {
     id: `${slug}-hero-01`,
     slug,
     type: "hero",
-    path: `/images/industries/${slug}-hero.jpg`,
+    path: committedIndustryHero(slug),
     alt,
     caption,
     width: 1920,
@@ -44,7 +78,7 @@ export function uiImage(slug: string, idx: number, alt: string, caption: string)
     id: `${slug}-ui-0${idx}`,
     slug,
     type: "ui",
-    path: `/images/industries/${slug}-ui-0${idx}.jpg`,
+    path: committedIndustryUi(slug, idx),
     alt,
     caption,
     width: 1440,

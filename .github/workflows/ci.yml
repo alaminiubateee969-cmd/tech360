@@ -127,6 +127,12 @@ jobs:
       - name: Reject unresolved merge-conflict markers
         run: node scripts/check-conflict-markers.mjs
 
+      # Every image the 20 industry payloads advertise must be a committed,
+      # self-hosted file. This gate exists because 81 of 81 previously pointed
+      # at files that were never committed (plus one hardcoded dev path).
+      - name: Verify industry payload assets exist under public/
+        run: node scripts/verify-industry-assets.mjs
+
       - name: Verify the scoped Next ESLint glob API
         run: |
           node <<'NODE'

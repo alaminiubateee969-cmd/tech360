@@ -3,6 +3,7 @@ import type {
   IndustryRegistryEntry,
   VisualAsset,
 } from "../types";
+import { committedIndustryHero, committedIndustryUi } from "../shared";
 import { MANUFACTURING_WORKFLOWS } from "./workflows";
 import { MANUFACTURING_MODULES } from "./modules";
 
@@ -16,7 +17,7 @@ const heroImage: VisualAsset = {
   id: "mfg-hero-01",
   slug: "manufacturing",
   type: "hero",
-  path: "/images/industries/manufacturing-hero.jpg",
+  path: committedIndustryHero("manufacturing"),
   alt: "Automated production line with robotic arms and operators monitoring quality in a modern smart factory",
   caption: "Connected manufacturing: MES, QMS, and planning on one governed platform",
   width: 1920,
@@ -28,13 +29,11 @@ const heroImage: VisualAsset = {
 };
 
 const uiScreenAssets: VisualAsset[] = [
-  { id: "mfg-ui-01", slug: "manufacturing", type: "ui", path: "/images/industries/manufacturing-ui-mes.jpg", alt: "MES work order dispatch screen showing sequenced line schedule with station status", caption: "MES dispatch: sequenced schedule with live station status", width: 1440, height: 900, language: "en", currency: "none", source: "generated", status: "pending-review" },
-  { id: "mfg-ui-02", slug: "manufacturing", type: "ui", path: "/images/industries/manufacturing-ui-qms.jpg", alt: "QMS quality dashboard with control charts, NCR queue, and CAPA aging", caption: "QMS cockpit: control charts, NCR queue, CAPA aging", width: 1440, height: 900, language: "en", currency: "none", source: "generated", status: "pending-review" },
-  { id: "mfg-ui-03", slug: "manufacturing", type: "ui", path: "/home/user/tech360-placeholder", alt: "Planning workspace showing MPS grid with capacity load bars and exception list", caption: "Planning workspace: MPS grid, capacity load, exceptions", width: 1440, height: 900, language: "en", currency: "none", source: "generated", status: "pending-review" },
-  { id: "mfg-ui-04", slug: "manufacturing", type: "ui", path: "/images/industries/manufacturing-ui-exec.jpg", alt: "Executive dashboard with OEE, OTIF, margin, and safety KPIs in USD formatting", caption: "Executive dashboard: OEE, OTIF, margin, safety", width: 1440, height: 900, language: "en", currency: "none", source: "generated", status: "pending-review" },
+  { id: "mfg-ui-01", slug: "manufacturing", type: "ui", path: committedIndustryUi("manufacturing", 1), alt: "MES work order dispatch screen showing sequenced line schedule with station status", caption: "MES dispatch: sequenced schedule with live station status", width: 1440, height: 900, language: "en", currency: "none", source: "generated", status: "pending-review" },
+  { id: "mfg-ui-02", slug: "manufacturing", type: "ui", path: committedIndustryUi("manufacturing", 2), alt: "QMS quality dashboard with control charts, NCR queue, and CAPA aging", caption: "QMS cockpit: control charts, NCR queue, CAPA aging", width: 1440, height: 900, language: "en", currency: "none", source: "generated", status: "pending-review" },
+  { id: "mfg-ui-03", slug: "manufacturing", type: "ui", path: committedIndustryUi("manufacturing", 3), alt: "Planning workspace showing MPS grid with capacity load bars and exception list", caption: "Planning workspace: MPS grid, capacity load, exceptions", width: 1440, height: 900, language: "en", currency: "none", source: "generated", status: "pending-review" },
+  { id: "mfg-ui-04", slug: "manufacturing", type: "ui", path: committedIndustryUi("manufacturing", 4), alt: "Executive dashboard with OEE, OTIF, margin, and safety KPIs in USD formatting", caption: "Executive dashboard: OEE, OTIF, margin, safety", width: 1440, height: 900, language: "en", currency: "none", source: "generated", status: "pending-review" },
 ];
-// fix placeholder path (must be local public path)
-uiScreenAssets[2] = { ...uiScreenAssets[2], path: "/images/industries/manufacturing-ui-planning.jpg" };
 
 export const MANUFACTURING_DATA: IndustrySolutionData = {
   hero: {
