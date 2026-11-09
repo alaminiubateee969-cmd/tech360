@@ -137,23 +137,17 @@ export async function handleCustomerMessage(input: {
   const emailInMessage: string | null = null
   const emailCollectedThisTurn = false
 
-  // Save inbound to Communication log and state machine (never claim sent unless succeeded)
-  await recordInbound(client.id, client.clientId, visitorBody, input.channel, client.pipelineStage).catch(() => null)
-
-  // Also persist inbound Communication row for audit
-  await db.communication
-    .create({
-      data: {
-        clientId: client.id,
-        channel: input.channel,
-        direction: 'IN',
-        sender: input.visitorName || input.visitorEmail || client.name || 'Visitor',
-        body: visitorBody,
-        status: 'RECEIVED',
-        providerMessageId: `web:${input.conversationId}:${Date.now()}`,
-      },
-    })
-    .catch(() => null)
+  // Persist the inbound state before automation. If state cannot be verified,
+  // fail closed to human review rather than risk ignoring opt-out/takeover flags.
+  const communicationState = await recordInbound(
+    client.id,
+    client.clientId,
+    visitorBody,
+    input.channel,
+    client.pipelineStage,
+  ).catch(() => null)
+  const communicationStateUnavailable = communicationState === null
+  const humanTakeoverActive = communicationStateUnavailable || communicationState?.humanTakeover === true
 
   // Capture domain names as customer statements, but do not mark the hosting
   // question answered until they provide a plan/detail or explicitly say they
@@ -221,7 +215,11 @@ export async function handleCustomerMessage(input: {
   let aiError: string | null = null
   let wasAiGenerated = false
 
-  if (aiAvailable) {
+  if (humanTakeoverActive) {
+    aiError = communicationStateUnavailable
+      ? 'Communication state could not be verified; automated response suppressed'
+      : 'Human takeover active; automated response suppressed'
+  } else if (aiAvailable) {
     const aiResult = await tryGenerateAiReply({
       context,
       history,
@@ -267,7 +265,12 @@ export async function handleCustomerMessage(input: {
   // Build final reply: either AI output or honest fallback
   let finalReply: string
   let escalated = false
-  if (aiReply) {
+  if (humanTakeoverActive) {
+    escalated = true
+    finalReply = communicationStateUnavailable
+      ? `Thank you for your message. It is saved under Client ID ${client.clientId} (current stage: ${client.pipelineStage}). Communication controls could not be verified, so automated replies are paused and this message requires human review.`
+      : `Thank you for your message. It is saved under Client ID ${client.clientId} (current stage: ${client.pipelineStage}). A TECH360 team member has taken over this conversation, so automated replies are paused while the team reviews it.`
+  } else if (aiReply) {
     finalReply = aiReply
   } else {
     // Honest fallback — do not invent response
@@ -310,19 +313,22 @@ export async function handleCustomerMessage(input: {
         lastSender: escalated ? 'SYSTEM' : 'ADMIN',
       },
     })
-    // Communication log for CRM
-    await db.communication.create({
-      data: {
-        clientId: client.id,
-        channel: input.channel,
-        direction: 'OUT',
-        recipient: client.name,
-        body: outboundBody,
-        status: escalated ? 'SENT' : 'SENT', // honest: even fallback is sent (system message)
-        providerMessageId: `chat_out:${input.conversationId}:${Date.now()}`,
-        agentCode: wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
-      },
-    })
+    // The persisted WEB chat transcript is itself the delivery channel.
+    // External providers own their Communication rows and delivery statuses.
+    if (input.channel === 'WEB') {
+      await db.communication.create({
+        data: {
+          clientId: client.id,
+          channel: input.channel,
+          direction: 'OUT',
+          recipient: 'TECH360 Live Chat',
+          body: outboundBody,
+          status: 'SENT',
+          providerMessageId: `chat_out:${input.conversationId}:${Date.now()}`,
+          agentCode: wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
+        },
+      })
+    }
   } catch {
     // If persistence fails, do not claim sent — return honest error
     return {
@@ -344,7 +350,9 @@ export async function handleCustomerMessage(input: {
     escalated,
     wasAiGenerated,
   })
-  await recordOutbound(client.id, client.clientId, outboundBody, input.channel, client.pipelineStage, nextAction.action, nextAction.actor, nextAction.dueDate).catch(() => null)
+  if (input.channel === 'WEB') {
+    await recordOutbound(client.id, client.clientId, outboundBody, input.channel, client.pipelineStage, nextAction.action, nextAction.actor, nextAction.dueDate).catch(() => null)
+  }
 
   // Also update discovery's currentQuestion if we just asked one
   // If reply contains a discovery question, set currentQuestion accordingly
