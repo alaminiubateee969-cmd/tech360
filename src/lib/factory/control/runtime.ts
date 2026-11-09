@@ -35,7 +35,7 @@ import { runHealthChecks } from './health'
 import type {
   ApplicationConfig, ModuleManifest, ModuleEntity, RuntimePage, ThemeTokens,
 } from './types'
-import { checksum, jsonText, parseJson, stableStringify } from './util'
+import { checksum, jsonText, parseJson, randomTag, stableStringify } from './util'
 
 export const DEFAULT_THEME: ThemeTokens = {
   primary: '#063B8F', accent: '#009FE3', surface: '#FFFFFF', background: '#F4FAFF',
@@ -359,7 +359,7 @@ export async function runFactoryTests(actor: Actor, ctx: RuntimeContext): Promis
   try {
     const n = await db.factoryProvisionJob.count()
     const job = await db.factoryProvisionJob.create({ data: {
-      code: `TEST-${Date.now().toString(36).toUpperCase()}-${String(n + 1).padStart(4, '0')}`,
+      code: `TEST-${Date.now().toString(36).toUpperCase()}-${String(n + 1).padStart(4, '0')}-${randomTag(2)}`,
       companyId, applicationId: appId, action: 'TEST', status: ok ? 'PASSED' : 'FAILED',
       steps: jsonText(checks.map((c) => ({ key: c.key, label: c.label, status: c.ok ? 'PASS' : 'FAIL', detail: c.detail }))),
       testResults: jsonText({ ranAt, passed, failed, total: checks.length, checks, executable: true }),

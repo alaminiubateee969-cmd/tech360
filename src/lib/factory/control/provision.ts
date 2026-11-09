@@ -21,7 +21,7 @@ import { runHealthChecks } from './health'
 import { ADAPTERS, computeAdapterStatus, missingEnvKeys } from './integrations'
 import { canTransition } from './lifecycle'
 import type { ApplicationConfig, CompanyDefinition, StepResult, TemplateDefinition } from './types'
-import { checksum, jsonText, nextCode, parseJson, secretLikeReason, stableStringify, tenantKey } from './util'
+import { checksum, createWithUniqueCode, jsonText, parseJson, secretLikeReason, stableStringify, tenantKey } from './util'
 
 export interface ProvisionResult {
   ok: boolean
@@ -39,33 +39,6 @@ export interface ProvisionResult {
 
 function step(key: string, label: string, ok: boolean, detail: string): StepResult {
   return { key, label, status: ok ? 'PASS' : 'FAIL', detail }
-}
-
-async function uniqueCompanyCode(): Promise<string> {
-  const base = await db.factoryCompany.count()
-  for (let i = base + 1; i < base + 100; i++) {
-    const code = nextCode('CO', i)
-    if (!(await db.factoryCompany.findUnique({ where: { code } }))) return code
-  }
-  return `CO-${Date.now().toString(36)}`
-}
-
-async function uniqueAppCode(): Promise<string> {
-  const base = await db.factoryApplication.count()
-  for (let i = base + 1; i < base + 100; i++) {
-    const code = nextCode('APP', i)
-    if (!(await db.factoryApplication.findUnique({ where: { code } }))) return code
-  }
-  return `APP-${Date.now().toString(36)}`
-}
-
-async function uniqueJobCode(): Promise<string> {
-  const base = await db.factoryProvisionJob.count()
-  for (let i = base + 1; i < base + 100; i++) {
-    const code = nextCode('JOB', i)
-    if (!(await db.factoryProvisionJob.findUnique({ where: { code } }))) return code
-  }
-  return `JOB-${Date.now().toString(36)}`
 }
 
 async function loadTemplateRef(code: string, version: number): Promise<TemplateRef | null> {
@@ -129,24 +102,21 @@ export async function provisionCompany(input: unknown, actor: Actor): Promise<Pr
     return { ...empty, validation, errors: [`Refusing to persist secret-like content (${secret})`], definition: def, config }
   }
 
-  const companyCode = await uniqueCompanyCode()
-  const appCode = await uniqueAppCode()
-  const jobCode = await uniqueJobCode()
   const templateRow = await db.factoryTemplate.findUniqueOrThrow({ where: { code: def.template.code } })
   const templateVersionRow = await db.factoryTemplateVersion.findUniqueOrThrow({
     where: { templateId_version: { templateId: templateRow.id, version: def.template.version } },
   })
-  let key = tenantKey()
-  while (await db.factoryCompany.findUnique({ where: { tenantKey: key } })) key = tenantKey()
 
-  const company = await db.factoryCompany.create({ data: {
-    code: companyCode, slug: def.identity.slug, name: def.identity.name, legalName: def.identity.legalName ?? null,
-    kind: def.identity.kind, industry: def.identity.industry ?? null, status: 'PROVISIONING',
-    isolationModel: def.identity.isolationModel, tenantKey: key, domain: def.identity.domain ?? null,
-    currentDefinitionVersion: 1, retentionDays: def.policies.retentionDays,
-    backupPolicy: def.policies.backupPolicy, contractStatus: 'PENDING', supportStatus: 'ONBOARDING',
-    createdBy: actor.email,
-  } })
+  const company = await createWithUniqueCode('CO', () => db.factoryCompany.count(), (code) =>
+    db.factoryCompany.create({ data: {
+      code, slug: def.identity.slug, name: def.identity.name, legalName: def.identity.legalName ?? null,
+      kind: def.identity.kind, industry: def.identity.industry ?? null, status: 'PROVISIONING',
+      isolationModel: def.identity.isolationModel, tenantKey: tenantKey(), domain: def.identity.domain ?? null,
+      currentDefinitionVersion: 1, retentionDays: def.policies.retentionDays,
+      backupPolicy: def.policies.backupPolicy, contractStatus: 'PENDING', supportStatus: 'ONBOARDING',
+      createdBy: actor.email,
+    } }),
+  )
   steps.push(step('identity.create', 'Create isolated company identity', true, `${company.code} / tenant key issued server-side`))
 
   await db.factoryCompanyDefinition.create({ data: {
@@ -172,19 +142,23 @@ export async function provisionCompany(input: unknown, actor: Actor): Promise<Pr
   } })
   steps.push(step('grants.initialize', 'Initialize roles, permissions and explicit grants', true, `${def.organization.users.length} company users + 1 audited operator grant`))
 
-  const job = await db.factoryProvisionJob.create({ data: {
-    code: jobCode, companyId: company.id, action: 'PROVISION', status: 'RUNNING',
-    steps: jsonText(steps), requestedBy: actor.email, startedAt: new Date(),
-  } })
+  const job = await createWithUniqueCode('JOB', () => db.factoryProvisionJob.count(), (code) =>
+    db.factoryProvisionJob.create({ data: {
+      code, companyId: company.id, action: 'PROVISION', status: 'RUNNING',
+      steps: jsonText(steps), requestedBy: actor.email, startedAt: new Date(),
+    } }),
+  )
 
-  const application = await db.factoryApplication.create({ data: {
-    code: appCode, companyId: company.id, templateId: templateRow.id,
-    templateVersionId: templateVersionRow.id,
-    name: def.branding.productName || def.identity.name, environment: def.identity.environment,
-    deploymentModel: def.identity.deploymentModel, status: 'PROVISIONING', config: configText,
-    configChecksum: configHash, definitionVersion: 1, releaseVersion: '1.0.0',
-    domain: def.identity.domain ?? null, healthStatus: 'UNKNOWN', createdBy: actor.email,
-  } })
+  const application = await createWithUniqueCode('APP', () => db.factoryApplication.count(), (code) =>
+    db.factoryApplication.create({ data: {
+      code, companyId: company.id, templateId: templateRow.id,
+      templateVersionId: templateVersionRow.id,
+      name: def.branding.productName || def.identity.name, environment: def.identity.environment,
+      deploymentModel: def.identity.deploymentModel, status: 'PROVISIONING', config: configText,
+      configChecksum: configHash, definitionVersion: 1, releaseVersion: '1.0.0',
+      domain: def.identity.domain ?? null, healthStatus: 'UNKNOWN', createdBy: actor.email,
+    } }),
+  )
   steps.push(step('config.generate', 'Generate company-specific configuration from approved template', true, `config checksum ${configHash.slice(0, 12)}…`))
 
   const enabled = def.modules.filter((m) => m.enabled)

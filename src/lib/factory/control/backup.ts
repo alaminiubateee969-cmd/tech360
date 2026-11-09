@@ -11,7 +11,7 @@ import { db } from '@/lib/db'
 import type { Actor } from './access'
 import { writeFactoryAudit } from './access'
 import { runHealthChecks } from './health'
-import { checksum, jsonText, parseJson, secretLikeReason, stableStringify } from './util'
+import { checksum, createWithUniqueCode, jsonText, parseJson, randomTag, secretLikeReason, stableStringify } from './util'
 
 export interface BackupPayload {
   schemaVersion: 1
@@ -90,15 +90,6 @@ export async function buildBackupPayload(applicationId: string): Promise<BackupP
   }
 }
 
-async function uniqueCode(prefix: string): Promise<string> {
-  const count = await db.factoryBackup.count()
-  for (let i = count + 1; i < count + 100; i++) {
-    const code = `BKP-${String(i).padStart(5, '0')}`
-    if (!(await db.factoryBackup.findUnique({ where: { code } }))) return code
-  }
-  return `BKP-${Date.now().toString(36)}`
-}
-
 export async function createBackup(applicationId: string, kind: string, actor: Actor) {
   const app = await db.factoryApplication.findUniqueOrThrow({ where: { id: applicationId } })
   const payload = await buildBackupPayload(applicationId)
@@ -111,11 +102,13 @@ export async function createBackup(applicationId: string, kind: string, actor: A
   const text = jsonText(payload)
   const secret = secretLikeReason(payload)
   if (secret) throw new Error(`Backup refused: payload contains secret-like content (${secret})`)
-  const row = await db.factoryBackup.create({ data: {
-    code: await uniqueCode('BKP'), applicationId, companyId: app.companyId, kind,
-    status: 'CREATED', payload: text, checksum: checksum(payload), sizeBytes: Buffer.byteLength(text, 'utf8'),
-    storagePath: null, createdBy: actor.email,
-  } })
+  const row = await createWithUniqueCode('BKP', () => db.factoryBackup.count(), (code) =>
+    db.factoryBackup.create({ data: {
+      code, applicationId, companyId: app.companyId, kind,
+      status: 'CREATED', payload: text, checksum: checksum(payload), sizeBytes: Buffer.byteLength(text, 'utf8'),
+      storagePath: null, createdBy: actor.email,
+    } }),
+  )
   await writeFactoryAudit({ actor, action: 'FACTORY_BACKUP_CREATED', targetType: 'BACKUP', targetId: row.id, companyId: app.companyId, detail: { kind, bytes: row.sizeBytes } })
   return row
 }
@@ -172,7 +165,7 @@ export async function restoreBackup(backupId: string, actor: Actor, requestedCom
   const source = payload.application
   const originalConfig = String(source.config ?? '{}')
   const configChecksum = String(source.configChecksum ?? checksum(JSON.parse(originalConfig)))
-  const code = `APP-RESTORE-${Date.now().toString(36).toUpperCase()}`
+  const code = `APP-RESTORE-${Date.now().toString(36).toUpperCase()}-${randomTag()}`
   const restored = await db.factoryApplication.create({ data: {
     code, companyId, templateId: String(source.templateId ?? ''), templateVersionId: String(source.templateVersionId ?? ''),
     name: `${String(source.name ?? 'Application')} (restored)`, environment: 'STAGING',

@@ -86,6 +86,58 @@ export function nextCode(prefix: string, n: number, width = 5): string {
   return `${prefix}-${String(n).padStart(width, '0')}`
 }
 
+export function randomTag(bytes = 3): string {
+  return randomBytes(bytes).toString('hex').toUpperCase()
+}
+
+export function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  if ('code' in error && (error as { code?: unknown }).code === 'P2002') return true
+  const msg = 'message' in error ? String((error as { message?: unknown }).message ?? '') : ''
+  return /Unique constraint failed|UNIQUE constraint failed|Duplicate entry/i.test(msg)
+}
+
+export function isTransientLockError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  if ('code' in error && ((error as { code?: unknown }).code === 'P2034' || (error as { code?: unknown }).code === 'P1008')) return true
+  const msg = 'message' in error ? String((error as { message?: unknown }).message ?? '') : ''
+  return /Deadlock found|Lock wait timeout|Operation has timed out|SQLITE_BUSY|database is locked/i.test(msg)
+}
+
+export async function withLockRetry<T>(fn: () => Promise<T>, maxAttempts = 6): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      if (attempt >= maxAttempts || !isTransientLockError(error)) throw error
+      const delayMs = 30 * attempt + Math.floor(Math.random() * 50)
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  }
+}
+
+/**
+ * Insert a row with a human-readable sequential code (`PREFIX-00001`),
+ * retrying with the next code (and a random fallback) if a concurrent caller
+ * claims the same sequential code first.
+ */
+export async function createWithUniqueCode<T>(
+  prefix: string,
+  countFn: () => Promise<number>,
+  createFn: (code: string) => Promise<T>,
+  width = 5,
+): Promise<T> {
+  const base = await withLockRetry(countFn)
+  for (let i = base + 1; i < base + 25; i++) {
+    try {
+      return await withLockRetry(() => createFn(nextCode(prefix, i, width)))
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error
+    }
+  }
+  return withLockRetry(() => createFn(`${prefix}-${Date.now().toString(36).toUpperCase()}-${randomTag()}`))
+}
+
 export function parseSemver(v: string): { major: number; minor: number; patch: number } | null {
   const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(v.trim())
   return m ? { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]) } : null
