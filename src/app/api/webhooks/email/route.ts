@@ -228,9 +228,10 @@ export async function POST(req: NextRequest) {
           })
           if (!res.result.ok) {
             await logError({ source: 'WEBHOOK', code: `EMAIL_SEND_${res.result.status}`, message: res.result.error ?? 'Email send failed', clientId: clientRow.clientId }).catch(() => null)
+          } else {
+            const { recordOutbound } = await import('@/lib/conversation-state')
+            await recordOutbound(clientRow.id, clientRow.clientId, emailBody, 'EMAIL').catch(() => null)
           }
-          const { recordOutbound } = await import('@/lib/conversation-state')
-          await recordOutbound(clientRow.id, clientRow.clientId, result.reply, 'EMAIL').catch(() => null)
         }
       } catch (replyError) {
         await logError({ source: 'WEBHOOK', code: 'EMAIL_REPLY_FAILED', message: replyError instanceof Error ? replyError.message : String(replyError), workflow: 'EMAIL_REPLY' }).catch(() => null)
