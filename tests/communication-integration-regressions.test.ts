@@ -54,7 +54,10 @@ describe('TECH360 communication integration safeguards', () => {
 
   it('prevents 48-hour operations follow-up from bypassing opt-out/takeover/closure', () => {
     assert.match(opsActions, /loadCommState\(client\.id, client\.clientId, client\.pipelineStage\)/)
-    assert.match(opsActions, /!communicationState\.followUpEnabled \|\| communicationState\.optedOut \|\| communicationState\.humanTakeover \|\| communicationState\.closed/)
+    // The guard is one multi-line `if` with additional clauses after `closed`
+    // (nextPendingActor / repliedSinceLastOutbound / stageChanged) — match the
+    // four required clauses in order, across line breaks.
+    assert.match(opsActions, /!communicationState\.followUpEnabled \|\|\s+communicationState\.optedOut \|\|\s+communicationState\.humanTakeover \|\|\s+communicationState\.closed/)
   })
 
   it('resets the reminder counter for a new outbound cycle', () => {
