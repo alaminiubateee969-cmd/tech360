@@ -51,6 +51,17 @@ export async function executeOpsAction(action: string, payload: OpsPayload): Pro
         const clientRowId = sanitizeText(payload.clientId, 40)
         const client = await db.client.findFirst({ where: { OR: [{ id: clientRowId }, { clientId: clientRowId }] } })
         if (!client) return fail(404, 'Client not found')
+        const { loadCommState } = await import('@/lib/conversation-state')
+        const communicationState = await loadCommState(client.id, client.clientId, client.pipelineStage)
+        if (!communicationState.followUpEnabled || communicationState.optedOut || communicationState.humanTakeover || communicationState.closed) {
+          return ok({
+            action: 'FOLLOWUP_LEAD',
+            sendStatus: 'SUPPRESSED',
+            reason: communicationState.optedOut ? 'CUSTOMER_OPTED_OUT'
+              : communicationState.humanTakeover ? 'HUMAN_TAKEOVER'
+                : communicationState.closed ? 'CLIENT_CLOSED' : 'FOLLOWUPS_DISABLED',
+          })
+        }
         const run = await runAgent('COM-010', {
           input: `Write a short, warm follow-up message to ${client.name} (${client.businessName ?? 'business'}) who inquired about a ${client.businessType ?? 'software'} project with Tech360 and has been quiet for a while. Ask if they want to continue or have questions. Max 60 words. Sign "Team Tech360".`,
           clientId: client.id, workflow: 'OPS_FOLLOWUP',
