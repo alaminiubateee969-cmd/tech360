@@ -41,6 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 local-*
+!src/data/industries/local-businesses.ts
 !src/lib/local-seo-plan.ts
 !src/app/api/admin/seo/local-plan/
 !src/app/api/admin/seo/local-plan/route.ts
