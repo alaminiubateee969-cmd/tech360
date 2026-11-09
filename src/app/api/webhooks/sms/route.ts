@@ -38,32 +38,43 @@ export async function POST(req: NextRequest) {
   const from = sanitizeText((payload.From ?? payload.from ?? payload.sender ?? payload.phone ?? '') as string, 40)
   const bodyText = sanitizeText((payload.Body ?? payload.body ?? payload.content ?? payload.message ?? payload.text ?? '') as string, 4000)
   const messageSid = sanitizeText((payload.MessageSid ?? payload.messageId ?? payload.id ?? payload.smsId ?? '') as string, 80)
-  const eventId = messageSid || `sms:${from}:${Date.now()}:${bodyText.slice(0, 20)}`
+  const eventId = messageSid
 
-  if (!from || !bodyText) {
-    // Still 200 to provider — we just cannot process
-    return Response.json({ ok: true })
+  if (!from || !bodyText || !messageSid) {
+    return Response.json({ ok: false, error: 'Missing sender, message body or provider message id' }, { status: 400 })
   }
 
-  // Twilio signature validation (if configured)
-  const twilioAuth = process.env.TWILIO_AUTH_TOKEN
-  if (twilioAuth && req.headers.get('x-twilio-signature')) {
+  // Authenticate the explicitly configured inbound provider. Do not accept
+  // unsigned generic requests: idempotency is not authentication.
+  const inboundProvider = (process.env.SMS_INBOUND_PROVIDER ?? '').trim().toUpperCase()
+  if (inboundProvider === 'TWILIO') {
+    const twilioAuth = process.env.TWILIO_AUTH_TOKEN
+    const got = req.headers.get('x-twilio-signature') ?? ''
+    if (!twilioAuth || !got) {
+      await logError({ source: 'WEBHOOK', code: 'SMS_SIGNATURE_MISSING', message: 'Twilio inbound authentication is not configured or signature is missing' }).catch(() => null)
+      return Response.json({ ok: false, error: 'SMS provider authentication unavailable' }, { status: 503 })
+    }
     const url = req.nextUrl.toString()
     const params = Object.fromEntries(new URLSearchParams(rawBody).entries())
-    // Twilio computes HMAC-SHA1 over url + sorted params
     const sorted = Object.keys(params).sort()
     let data = url
     for (const k of sorted) data += k + params[k]
     const expected = createHmac('sha1', twilioAuth).update(data).digest('base64')
-    const got = req.headers.get('x-twilio-signature') ?? ''
     if (!constantTimeEquals(got, expected)) {
-      await logError({ source: 'WEBHOOK', code: 'SMS_SIGNATURE_INVALID', message: 'SMS webhook signature mismatch' })
+      await logError({ source: 'WEBHOOK', code: 'SMS_SIGNATURE_INVALID', message: 'SMS webhook signature mismatch' }).catch(() => null)
       return Response.json({ ok: false, error: 'Invalid signature' }, { status: 401 })
     }
+  } else if (inboundProvider === 'HTTPSMS' || inboundProvider === 'GENERIC') {
+    const secret = process.env.SMS_WEBHOOK_SECRET ?? ''
+    const got = req.headers.get('x-sms-webhook-secret') ?? ''
+    if (secret.length < 32 || !got || !constantTimeEquals(got, secret)) {
+      await logError({ source: 'WEBHOOK', code: 'SMS_SIGNATURE_INVALID', message: 'SMS shared-secret authentication failed' }).catch(() => null)
+      return Response.json({ ok: false, error: 'Invalid signature' }, { status: 401 })
+    }
+  } else {
+    await logError({ source: 'WEBHOOK', code: 'SMS_PROVIDER_NOT_CONFIGURED', message: 'SMS_INBOUND_PROVIDER must be TWILIO, HTTPSMS or GENERIC' }).catch(() => null)
+    return Response.json({ ok: false, error: 'Inbound SMS provider is not configured' }, { status: 503 })
   }
-
-  // httpSMS signature (optional, if provider supports)
-  // Generic providers without signature proceed but remain idempotency-safe via claim
 
   const phone = toE164(from)
   if (!phone) {
@@ -76,7 +87,7 @@ export async function POST(req: NextRequest) {
   try {
     claim = await claimInboundWebhookEvent({ provider: 'SMS', providerEventId: eventId, eventType: 'MESSAGE' })
   } catch {
-    return Response.json({ ok: true })
+    return Response.json({ ok: false, error: 'Inbound message could not be safely claimed' }, { status: 503 })
   }
   if (!claim.claimed || !claim.receiptId || !claim.claimToken) return Response.json({ ok: true })
 
