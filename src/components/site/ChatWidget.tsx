@@ -583,12 +583,14 @@ export default function ChatWidget() {
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="chat-email" className="text-xs font-medium text-slate-700">
-                    Email <span className="font-normal text-slate-400">(share now or reply to our first SMS — Client ID is created once email is received)</span>
+                    Email {preferredContact === 'Email'
+                      ? <><span className="text-[#EF4444]" aria-hidden="true">*</span><span className="sr-only">(required)</span></>
+                      : <span className="font-normal text-slate-400">(optional for SMS-first — share now or reply to our first SMS)</span>}
                   </label>
                   <input
                     id="chat-email"
                     type="email"
-                    required={false}
+                    required={preferredContact === 'Email'}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={320}
@@ -596,7 +598,7 @@ export default function ChatWidget() {
                     placeholder="you@company.com"
                     className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#009FE3] focus:outline-none focus:ring-2 focus:ring-[#009FE3]/30"
                   />
-                  <p className="text-[11px] leading-relaxed text-slate-500">If you provide email now, your Client ID is created immediately; otherwise our first SMS will ask for it and create the Client ID once received. A typed address is contact info only — portal sign-in uses a one-time code.</p>
+                  <p className="text-[11px] leading-relaxed text-slate-500">{preferredContact === 'Email' ? 'Service follow-up will use email and create your Client ID once identity is checked. A typed address is contact info only — portal sign-in uses a one-time code.' : 'If you provide email now, your Client ID is created immediately; otherwise our first SMS will ask for it and create the Client ID once received. A typed address is contact info only — portal sign-in uses a one-time code.'}</p>
                 </div>
                 <fieldset className="space-y-2">
                   <legend className="text-xs font-medium text-slate-700">First service reply</legend>
@@ -672,7 +674,7 @@ export default function ChatWidget() {
                 )}
                 <button
                   type="submit"
-                  disabled={busy || !contactConsent || (preferredContact === 'SMS' && !phone.trim())}
+                  disabled={busy || !contactConsent || (preferredContact === 'Email' && !email.trim()) || (preferredContact === 'SMS' && !phone.trim())}
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white shadow transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]/50 focus-visible:ring-offset-2 disabled:opacity-60"
                   style={{ background: 'linear-gradient(135deg, #009FE3 0%, #063B8F 100%)' }}
                 >

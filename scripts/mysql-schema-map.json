@@ -89,7 +89,8 @@
     "FactoryChangeRequest.details",
     "FactoryAuditEvent.detail",
     "FactoryRecord.data",
-    "FactoryFile.content"
+    "FactoryFile.content",
+    "GeneratedDocument.auditHistory"
   ],
   "Text": [
     "Session.userAgent",
@@ -221,9 +222,12 @@
     "FactoryRelease.releaseNotes",
     "FactoryIntegration.envKeys",
     "FactoryIntegration.lastError",
-    "FactoryChangeRequest.decision"
+    "FactoryChangeRequest.decision",
+    "GeneratedDocument.fileLocation",
+    "GeneratedDocument.accessPermissions"
   ],
   "LongBlob": [
-    "FileRecord.content"
+    "FileRecord.content",
+    "GeneratedDocument.fileContent"
   ]
 }

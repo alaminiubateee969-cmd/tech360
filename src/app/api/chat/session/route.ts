@@ -65,8 +65,12 @@ export async function POST(req: NextRequest) {
 
     if (anonId.length < 4) return apiError('Missing visitor identifier.', 400, 'BAD_ANON_ID')
     if (!isValidClientRequestId(requestId)) return apiError('A valid session request id is required.', 400, 'BAD_REQUEST_ID')
-    // Email is NOT required at session start: the webchat agent's first SMS asks for it, and the Client ID is auto-created once email is received.
+    // Email is optional for SMS-first (the webchat agent's first SMS asks for it, and the Client ID is auto-created once email is received),
+    // and required when Email is selected as the first reply channel.
     if (emailInput && !email) return apiError('Enter a valid email address.', 400, 'EMAIL_INVALID')
+    if (preferredContact === 'Email' && !email) {
+      return apiError('Email is required when email is selected as the first reply channel.', 400, 'EMAIL_REQUIRED')
+    }
     if (phoneInput && !phone) return apiError('Enter a valid phone number, such as +8801XXXXXXXXX.', 400, 'PHONE_INVALID')
     if (preferredContact === 'SMS' && !phone) return apiError('A valid phone number is required when SMS is selected.', 400, 'PHONE_REQUIRED')
     if (!hasExplicitContactConsent(raw.contactConsent)) {

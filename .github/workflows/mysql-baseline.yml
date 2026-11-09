@@ -18,9 +18,10 @@ name: mysql-baseline
 on:
   workflow_dispatch:
   push:
-    branches: ['arena/**']
+    branches: ['main', 'arena/**']
     paths:
       - 'prisma/schema.prisma'
+      - 'prisma/migrations/**'
       - 'scripts/mysql-schema-map.json'
       - 'scripts/convert-schema-to-mysql.mjs'
       - '.github/workflows/mysql-baseline.yml'
