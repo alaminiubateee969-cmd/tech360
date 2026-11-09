@@ -12,6 +12,7 @@ import { hasExplicitContactConsent, selectWelcomeChannel } from '@/lib/contact-p
 import { hasAcceptedPreviewDelivery } from '@/lib/preview-policy'
 import { createHandoverManifest, parseHandoverManifest, verifyHandoverArtifacts } from '@/lib/handover-artifacts'
 import { normalizeIdentity, resolveOrCreateVerifiedClient, type VerifiedIdentityProof } from '@/lib/identity-resolver'
+import { updateStage } from '@/lib/conversation-state'
 import { sendPipelineMessage, recordStageChange, type PipelineChannel, type PipelineSendResult } from '@/lib/pipeline/send'
 import type { PipelineVariables } from '@/lib/pipeline/templates'
 import { assertDeliveryRules, screenAiContent } from '@/lib/pipeline/rules'
@@ -301,6 +302,9 @@ export async function intakeLead(input: {
           channels: welcomeChannels,
           agentCode: 'COM-010',
           workflowId: log.id,
+          nextPendingAction: 'Share your business type and main project goal',
+          nextPendingActor: 'CLIENT',
+          followUpStage: 'CONTACTED',
         })
         welcomeResult = {
           status: welcome.status,
@@ -324,6 +328,9 @@ export async function intakeLead(input: {
       // Business detection runs after the welcome attempt. It may update
       // businessType, but only an accepted welcome can advance the pipeline.
       const businessRun = await detectBusiness(clientRow.id, input.message, { advanceStage: welcomeAccepted })
+      if (welcomeAccepted && businessRun.ok && businessRun.json) {
+        await updateStage(clientRow.id, clientRow.clientId, 'BUSINESS_IDENTIFIED').catch(() => null)
+      }
       await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id, welcomeAccepted, businessDetectionOk: businessRun.ok })
     } else {
       // A returning client. Their reply may now carry the business type,

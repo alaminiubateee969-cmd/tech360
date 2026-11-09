@@ -19,6 +19,7 @@
 
 import { db } from '@/lib/db'
 import { sendCommunication } from '@/lib/comms'
+import { recordOutbound } from '@/lib/conversation-state'
 import { audit, logError } from '@/lib/security'
 import { pipelineMessage, renderEmailBody, type PipelineMessage, type PipelineMessageStage, type PipelineVariables } from './templates'
 import {
@@ -85,6 +86,27 @@ export type PipelineSendRequest = {
    * satisfied and the message is sent.
    */
   approved?: boolean
+  /** Optional conversation-state expectation recorded only after provider acceptance. */
+  nextPendingAction?: string
+  nextPendingActor?: 'CLIENT' | 'TECH360'
+  dueDate?: string | null
+  followUpStage?: string
+}
+
+const DEFAULT_STAGE_NEXT_ACTOR: Record<PipelineMessageStage, 'CLIENT' | 'TECH360'> = {
+  FIRST_MESSAGE: 'CLIENT',
+  BUSINESS_TYPE_RECEIVED: 'CLIENT',
+  SCOPE_DETAILS_RECEIVED: 'TECH360',
+  FINAL_SCOPE_APPROVED: 'CLIENT',
+  MEETING_REQUESTED: 'CLIENT',
+  SCOPE_APPROVED: 'TECH360',
+  HTML_PREVIEW_SENT: 'CLIENT',
+  REVISION_REQUESTED: 'TECH360',
+  HTML_PREVIEW_APPROVED: 'CLIENT',
+  PAYMENT_RECEIVED: 'TECH360',
+  FINAL_DELIVERY_READY: 'TECH360',
+  FINAL_DELIVERY_COMPLETED: 'CLIENT',
+  PROJECT_CLOSED: 'TECH360',
 }
 
 // ------------------------------------------------------------
@@ -286,6 +308,21 @@ export async function sendPipelineMessage(request: PipelineSendRequest): Promise
       redacted: redactedAll,
       error: result.result.error,
     })
+  }
+
+  const acceptedDelivery = deliveries.find((delivery) => delivery.ok)
+  if (acceptedDelivery) {
+    const acceptedBody = acceptedDelivery.channel === 'EMAIL' ? messages.email.body : messages.whatsapp.body
+    await recordOutbound(
+      client.id,
+      client.clientId,
+      acceptedBody,
+      acceptedDelivery.channel,
+      request.followUpStage ?? client.pipelineStage,
+      request.nextPendingAction,
+      request.nextPendingActor ?? DEFAULT_STAGE_NEXT_ACTOR[request.stage],
+      request.dueDate,
+    ).catch(() => null)
   }
 
   const accepted = deliveries.filter((d) => d.ok).length

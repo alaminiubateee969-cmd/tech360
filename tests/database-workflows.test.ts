@@ -13,6 +13,9 @@ import { getAgentDefinition } from '../src/lib/agents/bootstrap'
 import { AgentJobDecisionConflict, AgentJobIdempotencyConflict, claimNextAgentJob, decideAgentJob, enqueueAgentJob, processAgentJobBatch } from '../src/lib/agents/jobs'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent, linkVerifiedIdentityToClient, resolveOrCreateVerifiedClient, VerifiedIdentityConflictError } from '../src/lib/identity-resolver'
 import { hashNormalizedIdentity, normalizeIdentity, type VerifiedIdentityProof } from '../src/lib/identity-policy'
+import { sendPipelineMessage } from '../src/lib/pipeline/send'
+import { loadCommState, recordOutbound } from '../src/lib/conversation-state'
+import { executeOpsAction } from '../src/lib/ops-actions'
 
 // Use the application client so the offline preview adapter and the
 // production MySQL client are both honoured without a second engine.
@@ -659,6 +662,56 @@ describe('approved source handover end-to-end', () => {
       await db.payment.deleteMany({ where: { id: payment.id } })
       await db.projectTask.deleteMany({ where: { id: task.id } })
       await db.project.deleteMany({ where: { id: project.id } })
+    }
+  })
+})
+
+describe('Pipeline outbound state and follow-up stage suppression', () => {
+  it('does not persist outbound state on unconfigured/rejected pipeline sends and suppresses follow-ups on CRM stage changes', async () => {
+    const client = await db.client.create({
+      data: {
+        clientId: `${run}-PIPE`,
+        name: 'Pipeline State Lead',
+        source: 'WEB',
+        pipelineStage: 'NEW',
+      },
+    })
+
+    try {
+      const unaccepted = await sendPipelineMessage({
+        clientRowId: client.id,
+        stage: 'FIRST_MESSAGE',
+        variables: { clientId: client.clientId, clientName: client.name, inquirySummary: 'Need an ERP system' },
+        nextPendingAction: 'Share your business type and main project goal',
+        nextPendingActor: 'CLIENT',
+        followUpStage: 'CONTACTED',
+      })
+      assert.equal(unaccepted.status, 'NO_CHANNEL')
+
+      const stateAfterRejected = await loadCommState(client.id, client.clientId, client.pipelineStage)
+      assert.equal(stateAfterRejected.lastOutboundAt, null)
+      assert.equal(stateAfterRejected.nextPendingActor, null)
+
+      await db.client.update({ where: { id: client.id }, data: { pipelineStage: 'CONTACTED' } })
+      await recordOutbound(
+        client.id,
+        client.clientId,
+        'Welcome to Tech360',
+        'EMAIL',
+        'CONTACTED',
+        'Share your business type and main project goal',
+        'CLIENT',
+      )
+
+      await db.client.update({ where: { id: client.id }, data: { pipelineStage: 'SCOPE_COLLECTION' } })
+      const suppressed = await executeOpsAction('FOLLOWUP_LEAD', { clientId: client.id })
+      assert.equal(suppressed.ok, true)
+      assert.equal(suppressed.data?.sendStatus, 'SUPPRESSED')
+      assert.equal(suppressed.data?.reason, 'STAGE_CHANGED')
+    } finally {
+      await db.aiMemory.deleteMany({ where: { clientId: client.id } }).catch(() => null)
+      await db.communication.deleteMany({ where: { clientId: client.id } }).catch(() => null)
+      await db.client.deleteMany({ where: { id: client.id } }).catch(() => null)
     }
   })
 })

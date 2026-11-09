@@ -39,6 +39,7 @@
   "exclude": [
     "deployment",
     "examples",
+    "fixes",
     "legacy",
     "mini-services",
     "n8n",
