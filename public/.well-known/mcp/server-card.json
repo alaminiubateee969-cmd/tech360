@@ -1,0 +1,38 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json",
+  "version": "1.0",
+  "protocolVersion": "2025-06-18",
+  "name": "com.bdtech360.site",
+  "serverInfo": {
+    "name": "bdtech360-site-mcp",
+    "title": "TECH360 Site MCP",
+    "version": "1.0.0",
+    "description": "Read-only public information about TECH360 LLC: services, industries, FAQs, and contact details.",
+    "homepage": "https://bdtech360.com"
+  },
+  "description": "Read-only public information about TECH360 LLC: services, industries, FAQs, and contact details.",
+  "websiteUrl": "https://bdtech360.com",
+  "endpointUrl": "https://bdtech360.com/api/mcp",
+  "transport": {
+    "type": "streamable-http",
+    "endpoint": "/api/mcp"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://bdtech360.com/api/mcp"
+    }
+  ],
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    }
+  },
+  "authentication": {
+    "required": false,
+    "schemes": []
+  },
+  "tools": "dynamic",
+  "instructions": "Read-only tools that return public marketing and contact information. No authentication required; no data is modified.",
+  "documentationUrl": "https://bdtech360.com/llms.txt"
+}

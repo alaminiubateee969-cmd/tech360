@@ -12,7 +12,7 @@ import type { Actor } from './access'
 import { writeFactoryAudit } from './access'
 import { validateModuleManifest, validateTemplateDefinition, type ModuleRef } from './definition'
 import { IMPLEMENTED_CAPABILITIES, type Capability, type ModuleManifest, type TemplateDefinition } from './types'
-import { checksum, jsonText, parseSemver } from './util'
+import { checksum, isUniqueViolation, jsonText, parseSemver, withLockRetry } from './util'
 
 interface ModuleSeed {
   code: string
@@ -468,6 +468,10 @@ export interface BootstrapResult {
 
 /** Idempotent: existing approved assets are never overwritten or deleted. */
 export async function bootstrapCatalog(actor: Actor): Promise<BootstrapResult> {
+  return withLockRetry(() => bootstrapCatalogOnce(actor), 8)
+}
+
+async function bootstrapCatalogOnce(actor: Actor): Promise<BootstrapResult> {
   const created = { modules: 0, moduleVersions: 0, templates: 0, templateVersions: 0, links: 0 }
   const checks: Array<{ key: string; ok: boolean; detail: string }> = []
   const moduleRefs = new Map<string, ModuleRef>()
@@ -475,25 +479,37 @@ export async function bootstrapCatalog(actor: Actor): Promise<BootstrapResult> {
   for (const seed of MODULE_SEEDS) {
     let mod = await db.factoryModule.findUnique({ where: { code: seed.code } })
     if (!mod) {
-      mod = await db.factoryModule.create({ data: {
-        code: seed.code, name: seed.name, category: seed.category, capability: seed.capability,
-        description: seed.description, status: 'VALIDATED', currentVersion: 0,
-      } })
-      created.modules++
+      try {
+        mod = await db.factoryModule.create({ data: {
+          code: seed.code, name: seed.name, category: seed.category, capability: seed.capability,
+          description: seed.description, status: 'VALIDATED', currentVersion: 0,
+        } })
+        created.modules++
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error
+        mod = await db.factoryModule.findUniqueOrThrow({ where: { code: seed.code } })
+      }
     }
     let version = await db.factoryModuleVersion.findUnique({ where: { moduleId_version: { moduleId: mod.id, version: 1 } } })
     if (!version) {
       const manifestCheck = validateModuleManifest(seed.manifest)
       if (!manifestCheck.ok) throw new Error(`Invalid ${seed.code} manifest: ${manifestCheck.errors.join(', ')}`)
-      version = await db.factoryModuleVersion.create({ data: {
-        moduleId: mod.id, version: 1, semver: '1.0.0', manifest: jsonText(seed.manifest),
-        checksum: checksum(seed.manifest), status: 'APPROVED', breaking: false,
-        releaseNotes: 'Initial approved shared capability.', approvedBy: actor.email, approvedAt: new Date(),
-        createdBy: actor.email,
-      } })
-      created.moduleVersions++
+      try {
+        version = await db.factoryModuleVersion.create({ data: {
+          moduleId: mod.id, version: 1, semver: '1.0.0', manifest: jsonText(seed.manifest),
+          checksum: checksum(seed.manifest), status: 'APPROVED', breaking: false,
+          releaseNotes: 'Initial approved shared capability.', approvedBy: actor.email, approvedAt: new Date(),
+          createdBy: actor.email,
+        } })
+        created.moduleVersions++
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error
+        version = await db.factoryModuleVersion.findUniqueOrThrow({ where: { moduleId_version: { moduleId: mod.id, version: 1 } } })
+      }
     }
-    await db.factoryModule.update({ where: { id: mod.id }, data: { currentVersion: Math.max(mod.currentVersion, 1), status: 'PRODUCTION_READY' } })
+    if (mod.status !== 'PRODUCTION_READY' || mod.currentVersion < 1) {
+      await db.factoryModule.update({ where: { id: mod.id }, data: { currentVersion: Math.max(mod.currentVersion, 1), status: 'PRODUCTION_READY' } })
+    }
     moduleRefs.set(seed.code, {
       id: version.id,
       code: seed.code, version: version.version, semver: version.semver, status: version.status,
@@ -506,36 +522,60 @@ export async function bootstrapCatalog(actor: Actor): Promise<BootstrapResult> {
   for (const seed of TEMPLATE_SEEDS) {
     let tpl = await db.factoryTemplate.findUnique({ where: { code: seed.code } })
     if (!tpl) {
-      tpl = await db.factoryTemplate.create({ data: {
-        code: seed.code, name: seed.name, category: seed.category, description: seed.description,
-        status: 'VALIDATED', currentVersion: 0, createdBy: actor.email,
-      } })
-      created.templates++
+      try {
+        tpl = await db.factoryTemplate.create({ data: {
+          code: seed.code, name: seed.name, category: seed.category, description: seed.description,
+          status: 'VALIDATED', currentVersion: 0, createdBy: actor.email,
+        } })
+        created.templates++
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error
+        tpl = await db.factoryTemplate.findUniqueOrThrow({ where: { code: seed.code } })
+      }
     }
     let version = await db.factoryTemplateVersion.findUnique({ where: { templateId_version: { templateId: tpl.id, version: 1 } } })
     if (!version) {
       const tCheck = validateTemplateDefinition(seed.definition, moduleRefs)
       if (!tCheck.ok) throw new Error(`Invalid ${seed.code} template: ${tCheck.errors.join(', ')}`)
-      version = await db.factoryTemplateVersion.create({ data: {
-        templateId: tpl.id, version: 1, semver: '1.0.0', definition: jsonText(seed.definition),
-        checksum: checksum(seed.definition), status: 'APPROVED',
-        testResults: jsonText({ ranAt: new Date().toISOString(), checks: tCheck, passed: true, note: 'Structural + capability + dependency checks executed at bootstrap.' }),
-        releaseNotes: 'Initial approved private template version.', approvedBy: actor.email,
-        approvedAt: new Date(), createdBy: actor.email,
-      } })
-      created.templateVersions++
-      for (const m of seed.definition.modules) {
+      try {
+        version = await db.factoryTemplateVersion.create({ data: {
+          templateId: tpl.id, version: 1, semver: '1.0.0', definition: jsonText(seed.definition),
+          checksum: checksum(seed.definition), status: 'APPROVED',
+          testResults: jsonText({ ranAt: new Date().toISOString(), checks: tCheck, passed: true, note: 'Structural + capability + dependency checks executed at bootstrap.' }),
+          releaseNotes: 'Initial approved private template version.', approvedBy: actor.email,
+          approvedAt: new Date(), createdBy: actor.email,
+        } })
+        created.templateVersions++
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error
+        version = await db.factoryTemplateVersion.findUniqueOrThrow({ where: { templateId_version: { templateId: tpl.id, version: 1 } } })
+      }
+    }
+    const existingLinks = await db.factoryTemplateModule.findMany({
+      where: { templateVersionId: version.id },
+      select: { moduleId: true },
+    })
+    const linkedModules = new Set(existingLinks.map((l) => l.moduleId))
+    for (const m of seed.definition.modules) {
+      if (linkedModules.has(m.code)) continue
+      try {
         await db.factoryTemplateModule.create({ data: {
           templateVersionId: version.id, moduleId: m.code, required: m.required, config: null,
         } })
         created.links++
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error
       }
     }
     const allApproved = (await db.factoryTemplateModule.count({ where: { templateVersionId: version.id } })) === seed.definition.modules.length
     const vCheck = validateTemplateDefinition(seed.definition, moduleRefs)
     if (vCheck.ok && allApproved && version.status === 'APPROVED') {
-      await db.factoryTemplate.update({ where: { id: tpl.id }, data: { currentVersion: Math.max(tpl.currentVersion, 1), status: 'PRODUCTION_READY' } })
-      await db.factoryTemplateVersion.update({ where: { id: version.id }, data: { testResults: jsonText({ ranAt: new Date().toISOString(), checks: vCheck, linksVerified: allApproved, passed: true }) } })
+      if (tpl.status !== 'PRODUCTION_READY' || tpl.currentVersion < 1) {
+        await db.factoryTemplate.update({ where: { id: tpl.id }, data: { currentVersion: Math.max(tpl.currentVersion, 1), status: 'PRODUCTION_READY' } })
+      }
+      if (!version.testResults?.includes('"linksVerified":true')) {
+        await db.factoryTemplateVersion.update({ where: { id: version.id }, data: { testResults: jsonText({ ranAt: new Date().toISOString(), checks: vCheck, linksVerified: allApproved, passed: true }) } })
+      }
     }
     checks.push({ key: `template.${seed.code}`, ok: vCheck.ok && allApproved, detail: vCheck.ok ? `${seed.definition.modules.length} approved module links verified` : vCheck.errors.join(', ') })
   }

@@ -1,0 +1,57 @@
+# TECH360
+
+> TECH360 LLC builds enterprise websites, eCommerce platforms, custom CRMs, AI-assisted applications, and business automation. Project scope, payment, delivery, and support are agreed in writing. TECH360 LLC is registered in Harrisonville, Missouri, USA. All money amounts on this site are in USD.
+
+TECH360 (domain: bdtech360.com) — Strategy. Software. Automation. Growth. Public enquiries: [info@bdtech360.com](mailto:info@bdtech360.com), +1 (816) 380-8660.
+
+## Key pages
+
+- [About](https://bdtech360.com/about): Company profile, delivery approach, and the systems TECH360 builds.
+- [Services](https://bdtech360.com/services): Full catalogue of 21 software and automation services.
+- [Industries](https://bdtech360.com/industries): 20 industry solution patterns (retail, healthcare, education, finance, logistics, construction, manufacturing, and more).
+- [Delivery Process](https://bdtech360.com/process): Delivery stages, client approvals, and review gates.
+- [AI Agent Pipeline](https://bdtech360.com/pipeline): The eleven-stage client journey with approval gates and source-code handover.
+- [Illustrative Project Scenarios](https://bdtech360.com/work): Clearly labelled illustrative scenarios — not audited case studies.
+- [Technology Stack](https://bdtech360.com/technologies): Technology categories and tools used.
+- [Engineering Insights](https://bdtech360.com/blog): Published engineering and delivery notes.
+- [FAQ](https://bdtech360.com/faq): Answers about scope, payments, revisions, and handover.
+- [Careers](https://bdtech360.com/careers): Career information and opportunities.
+- [Contact](https://bdtech360.com/contact): Project and service enquiries.
+- [Legal & Policies](https://bdtech360.com/legal): Terms of Service, Privacy Policy, and other policies.
+- [Client Portal](https://bdtech360.com/portal): Sign-in for existing clients (requires an account).
+
+## Services (21)
+
+- [Premium Business Websites](https://bdtech360.com/services/premium-business-websites)
+- [Enterprise Websites](https://bdtech360.com/services/enterprise-websites)
+- [eCommerce Platforms](https://bdtech360.com/services/ecommerce-platforms)
+- [Custom CRM Development](https://bdtech360.com/services/custom-crm-development)
+- [WhatsApp AI Sales CRM](https://bdtech360.com/services/whatsapp-ai-sales-crm)
+- [Client Portals](https://bdtech360.com/services/client-portals)
+- [Business Dashboards](https://bdtech360.com/services/business-dashboards)
+- [WhatsApp Automation](https://bdtech360.com/services/whatsapp-automation)
+- [WhatsApp Cloud API Integration](https://bdtech360.com/services/whatsapp-cloud-api-integration)
+- [Email Automation](https://bdtech360.com/services/email-automation)
+- [SMS Automation](https://bdtech360.com/services/sms-automation)
+- [n8n Workflow Automation](https://bdtech360.com/services/n8n-workflow-automation)
+- [AI Agent Systems](https://bdtech360.com/services/ai-agent-systems)
+- [AI Business Automation](https://bdtech360.com/services/ai-business-automation)
+- [API Integrations](https://bdtech360.com/services/api-integrations)
+- [Database Systems](https://bdtech360.com/services/database-systems)
+- [Cloud Deployment (Google Cloud)](https://bdtech360.com/services/cloud-deployment-google-cloud)
+- [cPanel / StackCP Deployment](https://bdtech360.com/services/cpanel-stackcp-deployment)
+- [Custom Software Development](https://bdtech360.com/services/custom-software-development)
+- [Maintenance & Support](https://bdtech360.com/services/maintenance-support)
+- [Digital Transformation Consulting](https://bdtech360.com/services/digital-transformation-consulting)
+
+## Industries (20)
+
+[Commerce & Retail](https://bdtech360.com/industries/retail) · [eCommerce](https://bdtech360.com/industries/ecommerce) · [Restaurants & Food](https://bdtech360.com/industries/restaurants-food) · [Travel & Hospitality](https://bdtech360.com/industries/travel-hospitality) · [Education](https://bdtech360.com/industries/education) · [Schools & Training](https://bdtech360.com/industries/schools-training) · [Healthcare](https://bdtech360.com/industries/healthcare) · [Hospitals & Clinics](https://bdtech360.com/industries/hospitals-clinics) · [Agencies](https://bdtech360.com/industries/agencies) · [Professional Services](https://bdtech360.com/industries/professional-services) · [Marketing Agencies](https://bdtech360.com/industries/marketing-agencies) · [Legal Services](https://bdtech360.com/industries/legal-services) · [Technology Companies](https://bdtech360.com/industries/technology-companies) · [Finance](https://bdtech360.com/industries/finance) · [International SMEs](https://bdtech360.com/industries/international-smes) · [Local Businesses](https://bdtech360.com/industries/local-businesses) · [Logistics](https://bdtech360.com/industries/logistics) · [Construction](https://bdtech360.com/industries/construction) · [Real Estate](https://bdtech360.com/industries/real-estate) · [Manufacturing](https://bdtech360.com/industries/manufacturing)
+
+## For agents
+
+- This page is also served as Markdown: request `/` with `Accept: text/markdown`.
+- A machine-readable summary lives at [llms.txt](https://bdtech360.com/llms.txt) (you are reading it).
+- A read-only MCP endpoint is available at `https://bdtech360.com/api/mcp` and is advertised at [/.well-known/mcp/server-card.json](https://bdtech360.com/.well-known/mcp/server-card.json).
+- Structured data (Organization, WebSite, WebPage, FAQPage, Service, Blog) is embedded as JSON-LD in the HTML.
+- Content signal: `search=yes, ai-train=no` (see [robots.txt](https://bdtech360.com/robots.txt)).

@@ -13,7 +13,7 @@ import { runHealthChecks } from './health'
 import { canReleaseTransition, compatibilityReport, RELEASE_TRANSITIONS } from './lifecycle'
 import { resolveRuntime, runFactoryTests } from './runtime'
 import type { ApplicationConfig } from './types'
-import { checksum, jsonText, parseJson } from './util'
+import { checksum, createWithUniqueCode, jsonText, parseJson, randomTag } from './util'
 
 export interface ImpactRow {
   applicationId: string
@@ -86,15 +86,6 @@ export async function impactAnalysis(moduleCode: string, targetVersion?: number)
   }
 }
 
-async function uniqueReleaseCode(): Promise<string> {
-  const n = await db.factoryRelease.count()
-  for (let i = n + 1; i < n + 100; i++) {
-    const code = `REL-UP-${String(i).padStart(5, '0')}`
-    if (!(await db.factoryRelease.findUnique({ where: { code } }))) return code
-  }
-  return `REL-UP-${Date.now().toString(36)}`
-}
-
 /** Create a DRAFT upgrade release with a real impact/compatibility report. */
 export async function createUpgradeRelease(args: {
   applicationId: string
@@ -131,19 +122,21 @@ export async function createUpgradeRelease(args: {
   }
   const configText = jsonText(next)
   const dependentApps = updates.length ? (await impactAnalysis(updates[0].code, updates[0].version)).applications.length : 1
-  const release = await db.factoryRelease.create({ data: {
-    code: await uniqueReleaseCode(), applicationId, companyId: app.companyId,
-    fromVersion: app.releaseVersion, toVersion: `${app.releaseVersion}-up${Date.now().toString(36).slice(-4)}`,
-    kind: 'UPGRADE', environment: app.environment, status: report.compatible ? 'DRAFT' : 'FAILED',
-    moduleVersions: jsonText(next.modules.map((m) => ({ code: m.code, semver: m.semver, version: m.version }))),
-    compatibility: jsonText({ report, dependentApplications: dependentApps, breaking: report.breaking }),
-    migrationPlan: report.compatible
-      ? 'No breaking schema change detected. Staging upgrade then approval then a verified pre-deploy backup then deploy.'
-      : 'BREAKING or DOWNGRADE detected. A reviewed migration plan and explicit approval are required - automatic deployment is refused.',
-    deploymentSpec: jsonText({ proposedConfig: next, stagingApplicationId: null, honestState: 'NOT_STAGED' }),
-    releaseNotes: args.moduleCode ? `Shared module ${args.moduleCode} update` : 'Configuration-only release',
-    createdBy: actor.email,
-  } })
+  const release = await createWithUniqueCode('REL-UP', () => db.factoryRelease.count(), (code) =>
+    db.factoryRelease.create({ data: {
+      code, applicationId, companyId: app.companyId,
+      fromVersion: app.releaseVersion, toVersion: `${app.releaseVersion}-up${Date.now().toString(36).slice(-4)}`,
+      kind: 'UPGRADE', environment: app.environment, status: report.compatible ? 'DRAFT' : 'FAILED',
+      moduleVersions: jsonText(next.modules.map((m) => ({ code: m.code, semver: m.semver, version: m.version }))),
+      compatibility: jsonText({ report, dependentApplications: dependentApps, breaking: report.breaking }),
+      migrationPlan: report.compatible
+        ? 'No breaking schema change detected. Staging upgrade then approval then a verified pre-deploy backup then deploy.'
+        : 'BREAKING or DOWNGRADE detected. A reviewed migration plan and explicit approval are required - automatic deployment is refused.',
+      deploymentSpec: jsonText({ proposedConfig: next, stagingApplicationId: null, honestState: 'NOT_STAGED' }),
+      releaseNotes: args.moduleCode ? `Shared module ${args.moduleCode} update` : 'Configuration-only release',
+      createdBy: actor.email,
+    } }),
+  )
   if (!report.compatible) {
     await writeFactoryAudit({ actor, action: 'FACTORY_RELEASE_CREATE', targetType: 'RELEASE', targetId: release.id, companyId: app.companyId, decision: 'DENY', detail: { reason: 'incompatible', report } })
     return { ok: false, reason: 'Compatibility check failed: breaking or downgrade detected. Release recorded as FAILED.', releaseId: release.id, compatibility: report }
@@ -177,7 +170,7 @@ export async function stageUpgradeRelease(releaseId: string, actor: Actor): Prom
     } })
   } else if (!stagingId) {
     const clone = await db.factoryApplication.create({ data: {
-      code: `APP-STG-${Date.now().toString(36).toUpperCase()}`, companyId: app.companyId,
+      code: `APP-STG-${Date.now().toString(36).toUpperCase()}-${randomTag()}`, companyId: app.companyId,
       templateId: app.templateId, templateVersionId: app.templateVersionId,
       name: `${app.name} (staging upgrade)`, environment: 'STAGING', deploymentModel: app.deploymentModel,
       status: 'STAGING', config: configText, configChecksum: hash, definitionVersion: app.definitionVersion,

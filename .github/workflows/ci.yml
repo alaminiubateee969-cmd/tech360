@@ -410,7 +410,7 @@ jobs:
           www_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-www.headers | tr -d '\r')"
           test "$www_status" = 308
           test "$www_location" = 'https://bdtech360.com/'
-          http_status="$(curl -sS -D /tmp/tech360-http.headers -o /dev/null -w '%{http_code}' -H 'x-forwarded-proto: http' "http://127.0.0.1:$PORT/")"
+          http_status="$(curl -sS -D /tmp/tech360-http.headers -o /dev/null -w '%{http_code}' -H 'Host: bdtech360.com' -H 'x-forwarded-proto: http' "http://127.0.0.1:$PORT/")"
           http_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-http.headers | tr -d '\r')"
           test "$http_status" = 308
           test "$http_location" = 'https://bdtech360.com/'

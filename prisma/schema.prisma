@@ -1173,11 +1173,11 @@ model GeneratedDocument {
   updatedAt          DateTime @updatedAt
   approvalStatus     String   @default("DRAFT") // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED | FINAL
   finalizationStatus String   @default("DRAFT") // DRAFT | ISSUED | FINALIZED | ARCHIVED | SUPERSEDED
-  fileLocation       String?  @db.Text // private storage path — NEVER public URL
-  fileContent        Bytes?   @db.LongBlob // archived HTML/PDF snapshot (preserves original forever)
+  fileLocation       String? @db.Text // private storage path — NEVER public URL
+  fileContent        Bytes? @db.LongBlob // archived HTML/PDF snapshot (preserves original forever)
   brandingVersion    Int      @default(1)
-  accessPermissions  String   @db.Text // JSON array of roles allowed: ["SUPER_ADMIN","ADMIN",...]
-  auditHistory       String   @db.LongText // JSON array of {at, actor, action}
+  accessPermissions  String @db.Text // JSON array of roles allowed: ["SUPER_ADMIN","ADMIN",...]
+  auditHistory       String @db.LongText // JSON array of {at, actor, action}
   relatedId          String?
   sha256             String?
   title              String?
