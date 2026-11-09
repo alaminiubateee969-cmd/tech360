@@ -38,32 +38,47 @@ export async function POST(req: NextRequest) {
   const from = sanitizeText((payload.From ?? payload.from ?? payload.sender ?? payload.phone ?? '') as string, 40)
   const bodyText = sanitizeText((payload.Body ?? payload.body ?? payload.content ?? payload.message ?? payload.text ?? '') as string, 4000)
   const messageSid = sanitizeText((payload.MessageSid ?? payload.messageId ?? payload.id ?? payload.smsId ?? '') as string, 80)
-  const eventId = messageSid || `sms:${from}:${Date.now()}:${bodyText.slice(0, 20)}`
+  const eventId = messageSid
 
-  if (!from || !bodyText) {
-    // Still 200 to provider — we just cannot process
-    return Response.json({ ok: true })
+  if (!from || !bodyText || !messageSid) {
+    return Response.json({ ok: false, error: 'Missing sender, message body or provider message id' }, { status: 400 })
   }
 
-  // Twilio signature validation (if configured)
-  const twilioAuth = process.env.TWILIO_AUTH_TOKEN
-  if (twilioAuth && req.headers.get('x-twilio-signature')) {
+  // Authenticate the explicitly configured inbound provider. Do not accept
+  // unsigned generic requests: idempotency is not authentication.
+  const inboundProvider = (process.env.SMS_INBOUND_PROVIDER ?? '').trim().toUpperCase()
+  if (inboundProvider === 'TWILIO') {
+    const twilioAuth = process.env.TWILIO_AUTH_TOKEN
+    const got = req.headers.get('x-twilio-signature') ?? ''
+    if (!twilioAuth || !got) {
+      await logError({ source: 'WEBHOOK', code: 'SMS_SIGNATURE_MISSING', message: 'Twilio inbound authentication is not configured or signature is missing' }).catch(() => null)
+      return Response.json({ ok: false, error: 'SMS provider authentication unavailable' }, { status: 503 })
+    }
     const url = req.nextUrl.toString()
     const params = Object.fromEntries(new URLSearchParams(rawBody).entries())
-    // Twilio computes HMAC-SHA1 over url + sorted params
     const sorted = Object.keys(params).sort()
     let data = url
     for (const k of sorted) data += k + params[k]
     const expected = createHmac('sha1', twilioAuth).update(data).digest('base64')
-    const got = req.headers.get('x-twilio-signature') ?? ''
     if (!constantTimeEquals(got, expected)) {
-      await logError({ source: 'WEBHOOK', code: 'SMS_SIGNATURE_INVALID', message: 'SMS webhook signature mismatch' })
+      await logError({ source: 'WEBHOOK', code: 'SMS_SIGNATURE_INVALID', message: 'SMS webhook signature mismatch' }).catch(() => null)
       return Response.json({ ok: false, error: 'Invalid signature' }, { status: 401 })
     }
+  } else if (inboundProvider === 'HTTPSMS' || inboundProvider === 'GENERIC') {
+    const secret = process.env.SMS_WEBHOOK_SECRET ?? ''
+    const got = req.headers.get('x-sms-webhook-secret') ?? ''
+    if (secret.length < 32) {
+      await logError({ source: 'WEBHOOK', code: 'SMS_WEBHOOK_SECRET_MISSING', message: 'SMS_WEBHOOK_SECRET must be configured with at least 32 characters' }).catch(() => null)
+      return Response.json({ ok: false, error: 'SMS provider authentication is not configured' }, { status: 503 })
+    }
+    if (!got || !constantTimeEquals(got, secret)) {
+      await logError({ source: 'WEBHOOK', code: 'SMS_SIGNATURE_INVALID', message: 'SMS shared-secret authentication failed' }).catch(() => null)
+      return Response.json({ ok: false, error: 'Invalid signature' }, { status: 401 })
+    }
+  } else {
+    await logError({ source: 'WEBHOOK', code: 'SMS_PROVIDER_NOT_CONFIGURED', message: 'SMS_INBOUND_PROVIDER must be TWILIO, HTTPSMS or GENERIC' }).catch(() => null)
+    return Response.json({ ok: false, error: 'Inbound SMS provider is not configured' }, { status: 503 })
   }
-
-  // httpSMS signature (optional, if provider supports)
-  // Generic providers without signature proceed but remain idempotency-safe via claim
 
   const phone = toE164(from)
   if (!phone) {
@@ -76,7 +91,7 @@ export async function POST(req: NextRequest) {
   try {
     claim = await claimInboundWebhookEvent({ provider: 'SMS', providerEventId: eventId, eventType: 'MESSAGE' })
   } catch {
-    return Response.json({ ok: true })
+    return Response.json({ ok: false, error: 'Inbound message could not be safely claimed' }, { status: 503 })
   }
   if (!claim.claimed || !claim.receiptId || !claim.claimToken) return Response.json({ ok: true })
 
@@ -212,29 +227,22 @@ async function handleSmsReply(input: { client: { id: string; clientId: string; e
   const isFormalStage = ['SCOPE_REVIEW', 'FINAL_SCOPE', 'CLIENT_APPROVAL', 'PAYMENT_PENDING', 'PROJECT_ACTIVE', 'DELIVERY', 'HANDOVER'].includes(input.client.pipelineStage)
   const emailCanonical = Boolean(input.client.email) && isFormalStage
 
-  if (emailCanonical) {
-    const { sendCommunication } = await import('@/lib/comms')
-    await sendCommunication({
-      clientId: input.client.id,
-      channel: 'SMS',
-      to: input.phone,
-      body: `Tech360 ${input.client.clientId}: Details sent to ${input.client.email}. ${result.reply.slice(0, 250)}`,
-      agentCode: 'CHAT-AI',
-    })
-  } else {
-    const { sendCommunication } = await import('@/lib/comms')
-    const res = await sendCommunication({
-      clientId: input.client.id,
-      channel: 'SMS',
-      to: input.phone,
-      body: result.reply.slice(0, 1600),
-      agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
-    })
-    if (!res.result.ok) {
-      await logError({ source: 'WEBHOOK', code: `SMS_SEND_${res.result.status}`, message: res.result.error ?? 'SMS send failed', clientId: input.client.clientId }).catch(() => null)
-    }
+  const { sendCommunication } = await import('@/lib/comms')
+  const outboundBody = emailCanonical
+    ? `Tech360 ${input.client.clientId}: Details sent to ${input.client.email}. ${result.reply.slice(0, 250)}`
+    : result.reply.slice(0, 1600)
+  const sendRes = await sendCommunication({
+    clientId: input.client.id,
+    channel: 'SMS',
+    to: input.phone,
+    body: outboundBody,
+    agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
+  })
+  if (!sendRes.result.ok) {
+    await logError({ source: 'WEBHOOK', code: `SMS_SEND_${sendRes.result.status}`, message: sendRes.result.error ?? 'SMS send failed', clientId: input.client.clientId }).catch(() => null)
+    return
   }
 
   const { recordOutbound } = await import('@/lib/conversation-state')
-  await recordOutbound(input.client.id, input.client.clientId, result.reply, 'SMS').catch(() => null)
+  await recordOutbound(input.client.id, input.client.clientId, outboundBody, 'SMS', input.client.pipelineStage, result.nextAction, result.nextActor, result.nextDueDate).catch(() => null)
 }

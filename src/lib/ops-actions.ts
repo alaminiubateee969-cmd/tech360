@@ -51,6 +51,38 @@ export async function executeOpsAction(action: string, payload: OpsPayload): Pro
         const clientRowId = sanitizeText(payload.clientId, 40)
         const client = await db.client.findFirst({ where: { OR: [{ id: clientRowId }, { clientId: clientRowId }] } })
         if (!client) return fail(404, 'Client not found')
+        const { loadCommState } = await import('@/lib/conversation-state')
+        const communicationState = await loadCommState(client.id, client.clientId, client.pipelineStage)
+        const repliedSinceLastOutbound = Boolean(
+          communicationState.lastInboundAt &&
+          communicationState.lastOutboundAt &&
+          new Date(communicationState.lastInboundAt).getTime() > new Date(communicationState.lastOutboundAt).getTime(),
+        )
+        const stageChanged = Boolean(
+          communicationState.followUpStage &&
+          communicationState.currentStage !== communicationState.followUpStage,
+        )
+        if (
+          !communicationState.followUpEnabled ||
+          communicationState.optedOut ||
+          communicationState.humanTakeover ||
+          communicationState.closed ||
+          communicationState.nextPendingActor === 'TECH360' ||
+          repliedSinceLastOutbound ||
+          stageChanged
+        ) {
+          return ok({
+            action: 'FOLLOWUP_LEAD',
+            sendStatus: 'SUPPRESSED',
+            reason: communicationState.optedOut ? 'CUSTOMER_OPTED_OUT'
+              : communicationState.humanTakeover ? 'HUMAN_TAKEOVER'
+                : communicationState.closed ? 'CLIENT_CLOSED'
+                  : repliedSinceLastOutbound ? 'CUSTOMER_REPLIED'
+                    : stageChanged ? 'STAGE_CHANGED'
+                      : communicationState.nextPendingActor === 'TECH360' ? 'WAITING_ON_TECH360'
+                        : 'FOLLOWUPS_DISABLED',
+          })
+        }
         const run = await runAgent('COM-010', {
           input: `Write a short, warm follow-up message to ${client.name} (${client.businessName ?? 'business'}) who inquired about a ${client.businessType ?? 'software'} project with Tech360 and has been quiet for a while. Ask if they want to continue or have questions. Max 60 words. Sign "Team Tech360".`,
           clientId: client.id, workflow: 'OPS_FOLLOWUP',
