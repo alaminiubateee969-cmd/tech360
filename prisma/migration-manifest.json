@@ -1,0 +1,23 @@
+{
+  "$comment": "Published Prisma migrations are immutable: renaming, deleting or editing one is a breaking change for every database that already applied it (see docs/HOSTINGER_SSH_RECOVERY.md §5). Add new migrations with `npm run migrations:publish`; the name must sort after every entry here.",
+  "migrations": {
+    "0_init": "f8634f2b489e7a149a4ccedb39079581f7082fbfd0391942ea21f208a95ba476",
+    "10_chat_consent_idempotency": "a5558cb48322761c6d4de738ccc28febef2e2d8951bebe2b7910f071875862f8",
+    "11_department_capability_certification": "ffde74962d0f1843173f6df0daff5ddf9d0fab3839d22e6aa64c61cb72a6ef78",
+    "12_factory_scope_binding": "11034958e447dc2ff1e33da6b36af0c476b851c382e2505b6e899d9047cdd0f8",
+    "14_software_factory_control_center": "703d8562a6b200434b089d5b56437778ea509db4be38e11562d514b953acba7e",
+    "15_document_branding_and_storage": "4d8b133a39aead665f9a39f7f34f139cac3396587cfeaad0ef9432e014554155",
+    "1_ai_software_factory": "54ce41f831c8a79b24af5864aa83d506b8d801ba5f381a387676cf34fbf72495",
+    "2_ai_execution_resilience": "fd573e08742481fafd34ee6c594ba28e59987778fa63431c308a14f0d0b054ad",
+    "2_social_marketing": "4b04fa79ab2687858d157dc5f22fe20bf7a58f012bf3925051b3c694dc657aea",
+    "3_outbox_retry_integrity": "b33b60f1191f9056ba2467b1b27cbb483aa9d09a0d0af0520ef8dc7602d2ad96",
+    "4_campaign_engagement_tracking": "72c813abdb1c517a0612243512d999898bea9144c9f5b4471cbfdfff2783a63f",
+    "5_chat_last_sender": "9cc4cedb19f381c277e2c4f6d18c485d840bea5f0a7fd6c2db7389d785e6eae7",
+    "6_agent_job_durable": "293e1a6787f0dede95d138e544609eb2c7017e2e685adc301a1e091b235199b2",
+    "7_verified_identity_webhook_replay": "765c2e86106cbe83f0a6750e8da78fe063985cb89f4da9d7ff9918facb115409",
+    "8_agent_job_tool_calls": "e9befa4db1c5c206a1c1484ac96f7af0f0ec72eeb6212d49bafc8aba2c20dede",
+    "8_private_ai_platform": "e42f520fb58286ad1213b94b2521b8b41073eb36d32b2b9a73dc2aee7a75aa37",
+    "93_post_review_grid": "89cf55d104fd2786457292245fd720910e042c8a89a51fc6493b92ad34b06072",
+    "9_commerce_invoices_sequences": "3838f9c9e319f6b6620d81eb03aa68126ea5ecaaf1760948bf6572520f4aee4a"
+  }
+}

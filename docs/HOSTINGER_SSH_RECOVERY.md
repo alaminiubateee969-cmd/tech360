@@ -118,36 +118,67 @@ every already-migrated database.** Prefer additive follow-up migrations. If a
 rename must ship, run the resolution procedure below against each migrated
 database as part of the rollout.
 
+That policy is now enforced in code. `scripts/check-migration-immutability.mjs`
+(`npm run migrations:check`, a CI gate) compares `prisma/migrations` with
+`prisma/migration-manifest.json` and fails if a published migration is renamed,
+deleted or edited, or if a new migration would sort *before* a published one.
+New migrations must therefore sort last: `9_commerce_invoices_sequences` sorts
+after every digit-only prefix (`"94_x" < "9_commerce_x"`, because `"4" < "_"`),
+so the next generation is `v2_…`, then `v3_…`. Add a migration, then publish it
+deliberately with `npm run migrations:publish`.
+
 ### Recovery procedure
 
 **Step 0 — backup.** hPanel → Databases (export), or hPanel → Backups.
 
-**Step 1 — inspect (read-only).** In phpMyAdmin or the `mysql` CLI against the
-application database:
+**Step 1 — inspect (read-only), on the server, with the pinned Prisma:**
 
-```sql
-SELECT migration_name, started_at, finished_at, rolled_back_at,
-       applied_steps_count, LEFT(logs, 800) AS logs
-FROM _prisma_migrations
-WHERE migration_name LIKE '%post_review%';
-
-SHOW CREATE TABLE `PostReview`;
-SELECT COUNT(*) FROM `PostReview`;
+```bash
+node scripts/prisma-migration-doctor.mjs          # add --json for machine-readable output
 ```
 
-Note whether the failed row's `logs` show the first statement failing
-(`Table 'PostReview' already exists` — nothing new applied), whether a row for
-an older migration name is also present, and whether the table exists in the
-migration's intended end state (including its foreign key).
+`scripts/prisma-migration-doctor.mjs` selects only from `_prisma_migrations` and
+`information_schema`; it writes nothing. For every failed row it prints the
+migration name, whether that name still exists in `prisma/migrations` (Prisma
+resolves **by name**), which objects the migration creates that are present or
+**MISSING** in the database, and a verdict:
 
-**Step 2 — resolve the record**, matching what Step 1 showed:
+| Verdict | Meaning | Direction to resolve |
+|---|---|---|
+| end state IS in place | every object the migration creates exists | `--applied` |
+| nothing usable was applied | none of them exists | `--rolled-back` |
+| PARTIALLY applied | some exist — MySQL DDL is not transactional | reconcile by hand first |
+| cannot be verified | the SQL has no verifiable DDL, or the name is gone | inspect by hand |
 
-| Actual state | Command |
+No SSH or Prisma access? The same evidence is one command away as SQL for
+phpMyAdmin — `node scripts/prisma-migration-doctor.mjs --sql` prints the
+equivalent read-only queries. Read the `logs` tail: `Table 'PostReview' already
+exists` means the first statement failed and nothing was applied.
+
+**Step 2 — resolve the record**, using the verdict from Step 1. The doctor runs
+the resolution for you, through `scripts/prisma.mjs` (engine repair, pinned
+Prisma 6.19.3), after re-checking the state on the database:
+
+```bash
+node scripts/prisma-migration-doctor.mjs --resolve 93_post_review_grid --as applied     --confirm
+node scripts/prisma-migration-doctor.mjs --resolve 93_post_review_grid --as rolled-back --confirm
+```
+
+Equivalent hand-run form, if the doctor cannot reach the database. Note that
+`migrate resolve` needs the migration **directory** to exist; a name that was
+renamed away from the codebase cannot be resolved until it is restored.
+
+```bash
+node scripts/prisma.mjs migrate resolve --applied     <name>   # end state in place
+node scripts/prisma.mjs migrate resolve --rolled-back <name>   # nothing applied
+```
+
+| Actual state | Action |
 |---|---|
-| The migration's end state is fully in place | `node scripts/prisma.mjs migrate resolve --applied <name>` |
-| Nothing (or nothing usable) was applied | `node scripts/prisma.mjs migrate resolve --rolled-back <name>` |
-| Partially applied | Reconcile by hand first — complete the missing statements or remove the partial objects (restore from backup if unsure) — then resolve per the row above |
-| A stale row under an old migration name is also failed | Resolve that row too (`--rolled-back` if the name is gone from the codebase) |
+| The migration's end state is fully in place | `--as applied` |
+| Nothing (or nothing usable) was applied | `--as rolled-back` (the next `migrate deploy` re-applies it) |
+| Partially applied | Reconcile by hand first — complete the missing statements or remove the partial objects (restore from backup if unsure) — then resolve per the row above, with `--force` only because you checked by hand |
+| A stale failed row under an old migration name that is no longer in the codebase | Restore that directory from the commit that published it, then resolve it; do not invent objects |
 
 **Step 3 — redeploy and verify.**
 
@@ -172,6 +203,8 @@ Require HTTP 200 with `checks.database.status: "UP"`. See
   production. (`docs/deployment/ROLLBACK_GUIDE.md` §6 has the data-safety
   rationale.)
 - Never delete a failed row to "unblock" a deploy; resolve it.
+- Never rename, delete or edit a migration that has been published; add a new
+  one (`npm run migrations:publish` publishes it). CI enforces this.
 
 ## 6. Related documents
 
