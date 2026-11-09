@@ -33,6 +33,8 @@ export type OrchestratorResult = {
   wasAiGenerated: boolean
   error?: string
   nextAction?: string
+  nextActor?: 'CLIENT' | 'TECH360'
+  nextDueDate?: string | null
   escalated?: boolean
   stage?: string
 }
@@ -374,6 +376,8 @@ export async function handleCustomerMessage(input: {
     error: aiError ?? undefined,
     escalated,
     nextAction: nextAction.action,
+    nextActor: nextAction.actor,
+    nextDueDate: nextAction.dueDate,
     stage: client.pipelineStage,
   }
 }
