@@ -21,8 +21,7 @@ import { sanitizeText } from '@/lib/security'
 import { COMPANY } from '@/lib/constants'
 import { PUBLIC_CONTACT } from '@/lib/site-contact'
 import { loadDiscoveryState, saveDiscoveryState, nextQuestion, buildSummary, isConfirmation, isRevisionRequest, extractDomainHostingHint, extractDomainNames, hasHostingPlanDetails, DISCOVERY_FIELDS, type DiscoveryFieldKey } from '@/lib/discovery'
-import { loadCommState, recordInbound, recordOutbound } from '@/lib/conversation-state'
-import { sendCommunication } from '@/lib/comms'
+import { recordInbound, recordOutbound } from '@/lib/conversation-state'
 import { screenAiReply } from '@/lib/ai-reply-guard'
 
 export type OrchestratorResult = {
