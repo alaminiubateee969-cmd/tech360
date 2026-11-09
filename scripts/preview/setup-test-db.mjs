@@ -34,7 +34,18 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const WORK = join(ROOT, '.preview')
 const DB_FILE = join(WORK, 'test.db')
 const DATABASE_URL = `file:${DB_FILE}`
+const skipGenerate = process.argv.includes('--skip-generate')
 const keepData = process.argv.includes('--keep-data')
+
+function run(cmd, cmdArgs, extraEnv = {}) {
+  return execFileSync(cmd, cmdArgs, {
+    cwd: ROOT,
+    env: { ...process.env, ...extraEnv },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  })
+}
 
 // Node 22 marks node:sqlite experimental. It is a build tool, not app runtime;
 // keep the console output clean without hiding genuine application warnings.
@@ -46,7 +57,7 @@ process.on('warning', (warning) => {
 mkdirSync(WORK, { recursive: true })
 
 // ------------------------------------------------------------- 1. schema text
-console.log('[1/3] converting the production MySQL schema to a SQLite datamodel')
+console.log('[1/4] converting the production MySQL schema to a SQLite datamodel')
 const mysqlSchema = readFileSync(join(ROOT, 'prisma', 'schema.prisma'), 'utf8')
 const sqliteSchema = mysqlSchema
   .replace('provider = "mysql"', 'provider = "sqlite"')
@@ -58,16 +69,38 @@ const sqliteSchema = mysqlSchema
 const schemaPath = join(WORK, 'schema.sqlite.prisma')
 writeFileSync(schemaPath, sqliteSchema)
 
-// ------------------------------------------------------------------ 2. DDL
-console.log('[2/3] generating CREATE TABLE / INDEX statements')
+// --------------------------------------------------------- 2. Prisma generate
+if (skipGenerate) {
+  console.log('[2/4] skipping client generation (--skip-generate)')
+} else {
+  console.log('[2/4] generating the Prisma Client (driver-adapter engine)')
+  const engineStub = {
+    PRISMA_SCHEMA_ENGINE_BINARY: '/bin/true',
+    PRISMA_QUERY_ENGINE_LIBRARY: '/bin/true',
+  }
+  try {
+    run('npx', ['prisma', 'generate', '--schema', schemaPath])
+  } catch (error) {
+    const text = `${error.stdout ?? ''}${error.stderr ?? ''}`
+    if (!/binaries\.prisma\.sh|ENOTFOUND|ECONNRESET|socket/i.test(text)) {
+      console.error(text)
+      process.exit(1)
+    }
+    console.log('    engine download unavailable — retrying with offline engine stubs')
+    run('npx', ['prisma', 'generate', '--schema', schemaPath], engineStub)
+  }
+}
+
+// ------------------------------------------------------------------ 3. DDL
+console.log('[3/4] generating CREATE TABLE / INDEX statements')
 const ddlPath = join(WORK, 'schema.sql')
 execFileSync(process.execPath, [join(ROOT, 'scripts', 'preview', 'gen-ddl.mjs'), schemaPath, ddlPath], {
   cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'],
 })
 const ddl = readFileSync(ddlPath, 'utf8')
 
-// --------------------------------------------------------------- 3. database
-console.log('[3/3] creating a fresh, empty test database')
+// --------------------------------------------------------------- 4. database
+console.log('[4/4] creating a fresh, empty test database')
 if (!keepData && existsSync(DB_FILE)) rmSync(DB_FILE)
 const sqlite = new DatabaseSync(DB_FILE)
 sqlite.exec('PRAGMA foreign_keys = ON')

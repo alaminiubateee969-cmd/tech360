@@ -60,7 +60,8 @@ export async function executeOpsAction(action: string, payload: OpsPayload): Pro
         )
         const stageChanged = Boolean(
           communicationState.followUpStage &&
-          communicationState.currentStage !== communicationState.followUpStage,
+          (communicationState.currentStage !== communicationState.followUpStage ||
+            client.pipelineStage !== communicationState.followUpStage),
         )
         if (
           !communicationState.followUpEnabled ||

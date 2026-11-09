@@ -7,6 +7,8 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8')
 const orchestrator = read('src/lib/chat-orchestrator.ts')
 const state = read('src/lib/conversation-state.ts')
 const opsActions = read('src/lib/ops-actions.ts')
+const pipelineSend = read('src/lib/pipeline/send.ts')
+const journey = read('src/lib/journey.ts')
 const sms = read('src/app/api/webhooks/sms/route.ts')
 const email = read('src/app/api/webhooks/email/route.ts')
 const whatsapp = read('src/app/api/webhooks/whatsapp/route.ts')
@@ -45,6 +47,12 @@ describe('TECH360 communication integration safeguards', () => {
     assert.match(whatsapp.slice(failed, record), /return/)
   })
 
+  it('records pipeline outbound state only after a provider accepts delivery', () => {
+    assert.match(pipelineSend, /const acceptedDelivery = deliveries\.find\(\(delivery\) => delivery\.ok\)/)
+    assert.match(pipelineSend, /if \(acceptedDelivery\)[\s\S]*?await recordOutbound\(/)
+    assert.match(journey, /stage: 'FIRST_MESSAGE'[\s\S]*?nextPendingActor: 'CLIENT'/)
+  })
+
   it('requires explicit inbound SMS provider authentication and stable event IDs', () => {
     assert.match(sms, /SMS_INBOUND_PROVIDER/)
     assert.match(sms, /SMS_WEBHOOK_SECRET/)
@@ -58,6 +66,9 @@ describe('TECH360 communication integration safeguards', () => {
     // (nextPendingActor / repliedSinceLastOutbound / stageChanged) — match the
     // four required clauses in order, across line breaks.
     assert.match(opsActions, /!communicationState\.followUpEnabled \|\|\s+communicationState\.optedOut \|\|\s+communicationState\.humanTakeover \|\|\s+communicationState\.closed/)
+    assert.match(opsActions, /communicationState\.nextPendingActor === 'TECH360'/)
+    assert.match(opsActions, /repliedSinceLastOutbound/)
+    assert.match(opsActions, /client\.pipelineStage !== communicationState\.followUpStage/)
   })
 
   it('resets the reminder counter for a new outbound cycle', () => {
@@ -78,5 +89,13 @@ describe('TECH360 communication integration safeguards', () => {
   it('uses minute-precision quiet hours and the same receipt hash delimiter', () => {
     assert.match(state, /minute: '2-digit'/)
     assert.match(state, /provider \+ '\\0' \+ providerEventId\.trim\(\)/)
+  })
+
+  it('anchors root-only scratch patterns in .gitignore so nested source files are never ignored', () => {
+    const gitignore = read('.gitignore')
+    assert.doesNotMatch(gitignore, /^local-\*$/m)
+    assert.doesNotMatch(gitignore, /^test$/m)
+    assert.doesNotMatch(gitignore, /^prompt$/m)
+    assert.match(gitignore, /^\/local-\*$/m)
   })
 })
