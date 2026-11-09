@@ -4,4 +4,7 @@ Disallow: /api/
 Disallow: /admin
 Disallow: /portal
 
+# Content signals: how this site's content may be used by AI agents.
+Content-Signal: search=yes, ai-train=no
+
 Sitemap: https://bdtech360.com/sitemap.xml

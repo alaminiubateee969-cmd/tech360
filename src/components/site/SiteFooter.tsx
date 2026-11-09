@@ -1,8 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { MessageCircle, Loader2, Mail, MapPin } from "lucide-react";
 import { COMPANY, SERVICES, INDUSTRIES, LEGAL_DOCS } from "@/data/site";
+
+/**
+ * Real-path links must stay crawlable (`href="/about"`), but on the homepage
+ * we want hash-SPA navigation instead of a full reload. Crawlers do not run
+ * JS, so they always see the real path.
+ */
+function trustNav(e: MouseEvent<HTMLAnchorElement>) {
+  const href = e.currentTarget.getAttribute("href");
+  if (!href || !href.startsWith("/")) return;
+  if (window.location.pathname !== "/") return; // clean path → full navigation
+  e.preventDefault();
+  window.location.hash = href;
+}
 
 /**
  * Public site footer: identity, sitemap columns, contact details and
@@ -277,6 +290,38 @@ export default function SiteFooter() {
         </div>
 
         <div className="mt-12 border-t border-white/10 pt-6">
+          {/* Real-path links: crawlable trust pages (About / Contact / Legal).
+              Clicks stay inside the hash SPA when we are on the homepage. */}
+          <nav aria-label="Trust and information" className="mb-3 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+            <a
+              href="/about"
+              onClick={trustNav}
+              className="text-white/70 underline underline-offset-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+            >
+              About
+            </a>
+            <a
+              href="/contact"
+              onClick={trustNav}
+              className="text-white/70 underline underline-offset-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+            >
+              Contact
+            </a>
+            <a
+              href="/legal/terms"
+              onClick={trustNav}
+              className="text-white/70 underline underline-offset-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+            >
+              Terms of Service
+            </a>
+            <a
+              href="/legal/privacy"
+              onClick={trustNav}
+              className="text-white/70 underline underline-offset-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+            >
+              Privacy Policy
+            </a>
+          </nav>
           <div className="flex flex-col gap-3 text-xs text-white/55 sm:flex-row sm:items-center sm:justify-between">
             <p>
               © {year} {COMPANY.legalName}. All rights reserved.
