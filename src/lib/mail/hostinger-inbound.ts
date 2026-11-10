@@ -33,6 +33,8 @@ import {
   selectNewUids,
   type InboxCheckpoint,
 } from './hostinger-inbound-policy'
+import { extractSenderDisplayName } from './email-inbound-guard'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 
 export const HOSTINGER_CHECKPOINT_SETTING = 'hostinger_mail.inbox_checkpoint'
 const PROVIDER = 'HOSTMAIL'
@@ -50,6 +52,8 @@ export type InboundSyncSummary = {
   duplicates: number
   unmatched: number
   checkpointUid: number
+  /** IDs of newly persisted inbound Communication rows for downstream Email AI processing. */
+  importedIds?: string[]
   /** Safe, value-free reason when stopped on an error. */
   error?: string
 }
@@ -82,7 +86,7 @@ async function storeInboundMessage(input: {
   summary: HostingerInboxSummary
   body: string
   mailboxAddress: string
-}): Promise<{ stored: boolean; matched: boolean }> {
+}): Promise<{ stored: boolean; matched: boolean; id?: string }> {
   const providerMessageId = input.summary.messageId?.trim() || `hostmail-uid:${input.summary.uid}`
   const existing = await db.communication.findFirst({
     where: { providerMessageId, direction: 'IN' },
@@ -91,8 +95,19 @@ async function storeInboundMessage(input: {
   if (existing) return { stored: false, matched: false }
 
   const sender = normalizeSenderAddress(input.summary.fromAddress)
-  const client = await matchClientBySender(sender)
-  await db.communication.create({
+  let client = await matchClientBySender(sender)
+  // Thread reply fallback: In-Reply-To against an existing outbound Communication.providerMessageId
+  if (!client && input.summary.inReplyTo) {
+    const parent = await db.communication.findFirst({
+      where: { providerMessageId: input.summary.inReplyTo.trim(), direction: 'OUT' },
+      select: { clientId: true },
+    })
+    if (parent?.clientId) {
+      client = await db.client.findUnique({ where: { id: parent.clientId }, select: { id: true } })
+    }
+  }
+  const safeBody = redactSensitiveCrmData(input.body).text.slice(0, 8000)
+  const created = await db.communication.create({
     data: {
       clientId: client?.id ?? null,
       channel: 'EMAIL',
@@ -100,13 +115,20 @@ async function storeInboundMessage(input: {
       sender,
       recipient: input.mailboxAddress,
       subject: input.summary.subject.slice(0, 500) || null,
-      body: input.body.slice(0, 8000),
+      body: safeBody,
       providerMessageId,
       status: 'RECEIVED',
-      metadata: JSON.stringify({ source: 'HOSTINGER_MAIL_API', orphan: !client, uid: input.summary.uid }),
+      metadata: JSON.stringify({
+        source: 'HOSTINGER_MAIL_API',
+        orphan: !client,
+        uid: input.summary.uid,
+        senderName: extractSenderDisplayName(input.summary.fromAddress) || null,
+        inReplyTo: input.summary.inReplyTo ?? null,
+        receivedAt: input.summary.date ?? null,
+      }),
     },
   })
-  return { stored: true, matched: Boolean(client) }
+  return { stored: true, matched: Boolean(client), id: created.id }
 }
 
 /**
@@ -132,6 +154,7 @@ export async function syncHostingerInbox(options: InboundSyncOptions = {}, clien
   let imported = 0
   let duplicates = 0
   let unmatched = 0
+  const importedIds: string[] = []
   let stopped: InboundSyncSummary['stopped'] = 'COMPLETE'
   let error: string | undefined
   let processed = 0
@@ -178,6 +201,7 @@ export async function syncHostingerInbox(options: InboundSyncOptions = {}, clien
           if (!stored.stored) duplicates += 1
           else {
             imported += 1
+            if (stored.id) importedIds.push(stored.id)
             if (!stored.matched) unmatched += 1
           }
           await finishInboundWebhookEvent({
@@ -219,7 +243,16 @@ export async function syncHostingerInbox(options: InboundSyncOptions = {}, clien
   }
   await writeInboundCheckpoint(next).catch(() => null)
 
-  return { stopped, scanned, imported, duplicates, unmatched, checkpointUid: lastUid, ...(error ? { error } : {}) }
+  return {
+    stopped,
+    scanned,
+    imported,
+    duplicates,
+    unmatched,
+    checkpointUid: lastUid,
+    ...(importedIds.length > 0 ? { importedIds } : {}),
+    ...(error ? { error } : {}),
+  }
 }
 
 /** Map an error to a safe message and code. Never includes message content or credentials. */

@@ -81,7 +81,8 @@ export async function POST(req: NextRequest) {
     ? normalizedContactNumber
     : ''
   const phone = preferredContact === 'Phone' ? normalizedContactNumber : ''
-  const details = sanitizeText(raw.details ?? raw.projectDetails, 8000)
+  const { redactSensitiveCrmData } = await import('@/lib/sensitive-redaction')
+  const details = redactSensitiveCrmData(sanitizeText(raw.details ?? raw.projectDetails, 8000)).text
   const businessName = sanitizeText(raw.businessName, 200)
   const businessType = sanitizeText(raw.businessType, 80)
   const country = sanitizeText(raw.country, 80)

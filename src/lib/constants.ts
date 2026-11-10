@@ -89,14 +89,14 @@ export const ADMIN_ROLES = [
   {
     role: 'SUPER_ADMIN',
     label: 'Super Admin',
-    summary: 'Full control: team & roles, settings, feature/payment switches, internal operations, approvals, logs, official documents.',
-    can: ['Create / disable Admin, Manager & Staff accounts', 'Feature & payment-gateway governance', 'Final approvals, refunds & handovers', 'Internal automation, operations center, audit logs'],
+    summary: 'Full control: team & roles, settings, feature/payment switches, internal operations, private factory control, approvals, logs, official documents.',
+    can: ['Create / disable Admin, Manager & Staff accounts', 'Feature & payment-gateway governance', 'Final approvals, refunds & handovers', 'Private Software Factory & Control Center, internal automation, audit logs'],
   },
   {
     role: 'ADMIN',
     label: 'Admin',
     summary: 'Operations: clients, projects, content, internal automation and day-to-day delivery — without Super-Admin-only governance.',
-    can: ['Manage clients, projects & payments (view)', 'Content Studio & Software Factory', 'Reports, media & feeds', 'Cannot change roles, switches or gateway credentials'],
+    can: ['Manage clients, projects & payments (view)', 'Content Studio & campaign operations', 'Reports, media & feeds', 'Cannot access private factory control or change roles, switches or gateway credentials'],
   },
 ] as const
 

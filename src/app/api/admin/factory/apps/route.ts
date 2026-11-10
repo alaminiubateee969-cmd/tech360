@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 // One brief form in, one reviewed Next.js + Prisma + Tailwind project out,
 // stored file-by-file so it can be reviewed, exported and handed over.
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'SUPER_ADMIN' })
   if (isResponse(g)) return g
 
   const url = new URL(req.url)
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'SUPER_ADMIN' })
   if (isResponse(g)) return g
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>

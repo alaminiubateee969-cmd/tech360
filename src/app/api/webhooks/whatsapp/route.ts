@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
         }
         const contact = contacts.find((item) => item.wa_id === m.from) ?? contacts[0]
         const name = sanitizeText(contact?.profile?.name ?? '', 200)
-        const text = sanitizeText(m.text?.body ?? `[${m.type ?? 'media'} message]`, 4000)
+        const { redactSensitiveCrmData } = await import('@/lib/sensitive-redaction')
+        const text = redactSensitiveCrmData(sanitizeText(m.text?.body ?? `[${m.type ?? 'media'} message]`, 4000)).text
         const proof: VerifiedIdentityProof = { type: 'PHONE', value: phone, verificationSource: 'WHATSAPP_SIGNATURE' }
 
         // Only a correctly signed provider event establishes a verified phone

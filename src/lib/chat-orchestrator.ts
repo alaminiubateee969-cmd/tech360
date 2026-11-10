@@ -23,6 +23,7 @@ import { PUBLIC_CONTACT } from '@/lib/site-contact'
 import { loadDiscoveryState, saveDiscoveryState, nextQuestion, buildSummary, isConfirmation, isRevisionRequest, extractDomainHostingHint, extractDomainNames, hasHostingPlanDetails, DISCOVERY_FIELDS, type DiscoveryFieldKey } from '@/lib/discovery'
 import { recordInbound, recordOutbound } from '@/lib/conversation-state'
 import { screenAiReply } from '@/lib/ai-reply-guard'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 
 export type OrchestratorResult = {
   ok: boolean
@@ -68,7 +69,7 @@ export async function handleCustomerMessage(input: {
   visitorName?: string | null
   visitorEmail?: string | null
 }): Promise<OrchestratorResult> {
-  const visitorBody = sanitizeText(input.visitorBody, 4000)
+  const visitorBody = redactSensitiveCrmData(sanitizeText(input.visitorBody, 4000)).text
   if (!visitorBody) {
     return {
       ok: false,

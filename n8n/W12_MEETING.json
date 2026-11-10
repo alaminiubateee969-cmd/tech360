@@ -6,9 +6,8 @@
         "httpMethod": "POST",
         "path": "meeting",
         "responseMode": "lastNode",
-        "options": {
-          "allowedOrigins": "*"
-        }
+        "options": {},
+        "authentication": "headerAuth"
       },
       "id": "n1",
       "name": "Webhook meeting",
@@ -18,7 +17,13 @@
         0,
         0
       ],
-      "webhookId": "tech360-meeting"
+      "webhookId": "tech360-meeting",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TECH360_INBOUND_WEBHOOK_SECRET",
+          "name": "Tech360 Inbound Webhook Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -50,7 +55,7 @@
           "name": "Tech360 API Secret"
         }
       },
-      "onError": "continueRegularOutput",
+      "onError": "continueErrorOutput",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
@@ -110,8 +115,15 @@
       "main": [
         [
           {
+            "node": "Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Log Failure (Stop and Error)",
-            "type": "error",
+            "type": "main",
             "index": 0
           }
         ]
@@ -135,5 +147,6 @@
     {
       "name": "production"
     }
-  ]
+  ],
+  "id": "tech360-w12-meeting"
 }

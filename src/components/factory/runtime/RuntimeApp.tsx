@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * BDTECH360 Software Factory — ONE renderer for MANY applications.
+ * TECH360 Managed Application Runtime — configuration-driven workspace renderer.
  *
  * This component contains no company-specific code and no hardcoded business
  * data. It reads the versioned configuration (theme, pages, navigation,
@@ -367,7 +367,7 @@ export function RuntimeApp({ slug }: { slug: string }) {
           </section>
 
           <p className="pb-8 text-center text-[10px] leading-relaxed" style={{ color: 'var(--app-muted)' }}>
-            {state.fact}<br />BDTECH360 Software Factory · one runtime, {state.counts.modules} pinned modules, {state.counts.pages} configured pages · generated {when(state.generatedAt)}
+            TECH360 Managed Application Environment · {state.counts.pages} configured views · {when(state.generatedAt)}
           </p>
         </main>
       </div>

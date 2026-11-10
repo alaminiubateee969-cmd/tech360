@@ -5,6 +5,7 @@ import { CHAT_SESSION_COOKIE, chatSessionCookieIsValid } from '@/lib/chat-sessio
 import { ensureChatClient, extractEmail, EMAIL_GATE_PROMPT } from '@/lib/chat-onboarding'
 import { isValidClientRequestId } from '@/lib/contact-policy'
 import { sanitizeEmail } from '@/lib/security'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
     const raw = await req.json().catch(() => ({})) as Record<string, unknown>
     const anonId = sanitizeText(raw.anonId, 64)
     const requestId = sanitizeText(raw.requestId, 64)
-    const body = sanitizeText(raw.body, MAX_BODY)
+    const body = redactSensitiveCrmData(sanitizeText(raw.body, MAX_BODY)).text
     const name = sanitizeText(raw.name, 80)
 
     if (anonId.length < 4) return apiError('Missing visitor identifier.', 400, 'BAD_ANON_ID')

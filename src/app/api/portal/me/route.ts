@@ -11,6 +11,7 @@ import {
 import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { formatScopeForClient } from '@/lib/journey'
+import { paymentStatusLabel } from '@/lib/payment-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -120,6 +121,8 @@ export async function GET(req: NextRequest) {
       amount: p.amount,
       currency: p.currency,
       status: p.status,
+      statusLabel: paymentStatusLabel(p.status),
+      proofSubmitted: Boolean(p.proofFileId || p.transactionId),
       verifiedAt: p.verifiedAt,
       receiptAvailable: Boolean(p.status === 'PAID' && p.verifiedAt && p.verifiedBy),
       receiptNumber: p.receipt?.receiptNumber ?? null,

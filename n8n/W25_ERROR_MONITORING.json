@@ -23,10 +23,18 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{ $env.TECH360_API_BASE }}/api/admin/logs/errors?resolved=false",
+        "method": "POST",
+        "url": "={{ $env.TECH360_API_BASE }}/api/webhooks/n8n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"workflow\":\"ERROR_MONITORING\"}",
         "options": {
-          "timeout": 20000
+          "timeout": 20000,
+          "retry": {
+            "enabled": true,
+            "maxTries": 3,
+            "waitBetweenTries": 5000
+          }
         }
       },
       "id": "n2",
@@ -42,7 +50,11 @@
           "id": "TECH360_API_SECRET",
           "name": "Tech360 API Secret"
         }
-      }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -53,7 +65,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.logs ? $json.logs.length : 0 }}",
+              "leftValue": "={{ $json.result ? $json.result.unresolvedCount : 0 }}",
               "rightValue": 0,
               "operator": {
                 "type": "number",
@@ -99,6 +111,21 @@
         820,
         120
       ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "n6",
+      "name": "Log Failure (Stop and Error)",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        560,
+        200
+      ],
+      "errorType": "workflowError",
+      "errorMessage": "={{ \"Tech360 error monitoring failed: \" + ($json.error || \"bridge error\") }}"
     }
   ],
   "connections": {
@@ -107,6 +134,13 @@
         [
           {
             "node": "Has Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Failure (Stop and Error)",
             "type": "main",
             "index": 0
           }
@@ -125,6 +159,17 @@
         [
           {
             "node": "All Clear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Every 15min": {
+      "main": [
+        [
+          {
+            "node": "Fetch Unresolved Errors",
             "type": "main",
             "index": 0
           }
@@ -149,5 +194,6 @@
     {
       "name": "production"
     }
-  ]
+  ],
+  "id": "tech360-w25-error-monitoring"
 }

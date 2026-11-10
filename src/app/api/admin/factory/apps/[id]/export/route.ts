@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 // Contains ONLY the generated project (source + scope + handover notes) and a
 // manifest. Credentials are never included; .env.example carries names only.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'SUPER_ADMIN' })
   if (isResponse(g)) return g
   const { id } = await params
 
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     'DELIVERY-MANIFEST.json',
     JSON.stringify(
       {
-        generatedBy: 'TECH360 AI Software Factory',
+        generatedBy: 'TECH360 Engineering Delivery',
         appCode: app.code,
         appName: app.name,
         vertical: app.vertical,

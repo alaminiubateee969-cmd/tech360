@@ -3,6 +3,7 @@ import { intakeLead } from '@/lib/journey'
 import { CONTACT_CONSENT_VERSION } from '@/lib/contact-policy'
 import { audit } from '@/lib/security'
 import { sanitizeEmail } from '@/lib/security'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 
 /** Extract first email address from free-text; used for the email-gated Client ID flow. */
 export function extractEmail(text: string): string | null {
@@ -62,10 +63,12 @@ export async function ensureChatClient(input: {
     const extracted = input.firstMessage ? extractEmail(input.firstMessage) : null
     if (extracted) effectiveEmail = extracted
   }
+  const cleanFirstMessage = redactSensitiveCrmData(input.firstMessage).text
   if (!effectiveEmail || !sanitizeEmail(effectiveEmail)) {
     // Keep a pending FormSubmission so a later message with email can be claimed atomically via the same formId,
     // but do NOT create a Client yet.
     const formId = formIdForConversation(input.conversationId)
+    const pendingDetails = `Website chat (awaiting email): ${cleanFirstMessage.slice(0, 1500)}`
     await db.formSubmission.upsert({
       where: { id: formId },
       create: {
@@ -73,14 +76,19 @@ export async function ensureChatClient(input: {
         form: 'CHAT',
         name: input.name || 'Website Visitor',
         email: input.email,
-        details: `Website chat (awaiting email): ${input.firstMessage.slice(0, 1500)}`,
+        phone: input.phone,
+        details: pendingDetails,
         preferredContact: input.preferredContact || 'Email',
         contactConsentAt: input.contactConsentAt,
         consentVersion: CONTACT_CONSENT_VERSION,
         tracking: JSON.stringify({ source: 'WEB_CHAT', consentVersion: CONTACT_CONSENT_VERSION, pendingEmail: true }),
         status: 'NEW',
       },
-      update: {},
+      update: {
+        name: input.name || 'Website Visitor',
+        ...(input.phone ? { phone: input.phone } : {}),
+        details: pendingDetails,
+      },
     }).catch(() => null)
     return { clientRowId: null, displayClientId: null, identityReviewRequired: false, emailRequired: true, emailDeliveryStatus: null, contactDeliveryStatus: null }
   }
@@ -108,7 +116,7 @@ export async function ensureChatClient(input: {
   }
 
   const formId = formIdForConversation(input.conversationId)
-  const details = `Website chat: ${input.firstMessage.slice(0, 1500)}`
+  const details = `Website chat: ${cleanFirstMessage.slice(0, 1500)}`
 
   // The stable form id lets intakeLead atomically claim this onboarding attempt
   // and recover its existing Client ID after a retry without creating another.
@@ -119,6 +127,7 @@ export async function ensureChatClient(input: {
       form: 'CHAT',
       name: input.name || 'Website Visitor',
       email: input.email,
+      phone: input.phone,
       details,
       preferredContact: input.preferredContact || 'Email',
       contactConsentAt: input.contactConsentAt,
@@ -126,7 +135,12 @@ export async function ensureChatClient(input: {
       tracking: JSON.stringify({ source: 'WEB_CHAT', consentVersion: CONTACT_CONSENT_VERSION }),
       status: 'NEW',
     },
-    update: {},
+    update: {
+      name: input.name || 'Website Visitor',
+      email: input.email,
+      ...(input.phone ? { phone: input.phone } : {}),
+      details,
+    },
   })
 
   const existingEmailOwner = input.email

@@ -2,11 +2,13 @@ import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
 import { audit } from '@/lib/security'
 import { syncHostingerInbox } from '@/lib/mail/hostinger-inbound'
+import { processHostingerInboundMessages } from '@/lib/mail/hostinger-ai-processor'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * POST /api/admin/mail/sync — run one bounded, checkpointed inbox sync now.
+ * POST /api/admin/mail/sync — run one bounded, checkpointed inbox sync now,
+ * then process any newly imported emails through the governed Email AI pipeline.
  * Reads INBOX through the documented API; never deletes or moves mail.
  * Requires an authenticated SUPER_ADMIN and the CSRF token (guard default).
  */
@@ -15,12 +17,26 @@ export async function POST(req: NextRequest) {
   if (isResponse(g)) return g
 
   const summary = await syncHostingerInbox({ maxPages: 3, maxMessages: 25 })
+  const aiSummary = summary.imported > 0 && summary.importedIds?.length
+    ? await processHostingerInboundMessages({ communicationIds: summary.importedIds }).catch(() => null)
+    : null
   await audit({
     actor: g.user.email,
     action: 'HOSTINGER_INBOX_SYNC',
-    details: { stopped: summary.stopped, scanned: summary.scanned, imported: summary.imported, duplicates: summary.duplicates, unmatched: summary.unmatched },
+    details: {
+      stopped: summary.stopped,
+      scanned: summary.scanned,
+      imported: summary.imported,
+      duplicates: summary.duplicates,
+      unmatched: summary.unmatched,
+      aiProcessed: aiSummary?.processed ?? 0,
+      leadsCreated: aiSummary?.leadsCreated ?? 0,
+    },
   }).catch(() => null)
 
   // The error text is already value-free (see describeSyncFailure); it is returned so an operator can act on it.
-  return Response.json({ ok: summary.stopped !== 'ERROR' && summary.stopped !== 'NOT_CONFIGURED', summary }, { headers: { 'Cache-Control': 'no-store' } })
+  return Response.json(
+    { ok: summary.stopped !== 'ERROR' && summary.stopped !== 'NOT_CONFIGURED', summary, ...(aiSummary ? { aiSummary } : {}) },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }
