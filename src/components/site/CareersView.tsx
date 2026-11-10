@@ -22,7 +22,7 @@ export default function CareersView() {
       <PageHero
         eyebrow="Careers"
         title="Build systems people can trust — and be measured by it"
-        description="We hire engineers and operators who want their work inspected, their process written down and their results on the record. Remote-friendly across the USA and Bangladesh."
+        description="We hire engineers and operators who want their work inspected, their process written down and their results on the record. Remote-friendly across the USA and worldwide."
         breadcrumb={[{ label: "Careers" }]}
       />
 
