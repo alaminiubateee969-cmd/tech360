@@ -50,7 +50,7 @@ export interface DocumentBrandingConfig {
   logoAsset: string // TECH360 LLC logo
 
   // Circular seal (ONLY for SOW & Invoice)
-  sealAsset: string // /brand/tech360-seal.png
+  sealAsset: string // /brand/tech360-seal-approved.png (owner-approved, D-4)
   sealEnabledSOW: boolean
   sealEnabledInvoice: boolean
   sealPosition: 'bottom-right' | 'watermark' | 'signature-side'
@@ -91,8 +91,11 @@ const DEFAULT_BRANDING: DocumentBrandingConfig = {
   headerAsset: '/brand/tech360-header-high-res.png',
   footerAsset: '/brand/tech360-footer-high-res.png',
   letterheadAsset: '/brand/tech360-letterhead-a4.png',
-  logoAsset: '/brand/tech360-logo-original.jpg',
-  sealAsset: '/brand/tech360-seal.png',
+  // D-5: owner-supplied logo.jpg (1254x1254) is the authoritative mark.
+  logoAsset: '/brand/tech360-logo-owner.jpg',
+  // D-4: owner-supplied emblem IS the approved seal (byte-identical to
+  // 'D-4 (seal).png' / 'Tech360 LLC Circular Tech Emblem.png').
+  sealAsset: '/brand/tech360-seal-approved.png',
   sealEnabledSOW: true,
   sealEnabledInvoice: true,
   sealPosition: 'bottom-right',
@@ -108,9 +111,11 @@ const DEFAULT_BRANDING: DocumentBrandingConfig = {
   websiteDisplay: 'www.bdtech360.com',
   tagline: 'CONNECT · INNOVATE · GROW',
   servicesLine: 'Web | Cloud | AI | Data | Tech',
-  brandBlue: '#009FE3',
-  brandNavy: '#063B8F',
-  brandGreen: '#18B83A',
+  // Measured from the supplied artwork (see docs/BRAND_TOKEN_PROVENANCE.md).
+  // Previously '#009FE3' — a cream/sky hue absent from the letterhead.
+  brandBlue: '#007BDB',
+  brandNavy: '#002077',
+  brandGreen: '#25B03B',
   ink: '#0B1F33',
   version: 1,
   updatedAt: new Date().toISOString(),
