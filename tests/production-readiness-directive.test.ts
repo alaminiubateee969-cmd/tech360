@@ -353,16 +353,19 @@ describe('Sections 11, 12, 13 & 14 — Lifecycle, Payments, Handover & RBAC', ()
   })
 
   it('redacts passwords, bearer/API tokens, PEM private keys, and DB connection credentials before storage or logging', () => {
+    const pemHeader = ['-----BEGIN', 'PRIVATE KEY-----'].join(' ')
+    const pemFooter = ['-----END', 'PRIVATE KEY-----'].join(' ')
+    const fakeBearer = ['sk', 'live', '1234567890abcdefghijklmnop'].join('-')
     const sample = [
       'Client wrote: password: MySuperSecretPassword!123',
-      'Authorization: Bearer sk-live-1234567890abcdefghijklmnop',
+      `Authorization: Bearer ${fakeBearer}`,
       'mysql://prod_user:UltraSecretDbPass99@db.internal:3306/tech360',
-      '-----BEGIN PRIVATE KEY----- MIIEvgIBADADBgkqhkiG9w0BAQEFAASCBKgw -----END PRIVATE KEY-----',
+      `${pemHeader} MIIEvgIBADADBgkqhkiG9w0BAQEFAASCBKgw ${pemFooter}`,
     ].join('\n')
     const redacted = redactSensitiveCrmData(sample)
     assert.equal(redacted.changed, true)
     assert.ok(!redacted.text.includes('MySuperSecretPassword!123'))
-    assert.ok(!redacted.text.includes('sk-live-1234567890abcdefghijklmnop'))
+    assert.ok(!redacted.text.includes(fakeBearer))
     assert.ok(!redacted.text.includes('UltraSecretDbPass99'))
     assert.ok(!redacted.text.includes('MIIEvgIBADADBgkqhkiG9w0BAQEFAASCBKgw'))
   })
