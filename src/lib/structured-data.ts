@@ -27,6 +27,7 @@ import {
   SERVICES,
 } from '@/data/site'
 import { getIndustryBySlug } from '@/data/industries'
+import { getServiceImage } from '@/data/service-images'
 import { PUBLIC_CONTACT, SITE_URL } from '@/lib/site-contact'
 
 /** Stable `@id` values — imported by the layout so nothing drifts. */
@@ -129,17 +130,21 @@ export function breadcrumbNode(trail: { name: string; path: string }[]) {
 }
 
 /** The twenty-one services, expressed as schema.org Service nodes. */
-const SERVICE_NODES = SERVICES.map((s) => ({
-  '@type': 'Service',
-  '@id': `${SITE_URL}/services/${s.slug}#service`,
-  name: s.title,
-  description: s.tagline,
-  url: `${SITE_URL}/services/${s.slug}`,
-  serviceType: s.title,
-  provider: { '@id': ORG_ID },
-  areaServed: 'Worldwide',
-  audience: { '@type': 'BusinessAudience' },
-}))
+const SERVICE_NODES = SERVICES.map((s) => {
+  const img = getServiceImage(s.slug)
+  return {
+    '@type': 'Service',
+    '@id': `${SITE_URL}/services/${s.slug}#service`,
+    name: s.title,
+    description: s.tagline,
+    url: `${SITE_URL}/services/${s.slug}`,
+    ...(img ? { image: `${SITE_URL}${img.src}` } : {}),
+    serviceType: s.title,
+    provider: { '@id': ORG_ID },
+    areaServed: 'Worldwide',
+    audience: { '@type': 'BusinessAudience' },
+  }
+})
 
 /**
  * SoftwareApplication nodes for the named, identifiable systems TECH360 builds.

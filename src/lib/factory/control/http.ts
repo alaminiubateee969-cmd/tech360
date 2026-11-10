@@ -3,7 +3,7 @@ import { guard, isResponse } from '@/lib/api-guard'
 import { apiError } from '@/lib/security'
 import type { Actor } from './access'
 
-export async function requireActor(req: Request, minRole = 'ADMIN'): Promise<{ actor: Actor } | Response> {
+export async function requireActor(req: Request, minRole = 'SUPER_ADMIN'): Promise<{ actor: Actor } | Response> {
   const g = await guard(req, { minRole })
   if (isResponse(g)) return g
   return { actor: { email: g.user.email, role: g.user.role, userId: g.user.id, ip: g.ip } }

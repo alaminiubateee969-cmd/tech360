@@ -44,7 +44,7 @@ Full catalogue: https://bdtech360.com/services
 - [Digital Transformation Consulting](https://bdtech360.com/services/digital-transformation-consulting)
 
 **Platform**
-- [Company-in-a-Box Platform](https://bdtech360.com/platform): template library, versioned modules, isolated tenant provisioning, staging promotion and deployment/rollback.
+- [Company-in-a-Box Platform](https://bdtech360.com/platform): connected business operations, CRM, client portals, team workflows, reporting and secure document handover.
 
 ## Industries (20 sector blueprints)
 

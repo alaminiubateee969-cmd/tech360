@@ -18,16 +18,21 @@ export type AiReplyGuardReason =
   | 'CONTRACT_APPROVAL'
   | 'SOURCE_CODE_RELEASE'
   | 'COMPLETION_CLAIM'
+  | 'LEGAL_COMMITMENT'
+  | 'INTERNAL_ARCHITECTURE_LEAK'
 
 const RULES: Array<{ reason: AiReplyGuardReason; pattern: RegExp }> = [
-  // Currency symbol or code followed by an amount: "$500", "USD 1,200", "BDT 50000", "৳ 20,000", "Tk 5000".
-  { reason: 'PRICE_QUOTE', pattern: /(?:\$|৳|\b(?:USD|BDT|Tk\.?)\s?)\s?\d[\d,.]*/i },
-  { reason: 'PRICE_QUOTE', pattern: /\b\d[\d,.]*\s?(?:USD|BDT|taka|dollars)\b/i },
+  // Currency symbol or code followed by an amount: "$500", "USD 1,200", "BDT 50000", "৳ 20,000", "Tk 5000", "€400", "£350", "AED 2000".
+  { reason: 'PRICE_QUOTE', pattern: /(?:\$|৳|€|£|\b(?:USD|BDT|EUR|GBP|AED|CAD|AUD|SGD|Tk\.?)\s?)\s?\d[\d,.]*/i },
+  { reason: 'PRICE_QUOTE', pattern: /\b\d[\d,.]*\s?(?:USD|BDT|EUR|GBP|AED|CAD|AUD|SGD|taka|dollars|euros|pounds)\b/i },
   { reason: 'PAYMENT_CONFIRMATION', pattern: /\b(?:payment|invoice|deposit|transaction)\b[^.!?\n]{0,40}\b(?:has been|have been|is|was|were)\s+(?:confirmed|received|verified|processed|completed|cleared)\b/i },
   { reason: 'REFUND_DECISION', pattern: /\brefund\w*\b[^.!?\n]{0,40}\b(?:approved|issued|processed|granted|will be (?:issued|processed|paid))\b/i },
   { reason: 'CONTRACT_APPROVAL', pattern: /\b(?:contract|scope(?: of work)?|sow|proposal)\b[^.!?\n]{0,40}\b(?:is|has been|was|have been)\s+(?:approved|signed|accepted|finalised|finalized)\b/i },
   { reason: 'SOURCE_CODE_RELEASE', pattern: /\bsource code\b[^.!?\n]{0,40}\b(?:released|sent|attached|shared|provided|delivered|handed over)\b/i },
   { reason: 'COMPLETION_CLAIM', pattern: /\b(?:project|website|system|app|platform)\b[^.!?\n]{0,30}\b(?:is|has been|was)\s+(?:completed|delivered|launched|live now|finished)\b/i },
+  { reason: 'LEGAL_COMMITMENT', pattern: /\b(?:we|our|tech360)\b[^.!?\n]{0,50}\b(?:waive|accept|assume)\s+(?:all\s+|full\s+)?(?:liabilit\w*|indemnit\w*)\b/i },
+  { reason: 'LEGAL_COMMITMENT', pattern: /\bdispute\b[^.!?\n]{0,40}\b(?:is|has been|was)\s+(?:settled|resolved in your favou?r|accepted)\b/i },
+  { reason: 'INTERNAL_ARCHITECTURE_LEAK', pattern: /\b(?:Software Factory|Template Library|Module Engine|Company Provisioning|FactoryCompanyMember)\b/i },
 ]
 
 export function screenAiReply(text: string): { ok: true } | { ok: false; reason: AiReplyGuardReason } {

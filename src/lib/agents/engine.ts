@@ -7,6 +7,7 @@ import { withTimeout, resolveAgentTimeoutMs, isTransientRunError, MAX_RETRY_ATTE
 import { newCorrelationId, logError } from '@/lib/security'
 import { authorizeAgentTool, agentMayAccessClient, type AgentTool } from '@/lib/ai-workforce-policy'
 import { getAgentDefinition } from '@/lib/agents/bootstrap'
+import { DEPARTMENTS, type AgentSeed } from '@/lib/agents/registry'
 import { isValidExistingChildAgent } from '@/lib/agents/hierarchy-service'
 import { isWellFormedDynamicAgent } from '@/lib/agents/runtime-policy'
 import { deliveryKnowledgeContext, shouldAttachDeliveryKnowledge } from '@/lib/delivery-system-knowledge'
@@ -146,14 +147,58 @@ export async function tokensUsedToday(agentCode: string, now = new Date()): Prom
  * validates the canonical department mapping, enforces governance,
  * calls the configured provider, and records every terminal outcome.
  */
+async function ensureCanonicalAgentPersisted(definition: AgentSeed) {
+  const deptSeed = DEPARTMENTS.find((d) => d.code === definition.dept)
+  let departmentId: string | null = null
+  if (deptSeed) {
+    const dept = await db.department.upsert({
+      where: { code: deptSeed.code },
+      create: {
+        code: deptSeed.code,
+        name: deptSeed.name,
+        category: deptSeed.category,
+        description: deptSeed.description ?? null,
+      },
+      update: {},
+      select: { id: true },
+    })
+    departmentId = dept.id
+  }
+  await db.aiAgent.upsert({
+    where: { code: definition.code },
+    create: {
+      code: definition.code,
+      name: definition.name,
+      title: definition.title,
+      departmentId,
+      purpose: definition.purpose,
+      systemPrompt: definition.systemPrompt,
+      tools: JSON.stringify(definition.tools),
+      permissions: JSON.stringify(definition.permissions),
+      requiresApproval: definition.requiresApproval ?? false,
+      level: definition.level ?? 3,
+      parentCode: definition.parentCode ?? null,
+      status: 'ACTIVE',
+    },
+    update: {},
+  })
+}
+
 export async function runAgent(agentCode: string, run: AgentRunInput): Promise<AgentRunResult> {
   await reapStaleAgentExecutions().catch(() => 0)
   const correlationId = run.correlationId ?? newCorrelationId()
   const definition = getAgentDefinition(agentCode)
-  const agent = await db.aiAgent.findUnique({
+  let agent = await db.aiAgent.findUnique({
     where: { code: agentCode },
     include: { department: { select: { code: true } } },
   })
+  if (!agent && definition) {
+    await ensureCanonicalAgentPersisted(definition).catch(() => null)
+    agent = await db.aiAgent.findUnique({
+      where: { code: agentCode },
+      include: { department: { select: { code: true } } },
+    })
+  }
   if (!agent || (!definition && !isWellFormedDynamicAgent(agent))) {
     await logError({ source: 'AGENT', code: 'AGENT_NOT_FOUND', message: `Agent ${agentCode} is not in an executable persisted registry`, correlationId })
     return { ok: false, agentCode, executionId: '', correlationId, output: '', json: null, error: 'Agent not found in the executable registry', status: 'FAILED' }

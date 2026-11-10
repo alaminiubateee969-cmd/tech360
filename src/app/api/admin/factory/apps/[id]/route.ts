@@ -21,7 +21,7 @@ const TRANSITIONS: Record<string, { stage: Stage; status: Status; note: string; 
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'SUPER_ADMIN' })
   if (isResponse(g)) return g
   const { id } = await params
 
@@ -52,7 +52,7 @@ function safeParse(value: string): unknown {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'SUPER_ADMIN' })
   if (isResponse(g)) return g
   const { id } = await params
 
@@ -61,8 +61,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const note = sanitizeText(body.note ?? '', 500)
   const transition = TRANSITIONS[action]
   if (!transition) return Response.json({ error: `Unknown action “${action}”.` }, { status: 400 })
-  if (transition.requiresAdmin && !['ADMIN', 'SUPER_ADMIN'].includes(String(g.user.role))) {
-    return Response.json({ error: 'Approval, delivery and handover are admin actions.' }, { status: 403 })
+  if (transition.requiresAdmin && String(g.user.role) !== 'SUPER_ADMIN') {
+    return Response.json({ error: 'Approval, delivery and handover require Super Admin authorization.' }, { status: 403 })
   }
 
   const app = await db.generatedApp.findUnique({ where: { id: sanitizeText(id, 40) } })

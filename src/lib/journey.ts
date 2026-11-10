@@ -19,6 +19,8 @@ import { assertDeliveryRules, screenAiContent } from '@/lib/pipeline/rules'
 import { nextScopeVersionNumber, normalizeTo21PointScope } from '@/lib/scope-validator'
 import { normalizeFactoryScopeManifest } from '@/lib/factory/scope-manifest'
 import { toMinorUnits } from '@/lib/invoice-policy'
+import { detectOutOfScopeRevisionSignals } from '@/lib/payment-policy'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 import type { Prisma } from '@prisma/client'
 import {
   checkGovernedAction,
@@ -235,15 +237,17 @@ export async function intakeLead(input: {
       await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSING' } })
     }
 
+    const safeMessage = redactSensitiveCrmData(sanitizeText(input.message, 8000)).text
+
     if (isNewClient) {
-      await rememberMemory({ scope: 'CLIENT', key: `origin:${clientRow.id}`, content: `Client originated from ${input.source} on ${new Date().toISOString()}. First message: ${sanitizeText(input.message, 500)}`, clientId: clientRow.id, importance: 7 })
+      await rememberMemory({ scope: 'CLIENT', key: `origin:${clientRow.id}`, content: `Client originated from ${input.source} on ${new Date().toISOString()}. First message: ${safeMessage.slice(0, 500)}`, clientId: clientRow.id, importance: 7 })
     }
 
     // Save the original inbound message
     await db.communication.create({
       data: {
         clientId: clientRow.id, channel: createData.source, direction: 'IN',
-        sender: sanitizeText(input.name, 200) || null, body: sanitizeText(input.message, 8000),
+        sender: sanitizeText(input.name, 200) || null, body: safeMessage,
         providerMessageId: input.providerMessageId ?? null,
         status: 'RECEIVED',
       },
@@ -254,13 +258,13 @@ export async function intakeLead(input: {
       where: { clientId: clientRow.id },
       create: {
         clientId: clientRow.id,
-        requirements: sanitizeText(input.message, 4000),
+        requirements: safeMessage.slice(0, 4000),
         projectType: input.projectType || null,
         budgetRange: input.budgetRange || null,
         tracking: input.tracking ? JSON.stringify(input.tracking) : null,
         sourceDetails: input.source,
       },
-      update: { requirements: sanitizeText(input.message, 4000) },
+      update: { requirements: safeMessage.slice(0, 4000) },
     })
 
     await stepLog(log.id, 'client_created', { clientId: clientRow.clientId })
@@ -603,7 +607,7 @@ export function formatScopeForClient(content: Record<string, unknown>, clientId:
   const factoryManifest = normalizeFactoryScopeManifest(content.factoryManifest)
   if (factoryManifest.ok) {
     const manifest = factoryManifest.manifest
-    text += `\nSOFTWARE FACTORY DELIVERABLE\nApplication: ${manifest.applicationName}\nVertical: ${manifest.vertical}\nApproved modules: ${manifest.modules.join(', ')}\nLanguage: ${manifest.language} · Currency: ${manifest.currency} · Brand color: ${manifest.primaryColor}\nDelivery format: ${manifest.deliveryFormat} (source archive only; this workflow does not deploy to production)\nHosting and deployment terms: ${manifest.hostingAndDeployment}\nClient responsibilities: ${manifest.clientResponsibilities}\n`
+    text += `\nAPPLICATION DELIVERABLE SPECIFICATION\nApplication: ${manifest.applicationName}\nVertical: ${manifest.vertical}\nApproved modules: ${manifest.modules.join(', ')}\nLanguage: ${manifest.language} · Currency: ${manifest.currency} · Brand color: ${manifest.primaryColor}\nDelivery format: ${manifest.deliveryFormat} (source archive only; this workflow does not deploy to production)\nHosting and deployment terms: ${manifest.hostingAndDeployment}\nClient responsibilities: ${manifest.clientResponsibilities}\n`
   }
   text += '\nTIMELINE\n'
   timeline.forEach((t) => { text += `• ${t.phase ?? ''} (${t.weeks ?? '?'} week(s)): ${t.activities ?? ''}\n` })
@@ -645,31 +649,80 @@ export async function clientScopeDecision(clientRowId: string, decision: 'APPROV
     return { next: 'REQUEST_PREVIEW', sent }
   }
   if (decision === 'REVISION_REQUESTED') {
+    const cleanNotes = sanitizeText(notes, 4000)
+    const outOfScopeCheck = detectOutOfScopeRevisionSignals(cleanNotes)
     await db.scopeOfWork.update({ where: { id: finalScope.id }, data: { status: 'SUPERSEDED' } })
     const run = await runAgent('REV-032', {
-      input: `Current scope: ${finalScope.content}\nClient revision notes: ${notes ?? ''}`,
+      input: `Current scope: ${finalScope.content}\nClient revision notes: ${cleanNotes}`,
       clientId: client.id, workflow: 'SCOPE_REVISION', expectJson: true,
     })
-    let newScopeId: string | null = null
-    if (run.ok && run.json) {
-      const scope = await db.scopeOfWork.create({
-        data: {
-          clientId: client.id, version: finalScope.version + 1, status: 'AWAITING_ADMIN_APPROVAL',
-          summary: sanitizeText(String(run.json.newVersionSummary ?? ''), 1000),
-          content: JSON.stringify({ ...JSON.parse(finalScope.content || '{}'), ...(run.json as object) }),
-          aiNotes: run.output.slice(0, 8000), generatedBy: 'REV-032',
-        },
-      })
-      newScopeId = scope.id
-      await db.approvalRequest.create({
-        data: {
-          type: 'FINAL_SCOPE_SEND', title: `Approve revised scope for ${client.clientId}`,
-          description: `Revision requested by client. v${scope.version} generated.`,
-          clientId: client.id, agentCode: 'REV-032', payload: JSON.stringify({ scopeId: scope.id }), risk: 'MEDIUM', requestedBy: 'REV-032',
-        },
-      })
-      await setStage(client.id, 'SCOPE_REVIEW', 'Revision generated, awaiting admin approval')
+
+    let priorContent: Record<string, unknown> = {}
+    try {
+      const parsed = JSON.parse(finalScope.content || '{}') as unknown
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        priorContent = parsed as Record<string, unknown>
+      }
+    } catch {
+      priorContent = {}
     }
+
+    const nextVersion = finalScope.version + 1
+    const aiSucceeded = Boolean(run.ok && run.json)
+    const mergedContent = aiSucceeded
+      ? {
+          ...priorContent,
+          ...(run.json as Record<string, unknown>),
+          clientRevisionNotes: cleanNotes,
+          outOfScopeReviewRequired: outOfScopeCheck.flagged,
+        }
+      : {
+          ...priorContent,
+          clientRevisionNotes: cleanNotes,
+          revisionDraftMode: 'HUMAN_REVIEW_REQUIRED',
+          outOfScopeReviewRequired: outOfScopeCheck.flagged,
+        }
+    const summaryText = aiSucceeded
+      ? sanitizeText(String(run.json?.newVersionSummary ?? ''), 1000) || `Revised scope v${nextVersion} prepared from client revision request.`
+      : `Client revision notes captured on v${nextVersion} for operator review${outOfScopeCheck.flagged ? ' (potential out-of-scope expansion flagged)' : ''}.`
+
+    const scope = await db.scopeOfWork.create({
+      data: {
+        clientId: client.id,
+        version: nextVersion,
+        status: 'AWAITING_ADMIN_APPROVAL',
+        summary: summaryText,
+        content: JSON.stringify(mergedContent),
+        aiNotes: aiSucceeded
+          ? run.output.slice(0, 8000)
+          : `Deterministic revision capture (AI runtime unavailable: ${run.error ?? 'provider offline'}). Client notes: ${cleanNotes.slice(0, 2000)}`,
+        generatedBy: aiSucceeded ? 'REV-032' : 'REV-032-FALLBACK',
+      },
+    })
+    const newScopeId: string | null = scope.id
+    await db.approvalRequest.create({
+      data: {
+        type: 'FINAL_SCOPE_SEND',
+        title: outOfScopeCheck.flagged
+          ? `Approve revised scope for ${client.clientId} (out-of-scope commercial review required)`
+          : `Approve revised scope for ${client.clientId}`,
+        description: outOfScopeCheck.flagged
+          ? `Revision requested by client. v${scope.version} prepared. Potential out-of-scope additions detected (${outOfScopeCheck.signals.join(', ')}) — verify commercial/timeline impact before sending.`
+          : `Revision requested by client. v${scope.version} generated.`,
+        clientId: client.id,
+        agentCode: 'REV-032',
+        payload: JSON.stringify({
+          scopeId: scope.id,
+          outOfScopeReviewRequired: outOfScopeCheck.flagged,
+          outOfScopeSignals: outOfScopeCheck.signals,
+          aiDrafted: aiSucceeded,
+        }),
+        risk: outOfScopeCheck.flagged ? 'HIGH' : 'MEDIUM',
+        requestedBy: 'REV-032',
+      },
+    })
+    await setStage(client.id, 'SCOPE_REVIEW', 'Revision recorded, awaiting admin approval')
+
     // The revision acknowledgement is auto-sent; the revised scope still
     // waits for the admin approval above.
     const sent = await sendPipelineMessage({
@@ -678,7 +731,12 @@ export async function clientScopeDecision(clientRowId: string, decision: 'APPROV
       variables: pipelineVars(client),
       agentCode: 'REV-032',
     })
-    return { next: 'ADMIN_APPROVAL', newScopeId, sent }
+    return {
+      next: 'ADMIN_APPROVAL',
+      newScopeId,
+      outOfScopeReviewRequired: outOfScopeCheck.flagged,
+      sent,
+    }
   }
   // CLARIFICATION → meeting only when client asks
   const meeting = await db.meeting.create({
@@ -1050,7 +1108,20 @@ export async function sendApprovedPaymentInstruction(payload: {
   return { results }
 }
 
-export async function recordPayment(clientRowId: string, input: { amount: number; currency?: string; method?: string; transactionId?: string; milestone?: string; notes?: string; invoiceId?: string }) {
+export async function recordPayment(
+  clientRowId: string,
+  input: {
+    amount: number
+    currency?: string
+    method?: string
+    transactionId?: string
+    milestone?: string
+    notes?: string
+    invoiceId?: string
+    proofFileId?: string | null
+    initialStatus?: 'PENDING' | 'SUBMITTED' | 'UNDER_VERIFICATION'
+  },
+) {
   const client = await db.client.findUnique({ where: { id: clientRowId }, include: { projects: true } })
   if (!client) throw new Error('Client not found')
   // Per-invoice allocation (idurar/frappe parity): when an invoice is linked,
@@ -1065,6 +1136,19 @@ export async function recordPayment(clientRowId: string, input: { amount: number
     invoiceId = invoice.id
     invoiceProjectId = invoice.projectId
   }
+  let validProofFileId: string | null = null
+  if (input.proofFileId) {
+    const proof = await db.fileRecord.findFirst({
+      where: { id: input.proofFileId, clientId: client.id, scanStatus: { not: 'REJECTED' } },
+      select: { id: true },
+    })
+    if (!proof) throw new Error('Payment proof file was not found for this client.')
+    validProofFileId = proof.id
+  }
+  const safeInitialStatus =
+    input.initialStatus === 'SUBMITTED' || input.initialStatus === 'UNDER_VERIFICATION'
+      ? input.initialStatus
+      : 'PENDING'
   const fallbackProject = client.projects.filter((p) => !['COMPLETED', 'CANCELLED'].includes(p.status)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
   const project = invoiceProjectId ?? fallbackProject?.id ?? null
   const payment = await db.payment.create({
@@ -1074,7 +1158,8 @@ export async function recordPayment(clientRowId: string, input: { amount: number
       amount: input.amount, currency: input.currency ?? 'USD',
       method: input.method ?? null, transactionId: input.transactionId || undefined,
       milestone: input.milestone ?? null, notes: sanitizeText(input.notes, 2000) || null,
-      status: 'PENDING',
+      proofFileId: validProofFileId,
+      status: safeInitialStatus,
     },
   })
   return payment

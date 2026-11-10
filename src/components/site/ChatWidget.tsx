@@ -199,9 +199,16 @@ export default function ChatWidget() {
     const res = await fetch(`/api/chat/messages?${params.toString()}`)
     if (!res.ok) throw new Error('poll failed')
     const data = (await res.json()) as {
-      conversation: { id: string; status: string; visitorName?: string | null } | null
+      conversation: { id: string; status: string; visitorName?: string | null; clientId?: string | null } | null
       messages: ChatMsg[]
       latestId: string | null
+      ai?: { available: boolean; detail: string }
+    }
+    if (data.ai) {
+      setAiStatus((prev) => (prev === 'checking' || prev === 'unknown' ? (data.ai!.available ? 'ready' : 'unavailable') : prev))
+    }
+    if (data.conversation?.clientId) {
+      setClientId(data.conversation.clientId)
     }
     return {
       conversation: data.conversation
@@ -448,8 +455,20 @@ export default function ChatWidget() {
         const failure = (await res.json().catch(() => null)) as { error?: string } | null
         throw new Error(failure?.error ?? 'Your message could not be sent. Please try again.')
       }
-      const data = (await res.json()) as { message: ChatMsg | null; messages?: ChatMsg[]; reply?: { body: string; wasAiGenerated: boolean; escalated: boolean; error?: string | null }; error?: string; code?: string; notice?: string; identityReviewRequired?: boolean }
+      const data = (await res.json()) as {
+        message: ChatMsg | null
+        messages?: ChatMsg[]
+        reply?: { body: string; wasAiGenerated: boolean; escalated: boolean; error?: string | null }
+        conversation?: { id: string; clientId?: string | null; status: string }
+        error?: string
+        code?: string
+        notice?: string
+        identityReviewRequired?: boolean
+      }
       messageRequestIdRef.current = null
+      if (data.conversation?.clientId) {
+        setClientId(data.conversation.clientId)
+      }
       // Server now returns full thread after AI reply — use it when available
       if (data.messages && data.messages.length > 0) {
         setMessages(data.messages)

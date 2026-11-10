@@ -54,11 +54,19 @@ export function chatSessionCookieIsValid(
   return verifyChatSessionToken(token, anonId, secret)
 }
 
+export class ChatSessionConfigError extends Error {
+  readonly code = 'CHAT_SESSION_MISCONFIGURED'
+  constructor(message: string) {
+    super(message)
+    this.name = 'ChatSessionConfigError'
+  }
+}
+
 /** Attach the HttpOnly chat-session cookie to an existing response. */
 export function withChatSessionCookie<T extends Response>(response: T, anonId: string): T {
   const secret = sessionSecret()
   if (Buffer.byteLength(secret, 'utf8') < 32) {
-    throw new Error('SESSION_SECRET must contain at least 32 bytes to issue a chat session.')
+    throw new ChatSessionConfigError('SESSION_SECRET must contain at least 32 bytes to issue a chat session.')
   }
   const token = signChatSessionToken(anonId, secret)
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''

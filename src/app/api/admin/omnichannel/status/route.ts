@@ -2,7 +2,9 @@ import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
 import { channelStatuses } from '@/lib/comms'
 import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
+import { CORE_AGENTS } from '@/lib/agents/registry'
 import { describeHostingerMailConfig } from '@/lib/mail/hostinger-config'
+import { db } from '@/lib/db'
 import { json } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
@@ -38,8 +40,11 @@ export async function GET(req: NextRequest) {
   const channels = channelStatuses()
   const aiProvider = getAgentProviderStatus()
   const hostingerMail = describeHostingerMailConfig()
+  const persistedAgents = await db.aiAgent.count({ where: { status: 'ACTIVE' } }).catch(() => 0)
 
   const has = (name: string) => Boolean((process.env[name] ?? '').trim())
+  const sessionSecret = process.env.SESSION_SECRET ?? ''
+  const sessionSecretValidLength = Buffer.byteLength(sessionSecret, 'utf8') >= 32
 
   const socialRelayConfigured = has('SOCIAL_WEBHOOK_SECRET')
 
@@ -68,9 +73,9 @@ export async function GET(req: NextRequest) {
         ? 'Outbound email is configured. Inbound requires the webhook secret below.'
         : 'Outbound email is NOT configured — sends are refused with NOT_CONFIGURED. Set the Hostinger Mail API variables or SMTP variables on the host.',
       requiredEnv: ['HOSTINGER_MAIL_ENABLED', 'HOSTINGER_MAIL_API_TOKEN', 'HOSTINGER_MAILBOX_RESOURCE_ID', 'HOSTINGER_MAIL_FROM_ADDRESS', 'HOSTINGER_MAIL_WEBHOOK_SECRET'],
-      missingEnv: hostingerMail.state === 'CONFIGURED'
+      missingEnv: channels.EMAIL
         ? []
-        : ['HOSTINGER_MAIL_ENABLED=true', 'HOSTINGER_MAIL_API_TOKEN', 'HOSTINGER_MAILBOX_RESOURCE_ID', 'HOSTINGER_MAIL_FROM_ADDRESS'],
+        : ['HOSTINGER_MAIL_ENABLED', 'HOSTINGER_MAIL_API_TOKEN', 'HOSTINGER_MAILBOX_RESOURCE_ID', 'HOSTINGER_MAIL_FROM_ADDRESS'].filter((n) => !has(n)),
       hostingerMailState: hostingerMail.state,
       hostingerMailProblems: hostingerMail.problems,
     },
@@ -153,6 +158,9 @@ export async function GET(req: NextRequest) {
       state: aiProvider.state,
       configured: aiProvider.configured,
       detail: aiProvider.detail,
+      activeAgentsInDb: persistedAgents,
+      canonicalCoreAgents: CORE_AGENTS.length,
+      lazyAgentBootstrapEnabled: true,
       // Root cause for "WebChat AI not working": when configured=false the
       // orchestrator returns the honest fallback (message saved, escalated
       // to a human) instead of an AI reply. Set one of these on the host:
@@ -168,6 +176,7 @@ export async function GET(req: NextRequest) {
     },
     chatSession: {
       secretConfigured: has('SESSION_SECRET'),
+      secretValidLength: sessionSecretValidLength,
       note: 'SESSION_SECRET (>=32 bytes) is required in production to issue WebChat session cookies. Without it, chat sessions fail closed.',
     },
   })

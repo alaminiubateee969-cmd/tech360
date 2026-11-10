@@ -250,6 +250,8 @@ export async function sendCommunication(entry: {
   /** Extra JSON stored on the Communication row (e.g. the plain-text copy of an HTML email body). */
   metadata?: string
 }): Promise<{ communicationId: string; result: SendResult }> {
+  const { redactSensitiveCrmData } = await import('@/lib/sensitive-redaction')
+  const safeStoredBody = redactSensitiveCrmData(entry.storedBody ?? entry.body).text.slice(0, 20000)
   const comm = await db.communication.create({
     data: {
       clientId: entry.clientId ?? null,
@@ -257,13 +259,13 @@ export async function sendCommunication(entry: {
       direction: 'OUT',
       recipient: entry.to ?? null,
       subject: entry.subject ?? null,
-      body: (entry.storedBody ?? entry.body).slice(0, 20000),
+      body: safeStoredBody,
       agentCode: entry.agentCode ?? null,
       workflowId: entry.workflowId ?? null,
       approvalId: entry.approvalId ?? null,
       templateName: entry.templateName ?? null,
       messageType: entry.messageType ?? 'TEXT',
-      metadata: entry.metadata ?? null,
+      metadata: entry.metadata ? redactSensitiveCrmData(entry.metadata).text : null,
       status: 'QUEUED',
     },
   })

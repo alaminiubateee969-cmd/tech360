@@ -41,7 +41,7 @@ export interface AccessDecision {
 }
 
 export function canManageFactory(actor: Actor): boolean {
-  return actor.role === 'SUPER_ADMIN' || actor.role === 'ADMIN'
+  return actor.role === 'SUPER_ADMIN'
 }
 
 export function canApproveRelease(actor: Actor): boolean {

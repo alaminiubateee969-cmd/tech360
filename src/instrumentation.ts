@@ -19,15 +19,24 @@ export async function register(): Promise<void> {
   // instrumentation runtime, which produced avoidable "Node.js module is loaded
   // in the Edge Runtime" warnings on every dev server start. The driver itself
   // is Node-only, so the import belongs after the runtime guard.
-  const [{ runOpsCycle }, { resolveOpsIntervalSec, withTimeout }] = await Promise.all([
+  const [{ runOpsCycle }, { resolveOpsIntervalSec, withTimeout }, { ensureAgentRegistry }] = await Promise.all([
     import('@/lib/ops-loop'),
     import('@/lib/agents/resilience'),
+    import('@/lib/agents/bootstrap'),
   ])
 
   const state = globalForAiOps.__tech360AiOpsDriver ?? { started: false }
   globalForAiOps.__tech360AiOpsDriver = state
   if (state.started) return
   state.started = true
+
+  // Ensure canonical 44 CORE_AGENTS + 110 DEPARTMENTS exist in MySQL on production boot
+  // (prisma migrate deploy creates tables without seeding rows).
+  setTimeout(() => {
+    void ensureAgentRegistry().catch((error) => {
+      console.error('[tech360-ai-ops] agent registry bootstrap skipped:', error instanceof Error ? error.message : String(error))
+    })
+  }, 5_000)
 
   const intervalMs = resolveOpsIntervalSec() * 1000
   const run = async () => {
