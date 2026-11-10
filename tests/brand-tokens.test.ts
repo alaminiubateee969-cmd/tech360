@@ -22,6 +22,7 @@ const MEASURED = {
   'brand-teal': '#029962',   // emblem teal band
   'brand-green': '#25b03b',  // emblem green arc
   'brand-mint': '#90d8b4',   // letterhead pale mint line art
+  'brand-cyan': '#009fe3',   // logo accent (present in logo, 0.54% of pixels)
 } as const
 
 function tokenValue(name: string): string | null {
@@ -69,9 +70,13 @@ describe('brand tokens — measured from the owner artwork', () => {
     assert.match(primary[1], /var\(--brand-blue\)/)
   })
 
-  it('documents that #009FE3 is legacy and absent from the artwork', () => {
-    // The comment is the only place this can be recorded for a future sweep.
-    assert.match(css, /#009FE3/i)
-    assert.match(css, /not present in the supplied letterhead/i)
+  it('tokenises #009FE3 as a real accent rather than deleting it', () => {
+    // Measured: #009FE3 is 0.54% of the owner logo, so it is a legitimate
+    // brand accent. It must remain available as a token, and the CSS must
+    // record the letterhead distinction so a future sweep does not confuse
+    // "not in the letterhead" with "not in the brand".
+    assert.equal(tokenValue('brand-cyan'), '#009fe3')
+    assert.match(css, /--color-brand-cyan:\s*var\(--brand-cyan\)/)
+    assert.match(css, /absent from the letterhead/i)
   })
 })

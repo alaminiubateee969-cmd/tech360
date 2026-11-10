@@ -49,6 +49,7 @@
   --color-brand-teal: var(--brand-teal);
   --color-brand-green: var(--brand-green);
   --color-brand-mint: var(--brand-mint);
+  --color-brand-cyan: var(--brand-cyan);
   --color-brand-ink: var(--brand-ink);
   --color-brand-slate: var(--brand-slate);
   --color-brand-rule: var(--brand-rule);
@@ -86,6 +87,12 @@
   --brand-teal: #029962;
   --brand-green: #25b03b;
   --brand-mint: #90d8b4;
+  /* Bright cyan-blue accent. NOTE: this IS present in the owner logo
+     (nearest artwork pixel distance 3.3 from #009FE3, 0.54% of pixels even
+     at a 400px downscale) although absent from the letterhead. It is
+     therefore a legitimate brand accent, NOT an error — it is tokenised so
+     its 700+ literal uses can migrate here one surface at a time. */
+  --brand-cyan: #009fe3;
   --brand-ink: #0b1f33;   /* deep text navy already used across the UI */
   --brand-slate: #526173; /* secondary text */
   --brand-rule: #e2e8f0;  /* hairline rules / borders */
