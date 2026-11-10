@@ -6,9 +6,8 @@
         "httpMethod": "POST",
         "path": "lead-enrichment",
         "responseMode": "lastNode",
-        "options": {
-          "allowedOrigins": "*"
-        }
+        "options": {},
+        "authentication": "headerAuth"
       },
       "id": "n1",
       "name": "Webhook lead-enrichment",
@@ -18,7 +17,13 @@
         0,
         0
       ],
-      "webhookId": "tech360-lead-enrichment"
+      "webhookId": "tech360-lead-enrichment",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TECH360_INBOUND_WEBHOOK_SECRET",
+          "name": "Tech360 Inbound Webhook Auth"
+        }
+      }
     },
     {
       "parameters": {
@@ -522,5 +527,6 @@
     {
       "name": "open-source"
     }
-  ]
+  ],
+  "id": "tech360-w26-lead-enrichment"
 }
