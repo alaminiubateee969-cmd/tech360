@@ -1603,7 +1603,7 @@ export const ROLES: Role[] = [
     location: "Remote / Harrisonville, MO",
     type: "Full-time",
     summary:
-      "Grow our client base across the USA, Bangladesh and beyond — with a process that closes on trust mechanics (preview-first, milestone payments) rather than discount pressure.",
+      "Grow our client base across the USA and worldwide — with a process that closes on trust mechanics (preview-first, milestone payments) rather than discount pressure.",
     responsibilities: [
       "Manage inbound enquiries from first message to scope approval",
       "Qualify opportunities honestly — including declining bad fits",

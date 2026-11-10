@@ -239,7 +239,14 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt += 1) {
       try {
         const selectedProvider = resolveAgentProvider()
-        if (selectedProvider === 'ai-gateway') {
+        if (selectedProvider === 'none') {
+          // Fail fast with an actionable message instead of falling through
+          // to the ZAI client (which would throw a less clear error).
+          throw new ZaiProviderError(
+            'PROVIDER_NOT_CONFIGURED',
+            'No AI execution provider configured. Set AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN, OPENROUTER_API_KEY, or ZAI_BASE_URL + ZAI_API_KEY on the server.',
+          )
+        } else if (selectedProvider === 'ai-gateway') {
           const result = await withTimeout((signal) => gatewayComplete(messages as ChatMessage[], process.env, signal), timeoutMs)
           output = result.output
           provider = result.provider

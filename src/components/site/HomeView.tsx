@@ -26,9 +26,8 @@ import { PrimaryLink, OutlineLink, AIAssistantLink, LinkArrow } from "./buttons"
 /* ------------------------------------------------------------------ */
 
 const HERO_WORDS_NEW = [
-  "Custom software,",
-  "engineered around",
-  "how your business runs.",
+  "Engineering Technology.",
+  "Empowering Business.",
 ] as const;
 
 function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
@@ -157,9 +156,7 @@ function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
           transition={{ duration: 0.6, delay: 0.85 }}
           className="mt-6 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg"
         >
-          TECH360 builds websites, CRM systems, client portals, eCommerce platforms, dashboards and
-          business workflow automation — scoped in writing, reviewed before payment where a preview is
-          agreed, and handed over with the source code once payments are verified and cleared.
+          TECH360 designs, develops, and delivers secure, scalable digital solutions that help businesses modernize operations, connect systems, and grow with confidence.
         </motion.p>
 
         <motion.div
