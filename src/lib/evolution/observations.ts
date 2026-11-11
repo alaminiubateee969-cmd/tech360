@@ -18,7 +18,7 @@
  */
 import { db } from '@/lib/db'
 import type { EvolutionSurface } from './policy'
-import { DEFAULT_HEURISTICS, type Heuristics, type ObservationKind } from './loop'
+import { DEFAULT_HEURISTICS, summarizeGeneration, type Heuristics, type ObservationKind } from './loop'
 
 export const KEYS = {
   heuristics: 'rea.heuristics',
@@ -211,4 +211,45 @@ function deepMerge<T extends Record<string, unknown>>(base: T, patch: Record<str
     }
   }
   return out
+}
+
+/**
+ * Recomputes a generation's stored summary from what actually happened to its
+ * proposals.
+ *
+ * The summary written when a generation opens says "nothing is applied until
+ * each is approved" — true at that moment, but it goes stale the instant a
+ * proposal is approved, applied, rejected or rolled back. A lineage row whose
+ * prose contradicts its own counters is a misreport, and lineage is the whole
+ * point of the record. So every state change re-derives the summary through the
+ * same `summarizeGeneration` the counters come from.
+ *
+ * Best-effort by design: a failure to reword a summary must not fail the
+ * underlying apply or rollback, which is the change that actually matters.
+ */
+export async function refreshGenerationSummary(generation: number): Promise<string | null> {
+  if (!Number.isFinite(generation)) return null
+  try {
+    const row = await db.evolutionGeneration.findUnique({
+      where: { generation },
+      select: { generation: true, parentGeneration: true, observations: true, startedAt: true },
+    })
+    if (!row) return null
+    const proposals = await db.evolutionProposal.findMany({
+      where: { generation },
+      select: { status: true, surface: true },
+    })
+    const { summary } = summarizeGeneration({
+      generation: row.generation,
+      parentGeneration: row.parentGeneration,
+      observations: row.observations,
+      proposals: proposals.map((p) => ({ status: p.status, surface: p.surface as never })),
+      startedAt: row.startedAt.toISOString(),
+      now: new Date().toISOString(),
+    })
+    await db.evolutionGeneration.update({ where: { generation }, data: { summary } })
+    return summary
+  } catch {
+    return null
+  }
 }

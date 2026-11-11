@@ -12,6 +12,7 @@ import {
   type EvolutionPatch,
 } from '@/lib/evolution/policy'
 import { ACCESSORS, assertPatchWritable, previewSurface } from '@/lib/evolution/surfaces'
+import { refreshGenerationSummary } from '@/lib/evolution/observations'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,12 +88,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // ---- 3. the proposer may never be the decider ----
+  // Both sides are read from the ApprovalRequest, which stores `requestedBy` and
+  // `decidedBy` in the SAME identity space (user ids). Comparing the proposal's
+  // `proposedBy` — a display email — against `decidedBy` — an id — could never
+  // match, so the gate was decoration. Fail closed when either side is missing:
+  // an unattributable decision is not an approval.
+  if (!approval.requestedBy || !approval.decidedBy) {
+    return await fail({
+      proposal,
+      actor,
+      g,
+      code: 'DECIDER_UNATTRIBUTED',
+      reason: `The linked approval is missing ${!approval.requestedBy ? 'requestedBy' : 'decidedBy'}, so the proposer and the decider cannot be compared. An unattributable decision is not an approval.`,
+    })
+  }
   const selfApproval = assertNotSelfApproval({
-    proposedBy: proposal.proposedBy ?? '',
-    decidedBy: approval.decidedBy ?? '',
+    proposedBy: approval.requestedBy,
+    decidedBy: approval.decidedBy,
   })
   if (!selfApproval.ok) {
-    return await fail({ proposal, actor, g, code: selfApproval.code, reason: selfApproval.reason })
+    return await fail({ proposal, actor, g, code: selfApproval.code, reason: `${selfApproval.reason} (proposer ${approval.requestedBy}, decider ${approval.decidedBy})` })
   }
 
   // ---- 4. surface role requirement ----
@@ -200,6 +215,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: { status: 'EXECUTED', executedAt: new Date(), result: JSON.stringify({ proposalCode: proposal.code, surface: proposal.surface, targetKey: patch.targetKey }).slice(0, 4000) },
     }),
   ])
+
+  // Re-derive the generation's prose from its now-updated counters, so the
+  // lineage never says "nothing is applied" about a generation that applied one.
+  await refreshGenerationSummary(proposal.generation)
 
   await audit({
     actor,

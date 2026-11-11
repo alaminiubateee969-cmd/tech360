@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
-import { sanitizeText } from '@/lib/security'
-import { SURFACE_SPECS, type EvolutionPatch } from '@/lib/evolution/policy'
+import { audit, clientIp, sanitizeText } from '@/lib/security'
+import { SURFACE_SPECS, assertNotSelfApproval, type EvolutionPatch } from '@/lib/evolution/policy'
+import { refreshGenerationSummary } from '@/lib/evolution/observations'
 import { previewSurface } from '@/lib/evolution/surfaces'
 
 export const dynamic = 'force-dynamic'
@@ -92,6 +93,43 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return Response.json({ error: 'decision must be APPROVED or REJECTED.' }, { status: 400 })
   }
 
+  // ---- the proposer may never be the decider ----
+  // Enforced HERE, before delegating, so the operator gets an immediate refusal
+  // instead of approving successfully and only failing later at apply. Both
+  // sides are compared in the same identity space: ApprovalRequest.requestedBy
+  // and the session's user id.
+  //
+  // Rejecting your own proposal is still allowed — refusing your own idea is
+  // not a privilege escalation, and blocking it would strand proposals nobody
+  // else wants to triage.
+  if (decision === 'APPROVED') {
+    const linked = await db.approvalRequest.findUnique({
+      where: { id: proposal.approvalId },
+      select: { requestedBy: true },
+    })
+    const selfApproval = assertNotSelfApproval({
+      proposedBy: linked?.requestedBy ?? '',
+      decidedBy: g.user.id,
+    })
+    if (!selfApproval.ok) {
+      await audit({
+        actor: g.user.email,
+        action: 'EVOLUTION_SELF_APPROVAL_REFUSED',
+        entityType: 'EvolutionProposal',
+        entityId: proposal.id,
+        userId: g.user.id,
+        details: { reason: selfApproval.code, requestedBy: linked?.requestedBy ?? null },
+        ip: clientIp(req),
+      })
+      return Response.json({
+        error: 'SELF_APPROVAL_FORBIDDEN',
+        message: `You ran the cycle that produced ${proposal.id}, so you are the proposing actor and cannot approve it. A different SUPER_ADMIN must decide. Rejecting it yourself is allowed.`,
+        requestedBy: linked?.requestedBy ?? null,
+        decidedBy: g.user.id,
+      }, { status: 409 })
+    }
+  }
+
   // Delegate to the existing decision route. Forwarding the original headers
   // keeps the session and CSRF checks authoritative there rather than
   // duplicated here.
@@ -117,9 +155,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
     })
     if (decision === 'REJECTED') {
+      const generation = (await db.evolutionProposal.findUnique({ where: { id: proposal.id }, select: { generation: true } }))!.generation
       await db.evolutionGeneration
-        .update({ where: { generation: (await db.evolutionProposal.findUnique({ where: { id: proposal.id }, select: { generation: true } }))!.generation }, data: { rejected: { increment: 1 } } })
+        .update({ where: { generation }, data: { rejected: { increment: 1 } } })
         .catch(() => null)
+      // Keep the stored summary consistent with the counters it sits beside.
+      await refreshGenerationSummary(generation)
     }
   }
 

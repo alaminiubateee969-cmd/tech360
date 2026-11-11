@@ -155,15 +155,36 @@ function metaContent(html: string, key: string, isProperty = false): string | nu
  * Classifies how the page reaches the visitor. This decides how much of the
  * teardown is meaningful, so the signals are returned with the answer.
  */
-function classifyRenderModel(html: string, structure: Pick<DocumentStructure, 'wordCount' | 'externalScriptUrls' | 'sections'>): DocumentStructure['renderModel'] {
+function classifyRenderModel(
+  html: string,
+  structure: Pick<DocumentStructure, 'wordCount' | 'externalScriptUrls' | 'sections' | 'headings' | 'forms'>,
+): DocumentStructure['renderModel'] {
   const signals: string[] = []
   let score = { ssr: 0, spa: 0 }
 
+  // What distinguishes a client-rendered shell is ABSENT content, not short
+  // content. A login page, a pricing page or a terse landing page can be fully
+  // server-rendered and still contain very few words, so a low word count is
+  // only evidence of a shell when the document also lacks real structure.
+  // Treating brevity alone as a shell made the teardown tell an operator that a
+  // perfectly ordinary server-rendered page "contains almost none of the
+  // interface a visitor sees" — which is exactly the kind of over-claim the
+  // evidence contract exists to prevent.
+  const substantive = structure.sections.length >= 2 || structure.headings.length >= 2 || structure.forms.length >= 1
+
   if (/__next_data__/i.test(html)) { signals.push('__NEXT_DATA__ present (Next.js payload embedded in the document)'); score.ssr += 2 }
   if (/<div id="(?:__nuxt|app|root)">\s*<\/div>/i.test(html)) { signals.push('Empty mount node (#app/#root/__nuxt) with no server-rendered children'); score.spa += 3 }
-  if (structure.wordCount < 120) { signals.push(`Only ${structure.wordCount} words of visible text in the document`); score.spa += 2 }
-  else if (structure.wordCount > 400) { signals.push(`${structure.wordCount} words of visible text present in the initial document`); score.ssr += 2 }
-  if (structure.sections.length > 3) { signals.push(`${structure.sections.length} server-rendered content sections`); score.ssr += 1 }
+  if (structure.wordCount < 120) {
+    if (substantive) {
+      signals.push(`Only ${structure.wordCount} words of visible text, but the document does carry server-rendered structure (${structure.sections.length} section(s), ${structure.headings.length} heading(s), ${structure.forms.length} form(s)) — terse, not empty`)
+    } else {
+      signals.push(`Only ${structure.wordCount} words of visible text and no server-rendered structure to show for it`); score.spa += 2
+    }
+  } else if (structure.wordCount > 400) { signals.push(`${structure.wordCount} words of visible text present in the initial document`); score.ssr += 2 }
+  // Two content sections is already substantive markup in the document; the
+  // previous threshold of four needed a long marketing page before server
+  // rendering counted at all.
+  if (structure.sections.length >= 2) { signals.push(`${structure.sections.length} server-rendered content sections`); score.ssr += 1 }
   if (/<noscript\b/i.test(html)) { signals.push('<noscript> fallback present'); score.spa += 1 }
   if (structure.externalScriptUrls.some((u) => /\/_next\/static\/chunks\/|\/_nuxt\/|\/assets\/index-.*\.js/i.test(u))) {
     signals.push('Hydration bundle referenced (/_next/static/chunks, /_nuxt, /assets/index-*.js)')
@@ -395,8 +416,8 @@ export function analyzeDocument(rawHtml: string, baseUrl?: string | null): Docum
   }, 0)
   const buttonsMissingText = Math.max(0, allTags(html, 'button').length - buttons.length)
 
-  const partial: Pick<DocumentStructure, 'wordCount' | 'externalScriptUrls' | 'sections'> = {
-    wordCount, externalScriptUrls, sections,
+  const partial: Pick<DocumentStructure, 'wordCount' | 'externalScriptUrls' | 'sections' | 'headings' | 'forms'> = {
+    wordCount, externalScriptUrls, sections, headings, forms,
   }
   const renderModel = classifyRenderModel(html, partial)
 

@@ -4,6 +4,7 @@ import { guard, isResponse } from '@/lib/api-guard'
 import { audit, sanitizeText } from '@/lib/security'
 import type { EvolutionPatch } from '@/lib/evolution/policy'
 import { ACCESSORS } from '@/lib/evolution/surfaces'
+import { refreshGenerationSummary } from '@/lib/evolution/observations'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,6 +84,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: { rolledBack: { increment: 1 } },
     }),
   ])
+
+  // A rolled-back change is not an applied one; the summary must say so.
+  await refreshGenerationSummary(proposal.generation)
 
   await audit({
     actor,

@@ -293,6 +293,31 @@ describe('rea: document analysis', () => {
     assert.ok(spa.structure.wordCount < 20)
   })
 
+  it('does not call a terse but genuinely server-rendered page a client shell', () => {
+    // A login or pricing page can be fully server-rendered and still contain
+    // very few words. What distinguishes a shell is ABSENT content, not short
+    // content, so brevity alone must not be scored as client rendering.
+    const terse = `<!doctype html><html lang="en"><head><title>Acme — Pricing</title>
+<script src="/_next/static/chunks/main-abc.js"></script></head><body>
+<header><nav><a href="/">Home</a><a href="/pricing">Pricing</a><a href="/login">Log in</a></nav></header>
+<main id="main"><section id="plans"><h1>Pricing</h1><p>Two plans. Cancel any time.</p><button>Choose Pro</button></section>
+<section id="faq"><h2>Questions</h2><h3>Can I switch later?</h3><p>Yes, at any point.</p></section>
+<form action="/api/leads" method="POST"><label for="e">Work email</label><input id="e" name="email" type="email"><button type="submit">Start</button></form></main>
+<footer>© 2026 Acme</footer></body></html>`
+    const result = analyzeDocument(terse, 'https://acme.example/pricing')
+    assert.ok(result.structure.wordCount < 120, 'the fixture really is terse')
+    assert.notEqual(result.structure.renderModel.model, 'SPA_SHELL', 'real structure is present in the document')
+    assert.equal(result.structure.renderModel.model, 'HYDRIDATED')
+    // The low word count is still disclosed — as brevity, not as absence.
+    assert.ok(result.structure.renderModel.signals.some((s) => /terse, not empty/.test(s)))
+  })
+
+  it('still classifies a real shell as a shell when the content is absent', () => {
+    const shell = analyzeDocument('<html><head><title>App</title></head><body><div id="root"></div><noscript>Enable JavaScript</noscript></body></html>', 'https://app.example/')
+    assert.equal(shell.structure.renderModel.model, 'SPA_SHELL')
+    assert.ok(shell.structure.renderModel.signals.some((s) => /no server-rendered structure/.test(s)))
+  })
+
   it('reports truncation instead of silently analysing a prefix', () => {
     const huge = `<html><body>${'<p>word</p>'.repeat(3000)}${'<a href="/p">x</a>'.repeat(900)}</body></html>`
     const result = analyzeDocument(huge, 'https://x.example/')

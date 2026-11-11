@@ -208,7 +208,13 @@ export async function POST(req: NextRequest) {
         status: 'PENDING',
         // The proposer is recorded as the loop, never as the deciding human, so
         // the self-approval check at apply time has something to compare.
-        requestedBy: `evolution-loop:gen-${generation}`,
+        // The human who ran this cycle is the proposing actor, recorded as a
+        // user id because that is the identity space the decision route writes
+        // `decidedBy` in. Storing a machine label here ("evolution-loop:gen-N")
+        // made the self-approval gate compare a label against an id, so it could
+        // never match and the person who ran the cycle could approve their own
+        // proposal. The loop's provenance stays in the generation lineage.
+        requestedBy: g.user.id,
         payload: JSON.stringify({
           generation,
           surface: proposal.surface,
@@ -239,7 +245,9 @@ export async function POST(req: NextRequest) {
         riskReasons: JSON.stringify(proposal.risk.reasons),
         status: 'PENDING',
         approvalId: approval.id,
-        proposedBy: `evolution-loop:gen-${generation}`,
+        // Email for readable lineage; the authoritative self-approval
+        // comparison uses ApprovalRequest.requestedBy / .decidedBy (both ids).
+        proposedBy: g.user.email,
       },
     })
 
