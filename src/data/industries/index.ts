@@ -1,4 +1,5 @@
 import type { IndustryRegistryEntry } from "./types";
+import { additionalSolutionsFor } from "./additional-solutions";
 
 import { COMMERCE_RETAIL_ENTRIES } from "./commerce-retail";
 import { EDUCATION_ENTRIES } from "./education-sector";
@@ -66,8 +67,28 @@ const PINNED_SLUG_ORDER = [
   "technology-companies",
 ] as const;
 
+/**
+ * Attach the industry-specific solutions that complete each industry's
+ * catalogue to the ≥8 solution minimum (see `./additional-solutions.ts`).
+ *
+ * Done here — at the single registry assembly point — so every consumer
+ * (pages, structured data, agent content, tests) sees the same catalogue and
+ * no individual industry file can drift below the minimum again.
+ */
+function withAdditionalSolutions(entry: IndustryRegistryEntry): IndustryRegistryEntry {
+  const extra = additionalSolutionsFor(entry.slug);
+  if (extra.length === 0) return entry;
+  const existing = new Set(entry.data.modules.map((m) => m.id));
+  const additions = extra.filter((m) => !existing.has(m.id));
+  if (additions.length === 0) return entry;
+  return {
+    ...entry,
+    data: { ...entry.data, modules: [...entry.data.modules, ...additions] },
+  };
+}
+
 const entryMap = new Map<string, IndustryRegistryEntry>(
-  bySlugOrder.map((entry) => [entry.slug, entry]),
+  bySlugOrder.map((entry) => [entry.slug, withAdditionalSolutions(entry)]),
 );
 
 /** All 20 industry solutions in pinned route order. */

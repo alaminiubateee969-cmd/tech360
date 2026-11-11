@@ -1,5 +1,7 @@
 import { INDUSTRIES, LEGAL_DOCS, SERVICES } from '@/data/site'
 import { getIndustryBySlug } from '@/data/industries'
+import { PROJECT_DETAILS, getProjectDetail } from '@/data/work-details'
+import { WORK_EXAMPLES } from '@/data/work-examples'
 
 export type PublicRouteKind =
   | 'section'
@@ -8,6 +10,7 @@ export type PublicRouteKind =
   | 'legal'
   | 'blog-index'
   | 'blog-post'
+  | 'project'
   | 'portal'
 
 export type PublicRouteInfo = {
@@ -162,6 +165,22 @@ export function resolvePublicRoute(pathSegments: readonly string[]): PublicRoute
     return route ? { path: `/${section}`, ...route } : null
   }
 
+  if (segments.length === 3 && segments[0] === 'work' && segments[1] === 'projects') {
+    // Dedicated project detail pages (Phase 4). Only slugs that exist in BOTH
+    // the showcase gallery and the detail registry resolve, so a dangling link
+    // is a 404 rather than an empty page.
+    const slug = segments[2]
+    const detail = getProjectDetail(slug)
+    const example = WORK_EXAMPLES.find((item) => item.slug === slug)
+    if (!isSlug(slug) || !detail || !example) return null
+    return {
+      path: `/work/projects/${slug}`,
+      title: `${example.name} — Project Specification`,
+      description: example.tagline,
+      kind: 'project',
+    }
+  }
+
   if (segments.length === 2) {
     const [section, slug] = segments
     if (section === 'services') {
@@ -226,5 +245,6 @@ export function getStaticPublicRoutePaths(): string[] {
     ...SERVICES.map((service) => `/services/${service.slug}`),
     ...INDUSTRIES.map((industry) => `/industries/${industry.slug}`),
     ...LEGAL_DOCS.map((policy) => `/legal/${policy.slug}`),
+    ...PROJECT_DETAILS.map((project) => `/work/projects/${project.slug}`),
   ]
 }

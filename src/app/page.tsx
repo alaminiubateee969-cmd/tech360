@@ -14,6 +14,7 @@ import ServiceDetailView from '@/components/site/ServiceDetailView'
 import IndustriesView from '@/components/site/IndustriesView'
 import IndustryDetailView from '@/components/site/IndustryDetailView'
 import WorkView from '@/components/site/WorkView'
+import ProjectDetailView from '@/components/site/ProjectDetailView'
 import TechnologiesView from '@/components/site/TechnologiesView'
 import ProcessView from '@/components/site/ProcessView'
 import BlogView from '@/components/site/BlogView'
@@ -216,11 +217,13 @@ function UnknownPublicRoute({ navigate }: { navigate: (h: string) => void }) {
 function PublicView({
   section,
   param,
+  parts,
   navigate,
   initialBlogPost,
 }: {
   section: string
   param: string
+  parts: string[]
   navigate: (h: string) => void
   initialBlogPost?: BlogPost | null
 }) {
@@ -231,6 +234,10 @@ function PublicView({
     case 'services': return param ? <ServiceDetailView slug={param} /> : <ServicesView />
     case 'industries': return param ? <IndustryDetailView slug={param} /> : <IndustriesView />
     case 'work':
+      // /work/projects/<slug> — dedicated project detail page.
+      if (param === 'projects' && parts[2]) {
+        return <ProjectDetailView slug={parts[2]} />
+      }
       if (param && param !== 'projects' && param !== 'case-studies') {
         return <UnknownPublicRoute navigate={navigate} />
       }
@@ -440,6 +447,7 @@ export default function Page({
             <PublicView
               section={section}
               param={param}
+              parts={parts}
               navigate={navigate}
               initialBlogPost={initialBlogPost}
             />

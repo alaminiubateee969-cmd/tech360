@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { INDUSTRIES, LEGAL_DOCS, SERVICES } from '@/data/site'
+import { PROJECT_DETAILS } from '@/data/work-details'
 import { listPublishedBlogSlugs } from '@/lib/public-blog'
 import { SITE_URL } from '@/lib/site-contact'
 
@@ -51,6 +52,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'monthly' as const,
       priority: 0.8,
+    })),
+    ...PROJECT_DETAILS.map((p) => ({
+      url: `${SITE_URL}/work/projects/${p.slug}`,
+      lastModified: now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
     })),
     ...INDUSTRIES.map((i) => ({
       url: `${SITE_URL}/industries/${i.slug}`,
