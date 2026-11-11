@@ -48,7 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     'DELIVERY-MANIFEST.json',
     JSON.stringify(
       {
-        generatedBy: 'TECH360 AI Software Factory',
+        generatedBy: 'TECH360 Engineering Delivery',
         appCode: app.code,
         appName: app.name,
         vertical: app.vertical,

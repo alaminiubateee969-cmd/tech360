@@ -1,337 +1,220 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, MotionConfig } from "framer-motion";
-import { ArrowRight, CheckCircle2, ChevronDown, Star, Volume2, VolumeX, MessageCircle, Users, Mail, Smartphone, CreditCard, Workflow, Github, Layers, ShieldCheck, Globe, Bot, Eye as EyeIcon, Lock as LockIcon, Database } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { SERVICES, INDUSTRIES, CASE_STUDIES, PROCESS, STATS, TRUST_POINTS, COMPANY, FAQS } from "@/data/site";
-import { imageFor } from "@/data/images";
+import {
+  ArrowRight,
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
+import { CASE_STUDIES, FAQS, INDUSTRIES } from "@/data/site";
 import { industryImage, industryImageAlt } from "@/data/industry-images";
+import {
+  getCaseStudyImage,
+  serviceImageAlt,
+  serviceImageSrc,
+} from "@/data/service-images";
+import { cn } from "@/lib/utils";
 import { Icon } from "./icons";
-import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
-import { StatChip } from "./StatChip";
-import { CtaBand } from "./CtaBand";
 import { ImageView } from "./ImageView";
-import { FeaturesModulesDiagram } from "./diagrams";
-import { TrustRow, SolutionsGrid, PlatformGrid, HowItWorks, FeaturesGrid, DashboardShowcase, IntegrationsGrid, BenefitsGrid, PricingSection, ResourcesGrid } from "./PremiumSections";
-import { PrimaryLink, OutlineLink, AIAssistantLink, LinkArrow } from "./buttons";
+import { Reveal, RevealItem, RevealList } from "./Reveal";
+import { CtaBand } from "./CtaBand";
+import { LinkArrow, OutlineLink, PrimaryLink } from "./buttons";
+import {
+  AiSolutionsSection,
+  DashboardShowcase,
+  IntegrationsGrid,
+  PlatformGrid,
+  SolutionsGrid,
+  TrustRow,
+} from "./PremiumSections";
 
-/* ------------------------------------------------------------------ */
-/* Buffer-grade hero — spec §4 headline                               */
-/* ------------------------------------------------------------------ */
-
-const HERO_WORDS_NEW = [
-  "Engineering Technology.",
-  "Empowering Business.",
-] as const;
-
-function Hero({ onNavigate }: { onNavigate?: (hash: string) => void }) {
-  const sectionRef = useRef<HTMLElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [videoReady, setVideoReady] = useState(false);
-  const [videoFailed, setVideoFailed] = useState(false);
-  const [soundOn, setSoundOn] = useState(false);
-
-  // Render the video only once the hero is in view (or shortly after mount)
-  // so the clip never blocks first paint.
-  useEffect(() => {
-    let cancelled = false;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const start = () => {
-      if (!cancelled) setVideoReady(true);
-    };
-    const el = sectionRef.current;
-    if (el && "IntersectionObserver" in window) {
-      const io = new IntersectionObserver(
-        (entries) => {
-          if (entries.some((e) => e.isIntersecting)) {
-            start();
-            io.disconnect();
-          }
-        },
-        { rootMargin: "200px" }
-      );
-      io.observe(el);
-      // Fallback in case the observer never fires (background tabs).
-      const t = window.setTimeout(start, 2000);
-      return () => {
-        cancelled = true;
-        io.disconnect();
-        window.clearTimeout(t);
-      };
-    }
-    start();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const toggleSound = () => {
-    const v = videoRef.current;
-    if (!v || videoFailed) return;
-    // Honest toggle: we only un mute the clip. If the file carries no audio
-    // track it stays silent — the label reflects the video's real state.
-    v.muted = !v.muted;
-    setSoundOn(!v.muted);
-  };
-
+export default function HomeView(_props: { onNavigate?: (h: string) => void } = {}) {
   return (
-    <section
-      ref={sectionRef}
-      aria-labelledby="hero-heading"
-      className="relative flex min-h-[92svh] items-center overflow-hidden bg-[#0B1F33]"
-    >
-      {/* Poster first (CSS background) — always present, also the fallback */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url(/videos/hero-poster.jpg)" }}
-      />
-      {/* Video layered above the poster, below the readability gradient */}
-      {videoReady && !videoFailed ? (
-        <video
-          ref={videoRef}
-          className="absolute inset-0 h-full w-full object-cover"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          poster="/videos/hero-poster.jpg"
-          onError={() => setVideoFailed(true)}
-          aria-hidden="true"
-          tabIndex={-1}
-        >
-          <source src="/videos/hero-loop.mp4" type="video/mp4" />
-        </video>
-      ) : null}
-      {/* Readability gradient */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-r from-[#0B1F33]/96 via-[#0B1F33]/78 to-[#063B8F]/45"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0B1F33]/80 to-transparent"
-      />
+    <div>
+      {/* 1. Premium Hero + Connected Operations Strip */}
+      <Hero />
+      <TrustRow />
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 pb-24 pt-28 sm:px-6 sm:pt-32 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-7"
-        >
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-white/90 backdrop-blur">
-            <span className="size-1.5 rounded-full bg-[#18B83A]" aria-hidden="true" />
-            {COMPANY.legalName} · Missouri, USA
-          </span>
-        </motion.div>
+      {/* 2. Flagship Services Overview with High-Resolution Service Imagery */}
+      <FlagshipServices />
 
-        <h1 id="hero-heading" className="max-w-3xl">
-          {HERO_WORDS_NEW.map((word, i) => (
-            <motion.span
-              key={word}
-              initial={{ opacity: 0, y: 28 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.15 + i * 0.14, ease: [0.21, 0.47, 0.32, 0.98] }}
-              className={cn(
-                "block font-bold leading-[1.08] tracking-tight",
-                i === 2 ? "text-[#009FE3] text-2xl sm:text-4xl lg:text-5xl" : i === 1 ? "text-white text-2xl sm:text-4xl lg:text-5xl" : "text-white text-2xl sm:text-4xl lg:text-5xl"
-              )}
-            >
-              {word}
-            </motion.span>
-          ))}
-        </h1>
+      {/* 3. Dedicated AI Solutions 3-Card Image Grid */}
+      <AiSolutionsSection />
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.85 }}
-          className="mt-6 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg"
-        >
-          TECH360 designs, develops, and delivers digital solutions that help businesses modernize
-          operations, connect systems, and grow with confidence.
-        </motion.p>
+      {/* 4. Business Automation, Software Capabilities & Connected Platform */}
+      <SolutionsGrid />
+      <PlatformGrid />
+      <DashboardShowcase />
+      <IntegrationsGrid />
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.05 }}
-          className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4"
-        >
-          <PrimaryLink href="/services">
-            Explore all 21 solutions
-            <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-1" aria-hidden="true" />
-          </PrimaryLink>
-          <OutlineLink href="/work" dark>
-            See illustrative work
-          </OutlineLink>
-          <AIAssistantLink label="Talk to Tech360" />
-        </motion.div>
+      {/* 5. Industry-Specific Solutions */}
+      <IndustriesPreview />
 
-        {/* Trust strip — honest, four pillars */}
-        <motion.ul
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1.3 }}
-          className="mt-12 flex max-w-3xl flex-wrap items-center gap-x-6 gap-y-2"
-        >
-          {TRUST_POINTS.map((point) => (
-            <li key={point} className="flex items-center gap-2 text-sm text-white/75">
-              <CheckCircle2 className="size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />
-              {point}
-            </li>
-          ))}
-        </motion.ul>
-      </div>
+      {/* 6. Trust, Engineering Standards & Illustrative Delivery Blueprints */}
+      <WhyTech360 />
+      <SelectedWork />
 
-      {/* Honest video-sound state pill */}
-      <div className="absolute bottom-5 right-4 sm:right-6">
-        <button
-          type="button"
-          onClick={toggleSound}
-          disabled={!videoReady || videoFailed}
-          aria-pressed={soundOn}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 text-xs font-medium text-white/80 backdrop-blur transition-colors hover:bg-white/20 disabled:opacity-40"
-        >
-          {soundOn ? (
-            <Volume2 className="size-4" aria-hidden="true" />
-          ) : (
-            <VolumeX className="size-4" aria-hidden="true" />
-          )}
-          Sound: {soundOn ? "On" : "Off"}
-        </button>
-      </div>
-    </section>
+      {/* 7. Project Workflow & Human Approval Model */}
+      <DeliveryJourney />
+
+      {/* 8. Client Engagement, Engineering Insights, FAQs & Consultation CTA */}
+      <ClientReviews />
+      <LatestInsights />
+      <FaqPreview />
+      <CtaBand />
+    </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Integration showcase — 8 tiles, honest status (§4)                   */
-/* ------------------------------------------------------------------ */
+/* ---------------- Hero ---------------- */
 
-type IntegStatus = "AVAILABLE" | "REQUIRES_SETUP" | "CONNECTED" | "NOT_CONFIGURED";
-const INTEGRATIONS: Array<{ key: string; label: string; blurb: string; status: IntegStatus; icon: React.ReactNode }> = [
-  { key: "whatsapp", label: "WhatsApp", blurb: "Cloud API • templates", status: "REQUIRES_SETUP", icon: <MessageCircle className="size-5" /> },
-  { key: "facebook", label: "Facebook", blurb: "Messenger & pages", status: "REQUIRES_SETUP", icon: <Users className="size-5" /> },
-  { key: "email", label: "Email", blurb: "SMTP • campaigns", status: "REQUIRES_SETUP", icon: <Mail className="size-5" /> },
-  { key: "sms", label: "SMS", blurb: "Gateway • OTP", status: "REQUIRES_SETUP", icon: <Smartphone className="size-5" /> },
-  { key: "stripe", label: "Stripe", blurb: "Checkout • webhooks", status: "AVAILABLE", icon: <CreditCard className="size-5" /> },
-  { key: "n8n", label: "n8n", blurb: "26 workflow files in source", status: "AVAILABLE", icon: <Workflow className="size-5" /> },
-  { key: "github", label: "GitHub", blurb: "Factory export", status: "AVAILABLE", icon: <Github className="size-5" /> },
-  { key: "nextjs", label: "Next.js", blurb: "16 • React 19", status: "AVAILABLE", icon: <Layers className="size-5" /> },
+const HERO_TRUST = [
+  "US-registered technology company (Tech360 LLC)",
+  "Written scope & client-approved deliverables",
+  "HTML preview before production build",
+  "Full source-code handover after completion",
 ];
 
-function statusTone(s: IntegStatus): string {
-  switch (s) {
-    case "CONNECTED": return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    case "AVAILABLE": return "bg-sky-50 text-sky-700 border-sky-200";
-    case "REQUIRES_SETUP": return "bg-amber-50 text-amber-700 border-amber-200";
-    case "NOT_CONFIGURED": return "bg-slate-50 text-slate-600 border-slate-200";
+function Hero() {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [muted, setMuted] = useState(true);
+  const [soundFailed, setSoundFailed] = useState(false);
+
+  // Respect OS-level reduced-motion preference: pause the ambient clip rather
+  // than loop motion behind text for visitors who asked for stillness.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => {
+      if (mq.matches) v.pause();
+      else v.play().catch(() => {});
+    };
+    sync();
+    mq.addEventListener?.("change", sync);
+    return () => mq.removeEventListener?.("change", sync);
+  }, []);
+
+  async function toggleSound() {
+    const v = videoRef.current;
+    if (!v) return;
+    const nextMuted = !muted;
+    setSoundFailed(false);
+    v.muted = nextMuted;
+    if (!nextMuted) {
+      v.volume = 0.85;
+      try {
+        await v.play();
+        if (v.muted || v.paused) throw new Error("audio blocked");
+        setMuted(false);
+      } catch {
+        v.muted = true;
+        setMuted(true);
+        setSoundFailed(true);
+      }
+    } else {
+      setMuted(true);
+    }
   }
-}
-function statusLabel(s: IntegStatus): string {
-  switch (s) {
-    case "CONNECTED": return "Connected";
-    case "AVAILABLE": return "Available";
-    case "REQUIRES_SETUP": return "Requires setup";
-    case "NOT_CONFIGURED": return "Not configured";
-  }
-}
 
-function IntegrationShowcase() {
   return (
-    <section aria-labelledby="integrations-heading" className="border-b border-[#E2E8F0] bg-white">
-      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 id="integrations-heading" className="text-xs font-bold uppercase tracking-[0.18em] text-[#009FE3]">Integrations</h2>
-            <p className="mt-2 text-lg font-semibold tracking-tight text-[#0B1F33]">Plays with the tools you already use</p>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[#526173]">Honest states — nothing is shown as connected until credentials are verified. WhatsApp, Email and SMS require setup; Stripe, n8n and GitHub are ready to connect.</p>
+    <section className="relative isolate flex min-h-[min(86svh,760px)] items-center overflow-hidden bg-[#061528] text-white">
+      {/* Ambient background video */}
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        poster="/videos/hero-poster.jpg"
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center motion-reduce:hidden"
+      >
+        <source src="/videos/hero.mp4" type="video/mp4" />
+      </video>
+
+      {/* Readability scrim: darker on the left behind copy, lighter over the visual */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#051225]/92 via-[#07203F]/78 to-[#063B8F]/52"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#051225]/85 via-transparent to-[#051225]/45"
+      />
+
+      <div className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white/95 backdrop-blur-sm">
+            <Sparkles className="size-3.5 text-[#7FD4FF]" aria-hidden="true" />
+            <span>Custom Software · AI Automation · Cloud Engineering</span>
           </div>
-          <a href="/technologies" className="hidden text-sm font-semibold text-[#009FE3] hover:text-[#063B8F] sm:inline-flex">View stack →</a>
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-          {INTEGRATIONS.map((it) => (
-            <div key={it.key} className="group flex flex-col items-start gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4 transition hover:border-[#009FE3]/30 hover:shadow-[0_8px_20px_rgba(6,59,143,0.08)]">
-              <span className="flex size-9 items-center justify-center rounded-lg bg-[#F4FAFF] text-[#063B8F] group-hover:bg-[#009FE3] group-hover:text-white transition-colors">{it.icon}</span>
-              <div>
-                <p className="text-sm font-semibold text-[#0B1F33]">{it.label}</p>
-                <p className="text-[11px] leading-snug text-[#526173]">{it.blurb}</p>
-              </div>
-              <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", statusTone(it.status))}>{statusLabel(it.status)}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs leading-relaxed text-[#526173]">Status meanings: <span className="font-semibold text-[#0B1F33]">Available</span> = integration code exists; credentials are not verified. <span className="font-semibold text-amber-700">Requires setup</span> = provider credentials and policy approval are required. The n8n count is repository files, not a claim of deployment or successful runs. Nothing sends while <span className="font-semibold">NOT_CONFIGURED</span>.</p>
-      </div>
-    </section>
-  );
-}
 
-/* ------------------------------------------------------------------ */
-/* Trust by numbers — verifiable, not invented (§4)                    */
-/* ------------------------------------------------------------------ */
+          <h1 className="mt-6 text-4xl font-bold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+            Engineering Technology.{" "}
+            <span className="bg-gradient-to-r from-[#7FD4FF] via-[#4CC3FF] to-[#5AE07A] bg-clip-text text-transparent">
+              Empowering Business.
+            </span>
+          </h1>
 
-function TrustByNumbers() {
-  const stats = [
-    { value: String(SERVICES.length), label: "Service descriptions", note: `${SERVICES.length} entries are defined in the public catalogue; scope and availability are confirmed before engagement.` },
-    { value: String(INDUSTRIES.length), label: "Industry profiles", note: "Twenty profiles are defined in the public catalogue; this is not a customer-count claim." },
-    { value: String(CASE_STUDIES.length), label: "Illustrative scenarios", note: "Examples only; they are not verified customer engagements or measured outcomes." },
-    { value: "20", label: "Pipeline-stage definitions", note: "Twenty stages are defined in source. Live adoption and automation coverage have not been verified." },
-  ];
-  return (
-    <section aria-labelledby="trust-numbers-heading" className="bg-[#F8FCFF]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 id="trust-numbers-heading" className="text-xs font-bold uppercase tracking-[0.18em] text-[#009FE3]">Credibility</h2>
-            <p className="mt-2 text-lg font-semibold tracking-tight text-[#0B1F33]">Numbers you can verify</p>
-            <p className="mt-1 text-sm leading-relaxed text-[#526173]">Service and company information is subject to the specific written proposal and approved project scope.</p>
-          </div>
-          <div className="hidden items-center gap-2 text-xs text-[#526173] sm:flex"><ShieldCheck className="size-4 text-[#18B83A]" /> No invented customer counts</div>
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.label} className="rounded-xl border border-[#E2E8F0] bg-white p-5">
-              <p className="text-2xl font-black tracking-tight text-[#0B1F33]">{s.value}</p>
-              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#009FE3]">{s.label}</p>
-              <p className="mt-2 text-xs leading-relaxed text-[#526173]">{s.note}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Industries served strip                                             */
-/* ------------------------------------------------------------------ */
-
-function IndustriesServedStrip() {
-  const items = ["eCommerce", "Healthcare", "Education", "Real Estate", "Logistics", "Finance"];
-  return (
-    <section aria-label="Industries served" className="border-b border-[#E2E8F0] bg-white">
-      <div className="mx-auto w-full max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-8">
-          <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.2em] text-[#526173]">
-            Industries we deliver for
+          <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/85 sm:text-lg">
+            Tech360 designs and delivers bespoke web platforms, client portals, CRM systems, and human-approved AI workflows — scoped in writing, previewed before production, and handed over with full source ownership.
           </p>
-          <ul className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:justify-start">
-            {items.map((item, i) => (
-              <li key={item} className="flex items-center gap-3">
-                {i > 0 ? (
-                  <span aria-hidden="true" className="hidden size-1 rounded-full bg-[#E2E8F0] sm:block" />
-                ) : null}
-                <span className="text-sm font-semibold text-[#0B1F33]/75">{item}</span>
+
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <PrimaryLink href="/contact" className="shadow-lg shadow-[#009FE3]/25">
+              Start Your Project
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </PrimaryLink>
+            <a
+              href="/services"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-white/50 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7FD4FF]"
+            >
+              Explore Solutions
+            </a>
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-pressed={!muted}
+              aria-label={muted ? "Enable background video sound" : "Mute background video sound"}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/20 bg-black/25 px-3.5 py-2.5 text-xs font-semibold text-white/90 backdrop-blur-sm transition-colors hover:border-white/45 hover:bg-black/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7FD4FF] motion-reduce:hidden"
+            >
+              {muted ? (
+                <>
+                  <VolumeX className="size-4 text-white/80" aria-hidden="true" />
+                  <span>Sound off</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="size-4 text-[#5AE07A]" aria-hidden="true" />
+                  <span>Sound on</span>
+                </>
+              )}
+            </button>
+          </div>
+          {soundFailed ? (
+            <p role="status" className="mt-2 text-xs text-amber-200/90">
+              Your browser blocked audio playback on this device. Check system mute or tab audio permissions and try again.
+            </p>
+          ) : null}
+
+          <ul className="mt-10 grid gap-2.5 border-t border-white/15 pt-6 sm:grid-cols-2">
+            {HERO_TRUST.map((item) => (
+              <li
+                key={item}
+                className="flex items-center gap-2 text-xs text-white/85 sm:text-sm"
+              >
+                <CheckCircle2 className="size-4 shrink-0 text-[#5AE07A]" aria-hidden="true" />
+                <span>{item}</span>
               </li>
             ))}
           </ul>
@@ -341,231 +224,302 @@ function IndustriesServedStrip() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Flagship services                                                   */
-/* ------------------------------------------------------------------ */
+/* ---------------- Flagship Services Overview (4 visual capability spotlights) ---------------- */
 
-const FLAGSHIP_SLUGS = [
-  "premium-business-websites",
-  "ecommerce-platforms",
-  "custom-crm-development",
-  "whatsapp-automation",
-  "n8n-workflow-automation",
-  "ai-agent-systems",
+interface FlagshipService {
+  slug: string;
+  eyebrow: string;
+  title: string;
+  summary: string;
+  icon: string;
+  href: string;
+  deliverables: string[];
+  tags: string[];
+}
+
+const FLAGSHIP_SERVICES: FlagshipService[] = [
+  {
+    slug: "custom-software-development",
+    eyebrow: "Bespoke Systems",
+    title: "Custom Software & Internal Platforms",
+    summary:
+      "Line-of-business web applications, operations consoles, and multi-role client portals engineered around your exact data model and approval rules.",
+    icon: "Code2",
+    href: "/services/custom-software-development",
+    deliverables: [
+      "Written Scope of Work & interactive HTML preview before build",
+      "Role-based access control, audit logs, and relational PostgreSQL schema",
+      "Clean repository, migrations, and deployment runbook handed over",
+    ],
+    tags: ["Client Portals", "Operations Systems", "Source Handover"],
+  },
+  {
+    slug: "ecommerce-platforms",
+    eyebrow: "Web & Digital Commerce",
+    title: "High-Performance Websites & eCommerce",
+    summary:
+      "Fast, mobile-first corporate websites and conversion-ready storefronts with clean information architecture, structured metadata, and payment/fulfillment hooks.",
+    icon: "ShoppingBag",
+    href: "/services/ecommerce-platforms",
+    deliverables: [
+      "Custom responsive UI — never bloated off-the-shelf templates",
+      "Local & international checkout, order states, and inventory sync",
+      "Technical SEO, Core Web Vitals optimization, and analytics events",
+    ],
+    tags: ["Corporate Web", "eCommerce", "Core Web Vitals"],
+  },
+  {
+    slug: "custom-crm-development",
+    eyebrow: "Revenue & Client Operations",
+    title: "Custom CRM & Omnichannel Messaging",
+    summary:
+      "Replace scattered spreadsheets and disconnected chat threads with one Client ID that links enquiries, quotations, invoices, and conversational follow-ups.",
+    icon: "Users",
+    href: "/services/custom-crm-development",
+    deliverables: [
+      "Unified lead-to-invoice pipeline tailored to your sales stages",
+      "Official Cloud API, transactional email, and SMS triggers",
+      "Executive dashboards for conversion, response SLA, and receivables",
+    ],
+    tags: ["Custom CRM", "Messaging API", "Live Dashboards"],
+  },
+  {
+    slug: "ai-business-automation",
+    eyebrow: "Human-Supervised AI",
+    title: "AI Assistants & Workflow Automation",
+    summary:
+      "Practical AI agents and n8n orchestrations that triage enquiries, draft replies, classify documents, and sync systems — with human approval before external actions.",
+    icon: "Bot",
+    href: "/services/ai-business-automation",
+    deliverables: [
+      "Scoped AI assistants grounded in your approved knowledge base",
+      "Approve-first guardrails for customer replies, quotes, and publishing",
+      "Retry-safe webhook and API automations with full execution logs",
+    ],
+    tags: ["AI Agents", "n8n Workflows", "Approval Gates"],
+  },
 ];
 
 function FlagshipServices() {
-  const flagship = FLAGSHIP_SLUGS.map((slug) => SERVICES.find((s) => s.slug === slug)!).filter(Boolean);
-  const featureIcons: Record<string, React.ReactNode> = {
-    "premium-business-websites": <Globe className="size-5" />,
-    "ecommerce-platforms": <CreditCard className="size-5" />,
-    "custom-crm-development": <Users className="size-5" />,
-    "whatsapp-automation": <MessageCircle className="size-5" />,
-    "n8n-workflow-automation": <Workflow className="size-5" />,
-    "ai-agent-systems": <Bot className="size-5" />,
-  };
-  const previews: Record<string, { eyebrow: string; mock: React.ReactNode }> = {
-    "premium-business-websites": {
-      eyebrow: "Preview where included",
-      mock: (
-        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
-          <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-2"><span className="size-2 rounded-full bg-red-400" /><span className="size-2 rounded-full bg-amber-400" /><span className="size-2 rounded-full bg-emerald-400" /><span className="ml-2 text-[10px] text-[#526173]">yourbrand.com — Preview</span></div>
-          <div className="mt-3 h-20 rounded bg-gradient-to-br from-[#009FE3]/15 via-[#063B8F]/10 to-[#18B83A]/15" />
-          <div className="mt-2 flex gap-2"><span className="h-2 w-16 rounded bg-[#E2E8F0]" /><span className="h-2 w-10 rounded bg-[#009FE3]/30" /></div>
-        </div>
-      ),
-    },
-    "ecommerce-platforms": {
-      eyebrow: "Checkout, not just catalogue",
-      mock: (
-        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
-          <div className="flex gap-2">
-            <div className="h-16 w-16 rounded bg-[#F4FAFF] border border-[#E2E8F0]" />
-            <div className="flex-1 space-y-2"><div className="h-3 w-24 rounded bg-[#0B1F33]/10" /><div className="h-2 w-16 rounded bg-[#009FE3]/20" /><div className="h-6 w-full rounded bg-[#009FE3] "><span className="flex h-full items-center justify-center text-[10px] font-bold text-white">Checkout — bKash • Nagad • Stripe</span></div></div>
-          </div>
-        </div>
-      ),
-    },
-    "custom-crm-development": {
-      eyebrow: "One Client ID, every record",
-      mock: (
-        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2"><span className="text-[11px] font-bold text-[#0B1F33]">TECH-2026-000123</span><span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">CONTACTED</span></div>
-          <div className="mt-2 flex gap-1.5"><span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">WhatsApp ✓</span><span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">Email ✓</span><span className="rounded bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-600">SMS</span></div>
-        </div>
-      ),
-    },
-    "whatsapp-automation": {
-      eyebrow: "Human-like, but honest",
-      mock: (
-        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
-          <div className="space-y-2">
-            <div className="rounded-lg bg-[#F4FAFF] p-2 text-[11px] text-[#0B1F33]">Hi, I need an e-commerce website.</div>
-            <div className="rounded-lg bg-[#009FE3] p-2 text-[11px] text-white">Great — what do you sell, and how do you take payments?</div>
-            <div className="flex gap-1"><span className="size-1.5 rounded-full bg-[#18B83A]" /><span className="text-[10px] text-[#526173]">AI assistant · typing…</span></div>
-          </div>
-        </div>
-      ),
-    },
-    "n8n-workflow-automation": {
-      eyebrow: "26 source workflow files; deployment unverified",
-      mock: (
-        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
-          <div className="flex items-center gap-2 text-[11px]"><span className="rounded bg-[#063B8F] px-2 py-1 text-white font-bold">Lead intake</span><ArrowRight className="size-3 text-[#009FE3]" /><span className="rounded border border-[#E2E8F0] px-2 py-1 text-[#526173]">Enrich</span><ArrowRight className="size-3 text-[#009FE3]" /><span className="rounded border border-[#E2E8F0] px-2 py-1 text-[#526173]">Notify</span></div>
-          <div className="mt-2 h-1.5 w-full rounded-full bg-[#E2E8F0]"><div className="h-full w-2/3 rounded-full bg-[#18B83A]" /></div>
-        </div>
-      ),
-    },
-    "ai-agent-systems": {
-      eyebrow: "PM → Architect → Engineer → QA",
-      mock: (
-        <div className="rounded-lg border border-[#E2E8F0] bg-white p-3 shadow-sm">
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <span className="flex size-6 items-center justify-center rounded-full bg-[#063B8F] text-white text-[10px]">PM</span><span className="h-px w-4 bg-[#E2E8F0]" />
-            <span className="flex size-6 items-center justify-center rounded-full bg-[#009FE3] text-white text-[10px]">AR</span><span className="h-px w-4 bg-[#E2E8F0]" />
-            <span className="flex size-6 items-center justify-center rounded-full bg-[#18B83A] text-white text-[10px]">EN</span><span className="h-px w-4 bg-[#E2E8F0]" />
-            <span className="flex size-6 items-center justify-center rounded-full bg-slate-200 text-[#526173] text-[10px]">QA</span>
-          </div>
-          <div className="mt-2 flex gap-1"><span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">SUCCESS</span><span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">RUNNING</span></div>
-        </div>
-      ),
-    },
-  };
   return (
-    <section aria-labelledby="services-heading" className="bg-[#F4FAFF]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-        <SectionHeading
-          id="services-heading"
-          eyebrow="What we do"
-          title="Six ways we move a business forward"
-          description={`${SERVICES.length} service descriptions are defined in the catalogue; scope and availability are confirmed for each engagement. The interface visuals and scenario text below are illustrative concepts, not live systems or verified client results.`}
-        />
-        <div className="mt-12 space-y-8">
-          {flagship.map((service, idx) => {
-            const even = idx % 2 === 0;
-            const prev = previews[service.slug];
-            return (
-              <Reveal key={service.slug}>
-                <div className={cn("grid gap-6 rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-[0_8px_24px_rgba(6,59,143,0.06)] lg:grid-cols-12 lg:p-8", even ? "" : "lg:[&>*:first-child]:order-2")}>
-                  <div className="lg:col-span-7">
+    <section className="border-b border-[#E2E8F0] bg-[#F7FAFC]">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <SectionHeading
+            eyebrow="Services Overview"
+            title="Systems Built Around How Your Business Actually Operates"
+            description="Four core engineering practices — each scoped in writing, demonstrated as an HTML preview before production code, and delivered as maintainable software."
+            align="left"
+            className="max-w-2xl"
+          />
+          <LinkArrow href="/services" className="shrink-0 text-sm">
+            Explore all 21 services
+          </LinkArrow>
+        </div>
+
+        <RevealList className="mt-12 grid gap-6 md:grid-cols-2">
+          {FLAGSHIP_SERVICES.map((item, idx) => (
+            <RevealItem key={item.slug} className="h-full">
+              <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_2px_10px_rgba(11,31,51,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-[0_18px_40px_rgba(6,59,143,0.10)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+                <a
+                  href={item.href}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  className="relative block overflow-hidden border-b border-[#E2E8F0] bg-[#061528]"
+                >
+                  <ImageView
+                    src={serviceImageSrc(item.slug)}
+                    alt={serviceImageAlt(item.slug, item.title)}
+                    aspect="16/10"
+                    width={1600}
+                    height={1000}
+                    eager={idx < 2}
+                    sizes="(max-width: 767px) 100vw, 50vw"
+                    imgClassName="transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                  />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#040E1C]/65 to-transparent" />
+                  <span className="absolute left-4 top-4 inline-flex items-center rounded-full border border-white/20 bg-[#061528]/85 px-3 py-1 text-[11px] font-semibold tracking-wide text-[#9BEBFF] backdrop-blur-sm">
+                    {item.eyebrow}
+                  </span>
+                </a>
+
+                <div className="flex flex-1 flex-col p-6 sm:p-7">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <span className="flex size-10 items-center justify-center rounded-xl bg-[#063B8F] text-white">{featureIcons[service.slug] ?? <Icon name={service.icon} className="size-5" />}</span>
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#009FE3]">{prev?.eyebrow ?? service.tagline}</p>
-                        <h3 className="text-xl font-bold tracking-tight text-[#0B1F33]">{service.title}</h3>
-                      </div>
-                    </div>
-                    <div className="mt-5 space-y-4">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Problem</p>
-                        <p className="mt-1 text-sm leading-relaxed text-[#526173]">{service.problem}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Solution</p>
-                        <p className="mt-1 text-sm leading-relaxed text-[#526173]">{service.solution}</p>
-                      </div>
-                      <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                        {service.features.slice(0, 4).map((f) => (
-                          <li key={f} className="flex gap-2 text-xs leading-relaxed text-[#0B1F33]/80"><CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-[#18B83A]" />{f}</li>
-                        ))}
-                      </ul>
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        <a href={`/services/${service.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#009FE3] px-4 text-sm font-semibold text-white hover:bg-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3]">View service <ArrowRight className="size-4" /></a>
-                        <a href="/contact" className="inline-flex min-h-10 items-center rounded-lg border border-[#E2E8F0] bg-white px-4 text-sm font-semibold text-[#0B1F33] hover:border-[#009FE3]/30">Start this project</a>
-                      </div>
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#009FE3]/10 text-[#0079AC]">
+                        <Icon name={item.icon} className="size-5" />
+                      </span>
+                      <h3 className="text-xl font-bold tracking-tight text-[#0B1F33]">
+                        <a
+                          href={item.href}
+                          className="outline-none hover:text-[#063B8F] focus-visible:underline"
+                        >
+                          {item.title}
+                        </a>
+                      </h3>
                     </div>
                   </div>
-                  <div className="lg:col-span-5">
-                    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FCFF] p-4">
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#526173]">Illustrative interface concept — {service.title}</p>
-                      <div className="mt-3">{prev?.mock}</div>
-                      <p className="mt-3 text-[10px] leading-relaxed text-[#64748B]">Placeholder interface only; it is not connected to a live system or live customer data.</p>
-                      <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-[#64748B]">Possible technology examples</p>
-                      <div className="mt-1 flex flex-wrap gap-1.5">
-                        {service.tech.slice(0, 4).map((t) => (
-                          <span key={t} className="rounded-md border border-[#E2E8F0] bg-white px-2 py-1 text-[11px] font-medium text-[#526173]">{t}</span>
-                        ))}
-                      </div>
-                      <p className="mt-3 text-xs leading-relaxed text-[#526173]"><span className="font-semibold text-[#0B1F33]">Illustrative scenario:</span> {service.example}</p>
-                      <p className="mt-1 text-[10px] leading-relaxed text-[#64748B]">Hypothetical example only — not a verified client engagement or measured outcome.</p>
+
+                  <p className="mt-3 text-sm leading-relaxed text-[#475569]">
+                    {item.summary}
+                  </p>
+
+                  <ul className="mt-4 space-y-2 border-t border-[#F1F5F9] pt-4">
+                    {item.deliverables.map((d) => (
+                      <li key={d} className="flex items-start gap-2 text-xs leading-relaxed text-[#334155] sm:text-sm">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />
+                        <span>{d}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-6">
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1 text-[11px] font-medium text-[#475569]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
                     </div>
+                    <LinkArrow href={item.href} className="text-xs sm:text-sm">
+                      Service detail
+                    </LinkArrow>
                   </div>
                 </div>
-              </Reveal>
-            );
-          })}
-        </div>
-        <div className="mt-10 text-center">
-          <OutlineLink href="/services">All {SERVICES.length} services</OutlineLink>
-        </div>
+              </article>
+            </RevealItem>
+          ))}
+        </RevealList>
       </div>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Why Tech360                                                         */
-/* ------------------------------------------------------------------ */
+/* ---------------- Industries preview ---------------- */
 
-const DIFFERENTIATORS = [
+function IndustriesPreview() {
+  const featured = INDUSTRIES.slice(0, 8);
+  return (
+    <section className="border-t border-[#E2E8F0] bg-[#F7FAFC]">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div className="flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-end">
+          <SectionHeading
+            eyebrow="Industries We Serve"
+            title="Built Around Real Industry Workflows"
+            description="Twenty industry playbooks covering retail, healthcare, education, real estate, hospitality, logistics, SaaS, and professional services — adapted to how your sector actually operates."
+            align="left"
+          />
+          <OutlineLink href="/industries" className="shrink-0">
+            View all {INDUSTRIES.length} industries
+          </OutlineLink>
+        </div>
+
+        <RevealList className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {featured.map((industry) => (
+            <RevealItem key={industry.slug} className="h-full">
+              <a
+                href={`/industries/${industry.slug}`}
+                className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white transition-all duration-200 hover:-translate-y-0.5 hover:border-[#009FE3]/60 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+              >
+                <div className="relative">
+                  <ImageView
+                    src={industryImage(industry.slug)}
+                    alt={industryImageAlt(industry.title)}
+                    aspect="16/10"
+                    width={1600}
+                    height={900}
+                    sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 25vw"
+                    imgClassName="transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none"
+                  />
+                </div>
+                <div className="flex flex-1 flex-col p-5">
+                  <h3 className="text-base font-bold text-[#0B1F33] group-hover:text-[#063B8F]">
+                    {industry.title}
+                  </h3>
+                  <p className="mt-1.5 line-clamp-3 flex-1 text-xs leading-relaxed text-[#475569]">
+                    {industry.description}
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#0079AC]">
+                    Industry overview
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  </span>
+                </div>
+              </a>
+            </RevealItem>
+          ))}
+        </RevealList>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Why Tech360 (credibility without fake stats) ---------------- */
+
+const STANDARDS = [
   {
+    title: "US-Registered Entity & Written Contracts",
+    body: "Every engagement is contracted cleanly with Tech360 LLC under a written Scope of Work, itemized deliverables, and documented acceptance criteria.",
+    icon: "Building2",
+  },
+  {
+    title: "HTML Preview Before Production Build",
+    body: "You inspect and sign off on a navigable HTML preview of screens and user journeys before backend engineering begins — preventing late surprises.",
     icon: "Eye",
-    title: "HTML preview where included",
-    text: "Where included in the agreed process, review an HTML Preview of the approved scope before the applicable project payment.",
-    link: { label: "Delivery Policy", href: "/legal/delivery" },
   },
   {
-    icon: "FileCheck",
-    title: "Agreed source code after verified payment",
-    text: "After the final payment has been verified and cleared, TECH360 delivers the agreed source-code package, project documentation, and Client-owned credentials specifically identified in the approved Scope of Work. TECH360 internal secrets and shared infrastructure credentials are excluded.",
-    link: { label: "Handover Policy", href: "/legal/source-code-handover" },
-  },
-  {
+    title: "Approve-First AI & Operational Safety",
+    body: "AI assistants, outbound messaging, and financial status updates stay inside role-based permissions, human approval checkpoints, and audit trails.",
     icon: "ShieldCheck",
-    title: "US LLC, on-record operations",
-    text: "TECH360 LLC records relevant project scopes, approvals, payments, and delivery evidence to support clear project administration.",
-    link: { label: "About the company", href: "/about" },
   },
   {
-    icon: "Layers",
-    title: "Full-stack delivery, web to AI",
-    text: "One accountable team from your public website to your CRM, automation and AI systems — designed, built, deployed and handed over as one coherent platform.",
-    link: { label: "Explore services", href: "/services" },
+    title: "Client-Owned Code & Clean Handover",
+    body: "Upon final milestone completion, your repository, database schema, deployment configuration, and operational documentation belong to your organization.",
+    icon: "KeyRound",
   },
 ];
 
 function WhyTech360() {
   return (
-    <section aria-labelledby="why-heading" className="bg-white">
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-        <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
-          <div className="lg:col-span-5">
-            <SectionHeading
-              id="why-heading"
-              eyebrow="Why Tech360"
-              title="Trust designed into the process, not promised in a pitch"
-              description="Outsourcing fails when risk sits entirely on one side. Our delivery model puts proof before payment and ownership after it — written into policy, not chat messages."
-              align="left"
-            />
-            <div className="mt-8 hidden overflow-hidden rounded-xl border border-[#E2E8F0] lg:block">
-              <FeaturesModulesDiagram />
+    <section className="bg-[#0B1F33] text-white">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div className="grid gap-12 lg:grid-cols-12 lg:items-center">
+          <Reveal className="lg:col-span-5">
+            <span className="inline-block rounded-full border border-[#009FE3]/40 bg-[#009FE3]/15 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-[#7FD4FF]">
+              Why Tech360
+            </span>
+            <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
+              Accountable Engineering, Clear Governance, Zero Guesswork
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-white/75">
+              Software projects fail when scope is vague, progress is invisible, or vendors lock away your code. Tech360 structures every engagement around transparent checkpoints so both technical and non-technical stakeholders stay in control.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <PrimaryLink href="/about">
+                About Tech360
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </PrimaryLink>
+              <a
+                href="/portal"
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/25 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:border-white/50 hover:bg-white/10"
+              >
+                Client Portal Sign In
+              </a>
             </div>
-          </div>
-          <RevealList className="grid gap-6 sm:grid-cols-2 lg:col-span-7">
-            {DIFFERENTIATORS.map((d) => (
-              <RevealItem key={d.title} className="h-full">
-                <Card className="h-full border-[#E2E8F0] bg-[#F8FCFF] transition-colors hover:border-[#009FE3]/40">
-                  <CardContent className="flex h-full flex-col p-6">
-                    <span className="flex size-11 items-center justify-center rounded-lg bg-[#063B8F] text-white">
-                      <Icon name={d.icon} className="size-5" />
-                    </span>
-                    <h3 className="mt-4 text-base font-semibold text-[#0B1F33]">{d.title}</h3>
-                    <p className="mt-2 flex-1 text-sm leading-relaxed text-[#526173]">{d.text}</p>
-                    <LinkArrow href={d.link.href} className="mt-4 self-start text-[#009FE3]">
-                      {d.link.label}
-                    </LinkArrow>
-                  </CardContent>
-                </Card>
+          </Reveal>
+
+          <RevealList className="grid gap-4 sm:grid-cols-2 lg:col-span-7">
+            {STANDARDS.map((s) => (
+              <RevealItem key={s.title} className="h-full">
+                <div className="flex h-full flex-col rounded-2xl border border-white/12 bg-white/[0.05] p-6 backdrop-blur-sm">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-[#009FE3]/20 text-[#7FD4FF]">
+                    <Icon name={s.icon} className="size-5" />
+                  </span>
+                  <h3 className="mt-4 text-base font-bold text-white">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-white/75">{s.body}</p>
+                </div>
               </RevealItem>
             ))}
           </RevealList>
@@ -575,671 +529,380 @@ function WhyTech360() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Industries preview                                                  */
-/* ------------------------------------------------------------------ */
-
-const HOME_INDUSTRY_SLUGS = [
-  "ecommerce",
-  "healthcare",
-  "education",
-  "real-estate",
-  "logistics",
-  "finance",
-  "restaurants-food",
-  "international-smes",
-];
-
-function IndustriesPreview() {
-  const tiles = HOME_INDUSTRY_SLUGS.map((slug) => INDUSTRIES.find((i) => i.slug === slug)!).filter(Boolean);
-  return (
-    <section aria-labelledby="industries-heading" className="bg-[#F4FAFF]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-        <SectionHeading
-          id="industries-heading"
-          eyebrow="Industries"
-          title="Built for the way your industry actually works"
-          description="We start from the problems your sector knows by name — then engineer the system that removes them."
-        />
-        <RevealList className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {tiles.map((industry) => (
-            <RevealItem key={industry.slug}>
-              <a
-                href={`/industries/${industry.slug}`}
-                className="group block overflow-hidden rounded-xl border border-[#E2E8F0] bg-white outline-none transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(6,59,143,0.12)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
-              >
-                <div className="relative">
-                  <ImageView
-                    src={industryImage(industry.slug) ?? imageFor(industry.imageKey)}
-                    alt={industryImageAlt(industry.title)}
-                    aspect="16/10"
-                    imgClassName="transition-transform duration-500 group-hover:scale-105"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-gradient-to-t from-[#0B1F33]/55 via-transparent to-transparent"
-                  />
-                  <span className="absolute bottom-3 left-4 text-sm font-semibold text-white">
-                    {industry.title}
-                  </span>
-                </div>
-                <p className="line-clamp-2 px-4 py-3.5 text-xs leading-relaxed text-[#526173]">
-                  {industry.description}
-                </p>
-              </a>
-            </RevealItem>
-          ))}
-        </RevealList>
-        <div className="mt-10 text-center">
-          <OutlineLink href="/industries">All 20 industries</OutlineLink>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Process strip (5 steps)                                             */
-/* ------------------------------------------------------------------ */
-
-function ProcessStrip() {
-  const steps = PROCESS.slice(0, 5);
-  return (
-    <section aria-labelledby="process-heading" className="bg-white">
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-        <SectionHeading
-          id="process-heading"
-          eyebrow="How delivery works"
-          title="Seven phases. Two gates. Zero surprises."
-          description="Where included, review an HTML Preview against the approved scope. Project-specific written terms set approvals, payment milestones, delivery, and support; final source-code handover generally follows verification of required outstanding payments."
-        />
-        <Reveal className="mt-12">
-          <ol className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            {steps.map((phase, i) => (
-              <li
-                key={phase.step}
-                className="relative rounded-xl border border-[#E2E8F0] bg-[#F8FCFF] p-5"
-              >
-                <span className="text-xs font-bold tracking-widest text-[#009FE3]">{phase.step}</span>
-                <h3 className="mt-2 text-base font-semibold text-[#0B1F33]">{phase.name}</h3>
-                <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-[#526173]">
-                  {phase.description}
-                </p>
-                {i < steps.length - 1 ? (
-                  <ArrowRight
-                    aria-hidden="true"
-                    className="absolute top-1/2 -right-3 z-10 hidden size-5 -translate-y-1/2 rounded-full border border-[#E2E8F0] bg-white p-0.5 text-[#009FE3] lg:block"
-                  />
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </Reveal>
-        <div className="mt-10 text-center">
-          <LinkArrow href="/process" className="text-sm">
-            See the full 7-phase process with approval gates
-          </LinkArrow>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Selected work                                                       */
-/* ------------------------------------------------------------------ */
+/* ---------------- Selected Work / Solution Blueprints ---------------- */
 
 function SelectedWork() {
-  const cases = CASE_STUDIES.slice(0, 3);
+  const featured = CASE_STUDIES.slice(0, 3);
   return (
-    <section aria-labelledby="work-heading" className="bg-[#F4FAFF]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+      <div className="flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-end">
         <SectionHeading
-          id="work-heading"
-          eyebrow="Example scenarios"
-          title="Illustrative project scenarios"
-          description="These examples show possible solution patterns; they are not verified client engagements, measured results, or available client references."
+          eyebrow="Selected Work & Blueprints"
+          title="Representative Delivery Scenarios"
+          description="Illustrative architecture scenarios showing how Tech360 structures real operational problems, solutions, and outcomes — clearly labelled rather than presented as named client endorsements."
+          align="left"
         />
-        <RevealList className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {cases.map((c) => (
-            <RevealItem key={c.slug} className="h-full">
-              <Card className="flex h-full flex-col border-[#E2E8F0] bg-white transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/40 hover:shadow-[0_12px_32px_rgba(6,59,143,0.1)]">
-                <CardContent className="flex h-full flex-col p-6">
-                  <Badge className="mb-4 w-fit rounded-md bg-[#063B8F]/10 text-xs font-medium text-[#063B8F] hover:bg-[#063B8F]/10">
-                    {c.industry} · illustrative scenario
-                  </Badge>
-                  <h3 className="text-lg font-semibold leading-snug text-[#0B1F33]">{c.title}</h3>
-                  <p className="mt-3 line-clamp-3 flex-1 text-sm leading-relaxed text-[#526173]">
-                    {c.challenge}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {c.stack.slice(0, 4).map((tech) => (
-                      <span
-                        key={tech}
-                        className="rounded-md border border-[#E2E8F0] bg-[#F4FAFF] px-2 py-1 text-[11px] font-medium text-[#526173]"
-                      >
-                        {tech}
-                      </span>
-                    ))}
+        <OutlineLink href="/work" className="shrink-0">
+          Explore work &amp; blueprints
+        </OutlineLink>
+      </div>
+
+      <RevealList className="mt-12 grid gap-6 lg:grid-cols-3">
+        {featured.map((study) => {
+          const visual = getCaseStudyImage(study.slug);
+          return (
+            <RevealItem key={study.slug} className="h-full">
+              <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+                <a
+                  href="/work/case-studies"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  className="relative block overflow-hidden border-b border-[#E2E8F0] bg-[#061528]"
+                >
+                  <ImageView
+                    src={visual?.src}
+                    alt={visual?.alt ?? `${study.title} — illustrative delivery blueprint`}
+                    aspect="16/10"
+                    width={1600}
+                    height={1000}
+                    sizes="(max-width: 1023px) 100vw, 33vw"
+                    imgClassName="transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
+                  />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#040E1C]/60 to-transparent" />
+                  <span className="absolute left-3.5 top-3.5 rounded-full border border-white/20 bg-[#061528]/85 px-3 py-1 text-[11px] font-semibold tracking-wide text-[#9BEBFF] backdrop-blur-sm">
+                    {study.industry}
+                  </span>
+                </a>
+
+                <div className="flex flex-1 flex-col p-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#0079AC]">
+                      Delivery Blueprint
+                    </span>
+                    <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-0.5 text-[11px] font-medium text-[#64748B]">
+                      Illustrative scenario
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
+                  <h3 className="mt-2.5 text-lg font-bold leading-snug text-[#0B1F33]">
+                    {study.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-[#475569]">
+                    <strong className="font-semibold text-[#0B1F33]">Challenge:</strong>{" "}
+                    {study.challenge}
+                  </p>
+                  <p className="mt-2.5 flex-1 text-sm leading-relaxed text-[#475569]">
+                    <strong className="font-semibold text-[#0B1F33]">Approach:</strong>{" "}
+                    {study.approach}
+                  </p>
+                  <div className="mt-5 border-t border-[#F1F5F9] pt-4">
+                    <p className="text-xs font-semibold text-[#15803D]">
+                      Target outcome: {study.outcome}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {study.stack.slice(0, 3).map((tech) => (
+                        <span
+                          key={tech}
+                          className="rounded-md bg-[#F8FAFC] px-2 py-0.5 text-[11px] font-medium text-[#475569]"
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </article>
             </RevealItem>
-          ))}
-        </RevealList>
-        <div className="mt-10 text-center">
-          <OutlineLink href="/work">All illustrative scenarios</OutlineLink>
+          );
+        })}
+      </RevealList>
+    </section>
+  );
+}
+
+/* ---------------- Customer Delivery Journey ---------------- */
+
+const JOURNEY_STEPS = [
+  { n: "01", title: "Enquiry & Unique Client ID", detail: "Your brief is logged under one permanent Client ID so context is never lost." },
+  { n: "02", title: "Discovery & Written Scope", detail: "Requirements, integrations, milestones, and quotation documented in writing." },
+  { n: "03", title: "Interactive HTML Preview", detail: "Review and approve real screens and flows before production build starts." },
+  { n: "04", title: "Milestone Engineering & QA", detail: "Backend, database, security, and integrations built with staging checkpoints." },
+  { n: "05", title: "Deployment & Source Handover", detail: "Production launch, team walkthrough, and full source-code delivery." },
+];
+
+function DeliveryJourney() {
+  return (
+    <section className="border-y border-[#E2E8F0] bg-[#F7FAFC]">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div className="flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-end">
+          <SectionHeading
+            eyebrow="How Delivery Works"
+            title="A Predictable Path From Brief to Production"
+            description="Every engagement follows explicit review gates — written Scope of Work, client-approved HTML preview, staged engineering, and documented handover."
+            align="left"
+          />
+          <LinkArrow href="/process" className="shrink-0 text-sm">
+            View the full 7-step process
+          </LinkArrow>
         </div>
+
+        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {JOURNEY_STEPS.map((step) => (
+            <li
+              key={step.n}
+              className="flex flex-col rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm"
+            >
+              <span className="font-mono text-xs font-bold tracking-widest text-[#0079AC]">
+                STEP {step.n}
+              </span>
+              <h3 className="mt-2 text-base font-bold text-[#0B1F33]">{step.title}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-[#475569]">{step.detail}</p>
+            </li>
+          ))}
+        </ol>
+
+        <p className="mt-6 flex items-center gap-2 text-xs text-[#526173]">
+          <ShieldCheck className="size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />
+          <span>
+            Approval gate policy: Scope of Work is approved before build; agreed source code is released once final milestone settlement clears.
+          </span>
+        </p>
       </div>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Client reviews (real only — hidden until a client review is         */
-/* submitted, moderated and consented; never fabricated)              */
-/* ------------------------------------------------------------------ */
+/* ---------------- Approved Client Reviews (renders ONLY when real reviews exist) ---------------- */
 
-interface PublicReviewItem {
+interface ApprovedReview {
   id: string;
-  name: string;
-  businessName?: string | null;
-  country?: string | null;
-  projectName?: string | null;
   rating: number;
-  content: string;
-  date: string;
+  headline: string | null;
+  comment: string;
+  authorName: string;
+  companyName: string | null;
+  projectTitle: string | null;
 }
 
 function ClientReviews() {
-  const [reviews, setReviews] = useState<PublicReviewItem[] | null>(null);
+  const [reviews, setReviews] = useState<ApprovedReview[]>([]);
 
   useEffect(() => {
-    let active = true;
-    const ctrl = new AbortController();
-    fetch("/api/reviews", { signal: ctrl.signal })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("failed"))))
-      .then((json: { reviews?: PublicReviewItem[] }) => {
-        if (active) setReviews(Array.isArray(json.reviews) ? json.reviews : []);
+    fetch("/api/public/reviews", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { reviews: [] }))
+      .then((d: { reviews?: ApprovedReview[] }) => {
+        if (Array.isArray(d.reviews)) setReviews(d.reviews.slice(0, 6));
       })
-      .catch(() => {
-        if (active) setReviews([]);
-      });
-    return () => {
-      active = false;
-      ctrl.abort();
-    };
+      .catch(() => {});
   }, []);
 
-  if (!reviews || reviews.length === 0) return null; // honest: no fabricated testimonials
-
-  const initials = (name: string) =>
-    name
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase() ?? "")
-      .join("");
+  if (reviews.length === 0) return null;
 
   return (
-    <section aria-labelledby="reviews-heading" className="bg-[#F4FAFF]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-        <SectionHeading
-          id="reviews-heading"
-          eyebrow="Client feedback"
-          title="Reviews approved for public display"
-          description="Only reviews marked approved, published, and consented in the review system are shown here; these records were not independently inspected in this audit."
-        />
-        <RevealList
-          className={
-            reviews.length === 1
-              ? "mt-12 mx-auto grid max-w-xl grid-cols-1 gap-6"
-              : reviews.length === 2
-                ? "mt-12 mx-auto grid max-w-3xl grid-cols-1 gap-6 md:grid-cols-2"
-                : "mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
-          }
-        >
-          {reviews.slice(0, 6).map((r) => (
-            <RevealItem key={r.id} className="h-full">
-              <Card className="relative flex h-full flex-col border-[#E2E8F0] bg-white transition-all duration-300 hover:-translate-y-1 hover:border-[#18B83A]/40 hover:shadow-[0_12px_32px_rgba(24,184,58,0.08)]">
-                <CardContent className="flex h-full flex-col p-6">
-                  <div className="flex items-center gap-1" aria-label={`${r.rating} out of 5 stars`}>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`size-4 ${i < r.rating ? "fill-amber-400 text-amber-400" : "fill-slate-200 text-slate-300"}`}
-                        aria-hidden="true"
-                      />
-                    ))}
-                  </div>
-                  <p className="mt-4 flex-1 text-sm leading-relaxed text-[#526173]">“{r.content}”</p>
-                  <div className="mt-5 flex items-center gap-3 border-t border-[#E2E8F0] pt-4">
-                    <span
-                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#009FE3] to-[#063B8F] text-sm font-bold text-white"
-                      aria-hidden="true"
-                    >
-                      {initials(r.name)}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#0B1F33]">{r.name}</p>
-                      <p className="truncate text-xs text-[#526173]">
-                        {r.businessName ?? r.projectName ?? "Tech360 client"}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </RevealItem>
-          ))}
-        </RevealList>
-      </div>
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <SectionHeading
+        eyebrow="Verified Client Feedback"
+        title="Reviews From Completed Engagements"
+        description="Submitted by authenticated clients inside the Tech360 portal after project delivery."
+      />
+      <RevealList className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {reviews.map((rev) => (
+          <RevealItem key={rev.id} className="h-full">
+            <figure className="flex h-full flex-col justify-between rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
+              <div>
+                <div
+                  className="flex items-center gap-0.5 text-amber-500"
+                  aria-label={`${rev.rating} out of 5 stars`}
+                >
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={cn(
+                        "size-4",
+                        i < rev.rating
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-slate-200"
+                      )}
+                    />
+                  ))}
+                </div>
+                {rev.headline ? (
+                  <p className="mt-3 text-base font-bold text-[#0B1F33]">
+                    {rev.headline}
+                  </p>
+                ) : null}
+                <blockquote className="mt-2 text-sm leading-relaxed text-[#475569]">
+                  &ldquo;{rev.comment}&rdquo;
+                </blockquote>
+              </div>
+              <figcaption className="mt-5 border-t border-[#F1F5F9] pt-3 text-xs">
+                <div className="font-semibold text-[#0B1F33]">{rev.authorName}</div>
+                <div className="text-[#64748B]">
+                  {[rev.companyName, rev.projectTitle].filter(Boolean).join(" · ") ||
+                    "Verified Tech360 Client"}
+                </div>
+              </figcaption>
+            </figure>
+          </RevealItem>
+        ))}
+      </RevealList>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Stats band                                                          */
-/* ------------------------------------------------------------------ */
+/* ---------------- Latest Insights (live from /api/blog when published posts exist) ---------------- */
 
-function StatsBand() {
-  return (
-    <section aria-labelledby="stats-heading" className="bg-gradient-to-br from-[#063B8F] via-[#073a86] to-[#0B1F33]">
-      <h2 id="stats-heading" className="sr-only">Company facts we can verify</h2>
-      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STATS.map((stat) => (
-            <StatChip key={stat.label} {...stat} dark />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Latest insights (blog)                                              */
-/* ------------------------------------------------------------------ */
-
-interface BlogListPost {
+interface HomePost {
   slug: string;
   title: string;
   excerpt: string;
   category: string;
-  publishedAt: string;
-  coverImage?: string;
+  coverImage: string | null;
+  readMinutes: number;
+  publishedAt: string | null;
+}
+
+function fmtPostDate(iso: string | null): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
 }
 
 function LatestInsights() {
-  // Derived-loading pattern: the cache records which request it belongs to,
-  // so "loading" is computed by comparing keys — no setState in the effect body.
-  const [tick, setTick] = useState(0);
-  const [cache, setCache] = useState<{
-    key: number;
-    posts: BlogListPost[] | null;
-    error: string | null;
-  }>({ key: -1, posts: null, error: null });
-
-  const requestKey = tick;
-  const fresh = cache.key === requestKey;
+  const [posts, setPosts] = useState<HomePost[] | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
     fetch("/api/blog")
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`Request failed (${res.status})`);
-        const data = (await res.json()) as { posts?: BlogListPost[] };
-        if (!cancelled)
-          setCache({
-            key: requestKey,
-            posts: Array.isArray(data.posts) ? data.posts : [],
-            error: null,
-          });
+      .then((r) => (r.ok ? r.json() : { posts: [] }))
+      .then((d: { posts?: HomePost[] }) => {
+        setPosts(Array.isArray(d.posts) ? d.posts.slice(0, 3) : []);
       })
-      .catch(() => {
-        if (!cancelled)
-          setCache({
-            key: requestKey,
-            posts: null,
-            error: "Insights could not be loaded right now.",
-          });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [requestKey]);
+      .catch(() => setPosts([]));
+  }, []);
 
-  const posts = fresh ? cache.posts : null;
-  const error = fresh ? cache.error : null;
-  const reload = () => setTick((t) => t + 1);
-
-  const formatDate = (value: string) => {
-    try {
-      const d = new Date(value);
-      if (Number.isNaN(d.getTime())) return value;
-      return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-    } catch {
-      return value;
-    }
-  };
+  if (!posts || posts.length === 0) return null;
 
   return (
-    <section aria-labelledby="insights-heading" className="bg-white">
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-        <SectionHeading
-          id="insights-heading"
-          eyebrow="Latest insights"
-          title="How we think about engineering and trust"
-          description="Notes from our team on delivery discipline, automation and the technology decisions behind client work."
-        />
+    <section className="border-b border-[#E2E8F0] bg-white">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
+          <SectionHeading
+            eyebrow="Engineering Notes & Guides"
+            title="Latest Insights From Tech360"
+            description="Practical articles on software architecture, CRM operations, and human-supervised AI automation."
+            align="left"
+          />
+          <OutlineLink href="/blog" className="shrink-0">
+            Read all articles
+          </OutlineLink>
+        </div>
 
-        {posts === null && !error ? (
-          <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <Card key={i} className="border-[#E2E8F0] bg-white">
-                <CardContent className="space-y-4 p-6">
-                  <Skeleton className="h-5 w-24 rounded-md" />
-                  <Skeleton className="h-6 w-full rounded-md" />
-                  <Skeleton className="h-6 w-4/5 rounded-md" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
-                  <Skeleton className="h-4 w-2/3" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : null}
-
-        {error ? (
-          <Card className="mx-auto mt-12 max-w-2xl border-[#E2E8F0] bg-[#F8FCFF]">
-            <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-              <p className="text-sm text-[#526173]">{error}</p>
-              <Button
-                variant="outline"
-                className="min-h-11 rounded-lg"
-                onClick={reload}
-              >
-                Try again
-              </Button>
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {posts && posts.length === 0 && !error ? (
-          <p className="mt-12 text-center text-sm text-[#526173]">
-            No articles published yet. New engineering notes are on the way.
-          </p>
-        ) : null}
-
-        {posts && posts.length > 0 ? (
-          <RevealList className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {posts.slice(0, 3).map((post) => (
-              <RevealItem key={post.slug} className="h-full">
-                  <a
-                    href={`/blog/${post.slug}`}
-                    className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-6 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/40 hover:shadow-[0_12px_32px_rgba(6,59,143,0.1)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Badge className="rounded-md bg-[#009FE3]/10 text-xs font-medium text-[#0079AC] hover:bg-[#009FE3]/10">
-                        {post.category}
-                      </Badge>
-                      <time className="text-xs text-[#526173]">{formatDate(post.publishedAt)}</time>
-                    </div>
-                    <h3 className="mt-4 text-lg font-semibold leading-snug text-[#0B1F33] group-hover:text-[#063B8F]">
-                      {post.title}
-                    </h3>
-                    <p className="mt-3 line-clamp-3 flex-1 text-sm leading-relaxed text-[#526173]">
-                      {post.excerpt}
-                    </p>
-                    <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#009FE3]">
-                      Read article
-                      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                    </span>
+        <RevealList className="mt-12 grid gap-6 md:grid-cols-3">
+          {posts.map((post) => (
+            <RevealItem key={post.slug} className="h-full">
+              <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#009FE3]/50 hover:shadow-md">
+                {post.coverImage ? (
+                  <a href={`/blog/${post.slug}`} className="block">
+                    <ImageView
+                      src={post.coverImage}
+                      alt={post.title}
+                      aspect="16/10"
+                      imgClassName="transition-transform duration-300 group-hover:scale-[1.03]"
+                    />
                   </a>
-                </RevealItem>
-            ))}
-          </RevealList>
-        ) : null}
-
-        {posts && posts.length > 0 ? (
-          <div className="mt-10 text-center">
-            <OutlineLink href="/blog">All articles</OutlineLink>
-          </div>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Customer AI & automation capabilities (§5)                          */
-/* ------------------------------------------------------------------ */
-
-/**
- * These are systems TECH360 BUILDS FOR CLIENTS — never a description of how
- * TECH360 delivers its own work. Owner directive (docs/AI_VISIBILITY_POLICY.md)
- * forbids disclosing internal AI operation on any public surface.
- */
-const CLIENT_AI_CAPABILITIES = [
-  {
-    icon: Bot,
-    title: "AI assistants inside your product",
-    body: "Support and sales assistants that answer from your own content, escalate to a person, and log every conversation against the customer record.",
-    href: "/services/ai-agent-systems",
-  },
-  {
-    icon: Workflow,
-    title: "Approval-gated automation",
-    body: "Document, invoice and onboarding flows that pause for human approval before anything that matters leaves the building.",
-    href: "/services/ai-business-automation",
-  },
-  {
-    icon: MessageCircle,
-    title: "Conversational sales on WhatsApp",
-    body: "Qualify and route inbound WhatsApp enquiries into your CRM with the same audit trail as your website forms.",
-    href: "/services/whatsapp-cloud-api-integration",
-  },
-  {
-    icon: Database,
-    title: "Data you can actually query",
-    body: "Dashboards and reporting built on your operational data, with role-based visibility instead of exported spreadsheets.",
-    href: "/services/business-dashboards",
-  },
-] as const;
-
-function ClientAiCapabilities() {
-  return (
-    <section aria-labelledby="ai-capabilities-heading" className="bg-white">
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-16">
-          <Reveal>
-            <SectionHeading
-              align="left"
-              id="ai-capabilities-heading"
-              eyebrow="AI & automation, applied"
-              title="AI where it removes real work — with a person still in the loop."
-              description="We build AI into your systems where it does something measurable: answering from your own content, drafting inside a workflow, or catching exceptions before a person has to. Every deployment names who approves what, and what happens when the model is wrong."
-            />
-            <div className="mt-7 flex flex-wrap gap-3">
-              <PrimaryLink href="/services/ai-business-automation">Automation services</PrimaryLink>
-              <OutlineLink href="/faq">Read the FAQs</OutlineLink>
-            </div>
-            <p className="mt-6 flex items-start gap-2 text-xs leading-relaxed text-[#526173]">
-              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
-              Model choice, hosting, data handling and the human-approval points are written into the
-              Scope of Work — never assumed.
-            </p>
-          </Reveal>
-          <RevealList className="grid grid-cols-1 gap-4 sm:grid-cols-2" stagger={0.07}>
-            {CLIENT_AI_CAPABILITIES.map((item) => (
-              <RevealItem key={item.title} className="h-full">
-                <a
-                  href={item.href}
-                  className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-[#F8FBFF] p-5 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-[0_12px_30px_rgba(6,59,143,0.10)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
-                >
-                  <span className="flex size-10 items-center justify-center rounded-lg bg-[#009FE3]/10 text-[#0079AC]">
-                    <item.icon className="size-5" aria-hidden="true" />
-                  </span>
-                  <h3 className="mt-4 text-sm font-bold text-[#0B1F33]">{item.title}</h3>
-                  <p className="mt-2 flex-1 text-xs leading-relaxed text-[#526173]">{item.body}</p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#009FE3]">
-                    Service detail
-                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                  </span>
-                </a>
-              </RevealItem>
-            ))}
-          </RevealList>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* 7-step customer delivery journey (§8)                               */
-/* ------------------------------------------------------------------ */
-
-function DeliveryJourney() {
-  return (
-    <section aria-labelledby="journey-heading" className="bg-[#0B1F33]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-        <SectionHeading
-          align="left"
-          id="journey-heading"
-          eyebrow="How a project actually runs"
-          title="Seven steps, each ending in something you can read and approve."
-          description="No stage moves forward on a verbal agreement. You get the written artefact named against each step, and the two commercial promises only apply where the approved Scope of Work says they do."
-          dark
-        />
-        <ol className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {PROCESS.map((phase, index) => (
-            <li key={phase.step} className="h-full">
-              <div className="flex h-full flex-col rounded-xl border border-white/12 bg-white/[0.04] p-5">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#009FE3] text-xs font-bold text-white">
-                    {index + 1}
-                  </span>
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
-                    {phase.duration}
-                  </p>
-                </div>
-                <h3 className="mt-4 text-base font-bold text-white">{phase.name}</h3>
-                <p className="mt-1 text-sm font-medium text-[#7FD4FF]">{phase.title}</p>
-                <p className="mt-3 flex-1 text-xs leading-relaxed text-white/70">{phase.description}</p>
-                {phase.gate ? (
-                  <p className="mt-4 rounded-lg border border-[#18B83A]/30 bg-[#18B83A]/10 px-3 py-2 text-[11px] font-semibold leading-relaxed text-[#8DE8A2]">
-                    {phase.gate.label}
-                  </p>
                 ) : null}
-              </div>
-            </li>
+                <div className="flex flex-1 flex-col p-6">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-[#64748B]">
+                    <span className="rounded-full bg-[#009FE3]/10 px-2.5 py-0.5 font-semibold text-[#0079AC]">
+                      {post.category}
+                    </span>
+                    {post.publishedAt ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="size-3.5" aria-hidden="true" />
+                        {fmtPostDate(post.publishedAt)}
+                      </span>
+                    ) : null}
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="size-3.5" aria-hidden="true" />
+                      {post.readMinutes} min
+                    </span>
+                  </div>
+                  <h3 className="mt-3 text-lg font-bold leading-snug text-[#0B1F33] group-hover:text-[#063B8F]">
+                    <a href={`/blog/${post.slug}`}>{post.title}</a>
+                  </h3>
+                  <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-[#475569]">
+                    {post.excerpt}
+                  </p>
+                  <div className="mt-4 pt-2">
+                    <LinkArrow href={`/blog/${post.slug}`} className="text-xs">
+                      Read article
+                    </LinkArrow>
+                  </div>
+                </div>
+              </article>
+            </RevealItem>
           ))}
-        </ol>
-        <div className="mt-10 flex flex-wrap items-center gap-4">
-          <a
-            href="/process"
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#009FE3] px-5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#0090CC] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1F33]"
-          >
-            Read the full delivery process
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </a>
-          <p className="text-xs font-semibold text-white/70">
-            HTML Preview Before Payment. Source Code After Full Payment.
-          </p>
-        </div>
+        </RevealList>
       </div>
     </section>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* FAQ preview (§12)                                                   */
-/* ------------------------------------------------------------------ */
-
-const HOME_FAQ_COUNT = 5;
+/* ---------------- Compact FAQ Preview ---------------- */
 
 function FaqPreview() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const topFaqs = FAQS.slice(0, 5);
+
   return (
-    <section aria-labelledby="home-faq-heading" className="bg-[#F4FAFF]">
-      <div className="mx-auto w-full max-w-4xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+    <section className="mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:px-8">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <SectionHeading
-          id="home-faq-heading"
-          eyebrow="Questions we get first"
-          title="The answers, before you ask."
-          description="Scope, previews, payments and handover — the questions that decide whether a project starts well."
+          eyebrow="Common Questions"
+          title="Straight Answers Before You Reach Out"
+          description="Scope, pricing structure, previews, code ownership, and post-launch care."
+          align="left"
         />
-        <div className="mt-10 space-y-3">
-          {FAQS.slice(0, HOME_FAQ_COUNT).map((faq) => (
-            <details
-              key={faq.q}
-              className="group rounded-xl border border-[#E2E8F0] bg-white px-5 py-4 transition-colors open:border-[#009FE3]/40"
-            >
-              <summary className="flex cursor-pointer list-none items-start justify-between gap-4 text-sm font-semibold text-[#0B1F33] outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">
-                {faq.q}
+        <LinkArrow href="/faq" className="shrink-0 text-sm">
+          All {FAQS.length} FAQs
+        </LinkArrow>
+      </div>
+
+      <div className="mt-10 divide-y divide-[#E2E8F0] rounded-2xl border border-[#E2E8F0] bg-white">
+        {topFaqs.map((faq, idx) => {
+          const open = openIndex === idx;
+          return (
+            <div key={faq.q} className="p-5 sm:p-6">
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => setOpenIndex(open ? null : idx)}
+                className="flex w-full items-center justify-between gap-4 text-left text-base font-semibold text-[#0B1F33] outline-none focus-visible:text-[#063B8F]"
+              >
+                <span>{faq.q}</span>
                 <ChevronDown
-                  className="mt-0.5 size-4 shrink-0 text-[#009FE3] transition-transform group-open:rotate-180"
+                  className={cn(
+                    "size-5 shrink-0 text-[#0079AC] transition-transform duration-200",
+                    open && "rotate-180"
+                  )}
                   aria-hidden="true"
                 />
-              </summary>
-              <p className="mt-3 text-sm leading-relaxed text-[#526173]">{faq.a}</p>
-            </details>
-          ))}
-        </div>
-        <div className="mt-8 text-center">
-          <LinkArrow href="/faq">All frequently asked questions</LinkArrow>
-        </div>
+              </button>
+              {open ? (
+                <p className="mt-3 pr-6 text-sm leading-relaxed text-[#475569]">
+                  {faq.a}
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Home view                                                           */
-/* ------------------------------------------------------------------ */
-
-export default function HomeView({
-  onNavigate,
-}: {
-  onNavigate?: (hash: string) => void;
-}) {
-  return (
-   <MotionConfig reducedMotion="user">
-    <div>
-      {/* 1 — Hero */}
-      <Hero onNavigate={onNavigate} />
-      {/* 2 — Trust & capability strip */}
-      <TrustRow />
-      {/* 3 — Core solutions (4 pillars, 21 services) */}
-      <SolutionsGrid />
-      {/* 4 — Featured software products */}
-      <FlagshipServices />
-      {/* 5 — Customer AI & automation capabilities */}
-      <ClientAiCapabilities />
-      {/* 6 — Industry solutions showcase */}
-      <IndustriesPreview />
-      {/* 7 — Illustrative work scenarios */}
-      <SelectedWork />
-      {/* 8 — 7-step customer delivery journey */}
-      <DeliveryJourney />
-      {/* 9 — Platform, technology & security capability */}
-      <PlatformGrid />
-      <FeaturesGrid />
-      <DashboardShowcase />
-      <IntegrationsGrid />
-      {/* 10 — Why TECH360 */}
-      <WhyTech360 />
-      <BenefitsGrid />
-      {/* 11 — Engineering insights */}
-      <LatestInsights />
-      <ResourcesGrid />
-      {/* 12 — FAQ preview */}
-      <FaqPreview />
-      {/* 13 — Final conversion CTA (below) */}
-      <CtaBand
-        title="Start with the requirement, not the sales call."
-        description="Tell us what the system has to do and the constraints you already know about. You will get a written response covering scope, the providers involved, what a preview would include, and how success is measured — before any payment."
-        primaryLabel="Start a project"
-      />
-    </div>
-   </MotionConfig>
   );
 }

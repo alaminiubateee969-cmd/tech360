@@ -1,14 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import {
   ArrowRight, BarChart3, BookOpen, Bot, Briefcase, CalendarClock, CheckCircle2, Code2, FileText,
-  Gauge, Layers, LifeBuoy, Link2, Lock, Megaphone, MessagesSquare, Newspaper,
+  Gauge, Layers, LifeBuoy, Link2, Lock, Megaphone, Newspaper,
   PanelsTopLeft, ScrollText, Search, ShieldCheck, UserRound, Workflow,
 } from "lucide-react";
-import { imageFor } from "@/data/images";
+import { cn } from "@/lib/utils";
+import { SERVICES } from "@/data/site";
+import {
+  getPlatformShowcaseImage,
+  getServiceImage,
+  serviceImageAlt,
+  serviceImageSrc,
+} from "@/data/service-images";
 import { SectionHeading } from "./SectionHeading";
-import { Reveal } from "./Reveal";
-import { LinkArrow } from "./buttons";
+import { Reveal, RevealItem, RevealList } from "./Reveal";
+import { ServiceCard } from "./ServiceCard";
+import { LinkArrow, OutlineLink } from "./buttons";
 import { SOLUTIONS_MEGA_COLUMNS } from "./nav-structure";
 
 /* Premium homepage sections built from real Tech360 capabilities.
@@ -16,13 +25,8 @@ import { SOLUTIONS_MEGA_COLUMNS } from "./nav-structure";
    that needs configuration is labelled as such. */
 
 const wrap = "mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8";
-const cardCls = "group flex h-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_1px_3px_rgba(11,31,51,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(11,31,51,0.10)] focus-within:ring-2 focus-within:ring-[#009FE3]";
-
-function Img({ src, alt }: { src?: string; alt: string }) {
-  if (!src) return <div className="aspect-[16/9] w-full bg-gradient-to-br from-[#063B8F] to-[#009FE3]" aria-hidden="true" />;
-  // Hosted photography from the site image catalogue.
-  return <img src={src} alt={alt} loading="lazy" className="aspect-[16/9] w-full object-cover" width={800} height={450} />;
-}
+const cardCls =
+  "group flex h-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_1px_3px_rgba(11,31,51,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(11,31,51,0.10)] focus-within:ring-2 focus-within:ring-[#009FE3] motion-reduce:transition-none motion-reduce:hover:translate-y-0";
 
 /* ---------------- Trust row (§4) ---------------- */
 const TRUST = [
@@ -49,89 +53,199 @@ export function TrustRow() {
   );
 }
 
+/* ---------------- AI Solutions — Dedicated 3-Card Image Grid ---------------- */
+
+const AI_SOLUTION_CARDS = [
+  {
+    slug: "ai-agent-systems",
+    title: "AI Agent Systems",
+    href: "/services/ai-agent-systems",
+    description: "Scoped customer & operational assistants with approval guardrails.",
+    badges: ["Approval guardrails", "Execution audit log"],
+  },
+  {
+    slug: "ai-business-automation",
+    title: "AI Business Automation",
+    href: "/services/ai-business-automation",
+    description: "Document triage, routing, classification & human-verified actions.",
+    badges: ["Document triage", "Human verification"],
+  },
+  {
+    slug: "whatsapp-ai-sales-crm",
+    title: "WhatsApp-First AI Sales CRM",
+    href: "/services/whatsapp-ai-sales-crm",
+    description: "Shared conversational inbox, qualification & sales pipeline.",
+    badges: ["Shared inbox", "Sales pipeline"],
+  },
+] as const;
+
+export function AiSolutionsSection() {
+  return (
+    <section aria-labelledby="ai-solutions-heading" className="border-b border-[#E2E8F0] bg-white">
+      <div className={wrap}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <SectionHeading
+            id="ai-solutions-heading"
+            eyebrow="Governed AI"
+            title="AI Solutions"
+            description="AI you control: human-approved assistants and automation that read and write your real systems."
+            align="left"
+            className="max-w-2xl"
+          />
+          <LinkArrow href="/services" className="shrink-0 text-sm">
+            All AI Solutions services
+          </LinkArrow>
+        </div>
+
+        <RevealList className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {AI_SOLUTION_CARDS.map((card) => {
+            const service = SERVICES.find((s) => s.slug === card.slug);
+            const img = getServiceImage(card.slug);
+            return (
+              <RevealItem key={card.slug} className="h-full">
+                <ServiceCard
+                  id={card.slug}
+                  title={card.title}
+                  description={card.description}
+                  imageSrc={img?.src}
+                  imageAlt={serviceImageAlt(card.slug, card.title)}
+                  href={card.href}
+                  category="AI Solutions"
+                  icon={service?.icon}
+                  badges={card.badges}
+                  ctaLabel="Explore AI solution"
+                />
+              </RevealItem>
+            );
+          })}
+        </RevealList>
+
+        <p className="mt-6 flex items-start gap-2 text-xs leading-5 text-[#526173]">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
+          Model selection, provider credentials, data boundaries, and human-approval checkpoints are agreed in the written Scope of Work before implementation.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 /* ---------------- Core solutions: 4 pillars, 21 services (§5) ---------------- */
 
-/**
- * The homepage solutions grid mirrors the Solutions mega-menu exactly, so a
- * buyer sees the same four buyer-centric pillars in both places. Service names
- * and one-line descriptions come from SOLUTIONS_MEGA_COLUMNS (the navigation
- * source of truth) and every pillar links to its full catalogue section.
- */
-const PILLAR_META: Record<string, { icon: typeof Workflow; blurb: string }> = {
-  "ai-solutions": {
-    icon: Bot,
-    blurb: "AI you control: human-approved assistants and automation that read and write your real systems.",
-  },
+const PILLAR_META: Record<string, { label: string; blurb: string }> = {
   "software-products": {
-    icon: PanelsTopLeft,
+    label: "Software Products",
     blurb: "Software you own: storefronts, portals, dashboards and internal tools built on your data model.",
   },
   "crm-automation": {
-    icon: Workflow,
+    label: "CRM & Business Automation",
     blurb: "One Client ID behind every message, with event-driven follow-up that never double-sends.",
   },
   "engineering-services": {
-    icon: Code2,
-    blurb: "The engineering under it all: fast websites, integrations, cloud deployment and ongoing care.",
+    label: "Web, Cloud & Engineering",
+    blurb: "Fast websites, integrations, cloud deployment, hosting architecture and ongoing care.",
+  },
+  "ai-solutions": {
+    label: "AI Solutions",
+    blurb: "AI you control: human-approved assistants and automation that read and write your real systems.",
   },
 };
 
 export function SolutionsGrid() {
+  // Default to Software Products on load since AI Solutions has its dedicated
+  // showcase section directly above; tabs expose all 21 services with unique visuals.
+  const orderedColumns = [
+    ...SOLUTIONS_MEGA_COLUMNS.filter((c) => c.id !== "ai-solutions"),
+    ...SOLUTIONS_MEGA_COLUMNS.filter((c) => c.id === "ai-solutions"),
+  ];
+  const [activePillar, setActivePillar] = useState<string>("software-products");
+
+  const selectedColumn =
+    orderedColumns.find((c) => c.id === activePillar) ?? orderedColumns[0];
+
   return (
     <section aria-labelledby="solutions-h" className="bg-[#F7FAFC]">
       <div className={wrap}>
         <SectionHeading
           id="solutions-h"
-          eyebrow="Solutions"
+          eyebrow="Solutions Catalogue"
           title="Four pillars. Twenty-one services. One written scope."
-          description="Every service below is scoped in writing before work starts. Nothing here is a price or a promise of a specific outcome — the approved Scope of Work names the deliverables, the review points and the commercial terms that apply."
+          description="Every service below carries its own dedicated architecture and is scoped in writing before work starts. Select a discipline to explore visual capabilities across software products, CRM automation, web & cloud engineering, and governed AI."
         />
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          {SOLUTIONS_MEGA_COLUMNS.map((pillar) => {
-            const meta = PILLAR_META[pillar.id] ?? { icon: Code2, blurb: pillar.description };
-            const Icon = meta.icon;
+
+        {/* Accessible Pillar Tabs */}
+        <div
+          role="group"
+          aria-label="Filter homepage services by pillar"
+          className="mt-10 flex flex-wrap justify-center gap-2.5"
+        >
+          {orderedColumns.map((col) => {
+            const active = col.id === selectedColumn.id;
+            const label = PILLAR_META[col.id]?.label ?? col.heading;
             return (
-              <Reveal key={pillar.id}>
-                <article className={`${cardCls} p-6 sm:p-7`}>
-                  <div className="flex items-start gap-3">
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#009FE3]/10 text-[#0079AC]">
-                      <Icon className="size-5" aria-hidden="true" />
-                    </span>
-                    <div>
-                      <h3 className="text-lg font-bold text-[#0B1F33]">{pillar.heading}</h3>
-                      <p className="mt-1 text-sm leading-6 text-[#526173]">{meta.blurb}</p>
-                    </div>
-                  </div>
-                  <ul className="mt-5 divide-y divide-[#EDF2F7] border-y border-[#EDF2F7]">
-                    {pillar.items.map((item) => (
-                      <li key={item.href}>
-                        <a
-                          href={item.href}
-                          className="group flex items-start justify-between gap-3 rounded-md py-2.5 outline-none transition-colors hover:text-[#0079AC] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
-                        >
-                          <span>
-                            <span className="block text-sm font-semibold text-[#0B1F33] group-hover:text-[#0079AC]">{item.label}</span>
-                            <span className="mt-0.5 block text-xs leading-5 text-[#526173]">{item.description}</span>
-                          </span>
-                          <ArrowRight className="mt-1 size-4 shrink-0 text-[#B6C6D6] transition-transform group-hover:translate-x-0.5 group-hover:text-[#009FE3]" aria-hidden="true" />
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-4">
-                    <LinkArrow href="/services">
-                      All {pillar.heading} services
-                    </LinkArrow>
-                  </div>
-                </article>
-              </Reveal>
+              <button
+                key={col.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setActivePillar(col.id)}
+                className={cn(
+                  "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold outline-none transition-colors",
+                  "focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2",
+                  active
+                    ? "border-[#063B8F] bg-[#063B8F] text-white shadow-sm"
+                    : "border-[#E2E8F0] bg-white text-[#0B1F33] hover:border-[#009FE3]/60 hover:text-[#063B8F]"
+                )}
+              >
+                <span>{label}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-bold",
+                    active ? "bg-white/15 text-white" : "bg-[#F1F5F9] text-[#475569]"
+                  )}
+                >
+                  {col.items.length}
+                </span>
+              </button>
             );
           })}
         </div>
-        <p className="mt-8 flex items-start gap-2 text-xs leading-5 text-[#526173]">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
-          Twenty-one service descriptions are defined in the public catalogue. Availability, timeline and cost are confirmed per engagement in the written proposal — never inferred from this page.
+
+        <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-relaxed text-[#526173]" role="status">
+          {PILLAR_META[selectedColumn.id]?.blurb ?? selectedColumn.description}
         </p>
+
+        <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {selectedColumn.items.map((item) => {
+            const slug = item.href.replace(/^#?\/services\//, "");
+            const service = SERVICES.find((s) => s.slug === slug);
+            const metaCategory = PILLAR_META[selectedColumn.id]?.label ?? selectedColumn.heading;
+            return (
+              <ServiceCard
+                key={slug}
+                id={slug}
+                title={item.label}
+                tagline={service?.tagline}
+                description={item.description ?? service?.tagline ?? ""}
+                imageSrc={serviceImageSrc(slug)}
+                imageAlt={serviceImageAlt(slug, item.label)}
+                href={item.href}
+                category={metaCategory}
+                icon={service?.icon}
+                badges={service?.tech.slice(0, 2)}
+                ctaLabel="Service detail"
+              />
+            );
+          })}
+        </div>
+
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[#E2E8F0] pt-6 sm:flex-row">
+          <p className="flex items-start gap-2 text-xs leading-5 text-[#526173]">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
+            Twenty-one service descriptions are defined in the public catalogue. Availability, timeline and cost are confirmed per engagement in the written proposal — never inferred from this page.
+          </p>
+          <OutlineLink href="/services" className="shrink-0">
+            Browse all {SERVICES.length} services
+          </OutlineLink>
+        </div>
       </div>
     </section>
   );
@@ -139,33 +253,44 @@ export function SolutionsGrid() {
 
 /* ---------------- Products / platform (§6) ---------------- */
 const PRODUCTS = [
-  { icon: PanelsTopLeft, title: "Client Portal", cat: "AI workspace", text: "Projects, files, invoices, approvals and updates in one signed-in home for your clients.", href: "/portal", action: "Open the portal" },
-  { icon: UserRound, title: "CRM & Business Operations", cat: "Business operations", text: "Leads, clients, projects, tasks, invoices and payments with role-based access and audit trails.", href: "/technologies", action: "See the platform" },
-  { icon: Workflow, title: "Automation Workflows", cat: "Workflow automation", text: "n8n-powered integrations and scheduled jobs connecting the tools you already use.", href: "/services/n8n-workflow-automation", action: "Automate a workflow" },
-  { icon: Megaphone, title: "Marketing Operations", cat: "Marketing operations", text: "Content studio, media planning, newsletter and approve-first social publishing.", href: "/services/email-automation", action: "Run marketing" },
-  { icon: BarChart3, title: "Analytics & Reporting", cat: "Analytics and reporting", text: "Dashboards, SEO audits and scheduled reports built from your real business data.", href: "/services/business-dashboards", action: "Get visibility" },
-  { icon: Code2, title: "Platform & Developer Tooling", cat: "Integrations and developer tools", text: "Modular application scaffolds, staged environments, and source-code handover under the approved Scope of Work.", href: "/platform", action: "Explore the platform" },
-];
+  { key: "client-portal", icon: "KeyRound", title: "Client Portal", cat: "Client workspace", text: "Projects, files, invoices, approvals and updates in one signed-in home for your clients.", href: "/portal", action: "Open the portal" },
+  { key: "crm-operations", icon: "Users", title: "CRM & Business Operations", cat: "Business operations", text: "Leads, clients, projects, tasks, invoices and payments with role-based access and audit trails.", href: "/technologies", action: "See the platform" },
+  { key: "automation-workflows", icon: "Workflow", title: "Automation Workflows", cat: "Workflow automation", text: "n8n-powered integrations and scheduled jobs connecting the tools you already use.", href: "/services/n8n-workflow-automation", action: "Automate a workflow" },
+  { key: "marketing-operations", icon: "Mail", title: "Marketing Operations", cat: "Marketing operations", text: "Content studio, media planning, newsletter and approve-first social publishing.", href: "/services/email-automation", action: "Run marketing" },
+  { key: "analytics-reporting", icon: "LayoutDashboard", title: "Analytics & Reporting", cat: "Analytics and reporting", text: "Dashboards, SEO audits and scheduled reports built from your real business data.", href: "/services/business-dashboards", action: "Get visibility" },
+  { key: "developer-tooling", icon: "Code2", title: "Platform & Developer Tooling", cat: "Integrations & architecture", text: "Modular application scaffolds, staged environments, and source-code handover under the approved Scope of Work.", href: "/platform", action: "Explore the platform" },
+] as const;
+
 export function PlatformGrid() {
   return (
     <section aria-labelledby="platform-h" className="bg-white">
       <div className={wrap}>
-        <SectionHeading id="platform-h" eyebrow="Products" title="One Connected Platform. Multiple Business Capabilities." description="Modules that genuinely exist in the Tech360 platform today — preview the interface patterns live in the design kit." />
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {PRODUCTS.map((p) => (
-            <Reveal key={p.title}>
-              <article className={cardCls}>
-                <div className="flex grow flex-col p-6">
-                  <span className="inline-flex w-fit items-center rounded-full bg-[#F4FAFF] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#063B8F]">{p.cat}</span>
-                  <p.icon className="mt-4 size-6 text-[#009FE3]" aria-hidden="true" />
-                  <h3 className="mt-3 text-lg font-bold text-[#0B1F33]">{p.title}</h3>
-                  <p className="mt-2 grow text-sm leading-6 text-[#526173]">{p.text}</p>
-                  <div className="pt-5"><LinkArrow href={p.href}>{p.action}</LinkArrow></div>
-                </div>
-              </article>
-            </Reveal>
-          ))}
-        </div>
+        <SectionHeading
+          id="platform-h"
+          eyebrow="Platform Capabilities"
+          title="One Connected Platform. Multiple Business Capabilities."
+          description="Modules that genuinely exist in the Tech360 platform today — engineered around role-based permissions, audit trails, and client ownership."
+        />
+        <RevealList className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {PRODUCTS.map((p) => {
+            const asset = getPlatformShowcaseImage(p.key);
+            return (
+              <RevealItem key={p.key} className="h-full">
+                <ServiceCard
+                  id={p.key}
+                  title={p.title}
+                  description={p.text}
+                  imageSrc={asset?.src}
+                  imageAlt={asset?.alt ?? `${p.title} platform capability illustration`}
+                  href={p.href}
+                  category={p.cat}
+                  icon={p.icon}
+                  ctaLabel={p.action}
+                />
+              </RevealItem>
+            );
+          })}
+        </RevealList>
       </div>
     </section>
   );
@@ -256,8 +381,8 @@ export function DashboardShowcase() {
           </Reveal>
           <Reveal>
             <div className="grid gap-4">
-              <img src="/images/admin-dashboard.png" alt="Illustrative preview of the Tech360 administrative dashboard interface" loading="lazy" width={960} height={600} className="w-full rounded-2xl border border-[#E2E8F0] shadow-[0_18px_44px_rgba(11,31,51,0.12)]" />
-              <img src="/images/crm-dashboard.png" alt="Illustrative preview of the Tech360 CRM console interface" loading="lazy" width={960} height={600} className="w-full rounded-2xl border border-[#E2E8F0] shadow-[0_18px_44px_rgba(11,31,51,0.12)]" />
+              <img src="/images/admin-dashboard.png" alt="Illustrative preview of the Tech360 administrative dashboard interface" loading="lazy" decoding="async" width={1344} height={768} sizes="(max-width: 1023px) 100vw, 50vw" className="w-full rounded-2xl border border-[#E2E8F0] shadow-[0_18px_44px_rgba(11,31,51,0.12)]" />
+              <img src="/images/crm-dashboard.png" alt="Illustrative preview of the Tech360 CRM console interface" loading="lazy" decoding="async" width={1344} height={768} sizes="(max-width: 1023px) 100vw, 50vw" className="w-full rounded-2xl border border-[#E2E8F0] shadow-[0_18px_44px_rgba(11,31,51,0.12)]" />
             </div>
           </Reveal>
         </div>

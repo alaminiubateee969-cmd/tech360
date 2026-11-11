@@ -32,7 +32,7 @@
     "start:bun": "NODE_ENV=production bun .next/standalone/server.js",
     "hostinger:build": "npm run build",
     "check:conflicts": "node scripts/check-conflict-markers.mjs",
-    "check:assets": "node scripts/verify-industry-assets.mjs",
+    "check:assets": "node scripts/verify-industry-assets.mjs && node scripts/verify-service-images.mjs",
     "verify:factory:policy": "tsx --test tests/factory-control-policy.test.ts",
     "verify:factory:db": "tsx --test tests/factory-control-db.test.ts",
     "verify:factory:http": "node scripts/factory/verify-http.mjs"
@@ -116,6 +116,8 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@libsql/client": "^0.15.15",
+    "@prisma/adapter-libsql": "^6.19.3",
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

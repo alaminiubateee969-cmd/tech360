@@ -51,7 +51,7 @@
           "name": "Tech360 API Secret"
         }
       },
-      "onError": "continueRegularOutput",
+      "onError": "continueErrorOutput",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
@@ -68,6 +68,21 @@
         620,
         0
       ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "n4",
+      "name": "Log Failure (Stop and Error)",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        620,
+        160
+      ],
+      "errorType": "workflowError",
+      "errorMessage": "={{ \"Tech360 CEO report failed: \" + ($json.error || \"bridge error\") }}"
     }
   ],
   "connections": {
@@ -87,6 +102,13 @@
         [
           {
             "node": "Deliver Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Failure (Stop and Error)",
             "type": "main",
             "index": 0
           }
@@ -111,5 +133,6 @@
     {
       "name": "production"
     }
-  ]
+  ],
+  "id": "tech360-w24-daily-ceo-report"
 }

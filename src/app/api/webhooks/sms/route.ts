@@ -6,6 +6,7 @@ import { sanitizeText, rateLimit, clientIp, logError, audit, constantTimeEquals 
 import { toE164 } from '@/lib/phone'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent, resolveVerifiedClientIdentity } from '@/lib/identity-resolver'
 import type { VerifiedIdentityProof } from '@/lib/identity-policy'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +37,9 @@ export async function POST(req: NextRequest) {
 
   // Derive fields from multiple provider shapes
   const from = sanitizeText((payload.From ?? payload.from ?? payload.sender ?? payload.phone ?? '') as string, 40)
-  const bodyText = sanitizeText((payload.Body ?? payload.body ?? payload.content ?? payload.message ?? payload.text ?? '') as string, 4000)
+  const bodyText = redactSensitiveCrmData(
+    sanitizeText((payload.Body ?? payload.body ?? payload.content ?? payload.message ?? payload.text ?? '') as string, 4000),
+  ).text
   const messageSid = sanitizeText((payload.MessageSid ?? payload.messageId ?? payload.id ?? payload.smsId ?? '') as string, 80)
   const eventId = messageSid
 
@@ -149,24 +152,16 @@ export async function POST(req: NextRequest) {
           await db.chatMessage.create({ data: { conversationId: pendingConvo.id, sender: 'ADMIN', body: EMAIL_GATE_PROMPT } }).catch(() => null)
           await db.chatConversation.update({ where: { id: pendingConvo.id }, data: { lastMessageAt: new Date(), lastMessagePreview: EMAIL_GATE_PROMPT.slice(0, 120), lastSender: 'ADMIN' } }).catch(() => null)
         }
-        // Attempt to send SMS asking for email (best-effort, requires gateway configured)
+        // Attempt to send SMS asking for email (best-effort, requires gateway configured).
+        // sendCommunication creates and updates the single outbound Communication row.
         try {
           const { sendCommunication } = await import('@/lib/comms')
-          // No clientId yet — dispatch via low-level SMS sender if available; otherwise the chatMessage above is the record.
-          // We record a stub Communication with null clientId so operators see the outbound attempt.
-          await db.communication.create({
-            data: { clientId: null, channel: 'SMS', direction: 'OUT', recipient: phone, body: EMAIL_GATE_PROMPT, status: 'QUEUED', providerMessageId: eventId + ':email-gate' },
-          }).then(async (comm) => {
-            // Try real dispatch via comms layer (it will check channel switch and attempt SMS)
-            try {
-              const { default: dispatch } = await import('@/lib/comms').then(() => ({ default: null })).catch(() => ({ default: null }))
-              void dispatch
-            } catch {}
-            // Fallback: try direct SMS path
-            try {
-              const res = await sendCommunication({ clientId: null as unknown as string, channel: 'SMS', to: phone, body: EMAIL_GATE_PROMPT, agentCode: 'EMAIL-GATE' } as never)
-              await db.communication.update({ where: { id: comm.id }, data: { status: res.result.status, error: res.result.error ?? null, providerMessageId: res.result.providerMessageId ?? null, sentAt: res.result.ok ? new Date() : null } }).catch(() => null)
-            } catch {}
+          await sendCommunication({
+            clientId: undefined,
+            channel: 'SMS',
+            to: phone,
+            body: EMAIL_GATE_PROMPT,
+            agentCode: 'EMAIL-GATE',
           }).catch(() => null)
         } catch {}
         await audit({ actor: 'webhook:SMS', action: 'SMS_AWAITING_EMAIL', details: { phone }, ip } as never).catch(() => null)

@@ -7,6 +7,7 @@ import {
   webhookBodyDedupKey,
 } from '@/lib/mail/hostinger-inbound-policy'
 import { syncHostingerInbox } from '@/lib/mail/hostinger-inbound'
+import { processHostingerInboundMessages } from '@/lib/mail/hostinger-ai-processor'
 import { HOSTINGER_MAIL_ENV } from '@/lib/mail/hostinger-config'
 import { readBoundedBody } from '@/lib/bounded-body'
 
@@ -77,13 +78,18 @@ export async function POST(req: NextRequest) {
   try {
     const summary = await syncHostingerInbox({ maxPages: 2, maxMessages: 25 })
     const success = summary.stopped !== 'ERROR' && summary.stopped !== 'NOT_CONFIGURED'
+    let aiProcessed = 0
+    if (summary.imported > 0 && summary.importedIds?.length) {
+      const aiRes = await processHostingerInboundMessages({ communicationIds: summary.importedIds }).catch(() => null)
+      aiProcessed = aiRes?.processed ?? 0
+    }
     await finishInboundWebhookEvent({
       receiptId: claim.receiptId,
       claimToken: claim.claimToken,
       success,
       errorCode: success ? undefined : 'SYNC_INCOMPLETE',
     })
-    return json({ ok: true, sync: { stopped: summary.stopped, imported: summary.imported, duplicates: summary.duplicates } })
+    return json({ ok: true, sync: { stopped: summary.stopped, imported: summary.imported, duplicates: summary.duplicates, aiProcessed } })
   } catch {
     await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: false, errorCode: 'SYNC_EXCEPTION' }).catch(() => false)
     await logError({ source: 'WEBHOOK', code: 'HOSTINGER_MAIL_SYNC_FAILED', message: 'Hostinger inbox sync failed after a webhook delivery; the checkpoint keeps the message for the next run.', workflow: 'HOSTINGER_MAIL_INBOUND' }).catch(() => null)

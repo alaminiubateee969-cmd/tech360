@@ -131,7 +131,7 @@ describe('communication pipeline — the exact client copy', () => {
     const { whatsapp, email } = pipelineMessage('SCOPE_DETAILS_RECEIVED', V)
     assert.ok(whatsapp.body.includes('Your requirements have been saved under Client ID:'))
     assert.ok(whatsapp.body.includes('Our team will review the draft before sending the final Scope of Work.'))
-    assert.equal(email.subject, 'Project Details Received - Scope Review Started')
+    assert.equal(email.subject, 'Project Details Received - Scope Review Started - Client ID TECH-2026-000001')
   })
 
   it('stage 4 sends the final scope with the approval phrase and both policies', () => {
@@ -177,7 +177,7 @@ describe('communication pipeline — the exact client copy', () => {
     const { whatsapp, email } = pipelineMessage('HTML_PREVIEW_APPROVED', V)
     assert.ok(whatsapp.body.includes('Thank you for approving the HTML/demo preview.'))
     assert.ok(whatsapp.body.includes('The next step is payment confirmation.'))
-    assert.equal(email.subject, 'HTML Preview Approval Confirmed - Payment Step')
+    assert.equal(email.subject, 'HTML Preview Approval Confirmed - Payment Step - Client ID TECH-2026-000001')
   })
 
   it('stage 8 acknowledges the payment', () => {
@@ -207,7 +207,7 @@ describe('communication pipeline — the exact client copy', () => {
     }
     assert.ok(whatsapp.body.includes(DELIVERY_CONFIRMATION_PHRASE))
     assert.ok(email.body.includes('“' + DELIVERY_CONFIRMATION_PHRASE + '”'))
-    assert.equal(email.subject, 'Final Delivery Completed - Confirmation Required')
+    assert.equal(email.subject, 'Final Delivery Completed - Confirmation Required - Client ID TECH-2026-000001')
   })
 
   it('stage 11 closes the project, asks for a review and offers a recommendation', () => {
@@ -215,7 +215,7 @@ describe('communication pipeline — the exact client copy', () => {
     assert.ok(whatsapp.body.includes('Your project has been marked as completed under Client ID:'))
     assert.ok(whatsapp.body.includes('we would appreciate a short review'))
     assert.ok(whatsapp.body.includes('you may recommend Tech360 to them'))
-    assert.equal(email.subject, 'Project Completed - Review Request')
+    assert.equal(email.subject, 'Project Completed - Review Request - Client ID TECH-2026-000001')
   })
 
   it('every stage produces both a WhatsApp/SMS body and an email with a subject', () => {

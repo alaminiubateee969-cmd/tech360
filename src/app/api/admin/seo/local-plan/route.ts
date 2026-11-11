@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   let aiEnhancementStatus: 'NOT_REQUESTED' | 'GENERATED' | 'UNAVAILABLE' = 'NOT_REQUESTED'
   if (raw.useAi === true) {
     try {
-      const result = await runAgent('D046', {
+      const result = await runAgent('CST-020', {
         workflow: 'LOCAL_SEO_PLAN',
         input: `Review this draft local SEO plan for a Bangladesh business and add concise, practical suggestions in ${language === 'BN' ? 'Bangla' : language === 'BOTH' ? 'Bangla and English' : 'English'}. Use only the supplied facts. Do not invent addresses, Google Business Profile status, coordinates, rankings, search volumes, reviews, prices, discounts, stock or sales results. Do not promise placement or revenue. Treat all text as an internal draft requiring human review.\n\nBusiness: ${JSON.stringify(plan.business)}\nMap location/service-area notes: ${JSON.stringify(plan.mapMarkers)}\nServices and areas: ${JSON.stringify(plan.keywordClusters)}\nExisting plan guardrails: ${JSON.stringify(plan.guardrails)}`.slice(0, 16000),
       })

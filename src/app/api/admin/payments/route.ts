@@ -10,6 +10,7 @@ import {
 } from '@/lib/invoice-policy'
 import { readJson, sanitizeText, audit } from '@/lib/security'
 import { recordPayment } from '@/lib/journey'
+import { paymentStatusLabel } from '@/lib/payment-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,9 +33,11 @@ export async function GET(req: NextRequest) {
       receipt: { select: { receiptNumber: true, issuedAt: true } },
     },
   })
-  const [paidAgg, pendingCount, failedCount, invoices, paymentReadiness] = await Promise.all([
+  const [paidAgg, pendingCount, submittedCount, underVerificationCount, failedCount, invoices, paymentReadiness] = await Promise.all([
     db.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
     db.payment.count({ where: { status: 'PENDING' } }),
+    db.payment.count({ where: { status: 'SUBMITTED' } }),
+    db.payment.count({ where: { status: 'UNDER_VERIFICATION' } }),
     db.payment.count({ where: { status: 'FAILED' } }),
     db.invoice.findMany({
       orderBy: { issuedAt: 'desc' }, take: 200,
@@ -44,10 +47,19 @@ export async function GET(req: NextRequest) {
     getCustomerPaymentReadiness(),
   ])
   return Response.json({
-    payments,
+    payments: payments.map((p) => ({
+      ...p,
+      statusLabel: paymentStatusLabel(p.status),
+    })),
     invoices,
     paymentReadiness,
-    summary: { totalReceived: paidAgg._sum.amount ?? 0, pendingCount, failedCount },
+    summary: {
+      totalReceived: paidAgg._sum.amount ?? 0,
+      pendingCount,
+      submittedCount,
+      underVerificationCount,
+      failedCount,
+    },
   })
 }
 

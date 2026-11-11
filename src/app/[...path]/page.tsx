@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import PublicSitePage from '../page'
 import type { BlogPost } from '@/components/site/BlogPostView'
+import { industryImage } from '@/data/industry-images'
+import { getServiceImage } from '@/data/service-images'
 import { getStaticPublicRoutePaths, resolvePublicRoute } from '@/lib/public-route-catalog'
 import { jsonLdDocument, pageGraph } from '@/lib/structured-data'
 
@@ -49,12 +51,44 @@ export async function generateMetadata({ params }: { params: Promise<{ path: str
     }
   }
 
+  const ogImages = (() => {
+    if (path[0] === 'services' && path[1]) {
+      const sImg = getServiceImage(path[1])
+      if (sImg) {
+        return [{ url: sImg.src, width: sImg.width, height: sImg.height, alt: sImg.alt }]
+      }
+    }
+    if (path[0] === 'industries' && path[1]) {
+      const indSrc = industryImage(path[1])
+      if (indSrc) {
+        return [{ url: indSrc, width: 1600, height: 900, alt: `${route.title} — illustrative sector architecture` }]
+      }
+    }
+    return undefined
+  })()
+
   return {
     title: route.title,
     description: route.description,
     alternates: { canonical: route.path },
     robots: route.noIndex ? { index: false, follow: false } : undefined,
-    openGraph: { type: 'website', url: route.path, title: route.title, description: route.description },
+    openGraph: {
+      type: 'website',
+      url: route.path,
+      title: route.title,
+      description: route.description,
+      ...(ogImages ? { images: ogImages } : {}),
+    },
+    ...(ogImages
+      ? {
+          twitter: {
+            card: 'summary_large_image',
+            title: route.title,
+            description: route.description,
+            images: ogImages.map((img) => img.url),
+          },
+        }
+      : {}),
   }
 }
 

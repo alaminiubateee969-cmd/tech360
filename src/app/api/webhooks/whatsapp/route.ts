@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { intakeLead } from '@/lib/journey'
 import { sanitizeText, rateLimit, clientIp, logError, audit, constantTimeEquals } from '@/lib/security'
+import { verifyWhatsAppHandshake } from '@/lib/whatsapp-webhook'
 import { toE164 } from '@/lib/phone'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent, resolveVerifiedClientIdentity } from '@/lib/identity-resolver'
 import type { VerifiedIdentityProof } from '@/lib/identity-policy'
@@ -10,16 +11,21 @@ import type { VerifiedIdentityProof } from '@/lib/identity-policy'
 export const dynamic = 'force-dynamic'
 
 // WhatsApp Cloud API webhook verification (GET)
+//
+// The subscription handshake compares the shared verify token in constant
+// time (see @/lib/whatsapp-webhook): `===` on a secret leaks its length and
+// matching prefix through response timing. An unset WHATSAPP_VERIFY_TOKEN
+// fails closed.
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
-  const mode = url.searchParams.get('hub.mode')
-  const token = url.searchParams.get('hub.verify_token')
-  const challenge = url.searchParams.get('hub.challenge')
-  const expected = process.env.WHATSAPP_VERIFY_TOKEN
-  if (mode === 'subscribe' && expected && token === expected) {
-    return new Response(challenge ?? '', { status: 200 })
-  }
-  return new Response('Forbidden', { status: 403 })
+  const result = verifyWhatsAppHandshake({
+    mode: url.searchParams.get('hub.mode'),
+    token: url.searchParams.get('hub.verify_token'),
+    challenge: url.searchParams.get('hub.challenge'),
+    expected: process.env.WHATSAPP_VERIFY_TOKEN,
+  })
+  if (!result.ok) return new Response('Forbidden', { status: 403 })
+  return new Response(result.challenge, { status: 200 })
 }
 
 type WaMessage = {
@@ -87,7 +93,8 @@ export async function POST(req: NextRequest) {
         }
         const contact = contacts.find((item) => item.wa_id === m.from) ?? contacts[0]
         const name = sanitizeText(contact?.profile?.name ?? '', 200)
-        const text = sanitizeText(m.text?.body ?? `[${m.type ?? 'media'} message]`, 4000)
+        const { redactSensitiveCrmData } = await import('@/lib/sensitive-redaction')
+        const text = redactSensitiveCrmData(sanitizeText(m.text?.body ?? `[${m.type ?? 'media'} message]`, 4000)).text
         const proof: VerifiedIdentityProof = { type: 'PHONE', value: phone, verificationSource: 'WHATSAPP_SIGNATURE' }
 
         // Only a correctly signed provider event establishes a verified phone

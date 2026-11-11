@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { readJson, sanitizeText, sanitizeEmail, rateLimit, clientIp, apiError, json } from '@/lib/security'
+import { readJson, sanitizeText, sanitizeEmail, rateLimit, clientIp, apiError, json, logError } from '@/lib/security'
 import { CONTACT_CONSENT_VERSION, hasExplicitContactConsent, isValidClientRequestId } from '@/lib/contact-policy'
-import { CHAT_SESSION_COOKIE, chatSessionCookieIsValid, withChatSessionCookie } from '@/lib/chat-session'
+import { CHAT_SESSION_COOKIE, ChatSessionConfigError, chatSessionCookieIsValid, withChatSessionCookie } from '@/lib/chat-session'
 import { ensureChatClient } from '@/lib/chat-onboarding'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 import { toE164 } from '@/lib/phone'
 
 export const dynamic = 'force-dynamic'
@@ -60,8 +61,8 @@ export async function POST(req: NextRequest) {
     const phoneInput = sanitizeText(raw.phone, 32)
     const phone = phoneInput ? toE164(phoneInput) : null
     const preferredContact = sanitizeText(raw.preferredContact, 16).toUpperCase() === 'SMS' ? 'SMS' : 'Email'
-    const subject = sanitizeText(raw.subject, 120)
-    const initialMessage = sanitizeText(raw.message ?? raw.initialMsg ?? '', MAX_BODY)
+    const subject = redactSensitiveCrmData(sanitizeText(raw.subject, 120)).text
+    const initialMessage = redactSensitiveCrmData(sanitizeText(raw.message ?? raw.initialMsg ?? '', MAX_BODY)).text
 
     if (anonId.length < 4) return apiError('Missing visitor identifier.', 400, 'BAD_ANON_ID')
     if (!isValidClientRequestId(requestId)) return apiError('A valid session request id is required.', 400, 'BAD_REQUEST_ID')
@@ -251,7 +252,16 @@ export async function POST(req: NextRequest) {
           ? { notice: `Thanks for contacting TECH360. Please share your email address — once received, your Client ID will be created automatically and the first SMS will follow on your chosen channel.` }
           : {}),
     }, 201, anonId)
-  } catch {
+  } catch (error) {
+    if (error instanceof ChatSessionConfigError) {
+      await logError({
+        source: 'CHAT_SESSION',
+        code: 'CHAT_SESSION_MISCONFIGURED',
+        message: error.message,
+        workflow: 'CHAT',
+      }).catch(() => null)
+      return apiError('Live chat session configuration is incomplete — please email info@bdtech360.com.', 503, 'CHAT_SESSION_MISCONFIGURED')
+    }
     return apiError('Chat is temporarily unavailable — please try again shortly.', 503, 'CHAT_DB_UNAVAILABLE')
   }
 }

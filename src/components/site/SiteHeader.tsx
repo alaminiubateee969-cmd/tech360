@@ -11,7 +11,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { BrandMark } from "./BrandMark";
+import Image from "next/image";
 import { PrimaryLink } from "./buttons";
 import {
   HEADER_UTILITY_LINKS,
@@ -162,7 +162,7 @@ export function SiteHeader({
           aria-label="TECH360 Home"
           className="flex shrink-0 items-center gap-2.5 rounded-lg py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#063B8F]"
         >
-          <BrandMark className="h-12 w-12 shrink-0 rounded-full object-contain sm:h-14 sm:w-14" />
+          <Image src="/images/tech360-logo.png" alt="TECH360" width={36} height={36} priority className="shrink-0" />
           <div className="flex flex-col leading-none">
             <span className="text-lg font-extrabold tracking-tight text-[#0B1F33]">
               TECH<span className="text-[#087C35]">360</span>
