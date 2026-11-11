@@ -29,7 +29,7 @@ export default function FactoryControlPage() {
         const data = await res.json() as { user: Me }
         if (!active) return
         if (data.user.mustChangePassword) { setNotice('Complete your first-login password change before opening the Control Center.'); setState('denied'); return }
-        if (!['ADMIN', 'SUPER_ADMIN'].includes(data.user.role)) { setNotice(`The ${data.user.role} role is not authorized for the Software Factory Control Center.`); setState('denied'); return }
+        if (data.user.role !== 'SUPER_ADMIN') { setNotice(`The ${data.user.role} role is not authorized for the Software Factory Control Center.`); setState('denied'); return }
         setRole(data.user.role)
         setState('ready')
       })

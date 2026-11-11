@@ -272,7 +272,7 @@ const INTEGRATIONS = [
   { cat: "Marketing", items: "Facebook, Instagram, LinkedIn and X publishing via official APIs", state: "Available — requires configuration" },
   { cat: "Productivity", items: "Workflow automation through n8n and scheduled jobs", state: "Available — requires configuration" },
   { cat: "Data & analytics", items: "Business dashboards, SEO audits and scheduled reporting", state: "Built into the platform" },
-  { cat: "Developer tools", items: "App factory exports, API integrations and deploy packages", state: "Built into the platform" },
+  { cat: "Developer tools", items: "API integrations and business software delivery", state: "Built into the platform" },
   { cat: "AI providers", items: "Model providers connected per engagement with policy controls", state: "Available — requires configuration" },
 ];
 export function IntegrationsGrid() {
@@ -373,7 +373,7 @@ export function PricingSection() {
 const RESOURCES = [
   { icon: Newspaper, cat: "Articles & insights", title: "Blog", text: "Engineering notes, delivery lessons and practical guides from real builds.", href: "/blog" },
   { icon: BookOpen, cat: "Guides & tutorials", title: "How We Work", text: "The seven-phase delivery process, approval gates and handover, explained.", href: "/process" },
-  { icon: PanelsTopLeft, cat: "Platform documentation", title: "Platform Overview", text: "The template library, module engine, tenant provisioning and version-control pillars behind every build.", href: "/platform" },
+  { icon: PanelsTopLeft, cat: "Platform documentation", title: "Platform Overview", text: "Explore connected operations, customer portals, reporting and integrations for your business.", href: "/platform" },
   { icon: LifeBuoy, cat: "FAQs", title: "Questions, Answered", text: "Scope, pricing model, timelines, ownership and support — answered plainly.", href: "/faq" },
   { icon: Briefcase, cat: "Work", title: "Selected Work", text: "Illustrative system scenarios and delivery blueprints — clearly labelled, never presented as client endorsements.", href: "/work" },
   { icon: Layers, cat: "AI implementation", title: "AI Solutions", text: "Where AI genuinely helps a business — and where it should stay supervised.", href: "/services/ai-business-automation" },

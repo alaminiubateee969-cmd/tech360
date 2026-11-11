@@ -50,8 +50,8 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: [{ url: '/brand/tech360-logo-original.jpg', type: 'image/jpeg' }],
-    apple: [{ url: '/brand/tech360-logo-original.jpg' }],
+    icon: [{ url: '/brand/tech360-circular-logo.jpg', type: 'image/jpeg' }],
+    apple: [{ url: '/brand/tech360-circular-logo.jpg' }],
   },
 }
 

@@ -41,8 +41,8 @@ const ORG = {
   alternateName: 'Tech360',
   legalName: 'TECH360 LLC',
   url: SITE_URL,
-  /** Official logo asset served from this domain (public/tech360-logo.png). */
-  logo: `${SITE_URL}/tech360-logo.png`,
+  /** Official circular logo supplied by TECH360. */
+  logo: `${SITE_URL}/brand/tech360-circular-logo.jpg`,
   image: `${SITE_URL}/tech360-banner.jpg`,
   description:
     'TECH360 LLC designs and builds custom websites, CRM systems, client portals, eCommerce platforms, business dashboards and workflow automation for organisations worldwide. Every engagement is governed by a written Scope of Work.',
@@ -190,9 +190,8 @@ const FAQ_NODE = {
  *
  * FAQPage is deliberately NOT part of this graph: it is only emitted on `/faq`
  * (see `pageGraph`) because FAQPage markup must be backed by questions the page
- * actually renders. `SOFTWARE_APPLICATION_NODES` likewise belong to `/platform`,
- * the only page that describes those systems — emitting them site-wide would
- * define the same @id on every URL.
+ * actually renders. Illustrative platform concepts are not emitted as
+ * SoftwareApplication nodes because they are not verified products.
  */
 export function siteGraph() {
   return [
@@ -328,9 +327,6 @@ export function pageGraph(pathname: string, meta: { title: string; description: 
       { name: entry.trail, path: pathname },
     ]),
   ]
-  if (pathname === '/platform') {
-    nodes.push(...SOFTWARE_APPLICATION_NODES)
-  }
   if (pathname === '/work' || pathname === '/work/projects' || pathname === '/work/case-studies') {
     nodes.push(...SCENARIO_ARTICLE_NODES)
   }

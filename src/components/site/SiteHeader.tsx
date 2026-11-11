@@ -153,7 +153,8 @@ export function SiteHeader({
         }
       }}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <div aria-hidden="true" className="h-1 bg-gradient-to-r from-[#0052AC] via-[#008E93] to-[#2EAF2A]" />
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <a
           href="/"
@@ -161,13 +162,13 @@ export function SiteHeader({
           aria-label="TECH360 Home"
           className="flex shrink-0 items-center gap-2.5 rounded-lg py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#063B8F]"
         >
-          <BrandMark className="h-9 w-9 shrink-0" />
+          <BrandMark className="h-12 w-12 shrink-0 rounded-full object-contain sm:h-14 sm:w-14" />
           <div className="flex flex-col leading-none">
             <span className="text-lg font-extrabold tracking-tight text-[#0B1F33]">
-              TECH<span className="text-[#009FE3]">360</span>
+              TECH<span className="text-[#087C35]">360</span>
             </span>
             <span className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 xl:block">
-              Enterprise Software
+              Smart Solutions for a Digital Tomorrow
             </span>
           </div>
         </a>

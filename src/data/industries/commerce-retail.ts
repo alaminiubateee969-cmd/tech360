@@ -10,7 +10,7 @@ import type { IndustryRegistryEntry } from "./types";
 const retail = assembleIndustry({
   slug: "retail",
   name: "Retail",
-  tagline: "Store operations, merchandising, and omnichannel retail on the six-plane platform",
+  tagline: "Store operations, merchandising, and omnichannel retail with connected business software",
   category: "commerce-retail",
   physical: true,
   hero: {
@@ -483,7 +483,7 @@ const retail = assembleIndustry({
 const ecommerce = assembleIndustry({
   slug: "ecommerce",
   name: "E-commerce",
-  tagline: "Digital storefront, checkout, and direct-to-consumer operations on the six-plane platform",
+  tagline: "Digital storefront, checkout, and direct-to-consumer operations with connected business software",
   category: "commerce-retail",
   physical: false,
   hero: {
@@ -956,7 +956,7 @@ const ecommerce = assembleIndustry({
 const restaurants = assembleIndustry({
   slug: "restaurants-food",
   name: "Restaurants & Food",
-  tagline: "Menu, kitchen, food safety, and multi-unit restaurant operations on the six-plane platform",
+  tagline: "Menu, kitchen, food safety, and multi-unit restaurant operations with connected business software",
   category: "commerce-retail",
   physical: true,
   hero: {
@@ -1429,7 +1429,7 @@ const restaurants = assembleIndustry({
 const travel = assembleIndustry({
   slug: "travel-hospitality",
   name: "Travel & Hospitality",
-  tagline: "Bookings, property operations, and guest journey on the six-plane platform",
+  tagline: "Bookings, property operations, and guest journey with connected business software",
   category: "commerce-retail",
   physical: true,
   hero: {

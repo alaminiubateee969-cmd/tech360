@@ -88,6 +88,7 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t border-slate-800 bg-[#0B1F33] text-slate-300">
+      <div aria-hidden="true" className="h-1 bg-gradient-to-r from-[#0052AC] via-[#008E93] to-[#2EAF2A]" />
       {/* Top Conversion Strip */}
       <div className="border-b border-white/10 bg-[#081726]">
         <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:items-center lg:px-8">
@@ -114,9 +115,9 @@ export function SiteFooter() {
           {/* Column 1: Brand + Contact + Newsletter */}
           <div className="lg:col-span-4">
             <a href="/" className="inline-flex items-center gap-2.5 text-white">
-              <BrandMark className="h-9 w-9" />
+              <BrandMark className="h-14 w-14 shrink-0 rounded-full object-contain" />
               <span className="text-lg font-extrabold tracking-tight">
-                TECH<span className="text-[#009FE3]">360</span>
+                TECH<span className="text-[#80E49A]">360</span>
               </span>
             </a>
             <p className="mt-4 max-w-sm text-sm leading-6 text-slate-400">

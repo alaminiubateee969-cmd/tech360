@@ -96,7 +96,7 @@ export const ADMIN_ROLES = [
     role: 'ADMIN',
     label: 'Admin',
     summary: 'Operations: clients, projects, content, internal automation and day-to-day delivery — without Super-Admin-only governance.',
-    can: ['Manage clients, projects & payments (view)', 'Content Studio & Software Factory', 'Reports, media & feeds', 'Cannot change roles, switches or gateway credentials'],
+    can: ['Manage clients, projects & payments (view)', 'Content Studio', 'Reports, media & feeds', 'Cannot change roles, switches or gateway credentials'],
   },
 ] as const
 

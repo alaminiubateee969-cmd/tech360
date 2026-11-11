@@ -203,8 +203,8 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
 const NAV_ROLE_HINTS: Partial<Record<ViewId, string>> = {
   agents: 'ADMIN',
   command: 'ADMIN',
-  factory: 'ADMIN',
-  factoryControl: 'ADMIN',
+  factory: 'SUPER_ADMIN',
+  factoryControl: 'SUPER_ADMIN',
   ops: 'SUPER_ADMIN',
   settings: 'SUPER_ADMIN',
 }

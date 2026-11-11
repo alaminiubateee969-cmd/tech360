@@ -53,7 +53,7 @@ const SECTIONS: Record<string, Omit<PublicRouteInfo, 'path'>> = {
   },
   platform: {
     title: 'Company-in-a-Box Software Platform',
-    description: 'Explore TECH360’s modular Company-in-a-Box platform: industry templates, versioned modules, isolated tenant provisioning, staging promotion, and unified client messaging.',
+    description: 'Explore Company-in-a-Box: connected workflows, customer relationships, reporting, portals, and business systems tailored to your needs.',
     kind: 'section',
   },
   services: {
@@ -124,8 +124,8 @@ const SECTIONS: Record<string, Omit<PublicRouteInfo, 'path'>> = {
     noIndex: true,
   },
   pipeline: {
-    title: 'Operator Pipeline Workspace',
-    description: 'Internal TECH360 delivery governance and operator communication pipeline workspace.',
+    title: 'Our Delivery Process',
+    description: 'Learn about the customer journey from enquiry and agreed scope to delivery and handover.',
     kind: 'section',
     noIndex: true,
   },

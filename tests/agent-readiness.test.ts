@@ -134,8 +134,8 @@ describe('3 — Organization identity and sameAs', () => {
   })
 
   it('uses the official published logo', () => {
-    assert.equal(org.logo, `${SITE}/tech360-logo.png`)
-    assert.ok(existsSync(join(ROOT, 'public/tech360-logo.png')))
+    assert.equal(org.logo, `${SITE}/brand/tech360-circular-logo.jpg`)
+    assert.ok(existsSync(join(ROOT, 'public/brand/tech360-circular-logo.jpg')))
   })
 
   it('only lists same-origin or allow-listed sameAs profiles', () => {
@@ -172,9 +172,9 @@ describe('4 — structured data', () => {
     assert.equal(t.filter((x) => x === 'Service').length, SERVICES.length)
   })
 
-  it('emits SoftwareApplication only on /platform, where the systems are described', () => {
+  it('does not present illustrative concepts as real software applications', () => {
     const platform = types(pageGraph('/platform', { title: 'Platform', description: 'x' })!)
-    assert.ok(platform.includes('SoftwareApplication'))
+    assert.ok(!platform.includes('SoftwareApplication'))
     // ...and not on unrelated pages.
     assert.ok(!types(pageGraph('/about', { title: 'About', description: 'x' })!).includes('SoftwareApplication'))
     assert.ok(!types(siteGraph()).includes('SoftwareApplication'))

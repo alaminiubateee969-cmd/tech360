@@ -39,7 +39,7 @@ export const MANUFACTURING_DATA: IndustrySolutionData = {
   hero: {
     eyebrow: "Global Industries Platform · Flagship Pilot",
     headline: "Run the factory on one governed system — from RFQ to recall",
-    subhead: "TECH360's Manufacturing solution connects planning, MES, quality, maintenance, and supply chain on the six-plane Software Factory, with the ISA-95 IT/OT boundary enforced and every AI use case under human accountability.",
+    subhead: "Explore how connected software can support manufacturing planning, quality, maintenance, and supply chain workflows, with requirements and safeguards defined for each project.",
     ctas: [
       { label: "Explore 26 workflows", href: "#workflows" },
       { label: "See the 52 modules", href: "#modules" },
@@ -325,7 +325,7 @@ export const MANUFACTURING_DATA: IndustrySolutionData = {
 export const MANUFACTURING_ENTRY: IndustryRegistryEntry = {
   slug: "manufacturing",
   name: "Manufacturing",
-  tagline: "Factory operations on the six-plane Software Factory — RFQ to recall under one governed system",
+  tagline: "Connected manufacturing workflows from quotation to quality management",
   category: "physical-operations",
   data: MANUFACTURING_DATA,
   visualAssets: [heroImage, ...uiScreenAssets],
