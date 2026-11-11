@@ -12,8 +12,14 @@ export const dynamic = 'force-dynamic'
 /**
  * Approval types that are granted here but executed by the requesting
  * action through the governance boundary.
+ *
+ * `EVOLUTION_APPLY` is deferred for the same reason: approving a self-modification
+ * proposal must not apply it. The Evolution Loop's apply route consumes the
+ * approval id and re-runs every check (staleness, field allowlist, immutable
+ * controls, self-approval) inside its own write, so a decision here can never
+ * be the thing that changes the agent's behaviour.
  */
-const DEFERRED_APPROVAL_TYPES = new Set(['REFUND', 'PAYMENT_VERIFY', 'REFUND_SETTLE', 'INVOICE_GENERATE', 'MANUAL_COMMUNICATION'])
+const DEFERRED_APPROVAL_TYPES = new Set(['REFUND', 'PAYMENT_VERIFY', 'REFUND_SETTLE', 'INVOICE_GENERATE', 'MANUAL_COMMUNICATION', 'EVOLUTION_APPLY'])
 
 // Super Admin decision on sensitive actions → REAL execution of the gated action
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
