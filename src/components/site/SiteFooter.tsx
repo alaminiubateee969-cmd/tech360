@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowRight, CheckCircle2, Mail, MessageCircle, ShieldCheck, UserCheck } from "lucide-react";
 import { COMPANY, LEGAL_DOCS } from "@/data/site";
-import { BrandMark } from "./BrandMark";
+import Image from "next/image";
 import { ChatButton, PrimaryButton, PrimaryLink } from "./buttons";
 
 const FOOTER_SOLUTIONS = [
@@ -114,7 +114,7 @@ export function SiteFooter() {
           {/* Column 1: Brand + Contact + Newsletter */}
           <div className="lg:col-span-4">
             <a href="/" className="inline-flex items-center gap-2.5 text-white">
-              <BrandMark className="h-9 w-9" />
+              <Image src="/images/tech360-logo.png" alt="TECH360" width={36} height={36} className="shrink-0" />
               <span className="text-lg font-extrabold tracking-tight">
                 TECH<span className="text-[#009FE3]">360</span>
               </span>
