@@ -4,8 +4,13 @@ import { ArrowRight, ArrowLeft, CircleAlert, CheckCircle2, Lightbulb } from "luc
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { INDUSTRIES, getIndustry, getService } from "@/data/site";
+import { getIndustryBySlug } from "@/data/industries";
 import { imageFor } from "@/data/images";
+import { industryImage, industryImageAlt } from "@/data/industry-images";
 import { PageHero } from "./PageHero";
+import IndustryExperience from "./IndustryExperience"
+import IndustryBlueprint from "./IndustryBlueprint";
+import EducationSolutions from "./EducationSolutions";
 import { CtaBand } from "./CtaBand";
 import { ImageView } from "./ImageView";
 import { Icon } from "./icons";
@@ -18,26 +23,31 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
 
   if (!industry) {
     return (
-      <main id="main-content">
+      <div>
         <PageHero
           eyebrow="Industry not found"
           title="This industry page does not exist"
           description="The sector you are looking for may have been renamed or the link is outdated. Browse all twenty industries instead."
-          breadcrumb={[{ label: "Industries", href: "#/industries" }, { label: "Not found" }]}
+          breadcrumb={[{ label: "Industries", href: "/industries" }, { label: "Not found" }]}
         />
         <section className="bg-white">
           <div className="mx-auto w-full max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
             <Button asChild variant="outline" className="min-h-11 rounded-lg">
-              <a href="#/industries" className="focus-visible:outline-none">
+              <a href="/industries" className="focus-visible:outline-none">
                 <ArrowLeft className="size-4" aria-hidden="true" />
                 All industries
               </a>
             </Button>
           </div>
         </section>
-      </main>
+      </div>
     );
   }
+
+  // The registry carries the full 21-section blueprint (hero, departments, roles,
+  // data model, workflows, modules, security, analytics, roadmap). The lighter
+  // `INDUSTRIES` record stays the fallback, so a page can never render empty.
+  const blueprint = getIndustryBySlug(industry.slug);
 
   const recommended = industry.recommended
     .map((s) => getService(s))
@@ -46,13 +56,13 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
   const others = INDUSTRIES.filter((i) => i.slug !== industry.slug).slice(0, 4);
 
   return (
-    <main id="main-content">
+    <div>
       {/* Image hero */}
       <section className="relative overflow-hidden bg-[#0B1F33]">
         <div className="absolute inset-0">
           <ImageView
-            src={imageFor(industry.imageKey)}
-            alt={`${industry.title} — representative photography`}
+            src={industryImage(industry.slug) ?? imageFor(industry.imageKey)}
+            alt={industryImageAlt(industry.title)}
             className="h-full w-full"
             imgClassName="opacity-45"
             eager
@@ -67,7 +77,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
             <ol className="flex flex-wrap items-center gap-1.5 text-sm text-white/60">
               <li>
                 <a
-                  href="#/"
+                  href="/"
                   className="rounded-sm outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   Home
@@ -76,7 +86,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
               <li className="flex items-center gap-1.5">
                 <ArrowRight className="size-3.5 opacity-50" aria-hidden="true" />
                 <a
-                  href="#/industries"
+                  href="/industries"
                   className="rounded-sm outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   Industries
@@ -92,17 +102,37 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
           </nav>
           <Reveal>
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[#7FD4FF]">
-              Industry focus
+              {blueprint?.data.hero.eyebrow ?? "Industry focus"}
             </p>
-            <h1 className="max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
-              {industry.title}
+            <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              {blueprint?.name ?? industry.title}
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg">
-              {industry.description}
+              {blueprint?.data.hero.subhead ?? industry.description}
             </p>
+            {blueprint ? (
+              <dl className="mt-8 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label: "Workflows", value: blueprint.data.workflows.length },
+                  { label: "Modules", value: blueprint.data.modules.length },
+                  { label: "Departments", value: blueprint.data.departments.length },
+                  { label: "Roles", value: blueprint.data.roles.length },
+                ].map((stat) => (
+                  <div key={stat.label} className="rounded-xl border border-white/15 bg-white/5 px-4 py-3">
+                    <dt className="text-[11px] font-semibold uppercase tracking-wider text-white/60">
+                      {stat.label}
+                    </dt>
+                    <dd className="mt-1 text-xl font-bold text-white">{stat.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
           </Reveal>
         </div>
       </section>
+
+      {(industry.slug === "education" || industry.slug === "schools-training") && <EducationSolutions />}
+      <IndustryExperience key={industry.slug} slug={industry.slug} />
 
       {/* Problems */}
       <section aria-labelledby="problems-heading" className="bg-white">
@@ -176,6 +206,9 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
         </div>
       </section>
 
+      {/* Full blueprint: solutions, workflows, architecture, governance delivery */}
+      {blueprint ? <IndustryBlueprint entry={blueprint} /> : null}
+
       {/* Recommended services */}
       <section aria-labelledby="recommended-heading" className="bg-white">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
@@ -189,22 +222,30 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
             {recommended.map((service) => (
               <RevealItem key={service.slug} className="h-full">
                 <a
-                  href={`#/services/${service.slug}`}
-                  className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-5 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+                  href={`/services/${service.slug}`}
+                  className="group flex h-full flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                 >
-                  <span className="flex size-10 items-center justify-center rounded-lg bg-[#063B8F]/10 text-[#063B8F]">
-                    <Icon name={service.icon} className="size-5" />
-                  </span>
-                  <h3 className="mt-4 text-sm font-semibold leading-snug text-[#0B1F33]">
-                    {service.title}
-                  </h3>
-                  <p className="mt-2 flex-1 text-xs leading-relaxed text-[#526173]">
-                    {service.tagline}
-                  </p>
-                  <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#009FE3]">
-                    View service
-                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                  </span>
+                  <ImageView
+                    src={industryImage(industry.slug) ?? imageFor(industry.imageKey)}
+                    alt={industryImageAlt(industry.title)}
+                    aspect="16/9"
+                    imgClassName="transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="flex flex-1 flex-col p-5">
+                    <span className="flex size-10 items-center justify-center rounded-lg bg-[#063B8F]/10 text-[#063B8F]">
+                      <Icon name={service.icon} className="size-5" />
+                    </span>
+                    <h3 className="mt-4 text-sm font-semibold leading-snug text-[#0B1F33]">
+                      {service.title}
+                    </h3>
+                    <p className="mt-2 flex-1 text-xs leading-relaxed text-[#526173]">
+                      {service.tagline}
+                    </p>
+                    <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#009FE3]">
+                      View service
+                      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                    </span>
+                  </div>
                 </a>
               </RevealItem>
             ))}
@@ -230,7 +271,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <PrimaryLink href="#/contact">
+                <PrimaryLink href="/contact">
                   Start Your Project
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </PrimaryLink>
@@ -251,7 +292,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
             {others.map((other) => (
               <RevealItem key={other.slug}>
                 <a
-                  href={`#/industries/${other.slug}`}
+                  href={`/industries/${other.slug}`}
                   className="inline-flex min-h-11 items-center rounded-lg border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-medium text-[#063B8F] outline-none transition-colors hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                 >
                   {other.title}
@@ -260,7 +301,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
             ))}
             <RevealItem>
               <a
-                href="#/industries"
+                href="/industries"
                 className="inline-flex min-h-11 items-center rounded-lg bg-[#063B8F]/8 px-4 py-2 text-sm font-semibold text-[#063B8F] outline-none transition-colors hover:bg-[#063B8F]/15 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
               >
                 All 20 industries
@@ -271,6 +312,6 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
       </section>
 
       <CtaBand />
-    </main>
+    </div>
   );
 }

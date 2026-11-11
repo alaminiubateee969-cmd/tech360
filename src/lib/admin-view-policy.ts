@@ -5,7 +5,7 @@ export type AdminViewId =
   | 'dashboard' | 'ops' | 'leads' | 'clients' | 'approvals' | 'communications' | 'chat'
   | 'payments' | 'projects' | 'reviews' | 'agents' | 'command' | 'memory' | 'newsletter' | 'seo' | 'marketing'
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
-  | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts' | 'marketingDashboard'
+  | 'factory' | 'factoryControl' | 'media' | 'feeds' | 'telephony' | 'prompts' | 'marketingDashboard'
   | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
   | 'workforce' | 'pipeline' | 'rea' | 'evolution'
 
@@ -38,7 +38,8 @@ export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 
   reports: 'MANAGER',
   settings: 'SUPER_ADMIN',
   team: 'SUPER_ADMIN',
-  factory: 'ADMIN',
+  factory: 'SUPER_ADMIN',
+  factoryControl: 'SUPER_ADMIN',
   media: 'STAFF',
   feeds: 'STAFF',
   telephony: 'STAFF',

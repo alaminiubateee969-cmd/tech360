@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { sanitizeText, sanitizeEmail, rateLimit, clientIp, logError, audit } from '@/lib/security'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent } from '@/lib/identity-resolver'
 import { verifyEmailWebhookAuth } from '@/lib/email-webhook-auth'
+import { classifyInboundEmailSafety, extractSenderDisplayName } from '@/lib/mail/email-inbound-guard'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,17 +40,20 @@ export async function POST(req: NextRequest) {
   }
 
   // Normalize inbound fields across providers
-  const fromEmail = sanitizeEmail(
-    (payload.from ?? payload.From ?? payload.sender ?? payload.envelopeFrom ?? (payload.headers as Record<string, unknown> | undefined)?.from ?? '') as string,
-  )
-  const fromName = sanitizeText((payload.fromName ?? payload.from_name ?? payload.senderName ?? '') as string, 200)
+  const rawFrom = String(payload.from ?? payload.From ?? payload.sender ?? payload.envelopeFrom ?? (payload.headers as Record<string, unknown> | undefined)?.from ?? '')
+  const fromEmail = sanitizeEmail(rawFrom)
+  const fromName = sanitizeText((payload.fromName ?? payload.from_name ?? payload.senderName ?? '') as string, 200) || extractSenderDisplayName(rawFrom)
   const toEmail = sanitizeEmail((payload.to ?? payload.To ?? payload.recipient ?? payload.envelopeTo ?? '') as string) || null
-  const subject = sanitizeText((payload.subject ?? payload.Subject ?? '') as string, 500)
-  const textBody =
+  const subject = redactSensitiveCrmData(sanitizeText((payload.subject ?? payload.Subject ?? '') as string, 500)).text
+  const rawTextBody =
     sanitizeText((payload.text ?? payload.textBody ?? payload.body ?? payload.plainBody ?? payload.content ?? '') as string, 8000) ||
     sanitizeText((payload.html ?? payload.htmlBody ?? '') as string, 8000)
+  const textBody = redactSensitiveCrmData(rawTextBody).text
   const messageId = sanitizeText((payload.messageId ?? payload.message_id ?? payload.MessageID ?? payload.id ?? payload.inboundId ?? '') as string, 200)
-  const inReplyTo = sanitizeText((payload.inReplyTo ?? payload.in_reply_to ?? (payload.headers as Record<string, unknown> | undefined)?.['in-reply-to'] ?? '') as string, 500)
+  const payloadHeaders = (payload.headers && typeof payload.headers === 'object' && !Array.isArray(payload.headers))
+    ? (payload.headers as Record<string, string | null | undefined>)
+    : undefined
+  const inReplyTo = sanitizeText((payload.inReplyTo ?? payload.in_reply_to ?? payloadHeaders?.['in-reply-to'] ?? '') as string, 500)
   const references = sanitizeText((payload.references ?? payload.References ?? '') as string, 2000)
 
   if (!fromEmail || !textBody) {
@@ -68,6 +73,39 @@ export async function POST(req: NextRequest) {
   if (!claim.claimed || !claim.receiptId || !claim.claimToken) return Response.json({ ok: true })
 
   try {
+    // Bounce, self-sender (info@bdtech360.com / @bdtech360.com), and RFC 3834 loop protection
+    const safety = classifyInboundEmailSafety({
+      fromEmail,
+      subject,
+      body: textBody,
+      headers: payloadHeaders,
+    })
+    if (!safety.allowProcess) {
+      if (safety.classification === 'BOUNCE_NOTIFICATION') {
+        if (inReplyTo) {
+          await db.communication.updateMany({
+            where: { providerMessageId: inReplyTo, direction: 'OUT' },
+            data: { status: 'FAILED', error: 'Bounce notification received from mail system' },
+          }).catch(() => null)
+        }
+        await logError({
+          source: 'WEBHOOK',
+          code: 'EMAIL_BOUNCE_RECEIVED',
+          message: `Bounce notification recorded from ${fromEmail}: ${subject.slice(0, 80)}`,
+          workflow: 'EMAIL_IN',
+        }).catch(() => null)
+      } else {
+        await audit({
+          actor: 'webhook:EMAIL',
+          action: 'INBOUND_EMAIL_SUPPRESSED',
+          details: { classification: safety.classification, reason: safety.reason },
+          ip,
+        }).catch(() => null)
+      }
+      await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: null })
+      return Response.json({ ok: true, suppressed: true, classification: safety.classification })
+    }
+
     // Match to client via From email (normalized)
     // Primary: exact Client.email match (the customer replying)
     let clientRow = await db.client.findFirst({
@@ -112,31 +150,23 @@ export async function POST(req: NextRequest) {
     }
 
     if (!clientRow) {
-      // No matching client — log as orphan email, do not create spurious CRM entry
-      await logError({
-        source: 'WEBHOOK',
-        code: 'EMAIL_UNMATCHED_CLIENT',
-        message: `Inbound email from ${fromEmail} could not be matched to a Client ID (subject: ${subject.slice(0, 80)})`,
-        workflow: 'EMAIL_IN',
+      // First-time human customer emailing info@bdtech360.com:
+      // Create canonical CRM Client + TECH-YYYY-NNNNNN + Lead, persist inbound Communication,
+      // send Stage 1 welcome acknowledgment, and run AI business detection.
+      const { intakeLead } = await import('@/lib/journey')
+      const created = await intakeLead({
+        source: 'EMAIL',
+        name: fromName || 'Email Contact',
+        email: fromEmail,
+        preferredContact: 'Email',
+        contactConsent: true,
+        message: subject ? `${subject}\n\n${textBody}` : textBody,
+        providerMessageId: eventId,
+        tracking: { source: 'INBOUND_EMAIL_WEBHOOK', inReplyTo: inReplyTo || null },
       })
-      await db.communication
-        .create({
-          data: {
-            clientId: null,
-            channel: 'EMAIL',
-            direction: 'IN',
-            sender: fromEmail,
-            recipient: toEmail ?? 'info@bdtech360.com',
-            subject,
-            body: textBody.slice(0, 8000),
-            providerMessageId: eventId,
-            status: 'RECEIVED',
-            metadata: JSON.stringify({ fromName, inReplyTo, orphan: true }),
-          },
-        })
-        .catch(() => null)
-      await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: null })
-      return Response.json({ ok: true, matched: false })
+      await audit({ actor: 'webhook:EMAIL', action: 'NEW_LEAD_FROM_EMAIL', clientId: created.clientId, ip })
+      await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: created.clientRowId })
+      return Response.json({ ok: true, matched: false, createdLead: true, clientId: created.clientId })
     }
 
     // Matched — persist inbound against correct client + thread
@@ -228,9 +258,10 @@ export async function POST(req: NextRequest) {
           })
           if (!res.result.ok) {
             await logError({ source: 'WEBHOOK', code: `EMAIL_SEND_${res.result.status}`, message: res.result.error ?? 'Email send failed', clientId: clientRow.clientId }).catch(() => null)
+          } else {
+            const { recordOutbound } = await import('@/lib/conversation-state')
+            await recordOutbound(clientRow.id, clientRow.clientId, emailBody, 'EMAIL', clientRow.pipelineStage, result.nextAction, result.nextActor, result.nextDueDate).catch(() => null)
           }
-          const { recordOutbound } = await import('@/lib/conversation-state')
-          await recordOutbound(clientRow.id, clientRow.clientId, result.reply, 'EMAIL').catch(() => null)
         }
       } catch (replyError) {
         await logError({ source: 'WEBHOOK', code: 'EMAIL_REPLY_FAILED', message: replyError instanceof Error ? replyError.message : String(replyError), workflow: 'EMAIL_REPLY' }).catch(() => null)

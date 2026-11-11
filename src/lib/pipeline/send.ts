@@ -19,8 +19,9 @@
 
 import { db } from '@/lib/db'
 import { sendCommunication } from '@/lib/comms'
+import { recordOutbound } from '@/lib/conversation-state'
 import { audit, logError } from '@/lib/security'
-import { pipelineMessage, renderEmailBody, type PipelineMessage, type PipelineMessageStage, type PipelineVariables } from './templates'
+import { pipelineMessage, pipelineMessageForChannel, renderEmailBody, validatePipelineVariables, type PipelineChannelKind, type PipelineMessage, type PipelineMessageStage, type PipelineVariables } from './templates'
 import {
   assertNoSensitiveFilesInPublicContent,
   classifyContentCategory,
@@ -31,7 +32,7 @@ import {
   type MessageGate,
 } from './rules'
 
-export type PipelineChannel = 'WHATSAPP' | 'SMS' | 'EMAIL'
+export type PipelineChannel = PipelineChannelKind
 
 /**
  * The agent that owns each channel.
@@ -39,16 +40,23 @@ export type PipelineChannel = 'WHATSAPP' | 'SMS' | 'EMAIL'
  * These are the existing catalogue codes — the WhatsApp agent, the SMS
  * agent and the email agent — so a pipeline message is attributed to
  * the agent that owns its channel, exactly as the pre-pipeline code
- * did.
+ * did. WebChat and social channels are owned by the communication and
+ * social-inbox agents.
  */
 export const PIPELINE_AGENT_BY_CHANNEL: Record<PipelineChannel, string> = {
   WHATSAPP: 'WAP-011',
   SMS: 'SMS-013',
   EMAIL: 'EML-012',
+  WEB: 'COM-010',
+  FACEBOOK: 'SOC-014',
+  INSTAGRAM: 'SOC-014',
+  LINKEDIN: 'SOC-014',
+  X: 'SOC-014',
+  MESSENGER: 'SOC-014',
 }
 
 export type PipelineDelivery = {
-  channel: PipelineChannel | 'WEB'
+  channel: PipelineChannel
   status: string
   ok: boolean
   communicationId: string | null
@@ -85,6 +93,27 @@ export type PipelineSendRequest = {
    * satisfied and the message is sent.
    */
   approved?: boolean
+  /** Optional conversation-state expectation recorded only after provider acceptance. */
+  nextPendingAction?: string
+  nextPendingActor?: 'CLIENT' | 'TECH360'
+  dueDate?: string | null
+  followUpStage?: string
+}
+
+const DEFAULT_STAGE_NEXT_ACTOR: Record<PipelineMessageStage, 'CLIENT' | 'TECH360'> = {
+  FIRST_MESSAGE: 'CLIENT',
+  BUSINESS_TYPE_RECEIVED: 'CLIENT',
+  SCOPE_DETAILS_RECEIVED: 'TECH360',
+  FINAL_SCOPE_APPROVED: 'CLIENT',
+  MEETING_REQUESTED: 'CLIENT',
+  SCOPE_APPROVED: 'TECH360',
+  HTML_PREVIEW_SENT: 'CLIENT',
+  REVISION_REQUESTED: 'TECH360',
+  HTML_PREVIEW_APPROVED: 'CLIENT',
+  PAYMENT_RECEIVED: 'TECH360',
+  FINAL_DELIVERY_READY: 'TECH360',
+  FINAL_DELIVERY_COMPLETED: 'CLIENT',
+  PROJECT_CLOSED: 'TECH360',
 }
 
 // ------------------------------------------------------------
@@ -117,7 +146,12 @@ export function resolveChannels(client: ClientContact, requested?: PipelineChann
   const wantsSms = /SMS|PHONE|CALL/i.test(client.source ?? '') || (client.preferredContact ?? '').toUpperCase() === 'SMS'
   if (client.phone && wantsSms) available.push('SMS')
   if (!requested || requested.length === 0) return available
-  return requested.filter((channel) => available.includes(channel))
+  // WEB is available on explicit request: the CRM timeline / chat
+  // transcript is the delivery channel and needs no external address.
+  // Social channels are likewise honoured when explicitly requested;
+  // dispatch reports NOT_CONFIGURED honestly until a provider is connected.
+  const alwaysAvailable: PipelineChannel[] = ['WEB', 'FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'X', 'MESSENGER']
+  return requested.filter((channel) => available.includes(channel) || alwaysAvailable.includes(channel))
 }
 
 // ------------------------------------------------------------
@@ -127,6 +161,16 @@ export function resolveChannels(client: ClientContact, requested?: PipelineChann
 export async function sendPipelineMessage(request: PipelineSendRequest): Promise<PipelineSendResult> {
   const client = await db.client.findUnique({ where: { id: request.clientRowId } })
   if (!client) throw new Error('Client not found')
+
+  // Placeholder validation — refuse to compose/send when a required
+  // variable for this stage is missing. The message is never sent with
+  // an empty [CLIENT_ID], [FINAL_SCOPE], [MEETING_LINK] or [HTML_PREVIEW_URL].
+  const validation = validatePipelineVariables(request.stage, request.variables)
+  if (!validation.ok) {
+    throw new Error(
+      `Missing required variables for ${request.stage}: ${validation.missing.join(', ')}. Refusing to send.`,
+    )
+  }
 
   const composed = pipelineMessage(request.stage, request.variables)
   const messages = {
@@ -251,7 +295,38 @@ export async function sendPipelineMessage(request: PipelineSendRequest): Promise
   }
 
   for (const channel of channels) {
-    const message = channel === 'EMAIL' ? messages.email : messages.whatsapp
+    // Channel-aware copy: SMS is shorter, WEB is conversational, social
+    // is short platform copy, EMAIL carries subject + HTML.
+    const message = pipelineMessageForChannel(request.stage, channel, request.variables)
+    const screened = screenAiContent(message.body)
+    if (screened.redacted.length > 0) redactedAll.push(...screened.redacted)
+    message.body = screened.text
+    assertNoSensitiveFilesInPublicContent(message.body)
+    if (channel === 'EMAIL') message.html = renderEmailBody(message.body)
+
+    // WEB: the persisted chat transcript IS the delivery channel. Save the
+    // message to the CRM timeline as DELIVERED; no external provider exists.
+    if (channel === 'WEB') {
+      const comm = await db.communication.create({
+        data: {
+          clientId: client.id,
+          channel: 'WEB',
+          direction: 'OUT',
+          recipient: 'TECH360 Live Chat',
+          body: message.body.slice(0, 20000),
+          agentCode: PIPELINE_AGENT_BY_CHANNEL[channel],
+          workflowId: request.workflowId ?? null,
+          approvalId: request.approvalId ?? null,
+          templateName: request.stage,
+          messageType: 'TEMPLATE',
+          status: 'DELIVERED',
+          metadata: JSON.stringify({ stage: request.stage, plainText: message.body.slice(0, 20000) }),
+        },
+      })
+      deliveries.push({ channel, status: 'DELIVERED', ok: true, communicationId: comm.id, redacted: redactedAll })
+      continue
+    }
+
     const to = channel === 'EMAIL' ? client.email : channel === 'WHATSAPP' ? client.whatsapp : client.phone
     if (!to) {
       deliveries.push({ channel, status: 'NOT_CONFIGURED', ok: false, communicationId: null, redacted: redactedAll, error: 'No recipient address for this channel.' })
@@ -286,6 +361,21 @@ export async function sendPipelineMessage(request: PipelineSendRequest): Promise
       redacted: redactedAll,
       error: result.result.error,
     })
+  }
+
+  const acceptedDelivery = deliveries.find((delivery) => delivery.ok)
+  if (acceptedDelivery) {
+    const acceptedBody = acceptedDelivery.channel === 'EMAIL' ? messages.email.body : messages.whatsapp.body
+    await recordOutbound(
+      client.id,
+      client.clientId,
+      acceptedBody,
+      acceptedDelivery.channel,
+      request.followUpStage ?? client.pipelineStage,
+      request.nextPendingAction,
+      request.nextPendingActor ?? DEFAULT_STAGE_NEXT_ACTOR[request.stage],
+      request.dueDate,
+    ).catch(() => null)
   }
 
   const accepted = deliveries.filter((d) => d.ok).length

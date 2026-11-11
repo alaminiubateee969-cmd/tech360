@@ -30,8 +30,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.ref == 'refs/heads/main' && format('ci-main-{0}', github.sha) || format('ci-{0}-{1}', github.event_name, github.ref) }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -126,6 +126,22 @@ jobs:
 
       - name: Reject unresolved merge-conflict markers
         run: node scripts/check-conflict-markers.mjs
+
+      # Every image the 20 industry payloads advertise must be a committed,
+      # self-hosted file. This gate exists because 81 of 81 previously pointed
+      # at files that were never committed (plus one hardcoded dev path).
+      - name: Verify industry payload assets exist under public/
+        run: node scripts/verify-industry-assets.mjs
+
+      # A published migration is a contract with every database that already
+      # applied it: Prisma records migrations BY NAME, so renaming one makes
+      # already-migrated databases re-attempt it from scratch, fail, and then
+      # refuse every later migration with P3009 (the 93_post_review_grid
+      # incident — docs/HOSTINGER_SSH_RECOVERY.md §5). New migrations must also
+      # sort after the published ones, because Prisma applies them in
+      # directory-name order.
+      - name: Published migrations are immutable and correctly ordered
+        run: node scripts/check-migration-immutability.mjs
 
       - name: Verify the scoped Next ESLint glob API
         run: |
@@ -410,7 +426,7 @@ jobs:
           www_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-www.headers | tr -d '\r')"
           test "$www_status" = 308
           test "$www_location" = 'https://bdtech360.com/'
-          http_status="$(curl -sS -D /tmp/tech360-http.headers -o /dev/null -w '%{http_code}' -H 'x-forwarded-proto: http' "http://127.0.0.1:$PORT/")"
+          http_status="$(curl -sS -D /tmp/tech360-http.headers -o /dev/null -w '%{http_code}' -H 'Host: bdtech360.com' -H 'x-forwarded-proto: http' "http://127.0.0.1:$PORT/")"
           http_location="$(awk 'tolower($1) == "location:" { print $2 }' /tmp/tech360-http.headers | tr -d '\r')"
           test "$http_status" = 308
           test "$http_location" = 'https://bdtech360.com/'

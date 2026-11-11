@@ -21,7 +21,7 @@ const TRANSITIONS: Record<string, { stage: Stage; status: Status; note: string; 
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'SUPER_ADMIN' })
   if (isResponse(g)) return g
   const { id } = await params
 
@@ -52,7 +52,7 @@ function safeParse(value: string): unknown {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'ADMIN' })
+  const g = await guard(req, { minRole: 'SUPER_ADMIN' })
   if (isResponse(g)) return g
   const { id } = await params
 
@@ -61,14 +61,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const note = sanitizeText(body.note ?? '', 500)
   const transition = TRANSITIONS[action]
   if (!transition) return Response.json({ error: `Unknown action “${action}”.` }, { status: 400 })
-  if (transition.requiresAdmin && !['ADMIN', 'SUPER_ADMIN'].includes(String(g.user.role))) {
-    return Response.json({ error: 'Approval, delivery and handover are admin actions.' }, { status: 403 })
+  if (transition.requiresAdmin && String(g.user.role) !== 'SUPER_ADMIN') {
+    return Response.json({ error: 'Approval, delivery and handover require Super Admin authorization.' }, { status: 403 })
   }
 
   const app = await db.generatedApp.findUnique({ where: { id: sanitizeText(id, 40) } })
   if (!app) return Response.json({ error: 'Generated app not found.' }, { status: 404 })
   if (app.status === 'DELIVERED' && action !== 'handover') {
     return Response.json({ error: 'This app is already delivered. Handover is the only remaining transition.' }, { status: 409 })
+  }
+  if (app.status === 'APPROVED' && ['plan', 'build', 'preview'].includes(action)) {
+    return Response.json({ error: 'This app is already approved and cannot be re-planned or rolled back to build/preview.' }, { status: 409 })
   }
   if (action === 'deliver' && app.status !== 'APPROVED') {
     return Response.json({ error: 'The TECH360 admin review must be approved before delivery can be recorded.' }, { status: 409 })
@@ -102,6 +105,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   // `plan` regenerates the blueprint and the source tree from the stored brief.
+  let regeneratedPlan: {
+    brief: ReturnType<typeof normalizeBrief>
+    plan: ReturnType<typeof buildPlan>
+    files: ReturnType<typeof buildFiles>
+    fileCount: number
+    totalBytes: number
+  } | null = null
   if (action === 'plan') {
     const brief = normalizeBrief(JSON.parse(app.brief) as Record<string, unknown>)
     const plan = buildPlan(brief)
@@ -109,25 +119,52 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const secrets = assertNoSecrets(files)
     if (!secrets.ok) return Response.json({ error: `Regeneration refused: ${secrets.path} contains secret-like content.` }, { status: 500 })
     const { fileCount, totalBytes } = summarizeFiles(files)
-    await db.generatedAppFile.deleteMany({ where: { appId: app.id } })
-    await db.generatedAppFile.createMany({
-      data: files.map((f) => ({ appId: app.id, path: f.path, language: f.language, bytes: Buffer.byteLength(f.content, 'utf8'), content: f.content })),
-    })
-    await db.generatedApp.update({ where: { id: app.id }, data: { plan: JSON.stringify(plan), brief: JSON.stringify(brief), fileCount, totalBytes } })
+    regeneratedPlan = { brief, plan, files, fileCount, totalBytes }
   }
 
-  const updated = await db.generatedApp.update({
-    where: { id: app.id },
-    data: {
-      stage: transition.stage,
-      status: transition.status,
-      ...(action === 'deliver' || action === 'handover' ? { deliveredAt: new Date() } : {}),
-    },
+  const updated = await db.$transaction(async (tx) => {
+    const claimed = await tx.generatedApp.updateMany({
+      where: { id: app.id, status: app.status },
+      data: {
+        stage: transition.stage,
+        status: transition.status,
+        ...(regeneratedPlan
+          ? {
+              plan: JSON.stringify(regeneratedPlan.plan),
+              brief: JSON.stringify(regeneratedPlan.brief),
+              fileCount: regeneratedPlan.fileCount,
+              totalBytes: regeneratedPlan.totalBytes,
+            }
+          : {}),
+        ...(action === 'deliver' || action === 'handover' ? { deliveredAt: new Date() } : {}),
+      },
+    })
+    if (claimed.count === 0) return null
+
+    if (regeneratedPlan) {
+      await tx.generatedAppFile.deleteMany({ where: { appId: app.id } })
+      await tx.generatedAppFile.createMany({
+        data: regeneratedPlan.files.map((f) => ({
+          appId: app.id,
+          path: f.path,
+          language: f.language,
+          bytes: Buffer.byteLength(f.content, 'utf8'),
+          content: f.content,
+        })),
+      })
+    }
+
+    await tx.generatedAppEvent.create({
+      data: { appId: app.id, stage: transition.stage, status: transition.status, note: note || transition.note, actor: g.user.email },
+    })
+
+    return tx.generatedApp.findUnique({ where: { id: app.id } })
   })
 
-  await db.generatedAppEvent.create({
-    data: { appId: app.id, stage: transition.stage, status: transition.status, note: note || transition.note, actor: g.user.email },
-  })
+  if (!updated) {
+    return Response.json({ error: 'App state changed concurrently; reload and retry.' }, { status: 409 })
+  }
+
   await audit({ actor: g.user.email, action: `FACTORY_APP_${action.toUpperCase()}`, userId: g.user.id, details: `${app.code} → ${transition.status}` })
 
   return Response.json({ app: updated, transition: { action, ...transition } })

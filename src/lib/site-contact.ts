@@ -43,3 +43,6 @@ export const COMPANY_CONTACT = {
   ein: '98-1940053',
   founded: 2021,
 } as const
+
+/** Canonical public origin used by metadata, sitemaps, Markdown and agents. */
+export const SITE_URL = (process.env.APP_PUBLIC_URL ?? PUBLIC_CONTACT.url).replace(/\/+$/, '')

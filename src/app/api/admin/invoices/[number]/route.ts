@@ -2,10 +2,10 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { hasCapability } from '@/lib/access-policy'
 import { guard, isResponse } from '@/lib/api-guard'
-import { channelConfigured, escapeHtml, sendCommunication } from '@/lib/comms'
+import { channelConfigured, sendCommunication } from '@/lib/comms'
 import { acceptedMethodsPhrase, featureEnabled } from '@/lib/features'
 import { nextInvoiceNumber } from '@/lib/ids'
-import { DOCUMENT_HTML_HEADERS, renderInvoiceDocumentHtml } from '@/lib/invoice-document'
+import { DOCUMENT_HTML_HEADERS, renderInvoiceDocumentHtml, renderInvoiceEmailBodyHtml } from '@/lib/invoice-document'
 import {
   canEditInvoiceFields,
   canTransitionInvoiceStatus,
@@ -56,14 +56,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ numb
 
   if (req.nextUrl.searchParams.get('format') === 'html') {
     const phrase = await acceptedMethodsPhrase()
+    let branding: import('@/lib/document-branding').DocumentBrandingConfig | null = null
+    try {
+      const { getDocumentBranding } = await import('@/lib/document-branding')
+      branding = await getDocumentBranding()
+    } catch { branding = null }
     const html = renderInvoiceDocumentHtml(
       {
         ...invoice,
+        status: settlement.nextStatus,
         totalMinor,
         paidMinor: settlement.paidMinor,
         remainingMinor: settlement.remainingMinor,
       },
       phrase,
+      branding,
     )
     return new Response(html, { status: 200, headers: DOCUMENT_HTML_HEADERS })
   }
@@ -71,6 +78,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ numb
   return Response.json({
     invoice: {
       ...invoice,
+      effectiveStatus: settlement.nextStatus,
       totalMinor,
       paidMinor: settlement.paidMinor,
       remainingMinor: settlement.remainingMinor,
@@ -180,45 +188,56 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
     const internalNotes =
       raw.internalNotes !== undefined ? sanitizeText(raw.internalNotes, 2000) || null : invoice.internalNotes
 
-    const updated = await db.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        currency: calc.currency,
-        amount: calc.totalMajor,
-        subtotalMinor: calc.subtotalMinor,
-        discountMinor: calc.discountMinor,
-        discountReason,
-        taxRateBps: calc.taxRateBps,
-        taxLabel: calc.taxLabel,
-        taxMinor: calc.taxMinor,
-        totalMinor: calc.totalMinor,
-        lineItems: JSON.stringify(calc.lineItems),
-        description: raw.description !== undefined ? sanitizeText(raw.description, 4000) || null : invoice.description,
-        billingName: raw.billingName !== undefined ? sanitizeText(raw.billingName, 120) || invoice.client.name : invoice.billingName,
-        billingBusiness: raw.billingBusiness !== undefined ? sanitizeText(raw.billingBusiness, 160) || null : invoice.billingBusiness,
-        billingEmail: raw.billingEmail !== undefined ? sanitizeEmail(raw.billingEmail) || null : invoice.billingEmail,
-        billingAddress: raw.billingAddress !== undefined ? sanitizeText(raw.billingAddress, 500) || null : invoice.billingAddress,
-        billingCountry: raw.billingCountry !== undefined ? sanitizeText(raw.billingCountry, 80) || null : invoice.billingCountry,
-        paymentTerms: raw.paymentTerms !== undefined ? sanitizeText(raw.paymentTerms, 1000) || null : invoice.paymentTerms,
-        customerNotes,
-        notes: customerNotes,
-        internalNotes,
-        dueAt,
-        updatedAt: new Date(),
-      },
+    const now = new Date()
+    const transition = await db.$transaction(async (tx) => {
+      const changed = await tx.invoice.updateMany({
+        where: { id: invoice.id, status: invoice.status },
+        data: {
+          currency: calc.currency,
+          amount: calc.totalMajor,
+          subtotalMinor: calc.subtotalMinor,
+          discountMinor: calc.discountMinor,
+          discountReason,
+          taxRateBps: calc.taxRateBps,
+          taxLabel: calc.taxLabel,
+          taxMinor: calc.taxMinor,
+          totalMinor: calc.totalMinor,
+          lineItems: JSON.stringify(calc.lineItems),
+          description: raw.description !== undefined ? sanitizeText(raw.description, 4000) || null : invoice.description,
+          billingName: raw.billingName !== undefined ? sanitizeText(raw.billingName, 120) || invoice.client.name : invoice.billingName,
+          billingBusiness: raw.billingBusiness !== undefined ? sanitizeText(raw.billingBusiness, 160) || null : invoice.billingBusiness,
+          billingEmail: raw.billingEmail !== undefined ? sanitizeEmail(raw.billingEmail) || null : invoice.billingEmail,
+          billingAddress: raw.billingAddress !== undefined ? sanitizeText(raw.billingAddress, 500) || null : invoice.billingAddress,
+          billingCountry: raw.billingCountry !== undefined ? sanitizeText(raw.billingCountry, 80) || null : invoice.billingCountry,
+          paymentTerms: raw.paymentTerms !== undefined ? sanitizeText(raw.paymentTerms, 1000) || null : invoice.paymentTerms,
+          customerNotes,
+          notes: customerNotes,
+          internalNotes,
+          dueAt,
+          updatedAt: now,
+        },
+      })
+      if (changed.count !== 1) return { changed: false as const, invoice: null }
+      const updated = await tx.invoice.findUnique({ where: { id: invoice.id } })
+      await tx.auditLog.create({
+        data: {
+          userId: g.user.id,
+          actor: g.user.email,
+          action: 'INVOICE_DRAFT_UPDATED',
+          entityType: 'Invoice',
+          entityId: invoice.id,
+          clientId: invoice.client.clientId,
+          projectId: invoice.projectId,
+          details: JSON.stringify({ number: invoice.number, totalMinor: calc.totalMinor, currency: calc.currency }).slice(0, 8000),
+          ip: g.ip,
+        },
+      })
+      return { changed: true as const, invoice: updated }
     })
-
-    await audit({
-      userId: g.user.id,
-      actor: g.user.email,
-      action: 'INVOICE_DRAFT_UPDATED',
-      entityType: 'Invoice',
-      entityId: invoice.id,
-      clientId: invoice.client.clientId,
-      details: { number: invoice.number, totalMinor: calc.totalMinor, currency: calc.currency },
-      ip: g.ip,
-    })
-    return Response.json({ ok: true, invoice: updated })
+    if (!transition.changed) {
+      return Response.json({ error: 'Invoice changed during this request; reload and review its current state.' }, { status: 409 })
+    }
+    return Response.json({ ok: true, invoice: transition.invoice })
   }
 
   // ---------------- 2. SUBMIT FOR APPROVAL ----------------
@@ -226,21 +245,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
     if (!canTransitionInvoiceStatus(invoice.status, 'AWAITING_APPROVAL')) {
       return Response.json({ error: `Cannot submit ${invoice.status} invoice for approval.` }, { status: 409 })
     }
-    const updated = await db.invoice.update({
-      where: { id: invoice.id },
-      data: { status: 'AWAITING_APPROVAL', updatedAt: new Date() },
+    const now = new Date()
+    const transition = await db.$transaction(async (tx) => {
+      const changed = await tx.invoice.updateMany({
+        where: { id: invoice.id, status: invoice.status },
+        data: { status: 'AWAITING_APPROVAL', updatedAt: now },
+      })
+      if (changed.count !== 1) return { changed: false as const, invoice: null }
+      const updated = await tx.invoice.findUnique({ where: { id: invoice.id } })
+      await tx.auditLog.create({
+        data: {
+          userId: g.user.id,
+          actor: g.user.email,
+          action: 'INVOICE_SUBMITTED_FOR_APPROVAL',
+          entityType: 'Invoice',
+          entityId: invoice.id,
+          clientId: invoice.client.clientId,
+          projectId: invoice.projectId,
+          details: JSON.stringify({ number: invoice.number, from: invoice.status, to: 'AWAITING_APPROVAL' }).slice(0, 8000),
+          ip: g.ip,
+        },
+      })
+      return { changed: true as const, invoice: updated }
     })
-    await audit({
-      userId: g.user.id,
-      actor: g.user.email,
-      action: 'INVOICE_SUBMITTED_FOR_APPROVAL',
-      entityType: 'Invoice',
-      entityId: invoice.id,
-      clientId: invoice.client.clientId,
-      details: { number: invoice.number },
-      ip: g.ip,
-    })
-    return Response.json({ ok: true, invoice: updated })
+    if (!transition.changed) {
+      return Response.json({ error: 'Invoice changed during this request; reload and review its current state.' }, { status: 409 })
+    }
+    return Response.json({ ok: true, invoice: transition.invoice })
   }
 
   // ---------------- 3. APPROVE ----------------
@@ -251,28 +282,40 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
     if (!canTransitionInvoiceStatus(invoice.status, 'APPROVED')) {
       return Response.json({ error: `Cannot approve ${invoice.status} invoice.` }, { status: 409 })
     }
+    const now = new Date()
     const methodsSnapshot = (await acceptedMethodsPhrase()) || 'Not Configured — Payment setup required'
-    const updated = await db.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        status: 'APPROVED',
-        approvedBy: g.user.email,
-        approvedAt: new Date(),
-        paymentMethodsSnapshot: methodsSnapshot,
-        updatedAt: new Date(),
-      },
+    const transition = await db.$transaction(async (tx) => {
+      const changed = await tx.invoice.updateMany({
+        where: { id: invoice.id, status: invoice.status },
+        data: {
+          status: 'APPROVED',
+          approvedBy: g.user.email,
+          approvedAt: now,
+          paymentMethodsSnapshot: methodsSnapshot,
+          updatedAt: now,
+        },
+      })
+      if (changed.count !== 1) return { changed: false as const, invoice: null }
+      const updated = await tx.invoice.findUnique({ where: { id: invoice.id } })
+      await tx.auditLog.create({
+        data: {
+          userId: g.user.id,
+          actor: g.user.email,
+          action: 'INVOICE_APPROVED',
+          entityType: 'Invoice',
+          entityId: invoice.id,
+          clientId: invoice.client.clientId,
+          projectId: invoice.projectId,
+          details: JSON.stringify({ number: invoice.number, from: invoice.status, to: 'APPROVED', totalMinor }).slice(0, 8000),
+          ip: g.ip,
+        },
+      })
+      return { changed: true as const, invoice: updated }
     })
-    await audit({
-      userId: g.user.id,
-      actor: g.user.email,
-      action: 'INVOICE_APPROVED',
-      entityType: 'Invoice',
-      entityId: invoice.id,
-      clientId: invoice.client.clientId,
-      details: { number: invoice.number, totalMinor },
-      ip: g.ip,
-    })
-    return Response.json({ ok: true, invoice: updated })
+    if (!transition.changed) {
+      return Response.json({ error: 'Invoice changed during this request; reload and review its current state.' }, { status: 409 })
+    }
+    return Response.json({ ok: true, invoice: transition.invoice })
   }
 
   // ---------------- 4. ISSUE (make visible in Client Portal without faking email) ----------------
@@ -282,33 +325,44 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
     }
     const now = new Date()
     const methodsSnapshot = (await acceptedMethodsPhrase()) || 'Not Configured — Payment setup required'
-    const updated = await db.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        status: 'ISSUED',
-        approvedBy: invoice.approvedBy ?? g.user.email,
-        approvedAt: invoice.approvedAt ?? now,
-        issuedAt: now,
-        paymentMethodsSnapshot: methodsSnapshot,
-        updatedAt: now,
-      },
+    const transition = await db.$transaction(async (tx) => {
+      const changed = await tx.invoice.updateMany({
+        where: { id: invoice.id, status: invoice.status },
+        data: {
+          status: 'ISSUED',
+          approvedBy: invoice.approvedBy ?? g.user.email,
+          approvedAt: invoice.approvedAt ?? now,
+          issuedAt: now,
+          paymentMethodsSnapshot: methodsSnapshot,
+          updatedAt: now,
+        },
+      })
+      if (changed.count !== 1) return { changed: false as const, invoice: null }
+      const updated = await tx.invoice.findUnique({ where: { id: invoice.id } })
+      await tx.auditLog.create({
+        data: {
+          userId: g.user.id,
+          actor: g.user.email,
+          action: 'INVOICE_ISSUED',
+          entityType: 'Invoice',
+          entityId: invoice.id,
+          clientId: invoice.client.clientId,
+          projectId: invoice.projectId,
+          details: JSON.stringify({ number: invoice.number, from: invoice.status, to: 'ISSUED', totalMinor, paymentMethodsSnapshot: methodsSnapshot }).slice(0, 8000),
+          ip: g.ip,
+        },
+      })
+      return { changed: true as const, invoice: updated }
     })
-    await audit({
-      userId: g.user.id,
-      actor: g.user.email,
-      action: 'INVOICE_ISSUED',
-      entityType: 'Invoice',
-      entityId: invoice.id,
-      clientId: invoice.client.clientId,
-      details: { number: invoice.number, totalMinor, paymentMethodsSnapshot: methodsSnapshot },
-      ip: g.ip,
-    })
-    return Response.json({ ok: true, invoice: updated })
+    if (!transition.changed) {
+      return Response.json({ error: 'Invoice changed during this request; reload and review its current state.' }, { status: 409 })
+    }
+    return Response.json({ ok: true, invoice: transition.invoice })
   }
 
   // ---------------- 5. SEND (deliver approved/issued invoice via real configured channel) ----------------
   if (action === 'send') {
-    if (invoice.status === 'VOID' || invoice.status === 'CANCELLED' || invoice.status === 'PAID' || invoice.status === 'REFUNDED') {
+    if (!['APPROVED', 'ISSUED', 'SENT', 'VIEWED', 'PARTIAL', 'OVERDUE'].includes(invoice.status)) {
       return Response.json({ error: `Cannot send a ${invoice.status} invoice.` }, { status: 409 })
     }
 
@@ -365,35 +419,39 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
       (customerNote ? `Notes: ${customerNote}\n` : '') +
       `View your official invoice in the Client Portal: ${portalUrl}`
 
-    const deliveries: Array<{ channel: string; status: string; providerId?: string }> = []
+    const deliveries: Array<{ channel: string; status: string; providerId?: string; communicationId?: string }> = []
     if (emailReady && recipientEmail) {
-      const { result } = await sendCommunication({
+      let branding: Awaited<ReturnType<typeof import('@/lib/document-branding').getDocumentBranding>> | null = null
+      try {
+        const { getDocumentBranding } = await import('@/lib/document-branding')
+        branding = await getDocumentBranding()
+      } catch { branding = null }
+      const emailHtml = renderInvoiceEmailBodyHtml(
+        {
+          ...invoice,
+          status: settlement.nextStatus,
+          totalMinor,
+          paidMinor: settlement.paidMinor,
+          remainingMinor: settlement.remainingMinor,
+        },
+        methodsPhrase,
+        branding,
+      )
+      const { communicationId, result } = await sendCommunication({
         clientId: invoice.client.id,
         channel: 'EMAIL',
         to: recipientEmail,
         subject: `Invoice ${invoice.number} — ${invoice.currency} ${invoice.amount.toFixed(2)} (${PAD.legalName})`,
-        body:
-          `<p>Dear ${escapeHtml(invoice.billingName || invoice.client.name)},</p>` +
-          `<p>Please find your official invoice <strong>${escapeHtml(invoice.number)}</strong> below.</p>` +
-          `<table style="border-collapse:collapse;margin:14px 0;font-size:14px">` +
-          `<tr><td style="padding:5px 14px 5px 0;color:#64748B">Client ID</td><td><strong>${escapeHtml(invoice.client.clientId)}</strong></td></tr>` +
-          (invoice.project ? `<tr><td style="padding:5px 14px 5px 0;color:#64748B">Project</td><td>${escapeHtml(invoice.project.code)} — ${escapeHtml(invoice.project.name)}</td></tr>` : '') +
-          `<tr><td style="padding:5px 14px 5px 0;color:#64748B">Total</td><td><strong>${escapeHtml(invoice.currency)} ${invoice.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td></tr>` +
-          `<tr><td style="padding:5px 14px 5px 0;color:#64748B">Balance Due</td><td><strong>${escapeHtml(invoice.currency)} ${settlement.remainingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td></tr>` +
-          `<tr><td style="padding:5px 14px 5px 0;color:#64748B">Due Date</td><td>${escapeHtml(dueStr)}</td></tr>` +
-          `<tr><td style="padding:5px 14px 5px 0;color:#64748B">Payment Methods</td><td>${escapeHtml(methodsPhrase)}</td></tr>` +
-          `</table>` +
-          (customerNote ? `<p style="color:#334155">${escapeHtml(customerNote)}</p>` : '') +
-          `<p><a href="${escapeHtml(portalUrl)}" style="color:#009FE3;font-weight:600">Sign in to the TECH360 Client Portal to view or print your full itemized invoice</a></p>`,
+        body: emailHtml,
         storedBody: plain,
         templateName: 'INVOICE_SEND',
         messageType: 'DOCUMENT',
         metadata: JSON.stringify({ invoiceId: invoice.id, invoiceNumber: invoice.number, revision: invoice.revision }),
       })
-      deliveries.push({ channel: 'EMAIL', status: result.status, providerId: result.providerMessageId })
+      deliveries.push({ channel: 'EMAIL', status: result.status, providerId: result.providerMessageId, communicationId })
     }
     if (whatsappReady && recipientPhone) {
-      const { result } = await sendCommunication({
+      const { communicationId, result } = await sendCommunication({
         clientId: invoice.client.id,
         channel: 'WHATSAPP',
         to: recipientPhone,
@@ -402,11 +460,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
         messageType: 'DOCUMENT',
         metadata: JSON.stringify({ invoiceId: invoice.id, invoiceNumber: invoice.number, revision: invoice.revision }),
       })
-      deliveries.push({ channel: 'WHATSAPP', status: result.status, providerId: result.providerMessageId })
+      deliveries.push({ channel: 'WHATSAPP', status: result.status, providerId: result.providerMessageId, communicationId })
     }
 
-    const anySent = deliveries.some((d) => d.status === 'SENT' || d.status === 'DELIVERED')
-    if (!anySent) {
+    const accepted = deliveries.some((d) => d.status === 'SENT' || d.status === 'SENT_PLATFORM' || d.status === 'DELIVERED')
+    if (!accepted) {
       await audit({
         userId: g.user.id,
         actor: g.user.email,
@@ -429,17 +487,35 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
     }
 
     const now = new Date()
-    const nextStatus = invoice.status === 'PARTIAL' ? 'PARTIAL' : 'SENT'
-    const updated = await db.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        status: nextStatus,
-        approvedBy: invoice.approvedBy ?? g.user.email,
-        approvedAt: invoice.approvedAt ?? now,
-        sentAt: now,
-        paymentMethodsSnapshot: methodsPhrase,
-        updatedAt: now,
-      },
+    const targetStatus = invoice.status === 'PARTIAL' ? 'PARTIAL' : 'SENT'
+    const acceptedSend = await db.$transaction(async (tx) => {
+      const changed = await tx.invoice.updateMany({
+        where: { id: invoice.id, status: invoice.status },
+        data: {
+          status: targetStatus,
+          approvedBy: invoice.approvedBy ?? g.user.email,
+          approvedAt: invoice.approvedAt ?? now,
+          sentAt: now,
+          paymentMethodsSnapshot: methodsPhrase,
+          updatedAt: now,
+        },
+      })
+      if (changed.count !== 1) return { invoiceStatusUpdated: false as const, invoice: null }
+      const updated = await tx.invoice.findUnique({ where: { id: invoice.id } })
+      await tx.auditLog.create({
+        data: {
+          userId: g.user.id,
+          actor: g.user.email,
+          action: 'INVOICE_STATUS_PROVIDER_ACCEPTED',
+          entityType: 'Invoice',
+          entityId: invoice.id,
+          clientId: invoice.client.clientId,
+          projectId: invoice.projectId,
+          details: JSON.stringify({ number: invoice.number, from: invoice.status, to: targetStatus, deliveries }).slice(0, 8000),
+          ip: g.ip,
+        },
+      })
+      return { invoiceStatusUpdated: true as const, invoice: updated }
     })
 
     await audit({
@@ -449,11 +525,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
       entityType: 'Invoice',
       entityId: invoice.id,
       clientId: invoice.client.clientId,
-      details: { number: invoice.number, deliveries },
+      details: { number: invoice.number, deliveries, invoiceStatusUpdated: acceptedSend.invoiceStatusUpdated },
       ip: g.ip,
     })
 
-    return Response.json({ ok: true, invoice: updated, deliveries })
+    return Response.json({
+      ok: true,
+      invoice: acceptedSend.invoice,
+      invoiceStatusUpdated: acceptedSend.invoiceStatusUpdated,
+      message: acceptedSend.invoiceStatusUpdated
+        ? `Provider accepted invoice ${invoice.number}; email delivery is not confirmed by the provider.`
+        : `Provider accepted invoice ${invoice.number}; its lifecycle status did not update. Check the current invoice before retrying.`,
+      deliveries,
+    })
   }
 
   // ---------------- 6. MARK OVERDUE ----------------
@@ -461,21 +545,44 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
     if (!canTransitionInvoiceStatus(invoice.status, 'OVERDUE')) {
       return Response.json({ error: `Cannot mark ${invoice.status} invoice as OVERDUE.` }, { status: 409 })
     }
-    const updated = await db.invoice.update({
-      where: { id: invoice.id },
-      data: { status: 'OVERDUE', updatedAt: new Date() },
+    const now = new Date()
+    const currentSettlement = computeInvoiceSettlement({
+      invoiceAmount: invoice.amount,
+      invoiceTotalMinor: totalMinor,
+      currentStatus: invoice.status,
+      dueAt: invoice.dueAt,
+      now,
+      payments: invoice.payments,
     })
-    await audit({
-      userId: g.user.id,
-      actor: g.user.email,
-      action: 'INVOICE_MARKED_OVERDUE',
-      entityType: 'Invoice',
-      entityId: invoice.id,
-      clientId: invoice.client.clientId,
-      details: { number: invoice.number },
-      ip: g.ip,
+    if (!invoice.dueAt || invoice.dueAt.getTime() >= now.getTime() || currentSettlement.remainingMinor <= 0 || currentSettlement.nextStatus !== 'OVERDUE') {
+      return Response.json({ error: 'The invoice is not currently overdue based on its due date and verified payments.' }, { status: 409 })
+    }
+    const transition = await db.$transaction(async (tx) => {
+      const changed = await tx.invoice.updateMany({
+        where: { id: invoice.id, status: invoice.status },
+        data: { status: 'OVERDUE', updatedAt: now },
+      })
+      if (changed.count !== 1) return { changed: false as const, invoice: null }
+      const updated = await tx.invoice.findUnique({ where: { id: invoice.id } })
+      await tx.auditLog.create({
+        data: {
+          userId: g.user.id,
+          actor: g.user.email,
+          action: 'INVOICE_MARKED_OVERDUE',
+          entityType: 'Invoice',
+          entityId: invoice.id,
+          clientId: invoice.client.clientId,
+          projectId: invoice.projectId,
+          details: JSON.stringify({ number: invoice.number, from: invoice.status, to: 'OVERDUE' }).slice(0, 8000),
+          ip: g.ip,
+        },
+      })
+      return { changed: true as const, invoice: updated }
     })
-    return Response.json({ ok: true, invoice: updated })
+    if (!transition.changed) {
+      return Response.json({ error: 'Invoice changed during this request; reload and review its current state.' }, { status: 409 })
+    }
+    return Response.json({ ok: true, invoice: transition.invoice })
   }
 
   // ---------------- 7. VOID / CANCEL ----------------
@@ -498,21 +605,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
       return Response.json({ error: 'Provide a void/cancellation reason (min 3 characters).' }, { status: 400 })
     }
     const now = new Date()
-    const updated = await db.invoice.update({
-      where: { id: invoice.id },
-      data: { status: targetStatus, voidedAt: now, voidReason: reason, updatedAt: now },
+    const transition = await db.$transaction(async (tx) => {
+      const changed = await tx.invoice.updateMany({
+        where: { id: invoice.id, status: invoice.status },
+        data: { status: targetStatus, voidedAt: now, voidReason: reason, updatedAt: now },
+      })
+      if (changed.count !== 1) return { changed: false as const, invoice: null }
+      const updated = await tx.invoice.findUnique({ where: { id: invoice.id } })
+      await tx.auditLog.create({
+        data: {
+          userId: g.user.id,
+          actor: g.user.email,
+          action: targetStatus === 'VOID' ? 'INVOICE_VOIDED' : 'INVOICE_CANCELLED',
+          entityType: 'Invoice',
+          entityId: invoice.id,
+          clientId: invoice.client.clientId,
+          projectId: invoice.projectId,
+          details: JSON.stringify({ number: invoice.number, from: invoice.status, to: targetStatus, reason }).slice(0, 8000),
+          ip: g.ip,
+        },
+      })
+      return { changed: true as const, invoice: updated }
     })
-    await audit({
-      userId: g.user.id,
-      actor: g.user.email,
-      action: targetStatus === 'VOID' ? 'INVOICE_VOIDED' : 'INVOICE_CANCELLED',
-      entityType: 'Invoice',
-      entityId: invoice.id,
-      clientId: invoice.client.clientId,
-      details: { number: invoice.number, reason },
-      ip: g.ip,
-    })
-    return Response.json({ ok: true, invoice: updated })
+    if (!transition.changed) {
+      return Response.json({ error: 'Invoice changed during this request; reload and review its current state.' }, { status: 409 })
+    }
+    return Response.json({ ok: true, invoice: transition.invoice })
   }
 
   // ---------------- 8. REISSUE (supersede immutable issued invoice with new revision) ----------------
@@ -558,8 +676,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
 
     const reissued = await db.$transaction(async (tx) => {
       if (invoice.status !== 'VOID' && invoice.status !== 'CANCELLED') {
-        await tx.invoice.update({
-          where: { id: invoice.id },
+        const voided = await tx.invoice.updateMany({
+          where: { id: invoice.id, status: invoice.status },
           data: {
             status: 'VOID',
             voidedAt: now,
@@ -567,8 +685,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
             updatedAt: now,
           },
         })
+        if (voided.count !== 1) return null
       }
-      return tx.invoice.create({
+      const created = await tx.invoice.create({
         data: {
           number: newNumber,
           clientId: invoice.clientId,
@@ -602,18 +721,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
           dueAt: invoice.dueAt,
         },
       })
+      await tx.auditLog.create({
+        data: {
+          userId: g.user.id,
+          actor: g.user.email,
+          action: 'INVOICE_REISSUED',
+          entityType: 'Invoice',
+          entityId: created.id,
+          clientId: invoice.client.clientId,
+          projectId: invoice.projectId,
+          details: JSON.stringify({ previousNumber: invoice.number, newNumber: created.number, revision: created.revision, reason }).slice(0, 8000),
+          ip: g.ip,
+        },
+      })
+      return created
     })
-
-    await audit({
-      userId: g.user.id,
-      actor: g.user.email,
-      action: 'INVOICE_REISSUED',
-      entityType: 'Invoice',
-      entityId: reissued.id,
-      clientId: invoice.client.clientId,
-      details: { previousNumber: invoice.number, newNumber: reissued.number, revision: reissued.revision, reason },
-      ip: g.ip,
-    })
+    if (!reissued) {
+      return Response.json({ error: 'Invoice changed during this request; reload and review its current state.' }, { status: 409 })
+    }
 
     return Response.json({ ok: true, invoice: reissued, supersededNumber: invoice.number }, { status: 201 })
   }
@@ -623,21 +748,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
     if (!canTransitionInvoiceStatus(invoice.status, 'DISPUTED')) {
       return Response.json({ error: `Cannot mark ${invoice.status} invoice as DISPUTED.` }, { status: 409 })
     }
-    const updated = await db.invoice.update({
-      where: { id: invoice.id },
-      data: { status: 'DISPUTED', updatedAt: new Date() },
+    const now = new Date()
+    const disputeReason = sanitizeText(raw.reason, 500)
+    const transition = await db.$transaction(async (tx) => {
+      const changed = await tx.invoice.updateMany({
+        where: { id: invoice.id, status: invoice.status },
+        data: { status: 'DISPUTED', updatedAt: now },
+      })
+      if (changed.count !== 1) return { changed: false as const, invoice: null }
+      const updated = await tx.invoice.findUnique({ where: { id: invoice.id } })
+      await tx.auditLog.create({
+        data: {
+          userId: g.user.id,
+          actor: g.user.email,
+          action: 'INVOICE_MARKED_DISPUTED',
+          entityType: 'Invoice',
+          entityId: invoice.id,
+          clientId: invoice.client.clientId,
+          projectId: invoice.projectId,
+          details: JSON.stringify({ number: invoice.number, from: invoice.status, to: 'DISPUTED', reason: disputeReason }).slice(0, 8000),
+          ip: g.ip,
+        },
+      })
+      return { changed: true as const, invoice: updated }
     })
-    await audit({
-      userId: g.user.id,
-      actor: g.user.email,
-      action: 'INVOICE_MARKED_DISPUTED',
-      entityType: 'Invoice',
-      entityId: invoice.id,
-      clientId: invoice.client.clientId,
-      details: { number: invoice.number, reason: sanitizeText(raw.reason, 500) },
-      ip: g.ip,
-    })
-    return Response.json({ ok: true, invoice: updated })
+    if (!transition.changed) {
+      return Response.json({ error: 'Invoice changed during this request; reload and review its current state.' }, { status: 409 })
+    }
+    return Response.json({ ok: true, invoice: transition.invoice })
   }
 
   return Response.json({ error: `Unknown invoice action "${action}".` }, { status: 400 })

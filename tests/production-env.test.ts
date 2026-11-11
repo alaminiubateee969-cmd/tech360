@@ -21,6 +21,10 @@ const goodEnvironment: NodeJS.ProcessEnv = {
 
 function validate(overrides: Record<string, string | undefined> = {}) {
   const env = { ...process.env, ...goodEnvironment, ...overrides }
+  // An offline test run may set the development-only SQLite preview adapter.
+  // This helper simulates a PRODUCTION environment, where that variable is
+  // forbidden; production-startup.test.ts asserts the rejection explicitly.
+  if (!('PREVIEW_SQLITE_URL' in overrides)) delete env.PREVIEW_SQLITE_URL
   for (const [name, value] of Object.entries(overrides)) {
     if (value === undefined) delete env[name]
   }

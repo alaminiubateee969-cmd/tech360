@@ -15,6 +15,7 @@
 // ============================================================
 
 import { db } from '@/lib/db'
+import { paymentStatusLabel } from '@/lib/payment-policy'
 
 export type ClientProfileDTO = {
   clientId: string
@@ -62,6 +63,7 @@ export type ClientProfileDTO = {
     amount: number
     currency: string
     status: string
+    statusLabel: string
     method: string | null
     transactionId: string | null
     verifiedAt: string | null
@@ -183,6 +185,7 @@ export async function clientProfile(clientRef: string): Promise<ClientProfileDTO
     amount: payment.amount,
     currency: payment.currency,
     status: payment.status,
+    statusLabel: paymentStatusLabel(payment.status),
     method: payment.method,
     transactionId: payment.transactionId,
     verifiedAt: payment.verifiedAt ? payment.verifiedAt.toISOString() : null,

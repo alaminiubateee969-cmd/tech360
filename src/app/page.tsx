@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense, lazy, useS
 import { Toaster } from 'sonner'
 import { ArrowUp } from 'lucide-react'
 
-// Public site views (single-route SPA with hash navigation)
 import SiteHeader from '@/components/site/SiteHeader'
 import SiteFooter from '@/components/site/SiteFooter'
 import ChatWidget from '@/components/site/ChatWidget'
@@ -15,27 +14,25 @@ import ServiceDetailView from '@/components/site/ServiceDetailView'
 import IndustriesView from '@/components/site/IndustriesView'
 import IndustryDetailView from '@/components/site/IndustryDetailView'
 import WorkView from '@/components/site/WorkView'
+import ProjectDetailView from '@/components/site/ProjectDetailView'
 import TechnologiesView from '@/components/site/TechnologiesView'
 import ProcessView from '@/components/site/ProcessView'
 import BlogView from '@/components/site/BlogView'
-import BlogPostView from '@/components/site/BlogPostView'
+import BlogPostView, { type BlogPost } from '@/components/site/BlogPostView'
 import CareersView from '@/components/site/CareersView'
 import ContactView from '@/components/site/ContactView'
 import LegalView from '@/components/site/LegalView'
 import FaqView from '@/components/site/FaqView'
 import PortalView from '@/components/site/PortalView'
 import DesignKitView from '@/components/site/DesignKitView'
+import PlatformView from '@/components/site/PlatformView'
 
-// Private admin console (auth-gated internally)
 const AdminApp = lazy(() => import('@/components/admin/AdminApp'))
 
 import { TRACKING } from '@/lib/constants'
-import { getLegalDoc } from '@/data/site'
+import { resolvePublicRoute } from '@/lib/public-route-catalog'
+import { SITE_URL } from '@/lib/site-contact'
 
-// ------------------------------------------------------------------
-// Consent-aware analytics: Meta Pixel + GTM load only after consent.
-// Server-side /api/track events are always recorded (our own log).
-// ------------------------------------------------------------------
 const consentStore = {
   listeners: new Set<() => void>(),
   read(): boolean | null {
@@ -65,13 +62,11 @@ function useConsent() {
 
 function injectAnalytics() {
   if (document.getElementById('t360-gtm')) return
-  // GTM
   const s = document.createElement('script')
   s.id = 't360-gtm'
   s.async = true
   s.text = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${TRACKING.gtmId}');`
   document.head.appendChild(s)
-  // Meta Pixel
   const p = document.createElement('script')
   p.id = 't360-pixel'
   p.text = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${TRACKING.metaPixelId}');fbq('track','PageView');`
@@ -114,7 +109,7 @@ function ConsentBanner({ onDecide }: { onDecide: (g: boolean) => void }) {
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-slate-600">
           If you accept analytics and advertising technologies, the site may load Google Tag Manager and Meta Pixel. These services may receive technical, browser, and event data according to the live configuration and their own policies.{' '}
-          <a href="#/legal/privacy" className="font-medium text-[#009FE3] underline underline-offset-2">Privacy Policy</a>
+          <a href="/legal/privacy" className="font-medium text-[#009FE3] underline underline-offset-2">Privacy Policy</a>
         </p>
         <div className="flex shrink-0 gap-2">
           <button onClick={() => onDecide(false)} className="h-11 rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Decline</button>
@@ -125,10 +120,6 @@ function ConsentBanner({ onDecide }: { onDecide: (g: boolean) => void }) {
   )
 }
 
-// ------------------------------------------------------------------
-// Reading progress bar + back-to-top (public pages) — direct DOM updates
-// via rAF so scrolling never triggers React re-render cascades.
-// ------------------------------------------------------------------
 function ScrollProgressBar() {
   const barRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -200,62 +191,129 @@ function BackToTop() {
   )
 }
 
-// ------------------------------------------------------------------
-// Hash router
-// ------------------------------------------------------------------
 function parseHash(raw: string) {
-  const clean = (raw || '').replace(/^#/, '') || '/'
+  const clean = ((raw || '').replace(/^#/, '') || '/').split('?')[0]
   const parts = clean.split('/').filter(Boolean)
   const section = parts[0] ?? ''
   const param = parts[1] ?? ''
-  return { section, param, full: `/${parts.join('/')}` }
+  return { section, param, parts, full: `/${parts.join('/')}` }
 }
-
-const PUBLIC_SECTIONS = new Set(['', 'about', 'services', 'industries', 'work', 'technologies', 'process', 'blog', 'careers', 'contact', 'legal', 'faq', 'portal'])
 
 function UnknownPublicRoute({ navigate }: { navigate: (h: string) => void }) {
   return (
-    <main id="main-content" className="grid min-h-[65vh] place-items-center bg-[#F7FAFC] px-5 py-20">
+    <div className="grid min-h-[65vh] place-items-center bg-[#F7FAFC] px-5 py-20">
       <section className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-12">
         <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#009FE3]">404 · Page not found</p>
-        <h1 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33]">That Tech360 page does not exist.</h1>
+        <h1 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33]">That TECH360 page does not exist.</h1>
         <p className="mt-4 leading-7 text-slate-600">Check the address or return to a verified section of the website.</p>
         <button type="button" onClick={() => navigate('/')} className="mt-8 min-h-11 rounded-lg bg-[#063B8F] px-6 text-sm font-semibold text-white transition hover:bg-[#052f72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">
           Return home
         </button>
       </section>
-    </main>
+    </div>
   )
 }
 
-function PublicView({ section, param, navigate }: { section: string; param: string; navigate: (h: string) => void }) {
+function PublicView({
+  section,
+  param,
+  parts,
+  navigate,
+  initialBlogPost,
+}: {
+  section: string
+  param: string
+  parts: string[]
+  navigate: (h: string) => void
+  initialBlogPost?: BlogPost | null
+}) {
   switch (section) {
     case '': return <HomeView onNavigate={navigate} />
     case 'about': return <AboutView />
+    case 'platform': return <PlatformView />
     case 'services': return param ? <ServiceDetailView slug={param} /> : <ServicesView />
     case 'industries': return param ? <IndustryDetailView slug={param} /> : <IndustriesView />
-    case 'work': return <WorkView />
+    case 'work':
+      // /work/projects/<slug> — dedicated project detail page.
+      if (param === 'projects' && parts[2]) {
+        return <ProjectDetailView slug={parts[2]} />
+      }
+      if (param && param !== 'projects' && param !== 'case-studies') {
+        return <UnknownPublicRoute navigate={navigate} />
+      }
+      return <WorkView subView={param} />
     case 'technologies': return <TechnologiesView />
     case 'process': return <ProcessView />
-    case 'blog': return param ? <BlogPostView slug={param} /> : <BlogView />
+    case 'blog': return param ? <BlogPostView slug={param} initialPost={initialBlogPost} /> : <BlogView />
     case 'careers': return <CareersView />
     case 'contact': return <ContactView />
     case 'legal': return <LegalView slug={param || 'terms'} />
     case 'faq': return <FaqView />
     case 'design-kit': return <DesignKitView />
     case 'portal': return <PortalView />
+    case 'pipeline': return <ProcessView />
     default: return <UnknownPublicRoute navigate={navigate} />
   }
 }
 
-export default function Page({ initialHash = '/' }: { initialHash?: string }) {
+function upsertMeta(selector: string, attrName: 'name' | 'property', attrValue: string, content: string) {
+  let el = document.querySelector<HTMLMetaElement>(selector)
+  if (!el) {
+    el = document.createElement('meta')
+    el.setAttribute(attrName, attrValue)
+    document.head.appendChild(el)
+  }
+  el.content = content
+}
+
+function upsertCanonical(href: string) {
+  let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'canonical'
+    document.head.appendChild(link)
+  }
+  link.href = href
+}
+
+export default function Page({
+  initialHash = '/',
+  initialBlogPost = null,
+}: {
+  initialHash?: string
+  initialBlogPost?: BlogPost | null
+}) {
   const [hash, setHash] = useState<string>(initialHash)
   const { consent, decide } = useConsent()
 
   useEffect(() => {
     const fallbackHash = `#${initialHash.startsWith('/') ? initialHash : `/${initialHash}`}`
+    /**
+     * Legacy hash-form bookmarks (`#/route`) are permanent: canonicalise them to
+     * the real path form (`/route`) once, using replaceState so the back button
+     * is not polluted and no extra history entry is created. In-page anchors
+     * (`#main-content`, `#workflows`) are untouched.
+     */
+    const raw = window.location.hash
+    if (raw.startsWith('#/') && window.location.pathname === '/' && typeof history !== 'undefined') {
+      const legacyPath = '/' + raw.slice(2).split('?')[0].replace(/^\/+/, '')
+      if (legacyPath !== '/') history.replaceState(history.state, '', legacyPath)
+      else if (raw !== '#/') history.replaceState(history.state, '', '/')
+    }
+
     const onHash = () => {
-      const next = (window.location.hash || fallbackHash).replace(/^#/, '') || '/'
+      const raw = window.location.hash
+      // Preserve current SPA route if a non-route in-page anchor (#main-content, #workflows, etc.) is triggered
+      if (raw && !raw.startsWith('#/')) {
+        const anchorId = raw.slice(1)
+        const targetEl = anchorId ? document.getElementById(anchorId) : null
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth' })
+          if (anchorId === 'main-content') targetEl.focus({ preventScroll: true })
+        }
+        return
+      }
+      const next = (raw || fallbackHash).replace(/^#/, '') || '/'
       setHash(next)
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
     }
@@ -264,25 +322,78 @@ export default function Page({ initialHash = '/' }: { initialHash?: string }) {
     return () => window.removeEventListener('hashchange', onHash)
   }, [initialHash])
 
-  const { section, param } = useMemo(() => parseHash(hash), [hash])
-  const isAdmin = section === 'admin'
-  const legalDocument = section === 'legal' ? getLegalDoc(param || 'terms') : undefined
-
-  // Hash-routed legal pages share one document shell, so keep browser metadata
-  // synchronized with the active policy rather than leaving the home-page title.
+  /**
+   * Plain-path navigation.
+   *
+   * Every public page now has two equivalent URLs: the crawlable document
+   * (`/services/whatsapp-automation`, server-rendered by src/app/[...path]) and
+   * the in-app route (the hash the SPA already understands). Anchors are
+   * emitted as real paths so crawlers and no-JS visitors can follow them; this
+   * delegated handler then keeps a click inside the running app instead of
+   * forcing a full document load, and pushes the hash form so deep links and the
+   * back button keep working exactly as before.
+   */
   useEffect(() => {
-    if (!legalDocument) return
-    document.title = `${legalDocument.title} | TECH360`
-    let description = document.querySelector<HTMLMetaElement>('meta[name="description"]')
-    if (!description) {
-      description = document.createElement('meta')
-      description.name = 'description'
-      document.head.appendChild(description)
+    const onDocumentClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const anchor = (event.target as Element | null)?.closest?.('a')
+      if (!anchor) return
+      const href = anchor.getAttribute('href')
+      if (!href || !href.startsWith('/') || href.startsWith('//')) return
+      if (anchor.getAttribute('target') && anchor.getAttribute('target') !== '_self') return
+      if (anchor.hasAttribute('download')) return
+      // A path we cannot render in-app (e.g. /api/...) must do a real request.
+      const [rawPath] = href.split('#')
+      const cleanPath = rawPath.split('?')[0].replace(/\/+$/, '') || '/'
+      if (cleanPath !== '/' && !resolvePublicRoute(cleanPath.split('/').filter(Boolean))) return
+      event.preventDefault()
+      const target = cleanPath === '/' ? '#/' : `#${cleanPath}`
+      if (window.location.hash === target) {
+        setHash(cleanPath)
+        window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+      } else {
+        window.location.hash = target
+      }
     }
-    description.content = legalDocument.summary
-  }, [legalDocument])
+    document.addEventListener('click', onDocumentClick)
+    return () => document.removeEventListener('click', onDocumentClick)
+  }, [])
 
-  // analytics lifecycle
+  const { section, param, parts } = useMemo(() => parseHash(hash), [hash])
+  const isAdmin = section === 'admin'
+
+  // Synchronize document title, description, canonical URL, OpenGraph, and robots on every SPA route transition
+  useEffect(() => {
+    if (isAdmin) {
+      document.title = 'Operator Command Center | TECH360'
+      upsertMeta('meta[name="robots"]', 'name', 'robots', 'noindex, nofollow')
+      return
+    }
+    const route = resolvePublicRoute(parts)
+    if (!route) {
+      document.title = 'Page not found | TECH360'
+      upsertMeta('meta[name="robots"]', 'name', 'robots', 'noindex, nofollow')
+      return
+    }
+    // Blog posts sync their own database-resolved title inside BlogPostView once loaded
+    if (route.kind !== 'blog-post') {
+      document.title = route.path === '/' ? route.title : `${route.title} | TECH360`
+      upsertMeta('meta[name="description"]', 'name', 'description', route.description)
+      upsertMeta('meta[property="og:title"]', 'property', 'og:title', document.title)
+      upsertMeta('meta[property="og:description"]', 'property', 'og:description', route.description)
+    }
+    const canonicalUrl = route.path === '/' ? SITE_URL : `${SITE_URL}${route.path}`
+    upsertCanonical(canonicalUrl)
+    upsertMeta('meta[property="og:url"]', 'property', 'og:url', canonicalUrl)
+    upsertMeta(
+      'meta[name="robots"]',
+      'name',
+      'robots',
+      route.noIndex ? 'noindex, nofollow' : 'index, follow',
+    )
+  }, [parts, isAdmin])
+
   useEffect(() => {
     if (consent === true) injectAnalytics()
   }, [consent])
@@ -312,7 +423,18 @@ export default function Page({ initialHash = '/' }: { initialHash?: string }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-[#063B8F] focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
+      <a
+        href="#main-content"
+        onClick={(e) => {
+          e.preventDefault()
+          const main = document.getElementById('main-content')
+          main?.focus()
+          main?.scrollIntoView({ behavior: 'smooth' })
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-[#063B8F] focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
+      >
+        Skip to content
+      </a>
       {isAdmin ? (
         <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#0B1220] text-slate-300">Loading command center…</div>}>
           <AdminApp onExit={() => navigate('#/')} />
@@ -321,8 +443,14 @@ export default function Page({ initialHash = '/' }: { initialHash?: string }) {
         <>
           <ScrollProgressBar />
           <SiteHeader currentHash={hash} />
-          <main id="main-content" className="flex-1">
-            <PublicView section={section} param={param} navigate={navigate} />
+          <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
+            <PublicView
+              section={section}
+              param={param}
+              parts={parts}
+              navigate={navigate}
+              initialBlogPost={initialBlogPost}
+            />
           </main>
           <BackToTop />
           <SiteFooter />

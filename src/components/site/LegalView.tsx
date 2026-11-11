@@ -2,15 +2,17 @@
 
 import { FileCheck, Printer, ShieldCheck } from "lucide-react";
 import { LEGAL_DOCS, getLegalDoc, COMPANY } from "@/data/site";
+import { normalizeLegalSlug } from "@/lib/public-route-catalog";
 import { PageHero } from "./PageHero";
 import { Reveal } from "./Reveal";
 import { cn } from "@/lib/utils";
+import { LetterheadHeader, LetterheadFooter } from "@/components/branding/DocumentShell";
 
 export default function LegalView({ slug }: { slug: string }) {
-  const doc = getLegalDoc(slug);
+  const doc = getLegalDoc(normalizeLegalSlug(slug) ?? slug);
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Legal & policies"
         title={doc ? doc.title : "Policy not found"}
@@ -20,7 +22,7 @@ export default function LegalView({ slug }: { slug: string }) {
             : "The document you requested does not exist. The sidebar below lists every published policy — select one to read it."
         }
         breadcrumb={[
-          { label: "Legal", href: "#/legal/terms" },
+          { label: "Legal", href: "/legal/terms" },
           { label: doc ? doc.title : "Not found" },
         ]}
       />
@@ -39,7 +41,7 @@ export default function LegalView({ slug }: { slug: string }) {
                   return (
                     <li key={d.slug} className="shrink-0 lg:shrink">
                       <a
-                        href={`#/legal/${d.slug}`}
+                        href={`/legal/${d.slug}`}
                         aria-current={isActive ? "page" : undefined}
                         className={cn(
                           "flex min-h-11 items-center gap-2.5 rounded-lg border px-4 text-sm font-medium outline-none transition-colors lg:border-transparent lg:bg-transparent",
@@ -76,29 +78,9 @@ export default function LegalView({ slug }: { slug: string }) {
             </div>
           </nav>
 
-          {/* Document body */}
+          {/* Document body — uses reusable branding engine (LetterheadHeader/Footer), same as SOW/Invoice/Proposal/Letter but NEVER seal */}
           <article className="min-w-0 lg:col-span-8 xl:col-span-9">
-            {/* Official company letterhead — printed on every policy PDF */}
-            <div data-print="pad" aria-hidden="true">
-              <div className="flex items-start justify-between gap-6">
-                <img src="/brand/tech360-logo-original.jpg" alt="" className="h-12 w-auto rounded-md" />
-                <div className="text-right">
-                  <div className="text-[17px] font-black tracking-[0.14em] text-[#0B1F33]">TECH360</div>
-                  <div className="mt-0.5 text-[9px] font-bold tracking-[0.22em] text-[#009FE3]">CONNECT · INNOVATE · GROW</div>
-                  <div className="mt-0.5 text-[8.5px] tracking-[0.05em] text-[#7C8DA0]">Web | Cloud | AI | Data | Tech</div>
-                  <div className="mt-1.5 text-[9.5px] leading-[1.6] text-[#526173]">
-                    <b className="text-[#0B1F33] tracking-wide">TECH360 LLC</b>
-                    <br />
-                    {COMPANY.email}
-                  </div>
-                </div>
-              </div>
-              <div className="pad-rule" />
-              <div className="pad-sub">
-                <span>Official company document</span>
-                <span>Legal &amp; policies · {doc ? `Effective ${doc.updated}` : "Policy"}</span>
-              </div>
-            </div>
+            <LetterheadHeader docKind={doc ? `Legal & policies · Effective ${doc.updated}` : "Legal & policies · Policy"} />
             {doc ? (
               <Reveal>
                 <div className="flex flex-wrap items-center gap-3">
@@ -118,9 +100,9 @@ export default function LegalView({ slug }: { slug: string }) {
                     Print / save as PDF
                   </button>
                 </div>
-                <h1 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">
+                <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">
                   {doc.title}
-                </h1>
+                </h2>
                 <p className="mt-3 max-w-2xl text-base leading-relaxed text-[#526173]">
                   {doc.summary}
                 </p>
@@ -161,11 +143,8 @@ export default function LegalView({ slug }: { slug: string }) {
                   </p>
                 </div>
 
-                {/* Official company footer — printed on every policy PDF */}
-                <div data-print="pad" className="pad-footer-line" aria-hidden="true">
-                  <span>{COMPANY.legalName} · {COMPANY.domain} · {COMPANY.email}</span>
-                  <span>Issued electronically by the Tech360 client platform</span>
-                </div>
+                {/* Reusable footer — same engine as all documents, never seal on legal */}
+                <LetterheadFooter note="Issued electronically by the Tech360 client platform" />
               </Reveal>
             ) : (
               <Reveal>
@@ -181,13 +160,13 @@ export default function LegalView({ slug }: { slug: string }) {
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <a
-                    href="#/legal/terms"
+                    href="/legal/terms"
                     className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#009FE3] px-5 py-2.5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#0090CC] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
                   >
                     Read the Terms &amp; Conditions
                   </a>
                   <a
-                    href="#/faq"
+                    href="/faq"
                     className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#063B8F]/20 bg-white px-5 py-2.5 text-sm font-semibold text-[#063B8F] outline-none transition-colors hover:border-[#009FE3] hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
                   >
                     Common questions instead
@@ -198,6 +177,6 @@ export default function LegalView({ slug }: { slug: string }) {
           </article>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

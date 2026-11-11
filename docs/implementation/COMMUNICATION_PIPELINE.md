@@ -5,9 +5,9 @@
 | **Document** | `docs/implementation/COMMUNICATION_PIPELINE.md` |
 | **Owner** | Platform engineering, Tech360 |
 | **Collection date** | 2026-10-19 |
-| **Last verification** | 2026-10-19 |
+| **Last verification** | 2026-11-03 |
 | **Access level** | Internal — engineering and Super Admin |
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Retention** | Retained for the life of the platform |
 | **Source of truth** | `src/lib/pipeline/templates.ts` (the copy), `src/lib/pipeline/rules.ts` (the policy), `src/lib/pipeline/send.ts` (the sender) |
 
@@ -125,14 +125,22 @@ auto-send stage:
 |---|---|
 | a monetary amount | `ADMIN_APPROVAL_REQUIRED` — whatever the stage |
 | an invoice (`invoice`, `INV-2026-0001`) | `ADMIN_APPROVAL_REQUIRED` |
-| a legal response (`legal`, `liability`, `indemnity`, `attorney`, …) | `ADMIN_APPROVAL_REQUIRED` |
-| a refund response (`refund`, but **not** `non-refundable`) | `ADMIN_APPROVAL_REQUIRED` |
+| a **legal response** ("our legal position", "our liability", an attorney, an arbitrator, legal proceedings) | `ADMIN_APPROVAL_REQUIRED` |
+| a **refund response** ("we processed your refund", "the refund was approved") | `ADMIN_APPROVAL_REQUIRED` |
 | a dispute response (`dispute`) | `ADMIN_APPROVAL_REQUIRED` |
 | a link to a delivered package (`/download`, `/handover`, `/package`, …) | `ADMIN_APPROVAL_REQUIRED` — a source-code handover **and** a delivery-file-links message |
 
 `gateReason()` returns the human-readable reason, and it is written
 into the `ApprovalRequest` description and the audit entry, so the
 operator sees *why* a message was held.
+
+**Legal and refund markers gate RESPONSES, not policy statements.** The
+auto-send copy must be allowed to say "it does not waive legal rights",
+"applicable law", "Refund requests are reviewed under ..." and
+"non-refundable". Those are statements of policy, not a legal/refund
+decision about a client's case. The markers therefore match first-person
+decisions and named proceedings, while the policy sentences stay
+`AUTO_SEND`. `tests/communication-pipeline.test.ts` asserts both sides.
 
 **Why the markers are so narrow.** The auto-send copy legitimately
 contains the phrases "source code", "admin access", "handover",
@@ -185,7 +193,7 @@ one of them is never a false positive:
 | the Client ID | `TECH-2026-000001` |
 | URLs | `https://bdtech360.com/services` |
 | email addresses | `info@bdtech360.com` |
-| ISO dates | `2026-10-19` |
+| ISO dates and ISO datetimes | `2026-10-19`, `2026-11-03T09:12:44.123Z` |
 | currency amounts | `$50,000`, `5000 USD`, `BDT 12,000` |
 | document numbers | `INV-2026-0042`, `PRJ-2026-0007` |
 
@@ -294,7 +302,11 @@ gates), `src/lib/comms.ts` (a `metadata` field), `src/lib/contact-policy.ts`
 
 ## 9. The tests
 
-`tests/communication-pipeline.test.ts` — **61 tests, 61 pass**.
+`tests/communication-pipeline.test.ts` — **61 tests, 61 pass**
+(verified again on 2026-11-03). The additive public-contract suite
+`tests/pipeline-public-contract.test.ts` adds 16 more tests for the master
+spec copy, the read-only API and the website wiring. See
+`docs/TECH360-FULL-PROJECT-COMPLETION.md` for the full-project refresh.
 
 | Group | Tests | What it proves |
 |---|---:|---|
@@ -312,15 +324,24 @@ gates), `src/lib/comms.ts` (a `metadata` field), `src/lib/contact-policy.ts`
 
 ## 10. The limits, stated honestly
 
-- The pipeline is implemented and unit-tested; the **end-to-end run
-  against a live MySQL, a live WhatsApp provider and a live SMTP server
-  is not proven here** — this environment has no generated Prisma client
-  and no provider credentials. The CI job generates the client and
-  starts MySQL; the provider paths are exercised by the existing
-  outbox-retry suite with a fake provider.
-- The **exact copy is fixed** in the template module. When the business
-  changes a sentence, the template changes and the 61 tests must be
-  updated with it — that is deliberate, so the wording cannot drift
+- The pipeline is implemented and unit-tested. On 2026-11-03 the **whole
+  suite (1,199 tests) passed against a fresh, disposable SQLite database**
+  built from the same production schema (`npm test` / `npm run
+  test:offline`). That is NOT the same as a **live MySQL, WhatsApp
+  provider or SMTP run**: no provider credentials were configured, the
+  generated client in this sandbox is the offline preview client, and no
+  production migration or deployment was performed. CI still runs the
+  MySQL path; the provider paths are exercised by the outbox-retry suite
+  with a fake provider. Outbound rows honestly read `NOT_CONFIGURED`
+  rather than a fake `SENT`.
+- **Two copies are now kept deliberately, not by accident.**
+  `src/lib/pipeline/templates.ts` is the LIVE SENDER copy (it also carries
+  consent, portal and legal clarifications added after the master prompt).
+  `src/lib/pipeline/spec-copy.ts` preserves the APPROVED MASTER WORDING
+  verbatim for the public website and the read-only API. Neither file
+  replaces the other. `src/lib/pipeline/rules.ts` remains the enforced
+  gate for both. When the business changes a sentence, both copies and
+  their tests must be reviewed together so the wording cannot drift
   silently.
 - The AI's own scope questions (the `SCP-006` agent) are **kept for
   the sales team** in memory and in the automation log; the wording the

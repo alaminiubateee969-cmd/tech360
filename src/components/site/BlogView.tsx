@@ -95,7 +95,7 @@ export default function BlogView() {
   }, [posts, query, category]);
 
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="Insights"
         title="Engineering notes and delivery thinking"
@@ -226,7 +226,7 @@ export default function BlogView() {
               {filtered.map((post) => (
                   <RevealItem key={post.slug} className="h-full">
                     <a
-                      href={`#/blog/${post.slug}`}
+                      href={`/blog/${post.slug}`}
                       className="group flex h-full flex-col rounded-xl border border-[#E2E8F0] bg-white p-6 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/40 hover:shadow-[0_12px_32px_rgba(6,59,143,0.1)] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                     >
                       <div className="flex items-center gap-3">
@@ -262,6 +262,6 @@ export default function BlogView() {
         title="Reading is good — building is better"
         description="If any of these ideas apply to your business, the next step is a written scope. One message starts it."
       />
-    </main>
+    </div>
   );
 }

@@ -69,7 +69,7 @@ function writeSeenId(id: string | null) {
 function isHashRouteHidden(): boolean {
   if (typeof window === 'undefined') return true
   const hash = window.location.hash || ''
-  return hash.startsWith('#/admin') || hash.startsWith('#/portal')
+  return hash.startsWith('/admin') || hash.startsWith('/portal')
 }
 
 // Analytics — fire and forget; must never break the chat.
@@ -199,9 +199,16 @@ export default function ChatWidget() {
     const res = await fetch(`/api/chat/messages?${params.toString()}`)
     if (!res.ok) throw new Error('poll failed')
     const data = (await res.json()) as {
-      conversation: { id: string; status: string; visitorName?: string | null } | null
+      conversation: { id: string; status: string; visitorName?: string | null; clientId?: string | null } | null
       messages: ChatMsg[]
       latestId: string | null
+      ai?: { available: boolean; detail: string }
+    }
+    if (data.ai) {
+      setAiStatus((prev) => (prev === 'checking' || prev === 'unknown' ? (data.ai!.available ? 'ready' : 'unavailable') : prev))
+    }
+    if (data.conversation?.clientId) {
+      setClientId(data.conversation.clientId)
     }
     return {
       conversation: data.conversation
@@ -402,6 +409,8 @@ export default function ChatWidget() {
       if (data.ai) {
         setAiStatus(data.ai.available ? 'ready' : 'unavailable')
         if (!data.ai.available) setAiError(data.ai.detail)
+      } else {
+        setAiStatus('unknown')
       }
       if (data.identityReviewRequired && data.notice) {
         setAiError(data.notice)
@@ -420,6 +429,7 @@ export default function ChatWidget() {
       setSubject('')
       requestAnimationFrame(() => composerRef.current?.focus())
     } catch (error) {
+      setAiStatus('unknown')
       setSessionError(error instanceof Error ? error.message : 'Could not start the chat. Please try again.')
       setConnIssue(true)
     } finally {
@@ -445,8 +455,20 @@ export default function ChatWidget() {
         const failure = (await res.json().catch(() => null)) as { error?: string } | null
         throw new Error(failure?.error ?? 'Your message could not be sent. Please try again.')
       }
-      const data = (await res.json()) as { message: ChatMsg | null; messages?: ChatMsg[]; reply?: { body: string; wasAiGenerated: boolean; escalated: boolean; error?: string | null }; error?: string; code?: string; notice?: string; identityReviewRequired?: boolean }
+      const data = (await res.json()) as {
+        message: ChatMsg | null
+        messages?: ChatMsg[]
+        reply?: { body: string; wasAiGenerated: boolean; escalated: boolean; error?: string | null }
+        conversation?: { id: string; clientId?: string | null; status: string }
+        error?: string
+        code?: string
+        notice?: string
+        identityReviewRequired?: boolean
+      }
       messageRequestIdRef.current = null
+      if (data.conversation?.clientId) {
+        setClientId(data.conversation.clientId)
+      }
       // Server now returns full thread after AI reply — use it when available
       if (data.messages && data.messages.length > 0) {
         setMessages(data.messages)
@@ -565,7 +587,9 @@ export default function ChatWidget() {
             {!showThread && !showClosed && (
               <form onSubmit={startConversation} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
                 <p className="text-sm leading-relaxed text-slate-600">
-                  Welcome to TECH360. Tell us about your business and what you need; our webchat agent will ask focused questions, prepare an initial proposal, and then refine the scope after your feedback. Choose SMS for the first service-related reply or email. A Client ID is issued or linked only after identity can be handled safely.
+                  Welcome to TECH360. Share your email (and a phone number if you prefer SMS) and our team
+                  will reply on the channel you choose to understand the project and prepare a written
+                  proposal. Prefer email? Write to info@bdtech360.com at any time.
                 </p>
                 <div className="space-y-1">
                   <label htmlFor="chat-name" className="text-xs font-medium text-slate-700">
@@ -585,7 +609,7 @@ export default function ChatWidget() {
                   <label htmlFor="chat-email" className="text-xs font-medium text-slate-700">
                     Email {preferredContact === 'Email'
                       ? <><span className="text-[#EF4444]" aria-hidden="true">*</span><span className="sr-only">(required)</span></>
-                      : <span className="font-normal text-slate-400">(optional for SMS-first)</span>}
+                      : <span className="font-normal text-slate-400">(optional for SMS-first — share it now or reply to our follow-up message)</span>}
                   </label>
                   <input
                     id="chat-email"
@@ -598,7 +622,7 @@ export default function ChatWidget() {
                     placeholder="you@company.com"
                     className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#009FE3] focus:outline-none focus:ring-2 focus:ring-[#009FE3]/30"
                   />
-                  <p className="text-[11px] leading-relaxed text-slate-500">{preferredContact === 'Email' ? 'Service follow-up will use email. A typed address alone does not verify ownership.' : 'Email is optional when SMS is selected; service follow-up uses SMS/webchat, not an email marketing list.'}</p>
+                  <p className="text-[11px] leading-relaxed text-slate-500">{preferredContact === 'Email' ? 'Service follow-up uses email. A typed address is contact information only — portal sign-in always requires a one-time code.' : 'If you provide an email now we will use it for follow-up; otherwise our first SMS will ask for it. A typed address is contact information only — portal sign-in always requires a one-time code.'}</p>
                 </div>
                 <fieldset className="space-y-2">
                   <legend className="text-xs font-medium text-slate-700">First service reply</legend>
@@ -659,7 +683,7 @@ export default function ChatWidget() {
                   />
                   <span>
                     I consent to TECH360 LLC storing this enquiry and using my selected first-reply channel ({preferredContact}) for service-related updates about this request. If I selected SMS, I agree to receive service-related texts at the number provided; message/data rates may apply. No marketing messages without separate opt-in. See the{" "}
-                    <a href="#/legal/privacy" className="font-semibold underline underline-offset-2">Privacy Policy</a>.
+                    <a href="/legal/privacy" className="font-semibold underline underline-offset-2">Privacy Policy</a>.
                   </span>
                 </label>
                 {sessionError && (
@@ -772,7 +796,7 @@ export default function ChatWidget() {
                 )}
                 {clientId && (
                   <p className="border-t border-slate-100 bg-slate-50 px-4 py-1 text-center text-[10px] text-slate-400">
-                    Reference <span className="font-mono text-slate-500">{clientId}</span> · Replies may be assisted by AI — <a href="#/legal/privacy" className="underline">learn more</a>
+                    Reference <span className="font-mono text-slate-500">{clientId}</span> · Replies may be assisted by AI — <a href="/legal/privacy" className="underline">learn more</a>
                   </p>
                 )}
 

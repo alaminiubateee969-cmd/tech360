@@ -14,6 +14,7 @@ export function gatewayConfigured(env: Record<string, string | undefined> = proc
 export async function gatewayComplete(
   messages: ChatMessage[],
   env: Record<string, string | undefined> = process.env,
+  signal?: AbortSignal,
 ): Promise<{ output: string; model: string; provider: string }> {
   const base = env.AI_GATEWAY_BASE_URL!.trim().replace(/\/$/, '')
   const token = env.AGENTOS_GATEWAY_TOKEN!.trim()
@@ -21,6 +22,7 @@ export async function gatewayComplete(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ messages, dataClassification: 'INTERNAL', maxTokens: 4096 }),
+    signal,
   })
   const data = (await response.json().catch(() => ({}))) as {
     choices?: Array<{ message?: { content?: string } }>

@@ -1,7 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import PublicSitePage from '../page'
+import type { BlogPost } from '@/components/site/BlogPostView'
+import { industryImage } from '@/data/industry-images'
+import { getServiceImage } from '@/data/service-images'
 import { getStaticPublicRoutePaths, resolvePublicRoute } from '@/lib/public-route-catalog'
+import { jsonLdDocument, pageGraph } from '@/lib/structured-data'
 
 export const dynamicParams = true
 
@@ -15,7 +19,15 @@ async function publishedBlogPost(slug: string) {
   const { db } = await import('@/lib/db')
   return db.blogPost.findFirst({
     where: { slug, status: 'PUBLISHED', publishedAt: { lte: new Date() } },
-    select: { title: true, excerpt: true, publishedAt: true },
+    select: {
+      slug: true,
+      title: true,
+      excerpt: true,
+      content: true,
+      category: true,
+      author: true,
+      publishedAt: true,
+    },
   })
 }
 
@@ -30,7 +42,7 @@ export async function generateMetadata({ params }: { params: Promise<{ path: str
       if (!post) return { title: 'Article not found', robots: { index: false, follow: false } }
       return {
         title: post.title,
-        description: post.excerpt ?? 'A published engineering insight from Tech360.',
+        description: post.excerpt ?? 'A published engineering insight from TECH360.',
         alternates: { canonical: route.path },
         openGraph: { type: 'article', url: route.path, title: post.title, description: post.excerpt ?? undefined },
       }
@@ -39,12 +51,44 @@ export async function generateMetadata({ params }: { params: Promise<{ path: str
     }
   }
 
+  const ogImages = (() => {
+    if (path[0] === 'services' && path[1]) {
+      const sImg = getServiceImage(path[1])
+      if (sImg) {
+        return [{ url: sImg.src, width: sImg.width, height: sImg.height, alt: sImg.alt }]
+      }
+    }
+    if (path[0] === 'industries' && path[1]) {
+      const indSrc = industryImage(path[1])
+      if (indSrc) {
+        return [{ url: indSrc, width: 1600, height: 900, alt: `${route.title} — illustrative sector architecture` }]
+      }
+    }
+    return undefined
+  })()
+
   return {
     title: route.title,
     description: route.description,
     alternates: { canonical: route.path },
     robots: route.noIndex ? { index: false, follow: false } : undefined,
-    openGraph: { type: 'website', url: route.path, title: route.title, description: route.description },
+    openGraph: {
+      type: 'website',
+      url: route.path,
+      title: route.title,
+      description: route.description,
+      ...(ogImages ? { images: ogImages } : {}),
+    },
+    ...(ogImages
+      ? {
+          twitter: {
+            card: 'summary_large_image',
+            title: route.title,
+            description: route.description,
+            images: ogImages.map((img) => img.url),
+          },
+        }
+      : {}),
   }
 }
 
@@ -53,13 +97,42 @@ export default async function PublicPathPage({ params }: { params: Promise<{ pat
   const route = resolvePublicRoute(path)
   if (!route) notFound()
 
+  let initialBlogPost: BlogPost | null = null
   if (route.kind === 'blog-post') {
     try {
-      if (!(await publishedBlogPost(path[1]))) notFound()
+      const found = await publishedBlogPost(path[1])
+      if (!found) notFound()
+      initialBlogPost = {
+        slug: found.slug,
+        title: found.title,
+        excerpt: found.excerpt ?? '',
+        content: found.content,
+        category: found.category ?? 'Engineering',
+        author: found.author ?? 'TECH360 Engineering',
+        publishedAt: (found.publishedAt ?? new Date()).toISOString(),
+      }
     } catch {
       notFound()
     }
   }
 
-  return <PublicSitePage initialHash={route.path} />
+  // Server-rendered page-level structured data. The same nodes are re-emitted
+  // by RouteStructuredData after hydration for in-app navigation, so a crawler
+  // that never runs JavaScript still receives WebPage + BreadcrumbList (+ FAQ,
+  // Service, Article or SoftwareApplication where the page shows that content).
+  const nodes = pageGraph(route.path, { title: route.title, description: route.description })
+
+  return (
+    <>
+      {nodes ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jsonLdDocument(nodes)).replace(/</g, '\\u003c'),
+          }}
+        />
+      ) : null}
+      <PublicSitePage initialHash={route.path} initialBlogPost={initialBlogPost} />
+    </>
+  )
 }

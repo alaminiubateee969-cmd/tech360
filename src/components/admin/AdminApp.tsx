@@ -40,8 +40,7 @@ import {
   Mail,
   MessagesSquare,
   PhoneCall,
-  Rss,
-} from 'lucide-react'
+  Rss, Layers3, Palette } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
@@ -62,6 +61,7 @@ import IntegrationsView from './IntegrationsView'
 import BackupRecoveryView from './BackupRecoveryView'
 import WorkforceView from './WorkforceView'
 import { PipelineView } from './PipelineView'
+import { DesignKitView } from './DesignKitView'
 import { AnalyticsView } from './AnalyticsView'
 import { ApprovalsView } from './ApprovalsView'
 import { BlogStudioView } from './BlogStudioView'
@@ -147,7 +147,9 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     section: 'Product Factory',
     items: [
       { id: 'factory', label: 'App Factory', icon: Boxes },
+      { id: 'factoryControl', label: 'Software Factory Control Center', icon: Layers3 },
       { id: 'media', label: 'Media Studio', icon: Clapperboard },
+      { id: 'designKit', label: 'Design Kit', icon: Palette },
     ],
   },
   {
@@ -202,6 +204,21 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
   },
 ]
 
+ /**
+  * Minimum platform role required for operator-facing navigation items.
+  * Shown as a tooltip so an operator knows why an item is hidden for
+  * their account. The API guards in `src/lib/api-guard.ts` remain
+  * authoritative; this is display only.
+  */
+const NAV_ROLE_HINTS: Partial<Record<ViewId, string>> = {
+  agents: 'ADMIN',
+  command: 'ADMIN',
+  factory: 'SUPER_ADMIN',
+  factoryControl: 'SUPER_ADMIN',
+  ops: 'SUPER_ADMIN',
+  settings: 'SUPER_ADMIN',
+}
+
 const VIEW_TITLES: Record<ViewId, string> = {
   dashboard: 'Dashboard',
   ops: 'Ops Monitor',
@@ -230,6 +247,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   integrations: 'CRM Integrations',
   workforce: 'Configured Org Chart Profiles',
   pipeline: 'Communication Pipeline',
+  designKit: 'Design Kit & UI Governance',
   backup: 'Backup & Recovery',
   dcc: 'Department Capability Certification',
   content: 'Content Studio',
@@ -241,6 +259,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   settings: 'Settings',
   team: 'Team',
   factory: 'AI Software Factory',
+  factoryControl: 'Software Factory Control Center',
   media: 'Media Studio',
   feeds: 'Feed Hub',
   telephony: 'Calls & SMS',
@@ -398,6 +417,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                     type="button"
                     onClick={() => navigate(item.id)}
                     aria-current={active ? 'page' : undefined}
+                    title={NAV_ROLE_HINTS[item.id] ? `Minimum role: ${NAV_ROLE_HINTS[item.id]}` : undefined}
                     className={cn(
                       'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#009FE3]/50',
                       active
@@ -622,6 +642,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <WorkforceView />
               ) : view === 'pipeline' ? (
                 <PipelineView />
+              ) : view === 'designKit' ? (
+                <DesignKitView />
               ) : view === 'command' ? (
                 <CommandCenterView />
               ) : view === 'memory' ? (
@@ -644,6 +666,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <EvolutionView />
               ) : view === 'factory' ? (
                 <FactoryView />
+              ) : view === 'factoryControl' ? (
+                <ControlCenter role={me.role ?? 'STAFF'} />
               ) : view === 'media' ? (
                 <MediaStudioView />
               ) : view === 'feeds' ? (

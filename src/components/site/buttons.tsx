@@ -11,16 +11,26 @@ import { cn } from "@/lib/utils";
 const BASE =
   "group/btn inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2 disabled:opacity-60";
 
+/** Compact ("sm") and default ("md") sizing. `sm` still keeps a 40px tap target. */
+const SIZES = {
+  sm: "min-h-10 px-4 py-2 text-[13px]",
+  md: "",
+} as const;
+
+type ButtonSize = keyof typeof SIZES;
+
 export function PrimaryLink({
   href,
   children,
   className,
+  size = "md",
   external = false,
   onClick,
 }: {
   href: string;
   children: React.ReactNode;
   className?: string;
+  size?: ButtonSize;
   external?: boolean;
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }) {
@@ -32,12 +42,82 @@ export function PrimaryLink({
       onClick={onClick}
       className={cn(
         BASE,
-        "bg-[#009FE3] text-white shadow-[0_1px_2px_rgba(6,59,143,0.25)] hover:bg-[#0090CC] hover:shadow-[0_4px_14px_rgba(0,159,227,0.35)]",
+        "bg-[#0052A5] text-white shadow-[0_1px_2px_rgba(6,59,143,0.25)] hover:bg-[#087337] hover:shadow-[0_4px_14px_rgba(8,115,55,0.25)]",
+        SIZES[size],
         className
       )}
     >
       {children}
     </a>
+  );
+}
+
+/** Solid brand submit button (same visual language as PrimaryLink). */
+export function PrimaryButton({
+  children,
+  className,
+  size = "md",
+  type = "button",
+  disabled = false,
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  size?: ButtonSize;
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+}) {
+  return (
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        BASE,
+        "bg-[#0052A5] text-white shadow-[0_1px_2px_rgba(6,59,143,0.25)] hover:bg-[#087337] hover:shadow-[0_4px_14px_rgba(8,115,55,0.25)]",
+        SIZES[size],
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Opens the on-site live support chat (ChatWidget) — TECH360 publishes no
+ * WhatsApp number or phone deep link, so this button is the only chat entry.
+ * `variant="onDark"` is used on the dark header/footer surfaces.
+ */
+export function ChatButton({
+  label = "Live Support",
+  className,
+  size = "md",
+  variant = "light",
+}: {
+  label?: string;
+  className?: string;
+  size?: ButtonSize;
+  variant?: "light" | "onDark";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new CustomEvent("tech360:open-chat"))}
+      aria-label="Open the TECH360 live support chat"
+      className={cn(
+        BASE,
+        variant === "onDark"
+          ? "border border-white/25 bg-white/5 text-white hover:border-white/50 hover:bg-white/10"
+          : "border border-[#063B8F]/20 bg-white text-[#063B8F] hover:border-[#009FE3] hover:text-[#009FE3]",
+        SIZES[size],
+        className
+      )}
+    >
+      <Bot className="size-4" aria-hidden="true" />
+      {label}
+    </button>
   );
 }
 

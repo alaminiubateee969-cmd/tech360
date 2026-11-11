@@ -1,7 +1,7 @@
 import raw from "./images.json";
 
 /**
- * Hosted real-business photography, keyed by industry / section.
+ * Self-hosted illustrative photography under `/images/...`, keyed by industry / section.
  * Keys: hero, ecommerce, education, healthcare, realestate, restaurant, agency,
  * professional, marketing, localbusiness, sme, finance, retail, logistics,
  * travel, construction, manufacturing, legal, tech, about, careers.

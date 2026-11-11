@@ -250,6 +250,34 @@ export async function runOpsCycle(trigger: 'SERVICE' | 'SCHEDULER' | 'MANUAL' = 
     for (const job of jobBatch.processed) performed.push(`agent-job ${job.id} → ${job.status}`)
     if (jobBatch.recovered > 0) performed.push(`recovered ${jobBatch.recovered} expired agent-job lease(s)`)
 
+    // 0) HOSTINGER MAIL INBOX POLL + EMAIL AI — ensures info@bdtech360.com
+    // inbound emails are synced, matched/created in CRM, and replied to even
+    // when webhook delivery is delayed or unconfigured.
+    try {
+      const [{ readHostingerMailConfig }, { syncHostingerInbox }, { processHostingerInboundMessages }] = await Promise.all([
+        import('@/lib/mail/hostinger-config'),
+        import('@/lib/mail/hostinger-inbound'),
+        import('@/lib/mail/hostinger-ai-processor'),
+      ])
+      if (readHostingerMailConfig().state === 'CONFIGURED') {
+        const mailSync = await syncHostingerInbox({ maxPages: 2, maxMessages: 20 })
+        if (mailSync.imported > 0) {
+          performed.push(`hostinger-inbox imported ${mailSync.imported}`)
+        }
+        const aiMail = await processHostingerInboundMessages({ communicationIds: mailSync.importedIds, limit: 20 })
+        if (aiMail.processed > 0) {
+          performed.push(`email-ai processed ${aiMail.processed} (leads=${aiMail.leadsCreated}, replied=${aiMail.aiReplied})`)
+        }
+      }
+    } catch (mailErr) {
+      await logError({
+        source: 'EMAIL_AI',
+        code: 'OPS_HOSTINGER_MAIL_POLL_FAILED',
+        message: mailErr instanceof Error ? mailErr.message : String(mailErr),
+        workflow: 'AI_OPS_LOOP',
+      }).catch(() => null)
+    }
+
     const data = await opsScan()
     scanned.unscored = data.unscoredLeads.length
     scanned.overdue = data.overdueLeads.length

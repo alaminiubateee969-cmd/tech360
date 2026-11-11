@@ -261,6 +261,34 @@ function runPrisma(args, envOverrides) {
   return result
 }
 
+/**
+ * Explain the one Prisma failure that a rebuild can never fix by itself.
+ *
+ * P3009 means `_prisma_migrations` still holds a FAILED row, so Prisma refuses
+ * to apply ANY migration ("... failed migrations found ... P3009") and the
+ * build dies before `next build`. No amount of redeploying clears it: the
+ * history row has to be settled with `migrate resolve` against the database.
+ * This prints the supported path and leaves the exit code untouched — it is a
+ * pointer, not a fallback, and it never resolves anything automatically.
+ * See docs/HOSTINGER_SSH_RECOVERY.md §5.
+ */
+function printFailureHint(args, output) {
+  if (!/P3009/.test(output)) return
+  console.error('')
+  console.error('[prisma-engine-prep] P3009 — a migration is recorded as FAILED in _prisma_migrations.')
+  console.error('[prisma-engine-prep] Prisma will not apply any migration until that history row is settled;')
+  console.error('[prisma-engine-prep] nothing was changed by this run. Inspect, then resolve:')
+  console.error('[prisma-engine-prep]')
+  console.error('[prisma-engine-prep]   node scripts/prisma-migration-doctor.mjs            # read-only, prints the state')
+  console.error('[prisma-engine-prep]   node scripts/prisma-migration-doctor.mjs --resolve <name> \\')
+  console.error('[prisma-engine-prep]        --as applied|rolled-back --confirm')
+  console.error('[prisma-engine-prep]   node scripts/prisma.mjs migrate status              # expected: no failed rows')
+  console.error('[prisma-engine-prep]')
+  console.error('[prisma-engine-prep] No SQL/SSH access? `node scripts/prisma-migration-doctor.mjs --sql`')
+  console.error('[prisma-engine-prep] prints the same read-only queries for phpMyAdmin.')
+  console.error('[prisma-engine-prep] Runbook: docs/HOSTINGER_SSH_RECOVERY.md §5')
+}
+
 function main() {
   const args = process.argv.slice(2)
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
@@ -297,6 +325,7 @@ function main() {
     result = runPrisma(args, retryOverrides)
   }
 
+  if (result.status !== 0) printFailureHint(args, outputOf(result))
   process.exit(result.status ?? 1)
 }
 

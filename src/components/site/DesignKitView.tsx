@@ -93,6 +93,9 @@ function PlaygroundTabs() {
         ))}
         <span className="ml-auto hidden items-center gap-1.5 text-xs text-slate-500 sm:inline-flex"><Search className="size-3" /> Search <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5">Tags</span> <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">Badges</span></span>
       </div>
+      <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-2 text-xs text-slate-500">
+        Illustrative UI only — these example cards are static component previews, not live business records or operational metrics.
+      </div>
       <div className="p-5">
         {tab === 'crm' ? (
           <div className="space-y-3">
@@ -158,7 +161,7 @@ import { DiagramGallery } from './DiagramGallery'
 
 export default function DesignKitView() {
   return (
-    <main id="main-content" className="bg-[#F7FAFC] px-5 pb-20 pt-28 sm:px-8">
+    <div className="bg-[#F7FAFC] px-5 pb-20 pt-28 sm:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="max-w-3xl">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#009FE3]">Design system</p>
@@ -180,18 +183,18 @@ export default function DesignKitView() {
           description="One primary action per screen, outlined and secondary actions beside it, and a visible focus ring on every control. All buttons meet a 44px minimum touch target."
         >
           <Showcase label="Primary · one per screen" note="Used for the single most important action.">
-            <PrimaryLink href="#/contact">Start a project</PrimaryLink>
-            <PrimaryLink href="#/work" onClick={(e) => e.preventDefault()}>See our work</PrimaryLink>
+            <PrimaryLink href="/contact">Start a project</PrimaryLink>
+            <PrimaryLink href="/work">See our work</PrimaryLink>
           </Showcase>
           <Showcase label="Secondary · supporting actions">
-            <SecondaryLink href="#/services">Explore services</SecondaryLink>
-            <OutlineLink href="#/process">How we work</OutlineLink>
-            <GhostLink href="#/faq">Read the FAQ</GhostLink>
+            <SecondaryLink href="/services">Explore services</SecondaryLink>
+            <OutlineLink href="/process">How we work</OutlineLink>
+            <GhostLink href="/faq">Read the FAQ</GhostLink>
           </Showcase>
           <Showcase label="Grouped actions" note="Stacked on mobile, inline from the small breakpoint.">
             <ButtonGroup>
-              <PrimaryLink href="#/contact">Book a consultation</PrimaryLink>
-              <OutlineLink href="#/legal/privacy">Privacy policy</OutlineLink>
+              <PrimaryLink href="/contact">Book a consultation</PrimaryLink>
+              <OutlineLink href="/legal/privacy">Privacy policy</OutlineLink>
               <AIAssistantLink compact />
             </ButtonGroup>
           </Showcase>
@@ -200,7 +203,7 @@ export default function DesignKitView() {
               <span className="text-sm font-semibold text-[#0B1F33]">Industry pages</span>
               <span className="block text-xs text-slate-500">20 verticals with their own intake flow</span>
             </CardLinkAffordance>
-            <LinkArrow href="#/process">Read the delivery process</LinkArrow>
+            <LinkArrow href="/process">Read the delivery process</LinkArrow>
           </Showcase>
           <Showcase
             label="Honest-by-default components"
@@ -318,6 +321,6 @@ export default function DesignKitView() {
           </div>
         </Section>
       </div>
-    </main>
+    </div>
   )
 }

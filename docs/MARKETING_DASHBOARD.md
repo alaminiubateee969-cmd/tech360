@@ -79,7 +79,7 @@ Every drafted post also appears as a **card in the review grid**:
   and carries the post's real status badge (DRAFT / APPROVED / PUBLISHED …).
   Download it with `&download=1`.
 - **Real ratings only.** `PostReview` rows (migration
-  `13_post_review_grid`) are written through
+  `93_post_review_grid`) are written through
   `POST /api/admin/marketing/posts/:id/reviews` with a whole number 1–5.
   The card shows the mean of those rows. A post nobody reviewed reads
   **“Not rated yet”**; there is no seeded or placeholder 5.0 anywhere, and
@@ -107,7 +107,7 @@ media host, then paste that URL into the post before publishing.
 - Analytics and comment/reply automation: inbound replies already
   arrive via `/api/webhooks/social` (SOC-014 triage); outbound
   analytics dashboards are a follow-up, not claimed here.
-- The review grid needs the `PostReview` migration (`13_post_review_grid`)
+- The review grid needs the `PostReview` migration (`93_post_review_grid`)
   applied together with `SocialAccount`/`SocialPost`.
 - Requires the `SocialAccount`/`SocialPost` migration to be applied
   on the production MySQL host (`npm run db:migrate` in the deploy

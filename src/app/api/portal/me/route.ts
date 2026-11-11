@@ -11,6 +11,7 @@ import {
 import { verifyPortalToken, PORTAL_COOKIE, portalGate } from "@/lib/portal"
 import { PIPELINE_STAGES } from '@/lib/constants'
 import { formatScopeForClient } from '@/lib/journey'
+import { paymentStatusLabel } from '@/lib/payment-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,25 +71,6 @@ export async function GET(req: NextRequest) {
     select: { id: true, originalName: true, mimeType: true, size: true, note: true, scanStatus: true, relatedType: true, classification: true, createdAt: true },
   })
 
-  // AI workforce activity feed (agent-driven delivery transparency) — a WORK
-  // LOG only: which agent, what kind of work, status and when. The input and
-  // output payloads stay internal (they can contain analysis the team has
-  // not chosen to share), so clients see the team at work, never drafts.
-  const workforceExecutions = await db.aiAgentExecution.findMany({
-    where: { clientId: client.id },
-    orderBy: { startedAt: 'desc' },
-    take: 8,
-    select: {
-      id: true,
-      status: true,
-      workflow: true,
-      startedAt: true,
-      completedAt: true,
-      durationMs: true,
-      agent: { select: { code: true, name: true, title: true } },
-    },
-  })
-
   return Response.json({
     client: {
       clientId: client.clientId,
@@ -139,6 +121,8 @@ export async function GET(req: NextRequest) {
       amount: p.amount,
       currency: p.currency,
       status: p.status,
+      statusLabel: paymentStatusLabel(p.status),
+      proofSubmitted: Boolean(p.proofFileId || p.transactionId),
       verifiedAt: p.verifiedAt,
       receiptAvailable: Boolean(p.status === 'PAID' && p.verifiedAt && p.verifiedBy),
       receiptNumber: p.receipt?.receiptNumber ?? null,
@@ -169,15 +153,6 @@ export async function GET(req: NextRequest) {
     communications: communications.map((c) => ({
       channel: c.channel, direction: c.direction, subject: c.subject,
       preview: (c.body ?? '').slice(0, 160), status: c.status, at: c.createdAt,
-    })),
-    workforce: workforceExecutions.map((e) => ({
-      id: e.id,
-      agentName: e.agent?.name ?? 'AI agent',
-      agentTitle: e.agent?.title ?? null,
-      work: (e.workflow ?? 'general work').replace(/_/g, ' ').toLowerCase(),
-      status: e.status,
-      at: e.startedAt,
-      durationMs: e.completedAt ? e.durationMs : null,
     })),
     meetings: client.meetings.map((m) => ({
       id: m.id,

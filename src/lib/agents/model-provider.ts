@@ -43,7 +43,13 @@ export function openRouterConfigured(env: Record<string, string | undefined> = p
 
 export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 
-export async function openRouterComplete(apiKey: string, model: string, messages: ChatMessage[]): Promise<string> {
+export async function openRouterComplete(
+  apiKey: string,
+  model: string,
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): Promise<string> {
+  const requestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(90_000)]) : AbortSignal.timeout(90_000)
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -53,7 +59,7 @@ export async function openRouterComplete(apiKey: string, model: string, messages
       'X-Title': 'TECH360 internal automation',
     },
     body: JSON.stringify({ model, messages, temperature: 0.3 }),
-    signal: AbortSignal.timeout(90_000),
+    signal: requestSignal,
   })
   if (!res.ok) {
     const body = await res.text().catch(() => '')
@@ -66,16 +72,22 @@ export async function openRouterComplete(apiKey: string, model: string, messages
 }
 
 /** Try every free model in order; throw the last error if all fail. */
-export async function completeWithFreeModels(messages: ChatMessage[], env: Record<string, string | undefined> = process.env): Promise<{ output: string; model: string }> {
+export async function completeWithFreeModels(
+  messages: ChatMessage[],
+  env: Record<string, string | undefined> = process.env,
+  signal?: AbortSignal,
+): Promise<{ output: string; model: string }> {
   const apiKey = env.OPENROUTER_API_KEY?.trim()
   if (!apiKey) throw new Error('OPENROUTER_API_KEY is not configured')
   let lastError: Error = new Error('No free models configured')
   for (const model of freeModelChain(env)) {
+    if (signal?.aborted) throw lastError
     try {
-      const output = await openRouterComplete(apiKey, model, messages)
+      const output = await openRouterComplete(apiKey, model, messages, signal)
       return { output, model }
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e))
+      if (signal?.aborted) throw lastError
     }
   }
   throw lastError

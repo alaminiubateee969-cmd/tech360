@@ -1,6 +1,7 @@
 export { constantTimeEquals } from '@/lib/constant-time'
 export { newCorrelationId } from '@/lib/correlation'
 import { db } from '@/lib/db'
+import { redactSensitiveCrmData, redactSensitiveValue } from '@/lib/sensitive-redaction'
 import { randomBytes } from 'crypto'
 
 // ------------------------------------------------------------
@@ -77,6 +78,9 @@ export async function audit(entry: {
   userId?: string
 }) {
   try {
+    const safeDetails = entry.details !== undefined && entry.details !== null
+      ? JSON.stringify(redactSensitiveValue(entry.details)).slice(0, 8000)
+      : null
     await db.auditLog.create({
       data: {
         actor: entry.actor,
@@ -85,7 +89,7 @@ export async function audit(entry: {
         entityId: entry.entityId ?? null,
         clientId: entry.clientId ?? null,
         projectId: entry.projectId ?? null,
-        details: entry.details ? JSON.stringify(entry.details).slice(0, 8000) : null,
+        details: safeDetails,
         ip: entry.ip ?? null,
         userAgent: entry.userAgent ?? null,
         userId: entry.userId ?? null,
@@ -107,12 +111,14 @@ export async function logError(entry: {
   workflow?: string
 }) {
   try {
+    const safeMessage = redactSensitiveCrmData(entry.message).text.slice(0, 2000)
+    const safeStack = entry.stack ? redactSensitiveCrmData(entry.stack).text.slice(0, 8000) : null
     await db.errorLog.create({
       data: {
         source: entry.source,
         code: entry.code ?? null,
-        message: entry.message.slice(0, 2000),
-        stack: entry.stack ? entry.stack.slice(0, 8000) : null,
+        message: safeMessage,
+        stack: safeStack,
         correlationId: entry.correlationId ?? null,
         clientId: entry.clientId ?? null,
         projectId: entry.projectId ?? null,
@@ -123,7 +129,7 @@ export async function logError(entry: {
       data: {
         type: 'ERROR',
         title: `Error: ${entry.source}`,
-        body: entry.message.slice(0, 300),
+        body: safeMessage.slice(0, 300),
         severity: 'WARNING',
       },
     }).catch(() => null)

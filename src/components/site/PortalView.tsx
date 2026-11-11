@@ -37,7 +37,6 @@ type PortalData = {
   payments: Array<{ id?: string; milestone: string | null; amount: number; currency: string; status: string; verifiedAt: string | null; receiptAvailable?: boolean; receiptNumber?: string | null }>
   invoices: Array<{ number: string; amount: number; remainingAmount?: number; currency: string; status: string; payable?: boolean; dueAt?: string | null; notes: string | null }>
   communications: Array<{ channel: string; direction: string; subject: string | null; preview: string; status: string; at: string }>
-  workforce: Array<{ id: string; agentName: string; agentTitle: string | null; work: string; status: string; at: string; durationMs: number | null }>
   meetings: Array<{ id: string; status: string; scheduledAt: string | null; reason: string | null; channel: string | null; bookingLink: string | null; notes: string | null; clientResponse: string | null; clientRespondedAt: string | null }>
   documents: Array<{ id: string; name: string; mimeType: string; size: number; note: string | null; scanStatus: string; direction: string; classification: string; at: string }>
   policy: { previewBeforePayment: boolean; sourceAfterFullPayment: boolean; supportContact: string; whatsapp: string }
@@ -93,6 +92,8 @@ export default function PortalView() {
   if (loading && !data) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16">
+        <h1 className="text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">Client Portal</h1>
+        <p className="mt-2 text-sm text-slate-500">Loading your project record…</p>
         <Skeleton className="h-10 w-72 mb-2" />
         <Skeleton className="h-5 w-96 mb-10" />
         <div className="grid gap-4 md:grid-cols-2">
@@ -113,7 +114,7 @@ export default function PortalView() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#009FE3]">Client Portal</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">Welcome, {data.client.name.split(' ')[0]}</h1>
+            <h1 className="mt-1 break-words text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">Welcome back, {data.client.name.split(' ')[0]}</h1>
             <p className="mt-1 text-sm text-slate-500">{data.client.businessName ?? data.client.businessType ?? ''} · Reference <span className="font-mono font-medium text-[#063B8F]">{data.client.clientId}</span></p>
           </div>
           <div className="flex gap-2">
@@ -203,7 +204,7 @@ export default function PortalView() {
                   </div>
                 )}
                 <Separator className="my-4" />
-                <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
                   <div><p className="text-xl font-bold text-[#0B1F33]">{fmtMoney(data.project.totalAmount, data.project.currency)}</p><p className="text-xs text-slate-500">Total value</p></div>
                   <div><p className="text-xl font-bold text-[#18B83A]">{fmtMoney(data.project.paidAmount, data.project.currency)}</p><p className="text-xs text-slate-500">Paid & verified</p></div>
                   <div><p className="text-xl font-bold text-[#063B8F]">{data.project.paymentStatus}</p><p className="text-xs text-slate-500">Payment status</p></div>
@@ -213,9 +214,6 @@ export default function PortalView() {
               <EmptyLine text="Your project is created after preview approval and payment verification — you will see it here the moment it starts." />
             )}
           </SectionCard>
-
-          {/* AI workforce at work (SuperCool-inspired delivery transparency) */}
-          <WorkforceCard entries={data.workforce} />
 
           {/* Scope */}
           <SectionCard icon={<FileText className="h-5 w-5" />} title={data.scope ? `Final Scope of Work (v${data.scope.version})` : 'Scope of Work'}>
@@ -234,8 +232,8 @@ export default function PortalView() {
           {/* Payments */}
           <SectionCard icon={<CreditCard className="h-5 w-5" />} title="Payments & Verified Receipts">
             {data.payments.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="min-w-0 overflow-x-auto">
+                <table className="w-full min-w-[540px] text-sm">
                   <thead><tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wide text-slate-400">
                     <th className="py-2 pr-4 font-medium">Milestone</th><th className="py-2 pr-4 font-medium">Amount</th><th className="py-2 pr-4 font-medium">Status</th><th className="py-2 pr-4 font-medium">Verified</th><th className="py-2 text-right font-medium">Receipt</th>
                   </tr></thead>
@@ -1052,56 +1050,6 @@ function MeetingsCard({ meetings, onDone }: { meetings: PortalData['meetings']; 
 }
 
 // ---------------- Shared bits ----------------
-// AI workforce activity — a WORK LOG for the client (which agent, what kind
-// of work, status, when). Never shows agent input/output payloads: those stay
-// internal until the team deliberately shares a deliverable.
-function WorkforceCard({ entries }: { entries: PortalData['workforce'] }) {
-  const WORKFORCE_STATUS: Record<string, { label: string; className: string }> = {
-    RUNNING: { label: 'Working now', className: 'border-sky-200 bg-sky-50 text-sky-700' },
-    SUCCESS: { label: 'Completed', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-    FAILED: { label: 'Needs attention', className: 'border-red-200 bg-red-50 text-red-700' },
-    TIMEOUT: { label: 'Timed out', className: 'border-amber-200 bg-amber-50 text-amber-700' },
-    AWAITING_APPROVAL: { label: 'Awaiting approval', className: 'border-violet-200 bg-violet-50 text-violet-700' },
-  }
-  return (
-    <SectionCard icon={<Bot className="h-5 w-5" />} title="Our AI team at work">
-      {entries.length > 0 ? (
-        <div>
-          <p className="mb-3 text-xs text-slate-500">
-            Your project is delivered by our AI workforce — specialized agents working around the clock under human supervision.
-            This is their work log; finished work reaches you through previews and deliveries, never as raw output.
-          </p>
-          <ol className="space-y-2.5">
-            {entries.map((e) => {
-              const s = WORKFORCE_STATUS[e.status] ?? { label: e.status, className: 'border-slate-200 bg-slate-50 text-slate-600' }
-              return (
-                <li key={e.id} className="flex items-start gap-2.5">
-                  <span className="mt-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#063B8F]/10" aria-hidden="true">
-                    <Bot className="size-3.5 text-[#063B8F]" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-800">
-                      {e.agentName}
-                      {e.agentTitle ? <span className="font-normal text-slate-500"> — {e.agentTitle}</span> : null}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {e.work} · {fmtDate(e.at)}
-                      {e.durationMs != null ? ` · ${Math.max(1, Math.round(e.durationMs / 1000))}s` : ''}
-                    </p>
-                  </div>
-                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${s.className}`}>{s.label}</span>
-                </li>
-              )
-            })}
-          </ol>
-        </div>
-      ) : (
-        <EmptyLine text="No AI work has run on your account yet — activity appears here as your project moves through delivery." />
-      )}
-    </SectionCard>
-  )
-}
-
 function SectionCard({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <motion.section initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.35 }}>
@@ -1320,8 +1268,8 @@ function InvoicesCard({
               </button>
             </div>
           ) : null}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="min-w-0 overflow-x-auto">
+            <table className="w-full min-w-[540px] text-sm">
               <thead>
                 <tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wide text-slate-400">
                   <th className="py-2 pr-4 font-medium">Invoice</th>

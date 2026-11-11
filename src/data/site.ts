@@ -19,14 +19,126 @@ export const COMPANY = {
   address: "117 S Lexington St Ste 100, Harrisonville, MO 64701, USA",
   email: PUBLIC_CONTACT.email,
   founded: "2021",
-  // Canonical About-page facts — single source reused in AboutView (do not hardcode elsewhere).
+  // Global positioning — no country-focused marketing. Legal entity exists, but service is worldwide.
   bangladeshFoundedYear: "2021",
   usRegistrationYear: "2025",
-  registrationJurisdiction: "Missouri, United States",
+  registrationJurisdiction: "United States",
   serviceCoverage: "Worldwide",
   tagline: "Strategy. Software. Automation. Growth.",
   subline:
-    "Enterprise-grade websites, platforms and automation for ambitious businesses — engineered by a US-registered team delivering worldwide.",
+    "Your private, self-controlled Company-in-a-Box — engineered worldwide for businesses that need to own their software, their data, and their future.",
+} as const;
+
+// Customer-facing Company-in-a-Box Platform pillars (confidentiality-clean; no internal factory module names)
+export const PLATFORM_PILLARS = [
+  {
+    key: "operations",
+    title: "Connected Business Operations",
+    icon: "Layers",
+    tagline: "One system for how your business actually runs.",
+    description: "Bring enquiries, projects, tasks, and delivery into a single connected workspace — so nothing lives only in someone's inbox or spreadsheet.",
+    provides: ["Unified client and project records", "Shared task and approval workflows", "Consistent status across teams", "Role-based operational views"],
+    whyUsed: "When operations are connected, handovers stop depending on memory and manual follow-up.",
+  },
+  {
+    key: "crm",
+    title: "Customer Relationship Management",
+    icon: "Puzzle",
+    tagline: "Every client conversation, in one place.",
+    description: "Track enquiries, scopes, approvals, payments, and delivery history against a single Client ID — auditable by timestamp and owner.",
+    provides: ["Complete message and approval history", "Lead-to-delivery pipeline tracking", "Duplicate-safe client records", "Multi-channel communication log"],
+    whyUsed: "You always know where every client stands and what happens next.",
+  },
+  {
+    key: "portal",
+    title: "Client Portals & Collaboration",
+    icon: "Building2",
+    tagline: "A secure place for your clients.",
+    description: "Give clients a controlled view of milestones, previews, approvals, invoices, and handover files — without exposing internal operations.",
+    provides: ["Milestone and approval visibility", "Secure document upload & sharing", "Role-based permissions", "Verified receipt & handover access"],
+    whyUsed: "Clients stay informed without needing to chase updates by email.",
+  },
+  {
+    key: "workflow",
+    title: "Governed Team Workflows",
+    icon: "GitBranch",
+    tagline: "Clear ownership and human approval gates.",
+    description: "Assign work, route commercial and technical approvals, and track responsibilities across your team with structured, auditable workflows.",
+    provides: ["Task assignment and tracking", "Approval chains with audit trails", "Deadline and follow-up visibility", "Controlled scope revision tracking"],
+    whyUsed: "Work moves forward safely because ownership and approvals are explicit.",
+  },
+  {
+    key: "continuity",
+    title: "Security, Backups & Ownership",
+    icon: "Rocket",
+    tagline: "Your business owns its software and its data.",
+    description: "Operate with role-based access control, audit logging, verified recovery practices, and clean source-code handover after settlement.",
+    provides: ["Tenant-isolated data & permissions", "Health monitoring & audit trail", "Backup & recovery discipline", "Documented handover after settlement"],
+    whyUsed: "Grow with confidence knowing your data, records, and software remain under your control.",
+  },
+] as const;
+
+export const PRODUCED_SYSTEMS = [
+  {
+    slug: "education-campus-os",
+    title: "Campus OS",
+    category: "Education",
+    imageRef: "Aurora Modern Academy / Oakridge",
+    whatYouGet: "Enquiry → Admission → Academic → Alumni pipeline with guardian portal",
+    whyIndustry: "Schools lose admissions to slow follow-up; this automates it while keeping human approval on offers.",
+  },
+  {
+    slug: "healthcare-clinic-flow",
+    title: "Clinic Flow",
+    category: "Healthcare",
+    imageRef: "Consultant App / Medic Delivery",
+    whatYouGet: "Appointment, EMR, prescription and recall automation",
+    whyIndustry: "Clinics need no-shows down and records auditable — this gives both without extra staff.",
+  },
+  {
+    slug: "hospitality-stay-suite",
+    title: "Stay Suite",
+    category: "Hospitality",
+    imageRef: "Skyview Hotels / TrailPeak",
+    whatYouGet: "Booking, housekeeping, guest messaging and revenue dashboard",
+    whyIndustry: "Hotels compete on experience consistency; this makes every stay reliably excellent.",
+  },
+  {
+    slug: "property-deal-desk",
+    title: "Deal Desk",
+    category: "Real Estate",
+    imageRef: "Nestoria / Qvrenti",
+    whatYouGet: "Listing → Lead → Site visit → Booking → Installment tracking",
+    whyIndustry: "Real estate loses money on aged leads; this responds in under 5 minutes, every time.",
+  },
+  {
+    slug: "commerce-command",
+    title: "Commerce Command",
+    category: "Retail & Commerce",
+    imageRef: "Medichy Pharmacy / Lokma Food",
+    whatYouGet: "Catalog, orders, inventory, payments and delivery orchestration",
+    whyIndustry: "Commerce margins live on inventory accuracy and delivery promises — this keeps both true.",
+  },
+  {
+    slug: "field-ops-hub",
+    title: "Field Ops Hub",
+    category: "Services",
+    imageRef: "IT Empire / Smart ERP",
+    whatYouGet: "Jobs, crews, inventory and finance in one operational source of truth",
+    whyIndustry: "Manufacturing and services fail on disconnected data; this connects it end-to-end.",
+  },
+] as const;
+
+export const AI_NATIVE_MESSENGER = {
+  eyebrow: "UNIFIED CLIENT MESSAGING",
+  title: "Every Client Conversation in One Shared Timeline",
+  description: "Unify webchat, email, SMS, and official WhatsApp Cloud API channels into a single auditable client workspace — with role-based assignments, human approval checkpoints, and full Client ID history.",
+  capabilities: [
+    { title: "Omnichannel Shared Inbox", detail: "Webchat, email, SMS, and WhatsApp conversations appear in one structured timeline per client — zero lost context across personal devices." },
+    { title: "Human-Controlled Approvals", detail: "Draft responses, scope summaries, and milestone updates pass through explicit role-based review before critical client communications go out." },
+    { title: "Client ID as Source of Truth", detail: "Every enquiry, approved Scope of Work, invoice, and handover record is linked to a single Client ID — auditable by timestamp and actor." },
+    { title: "Verified Contact Onboarding", detail: "Structured intake links verified email and phone contacts to a dedicated Client ID so project updates and portal access stay consistent." },
+  ],
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -34,16 +146,11 @@ export const COMPANY = {
 /* ------------------------------------------------------------------ */
 
 export const NAV_LINKS: { label: string; href: string }[] = [
-  { label: "Home", href: "#/" },
-  { label: "About", href: "#/about" },
-  { label: "Services", href: "#/services" },
-  { label: "Industries", href: "#/industries" },
-  { label: "Work", href: "#/work" },
-  { label: "Technologies", href: "#/technologies" },
-  { label: "Design Kit", href: "#/design-kit" },
-  { label: "Process", href: "#/process" },
-  { label: "Blog", href: "#/blog" },
-  { label: "Contact", href: "#/contact" },
+  { label: "Solutions", href: "/services" },
+  { label: "Industries", href: "/industries" },
+  { label: "Work", href: "/work" },
+  { label: "Resources", href: "/blog" },
+  { label: "Company", href: "/about" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -146,7 +253,7 @@ export const SERVICES: Service[] = [
       "Test orders, launch, team training and handover",
     ],
     example:
-      "A Dhaka-based fashion retailer moving from social-media selling to a full store with automated order confirmations on WhatsApp and delivery-status tracking.",
+      "A fashion retailer moving from social-media selling to a full store with automated order confirmations on WhatsApp and delivery-status tracking — serving customers worldwide.",
   },
   {
     slug: "custom-crm-development",
@@ -686,7 +793,7 @@ export const INDUSTRIES: Industry[] = [
     solution:
       "A commerce platform with a conversion-engineered storefront, local payment integration, automated order communication and reporting that connects revenue to decisions.",
     exampleSystem:
-      "A Dhaka-based fashion retailer replaces social-media selling with a full store: automated order confirmations on WhatsApp, delivery-status tracking and a weekly sales report leadership actually reads.",
+      "A fashion retailer replaces social-media selling with a full store: automated order confirmations on WhatsApp, delivery-status tracking and a weekly sales report leadership actually reads — consistent across every market served.",
     recommended: ["ecommerce-platforms", "whatsapp-automation", "business-dashboards", "api-integrations"],
   },
   {
@@ -884,7 +991,7 @@ export const INDUSTRIES: Industry[] = [
     solution:
       "Automation covering the timezone gap: instant multi-channel enquiry response, structured CRM across markets, and reporting that keeps leadership in control from any country.",
     exampleSystem:
-      "An exporter automates enquiry response and quotation follow-up across three continents — a buyer in Vancouver and a buyer in Dhaka get the same five-minute answer.",
+      "An exporter automates enquiry response and quotation follow-up across continents — every buyer, in any timezone, gets the same five-minute answer.",
     recommended: ["custom-crm-development", "n8n-workflow-automation", "email-automation", "premium-business-websites"],
   },
   {
@@ -1405,7 +1512,7 @@ export const ROLES: Role[] = [
   {
     slug: "senior-fullstack-engineer",
     title: "Senior Full-Stack Engineer",
-    location: "Remote / Dhaka",
+    location: "Worldwide — Remote",
     type: "Full-time",
     summary:
       "Own complete product builds — from schema design to deployed interface — for client platforms across eCommerce, CRM and portals. You will work directly against written scopes and be accountable to milestone acceptance, not ticket counts.",
@@ -1427,7 +1534,7 @@ export const ROLES: Role[] = [
   {
     slug: "backend-engineer-laravel",
     title: "Backend Engineer (Laravel / PHP)",
-    location: "Remote / Dhaka",
+    location: "Worldwide — Remote",
     type: "Full-time",
     summary:
       "Build and maintain server-side systems for business applications and integrations — payment flows, order pipelines and APIs — with the reliability discipline our delivery policy promises clients.",
@@ -1449,7 +1556,7 @@ export const ROLES: Role[] = [
   {
     slug: "automation-engineer",
     title: "Automation Engineer (n8n / WhatsApp Cloud API)",
-    location: "Remote / Harrisonville, MO / Dhaka",
+    location: "Worldwide — Remote",
     type: "Full-time",
     summary:
       "Design and operate the automation backbone: n8n workflows, WhatsApp Cloud API integrations, notification pipelines and the monitoring that keeps all of it honest.",
@@ -1496,7 +1603,7 @@ export const ROLES: Role[] = [
     location: "Remote / Harrisonville, MO",
     type: "Full-time",
     summary:
-      "Grow our client base across the USA, Bangladesh and beyond — with a process that closes on trust mechanics (preview-first, milestone payments) rather than discount pressure.",
+      "Grow our client base across the USA and worldwide — with a process that closes on trust mechanics (preview-first, milestone payments) rather than discount pressure.",
     responsibilities: [
       "Manage inbound enquiries from first message to scope approval",
       "Qualify opportunities honestly — including declining bad fits",

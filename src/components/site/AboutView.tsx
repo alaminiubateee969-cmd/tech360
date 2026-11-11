@@ -16,28 +16,28 @@ const PRINCIPLES = [
     icon: Eye,
     title: "Preview where included",
     text: "Where included in the agreed process, clients can review an HTML Preview against the approved scope before the applicable project payment.",
-    link: "#/legal/delivery",
+    link: "/legal/delivery",
     label: "Read our Delivery Policy",
   },
   {
     icon: FileText,
     title: "Everything in writing",
     text: "Project scope, deliverables, milestones, approvals, payment records and important decisions are documented and traceable to the relevant Client ID.",
-    link: "#/legal/client-approval",
+    link: "/legal/client-approval",
     label: "Read our Client Approval Policy",
   },
   {
     icon: Lock,
     title: "Clear ownership and handover",
     text: "Following verification of the final payment and completion of the applicable handover requirements, we provide the agreed source code, documentation and Client-owned credentials specifically identified in the approved SOW.",
-    link: "#/legal/source-code-handover",
+    link: "/legal/source-code-handover",
     label: "Read our Source Code Handover Policy",
   },
   {
     icon: ShieldCheck,
     title: "One accountable company",
     text: "Our client engagements are managed through documented scopes, project records, invoices, approvals and handover procedures. TECH360 LLC is our Missouri-registered US entity.",
-    link: "#/legal/terms",
+    link: "/legal/terms",
     label: "Read our Terms and Conditions",
   },
 ];
@@ -82,11 +82,11 @@ const WORKING_STEPS = [
 
 export default function AboutView() {
   return (
-    <main id="main-content">
+    <div>
       <PageHero
         eyebrow="About TECH360"
-        title="Built in Bangladesh. Expanded to the United States. Delivering worldwide."
-        description={`TECH360 is a software engineering and business automation company founded in Bangladesh in ${COMPANY.bangladeshFoundedYear}. In ${COMPANY.usRegistrationYear}, the company expanded its international presence through the registration of TECH360 LLC in ${COMPANY.registrationJurisdiction}.`}
+        title="USA-based. Internationally focused. Delivering worldwide."
+        description={`TECH360 LLC is a USA-based international software engineering and technology solutions company, registered in Missouri. We design, develop, and deliver secure, scalable digital solutions for clients worldwide.`}
         breadcrumb={[{ label: "About" }]}
       />
 
@@ -111,26 +111,25 @@ export default function AboutView() {
             <Reveal>
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[#009FE3]">Our story</p>
               <h2 id="story-heading" className="text-3xl font-bold tracking-tight text-[#0B1F33] sm:text-4xl">
-                From a Bangladesh-founded engineering team to an international company
+                A USA-based software engineering company serving clients worldwide
               </h2>
               <div className="mt-6 space-y-4 text-base leading-relaxed text-[#526173]">
                 <p>
-                  TECH360 began in Bangladesh in 2021 with a practical goal: to help businesses turn ideas into reliable software and automation
-                  systems.
+                  TECH360 LLC is a USA-based international software engineering and technology solutions company. Our registered entity is in
+                  Missouri, USA, and our services are available to clients worldwide.
                 </p>
                 <p>
-                  As we worked on digital projects, one challenge continued to stand out. Clients needed more than attractive proposals and delivery
+                  Across digital projects, one challenge continued to stand out. Clients needed more than attractive proposals and delivery
                   promises. They needed a clear understanding of what would be built, how progress would be evaluated, what they were paying for, and
                   what they would own at the end.
                 </p>
                 <p>We built our delivery approach around those needs.</p>
                 <p>
-                  In 2025, TECH360 expanded its international business presence by registering TECH360 LLC in Missouri, USA. This marked a new stage
-                  in the company&apos;s development while building on the engineering experience and operations established in Bangladesh.
+                  Our engineering discipline covers custom software, CRM systems, client portals, eCommerce platforms, business automation, and AI
+                  solutions — scoped in writing, reviewed before payment where included, and handed over with clear documentation.
                 </p>
                 <p>
-                  Our roots remain in Bangladesh, our registered US entity supports our international business presence, and our services are available
-                  to clients worldwide.
+                  Our registered US entity supports our international business presence, and our services are available to clients worldwide.
                 </p>
                 <p className="font-medium text-[#0B1F33]">
                   We believe a good client relationship is built through clear commitments, visible progress, documented decisions, and accountable
@@ -152,7 +151,7 @@ export default function AboutView() {
               <Card className="border-[#E2E8F0] bg-[#F8FCFF]">
                 <CardContent className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-[#526173]">Founded</p>
-                  <p className="mt-1 text-lg font-bold text-[#0B1F33]">Bangladesh · {COMPANY.bangladeshFoundedYear}</p>
+                  <p className="mt-1 text-lg font-bold text-[#0B1F33]">USA · {COMPANY.founded}</p>
                 </CardContent>
               </Card>
               <Card className="border-[#E2E8F0] bg-[#F8FCFF]">
@@ -170,8 +169,7 @@ export default function AboutView() {
               </Card>
             </div>
             <p className="mt-3 text-center text-xs leading-relaxed text-[#8A99AD]">
-              Our Bangladesh-founded operations and subsequent US registration represent two stages in the development of TECH360, not two different
-              founding dates.
+              TECH360 LLC is a Missouri-registered US company delivering software engineering services to clients worldwide.
             </p>
           </Reveal>
         </div>
@@ -416,7 +414,7 @@ export default function AboutView() {
           </RevealList>
           <Reveal delay={0.2} className="mt-8 text-center">
             <a
-              href="#/services"
+              href="/services"
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white px-6 text-sm font-semibold text-[#0B1F33] outline-none transition hover:border-[#009FE3]/40 hover:bg-[#F8FCFF] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
             >
               Explore all services
@@ -429,15 +427,15 @@ export default function AboutView() {
         title="Put our process to the test"
         description="Start with a conversation, not a commitment. Tell us what you want to build, improve, or automate. We will work with you to understand the requirements, explain the next steps, and document a proposed scope for your review. You should know what is being proposed, how the work will be reviewed, and what the handover will include before you make a decision."
         primaryLabel="Contact TECH360"
-        primaryHref="#/contact"
+        primaryHref="/contact"
       />
 
-      {/* Closing identity line — as in the brief */}
+      {/* Closing identity line */}
       <div className="bg-[#0B1F33] px-4 py-4 text-center sm:px-6">
         <p className="text-xs font-medium tracking-wide text-white/60">
-          TECH360 — Founded in Bangladesh in {COMPANY.bangladeshFoundedYear}. Expanded to the United States in {COMPANY.usRegistrationYear}. Delivering {COMPANY.serviceCoverage.toLowerCase()}.
+          TECH360 LLC — USA-based international software engineering company. Delivering {COMPANY.serviceCoverage.toLowerCase()}.
         </p>
       </div>
-    </main>
+    </div>
   );
 }

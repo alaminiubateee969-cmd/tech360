@@ -220,6 +220,7 @@
     "EvolutionProposal.failureReason"
   ],
   "LongBlob": [
-    "FileRecord.content"
+    "FileRecord.content",
+    "GeneratedDocument.fileContent"
   ]
 }

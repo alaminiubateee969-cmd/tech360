@@ -5,6 +5,7 @@ import { sanitizeText, sanitizePhone, sanitizeEmail, rateLimit, clientIp, logErr
 import { claimInboundWebhookEvent, finishInboundWebhookEvent } from '@/lib/identity-resolver'
 import { webhookBodyDedupKey } from '@/lib/mail/hostinger-inbound-policy'
 import { readBoundedBody } from '@/lib/bounded-body'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'channel must be FACEBOOK|MESSENGER|INSTAGRAM|LINKEDIN|X' }, { status: 400 })
   }
   const sender = sanitizeText(raw.sender, 200)
-  const message = sanitizeText(raw.message, 4000)
+  const message = redactSensitiveCrmData(sanitizeText(raw.message, 4000)).text
   const email = sanitizeEmail(raw.email)
   const phone = sanitizePhone(raw.phone)
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, it } from 'node:test'
-import { PrismaClient } from '@prisma/client'
+import { db } from '../src/lib/db'
 
 import { markPaymentVerifiedInTx } from '../src/lib/journey'
 import { checkGovernedAction, executeGoverned, findApprovedGovernedApproval, GovernanceDeniedError, type GovernedActionInput } from '../src/lib/governance/enforce'
@@ -9,7 +9,8 @@ import { checkGovernedAction, executeGoverned, findApprovedGovernedApproval, Gov
 // (DATABASE_URL). They never call sendCommunication, the receipt builder or
 // any provider, so no message or payment leaves the test database.
 
-const db = new PrismaClient()
+// Use the application client so the offline preview adapter and the
+// production MySQL client are both honoured without a second engine.
 const run = `GOV-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 let clientRowId = ''
 let clientCode = ''

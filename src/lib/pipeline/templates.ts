@@ -50,11 +50,37 @@ export const PIPELINE_MESSAGE_STAGES = [
 
 export type PipelineMessageStage = (typeof PIPELINE_MESSAGE_STAGES)[number]
 
+/** Every channel the pipeline can address. SMS reuses the WhatsApp copy
+ *  shape but with shorter bodies; WEB is conversational chat copy; the
+ *  social channels are short, platform-appropriate variants. */
+export type PipelineChannelKind =
+  | 'WHATSAPP'
+  | 'SMS'
+  | 'EMAIL'
+  | 'WEB'
+  | 'FACEBOOK'
+  | 'INSTAGRAM'
+  | 'LINKEDIN'
+  | 'X'
+  | 'MESSENGER'
+
+export const PIPELINE_CHANNELS: readonly PipelineChannelKind[] = [
+  'WHATSAPP',
+  'SMS',
+  'EMAIL',
+  'WEB',
+  'FACEBOOK',
+  'INSTAGRAM',
+  'LINKEDIN',
+  'X',
+  'MESSENGER',
+] as const
+
 export type PipelineMessage = {
   stage: PipelineMessageStage
   /** The channel this copy is for. */
-  channel: 'WHATSAPP' | 'SMS' | 'EMAIL'
-  /** The email subject. Absent for WhatsApp and SMS. */
+  channel: PipelineChannelKind
+  /** The email subject. Absent for non-email channels. */
   subject?: string
   /** The exact body text. */
   body: string
@@ -65,6 +91,7 @@ export type PipelineMessage = {
 export type PipelineVariables = {
   clientId: string
   clientName: string
+  businessName?: string | null
   businessType?: string | null
   recommendedPlan?: string | null
   meetingLink?: string | null
@@ -135,6 +162,8 @@ Next steps: our team will review the requirements, ask any necessary follow-up q
 
 You can access the customer portal here: [Open the customer portal](${portalUrl}). Sign-in requires your Client ID and a one-time code sent to a contact on your record.
 
+No payment is due before the applicable preview approval. Any payment step follows the approved Scope of Work and an admin-reviewed instruction; an HTML/demo preview is shared for review before final source-code handover.
+
 For your security, never email passwords, API keys, online banking credentials, or payment-card security codes.
 
 ${COMPANY_BLOCK}`
@@ -156,6 +185,9 @@ export function businessTypeWhatsApp(v: PipelineVariables): PipelineMessage {
     stage: 'BUSINESS_TYPE_RECEIVED',
     channel: 'WHATSAPP',
     body: `Thank you for sharing your business type.
+
+Client ID:
+${v.clientId}
 
 Business Type:
 ${v.businessType ?? 'not recorded'}
@@ -183,6 +215,9 @@ export function businessTypeEmail(v: PipelineVariables): PipelineMessage {
   const body = `Dear ${v.clientName},
 
 Thank you for sharing your business type.
+
+Client ID:
+${v.clientId}
 
 Business Type:
 ${v.businessType ?? 'not recorded'}
@@ -270,7 +305,7 @@ Tech360 Team`
   return {
     stage: 'SCOPE_DETAILS_RECEIVED',
     channel: 'EMAIL',
-    subject: 'Project Details Received - Scope Review Started',
+    subject: `Project Details Received - Scope Review Started - Client ID ${v.clientId}`,
     body,
     html: renderEmailBody(body),
   }
@@ -363,6 +398,9 @@ export function meetingWhatsApp(v: PipelineVariables): PipelineMessage {
     channel: 'WHATSAPP',
     body: `No problem. If any part of the Scope of Work is unclear, you can book an online meeting with Tech360 before approval.
 
+Client ID:
+${v.clientId}
+
 Meeting link:
 ${v.meetingLink ?? 'a meeting link will be shared shortly'}
 
@@ -382,6 +420,9 @@ export function meetingEmail(v: PipelineVariables): PipelineMessage {
   const body = `Dear ${v.clientName},
 
 If any part of the Scope of Work is unclear, you can book an online meeting with Tech360 before approval.
+
+Client ID:
+${v.clientId}
 
 Meeting link:
 ${v.meetingLink ?? 'a meeting link will be shared shortly'}
@@ -455,6 +496,9 @@ export function previewSentWhatsApp(v: PipelineVariables): PipelineMessage {
     channel: 'WHATSAPP',
     body: `Your HTML Preview is ready for review as provided in the agreed process.
 
+Client ID:
+${v.clientId}
+
 Preview Link:
 ${v.htmlPreviewUrl ?? 'a preview link will be shared shortly'}
 
@@ -473,6 +517,9 @@ export function previewSentEmail(v: PipelineVariables): PipelineMessage {
   const body = `Dear ${v.clientName},
 
 Your HTML/demo preview is ready for review.
+
+Client ID:
+${v.clientId}
 
 Preview Link:
 ${v.htmlPreviewUrl ?? 'a preview link will be shared shortly'}
@@ -575,7 +622,7 @@ Tech360 Team`
   return {
     stage: 'HTML_PREVIEW_APPROVED',
     channel: 'EMAIL',
-    subject: 'HTML Preview Approval Confirmed - Payment Step',
+    subject: `HTML Preview Approval Confirmed - Payment Step - Client ID ${v.clientId}`,
     body,
     html: renderEmailBody(body),
   }
@@ -639,6 +686,14 @@ Delivery may include:
 ✅ Client-owned credentials identified in the scope, if applicable
 ✅ Deployment support and documentation, if included
 
+Approved-scope delivery checklist:
+
+✅ Final website/system files
+✅ Source code
+✅ Admin access, if included
+✅ Deployment support, if included
+✅ Basic handover documentation
+
 Please review the delivery carefully and confirm after checking.`,
   }
 }
@@ -686,6 +741,9 @@ export function deliveryCompletedWhatsApp(v: PipelineVariables): PipelineMessage
     channel: 'WHATSAPP',
     body: `Tech360 confirms that your approved project has been delivered/deployed as per the approved Scope of Work.
 
+Client ID:
+${v.clientId}
+
 Please check your website/system and confirm:
 
 ✅ Project delivered/deployed
@@ -704,6 +762,9 @@ export function deliveryCompletedEmail(v: PipelineVariables): PipelineMessage {
 
 Tech360 confirms that your approved project has been delivered/deployed as per the approved Scope of Work.
 
+Client ID:
+${v.clientId}
+
 Please review your website/system and confirm:
 
 1. The project has been delivered or deployed.
@@ -721,7 +782,7 @@ Tech360 Team`
   return {
     stage: 'FINAL_DELIVERY_COMPLETED',
     channel: 'EMAIL',
-    subject: 'Final Delivery Completed - Confirmation Required',
+    subject: `Final Delivery Completed - Confirmation Required - Client ID ${v.clientId}`,
     body,
     html: renderEmailBody(body),
   }
@@ -766,10 +827,305 @@ ${COMPANY_BLOCK}`
   return {
     stage: 'PROJECT_CLOSED',
     channel: 'EMAIL',
-    subject: 'Project Completed - Review Request',
+    subject: `Project Completed - Review Request - Client ID ${v.clientId}`,
     body,
     html: renderEmailBody(body),
   }
+}
+
+// ------------------------------------------------------------
+// SMS variants — shorter versions of the WhatsApp copy.
+// ------------------------------------------------------------
+
+export function firstMessageSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'FIRST_MESSAGE',
+    channel: 'SMS',
+    body: `Hi ${v.clientName}, thank you for contacting Tech360. Your Client ID is ${v.clientId}. Please reply with your business type, business name, and what you need (website, CRM, eCommerce, automation, or full system). We will prepare your recommended plan.`,
+  }
+}
+
+export function businessTypeSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'BUSINESS_TYPE_RECEIVED',
+    channel: 'SMS',
+    body: `Thank you (Client ID ${v.clientId}). Business type: ${v.businessType ?? 'not recorded'}. Recommended plan: ${v.recommendedPlan ?? 'a solution plan will be prepared'}. Please reply with: required features, number of users, integrations needed, assets you have, and your timeline.`,
+  }
+}
+
+export function scopeDetailsSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'SCOPE_DETAILS_RECEIVED',
+    channel: 'SMS',
+    body: `Thank you. Your requirements are saved under Client ID ${v.clientId}. Our team will review them and prepare a Scope of Work. The final scope is sent after internal review.`,
+  }
+}
+
+export function finalScopeSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'FINAL_SCOPE_APPROVED',
+    channel: 'SMS',
+    body: `Your final Scope of Work is ready (Client ID ${v.clientId}). Please review it. Reply "I approve the Scope of Work" to approve, or ask for a meeting: ${v.meetingLink ?? 'link to follow'}. HTML Preview is supplied where included. Source handover follows verified payment.`,
+  }
+}
+
+export function meetingSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'MEETING_REQUESTED',
+    channel: 'SMS',
+    body: `No problem (Client ID ${v.clientId}). Book a meeting to discuss the scope: ${v.meetingLink ?? 'link to follow'}. We will explain scope, features, timeline, payment policy, preview, and handover.`,
+  }
+}
+
+export function scopeApprovedSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'SCOPE_APPROVED',
+    channel: 'SMS',
+    body: `Thank you for approving the Scope of Work. Approval saved under Client ID ${v.clientId}. Any HTML Preview included will be prepared for your review.`,
+  }
+}
+
+export function previewSentSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'HTML_PREVIEW_SENT',
+    channel: 'SMS',
+    body: `Your HTML Preview is ready (Client ID ${v.clientId}): ${v.htmlPreviewUrl ?? 'link to follow'}. Please reply: Approved, Need revision, or Need meeting.`,
+  }
+}
+
+export function revisionSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'REVISION_REQUESTED',
+    channel: 'SMS',
+    body: `Thank you for your feedback. Your revision request is saved under Client ID ${v.clientId}. Our team will review the changes and update you.`,
+  }
+}
+
+export function previewApprovedSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'HTML_PREVIEW_APPROVED',
+    channel: 'SMS',
+    body: `Thank you for approving the preview. Approval saved under Client ID ${v.clientId}. Next step is payment confirmation, then final delivery per the approved scope.`,
+  }
+}
+
+export function paymentReceivedSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'PAYMENT_RECEIVED',
+    channel: 'SMS',
+    body: `Thank you. Payment confirmation received (Client ID ${v.clientId}). We will now proceed with final delivery per the approved scope.`,
+  }
+}
+
+export function deliveryReadySms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'FINAL_DELIVERY_READY',
+    channel: 'SMS',
+    body: `Your final delivery is ready (Client ID ${v.clientId}). Please review the delivered items and confirm. Source handover follows verified payment.`,
+  }
+}
+
+export function deliveryCompletedSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'FINAL_DELIVERY_COMPLETED',
+    channel: 'SMS',
+    body: `Delivery completed (Client ID ${v.clientId}). Please confirm you received the agreed delivery and have changed your passwords. Reply with the confirmation phrase from your email or chat.`,
+  }
+}
+
+export function projectClosedSms(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'PROJECT_CLOSED',
+    channel: 'SMS',
+    body: `Thank you for confirming delivery. Your project is completed under Client ID ${v.clientId}. We appreciate a short review, and referrals are welcome.`,
+  }
+}
+
+// ------------------------------------------------------------
+// WebChat variants — conversational, chat-friendly copy.
+// ------------------------------------------------------------
+
+export function firstMessageWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'FIRST_MESSAGE',
+    channel: 'WEB',
+    body: `Hi ${v.clientName}, thanks for reaching out to TECH360. Your Client ID is ${v.clientId} — everything we discuss will be saved under it.\n\nTo recommend the right solution, could you share your business type and business name? And what are you hoping to build — a website, CRM, eCommerce, automation, or a full system?`,
+  }
+}
+
+export function businessTypeWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'BUSINESS_TYPE_RECEIVED',
+    channel: 'WEB',
+    body: `Thanks for sharing that (Client ID ${v.clientId}). For ${v.businessType ?? 'your business'}, we'd recommend: ${v.recommendedPlan ?? 'a tailored solution plan'}.\n\nTo prepare your Scope of Work, could you tell me about the features you need, how many people will use it, any integrations, assets you already have, and your timeline? One thing at a time is fine.`,
+  }
+}
+
+export function scopeDetailsWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'SCOPE_DETAILS_RECEIVED',
+    channel: 'WEB',
+    body: `Thanks — your requirements are saved under Client ID ${v.clientId}. Our team will review them and prepare a Scope of Work with confirmed features, timeline, and payment policy. The final scope is sent after internal review, so you can check everything before deciding.`,
+  }
+}
+
+export function finalScopeWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'FINAL_SCOPE_APPROVED',
+    channel: 'WEB',
+    body: `Your final Scope of Work is ready for review (Client ID ${v.clientId}).\n\n${v.finalScope ?? 'The approved scope is attached to your client record.'}\n\nIf it looks right, just reply "I approve the Scope of Work". If anything is unclear, you can book a meeting here: ${v.meetingLink ?? 'a meeting link will be shared shortly'}.\n\nWhere included, you'll review an HTML Preview before payment, and source code is handed over after verified payment.`,
+  }
+}
+
+export function meetingWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'MEETING_REQUESTED',
+    channel: 'WEB',
+    body: `Of course — happy to walk through it (Client ID ${v.clientId}). Book a time that suits you here: ${v.meetingLink ?? 'a meeting link will be shared shortly'}.\n\nWe can cover the scope, what's included and excluded, timeline, payment policy, preview, and handover.`,
+  }
+}
+
+export function scopeApprovedWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'SCOPE_APPROVED',
+    channel: 'WEB',
+    body: `Thank you — your approval is saved under Client ID ${v.clientId}. Any HTML Preview included in your scope will be prepared for your review next.`,
+  }
+}
+
+export function previewSentWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'HTML_PREVIEW_SENT',
+    channel: 'WEB',
+    body: `Your HTML Preview is ready (Client ID ${v.clientId}): ${v.htmlPreviewUrl ?? 'a preview link will be shared shortly'}.\n\nTake a look and let me know — Approved, Need revision, or Need meeting?`,
+  }
+}
+
+export function revisionWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'REVISION_REQUESTED',
+    channel: 'WEB',
+    body: `Thanks for the feedback — your revision request is saved under Client ID ${v.clientId}. Our team will review the requested changes and update you here.`,
+  }
+}
+
+export function previewApprovedWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'HTML_PREVIEW_APPROVED',
+    channel: 'WEB',
+    body: `Thank you for approving the preview — saved under Client ID ${v.clientId}. The next step is payment confirmation, then final delivery per your approved scope.`,
+  }
+}
+
+export function paymentReceivedWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'PAYMENT_RECEIVED',
+    channel: 'WEB',
+    body: `Thank you — payment confirmation received (Client ID ${v.clientId}). We'll now proceed with final delivery per your approved scope.`,
+  }
+}
+
+export function deliveryReadyWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'FINAL_DELIVERY_READY',
+    channel: 'WEB',
+    body: `Your final delivery is ready (Client ID ${v.clientId}). Please review the delivered items and confirm when you're happy. Source handover follows verified payment.`,
+  }
+}
+
+export function deliveryCompletedWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'FINAL_DELIVERY_COMPLETED',
+    channel: 'WEB',
+    body: `Delivery is complete (Client ID ${v.clientId}). Please confirm you received the agreed delivery and have changed your passwords, so we can close the project.`,
+  }
+}
+
+export function projectClosedWeb(v: PipelineVariables): PipelineMessage {
+  return {
+    stage: 'PROJECT_CLOSED',
+    channel: 'WEB',
+    body: `Thank you for confirming delivery — your project is completed under Client ID ${v.clientId}. If you're happy with our work, a short review would mean a lot. And if you know another business that could use our help, we'd appreciate the introduction.`,
+  }
+}
+
+// ------------------------------------------------------------
+// Social variants — short, platform-appropriate copy.
+// ------------------------------------------------------------
+
+function socialBody(stage: PipelineMessageStage, v: PipelineVariables, channel: PipelineChannelKind): string {
+  const id = v.clientId
+  const name = v.clientName
+  switch (stage) {
+    case 'FIRST_MESSAGE':
+      return `Hi ${name}, thanks for contacting TECH360. Your Client ID is ${id}. Please share your business type and what you need (website, CRM, eCommerce, automation, or full system) and we'll prepare your plan.`
+    case 'BUSINESS_TYPE_RECEIVED':
+      return `Thanks ${name} (${id}). For ${v.businessType ?? 'your business'} we recommend: ${v.recommendedPlan ?? 'a tailored plan'}. Please share features, users, integrations, assets, and timeline so we can scope it.`
+    case 'SCOPE_DETAILS_RECEIVED':
+      return `Thanks ${name} — requirements saved under ${id}. Our team will prepare your Scope of Work for review.`
+    case 'FINAL_SCOPE_APPROVED':
+      return `Your final Scope of Work is ready (${id}). Please review and reply "I approve the Scope of Work" or book a meeting: ${v.meetingLink ?? 'link to follow'}.`
+    case 'MEETING_REQUESTED':
+      return `No problem, ${name} (${id}). Book a meeting here: ${v.meetingLink ?? 'link to follow'} — we'll explain scope, timeline, and payment policy.`
+    case 'SCOPE_APPROVED':
+      return `Thank you for approving the scope, ${name}. Approval saved under ${id}. Your HTML Preview will be prepared next.`
+    case 'HTML_PREVIEW_SENT':
+      return `Your HTML Preview is ready, ${name} (${id}): ${v.htmlPreviewUrl ?? 'link to follow'}. Please reply Approved, Need revision, or Need meeting.`
+    case 'REVISION_REQUESTED':
+      return `Thanks for the feedback, ${name}. Revision request saved under ${id} — our team will review and update you.`
+    case 'HTML_PREVIEW_APPROVED':
+      return `Thank you for approving the preview, ${name} (${id}). Next step is payment confirmation, then final delivery.`
+    case 'PAYMENT_RECEIVED':
+      return `Thank you, ${name}. Payment confirmation received (${id}). Proceeding to final delivery.`
+    case 'FINAL_DELIVERY_READY':
+      return `Your final delivery is ready, ${name} (${id}). Please review and confirm.`
+    case 'FINAL_DELIVERY_COMPLETED':
+      return `Delivery complete, ${name} (${id}). Please confirm receipt and password changes to close the project.`
+    case 'PROJECT_CLOSED':
+      return `Thank you, ${name}. Project completed under ${id}. We'd appreciate a short review.`
+    default:
+      return `Hi ${name}, update on your TECH360 project (${id}).`
+  }
+}
+
+export function firstMessageSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'FIRST_MESSAGE', channel, body: socialBody('FIRST_MESSAGE', v, channel) }
+}
+export function businessTypeSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'BUSINESS_TYPE_RECEIVED', channel, body: socialBody('BUSINESS_TYPE_RECEIVED', v, channel) }
+}
+export function scopeDetailsSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'SCOPE_DETAILS_RECEIVED', channel, body: socialBody('SCOPE_DETAILS_RECEIVED', v, channel) }
+}
+export function finalScopeSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'FINAL_SCOPE_APPROVED', channel, body: socialBody('FINAL_SCOPE_APPROVED', v, channel) }
+}
+export function meetingSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'MEETING_REQUESTED', channel, body: socialBody('MEETING_REQUESTED', v, channel) }
+}
+export function scopeApprovedSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'SCOPE_APPROVED', channel, body: socialBody('SCOPE_APPROVED', v, channel) }
+}
+export function previewSentSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'HTML_PREVIEW_SENT', channel, body: socialBody('HTML_PREVIEW_SENT', v, channel) }
+}
+export function revisionSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'REVISION_REQUESTED', channel, body: socialBody('REVISION_REQUESTED', v, channel) }
+}
+export function previewApprovedSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'HTML_PREVIEW_APPROVED', channel, body: socialBody('HTML_PREVIEW_APPROVED', v, channel) }
+}
+export function paymentReceivedSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'PAYMENT_RECEIVED', channel, body: socialBody('PAYMENT_RECEIVED', v, channel) }
+}
+export function deliveryReadySocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'FINAL_DELIVERY_READY', channel, body: socialBody('FINAL_DELIVERY_READY', v, channel) }
+}
+export function deliveryCompletedSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'FINAL_DELIVERY_COMPLETED', channel, body: socialBody('FINAL_DELIVERY_COMPLETED', v, channel) }
+}
+export function projectClosedSocial(v: PipelineVariables, channel: PipelineChannelKind): PipelineMessage {
+  return { stage: 'PROJECT_CLOSED', channel, body: socialBody('PROJECT_CLOSED', v, channel) }
 }
 
 // ------------------------------------------------------------
@@ -788,21 +1144,24 @@ export const PIPELINE_COPY: Record<
   {
     whatsapp: (v: PipelineVariables) => PipelineMessage
     email: (v: PipelineVariables) => PipelineMessage
+    sms: (v: PipelineVariables) => PipelineMessage
+    web: (v: PipelineVariables) => PipelineMessage
+    social: (v: PipelineVariables, channel: PipelineChannelKind) => PipelineMessage
   }
 > = {
-  FIRST_MESSAGE: { whatsapp: firstMessageWhatsApp, email: firstMessageEmail },
-  BUSINESS_TYPE_RECEIVED: { whatsapp: businessTypeWhatsApp, email: businessTypeEmail },
-  SCOPE_DETAILS_RECEIVED: { whatsapp: scopeDetailsWhatsApp, email: scopeDetailsEmail },
-  FINAL_SCOPE_APPROVED: { whatsapp: finalScopeWhatsApp, email: finalScopeEmail },
-  MEETING_REQUESTED: { whatsapp: meetingWhatsApp, email: meetingEmail },
-  SCOPE_APPROVED: { whatsapp: scopeApprovedWhatsApp, email: scopeApprovedEmail },
-  HTML_PREVIEW_SENT: { whatsapp: previewSentWhatsApp, email: previewSentEmail },
-  REVISION_REQUESTED: { whatsapp: revisionWhatsApp, email: revisionEmail },
-  HTML_PREVIEW_APPROVED: { whatsapp: previewApprovedWhatsApp, email: previewApprovedEmail },
-  PAYMENT_RECEIVED: { whatsapp: paymentReceivedWhatsApp, email: paymentReceivedEmail },
-  FINAL_DELIVERY_READY: { whatsapp: deliveryReadyWhatsApp, email: deliveryReadyEmail },
-  FINAL_DELIVERY_COMPLETED: { whatsapp: deliveryCompletedWhatsApp, email: deliveryCompletedEmail },
-  PROJECT_CLOSED: { whatsapp: projectClosedWhatsApp, email: projectClosedEmail },
+  FIRST_MESSAGE: { whatsapp: firstMessageWhatsApp, email: firstMessageEmail, sms: firstMessageSms, web: firstMessageWeb, social: firstMessageSocial },
+  BUSINESS_TYPE_RECEIVED: { whatsapp: businessTypeWhatsApp, email: businessTypeEmail, sms: businessTypeSms, web: businessTypeWeb, social: businessTypeSocial },
+  SCOPE_DETAILS_RECEIVED: { whatsapp: scopeDetailsWhatsApp, email: scopeDetailsEmail, sms: scopeDetailsSms, web: scopeDetailsWeb, social: scopeDetailsSocial },
+  FINAL_SCOPE_APPROVED: { whatsapp: finalScopeWhatsApp, email: finalScopeEmail, sms: finalScopeSms, web: finalScopeWeb, social: finalScopeSocial },
+  MEETING_REQUESTED: { whatsapp: meetingWhatsApp, email: meetingEmail, sms: meetingSms, web: meetingWeb, social: meetingSocial },
+  SCOPE_APPROVED: { whatsapp: scopeApprovedWhatsApp, email: scopeApprovedEmail, sms: scopeApprovedSms, web: scopeApprovedWeb, social: scopeApprovedSocial },
+  HTML_PREVIEW_SENT: { whatsapp: previewSentWhatsApp, email: previewSentEmail, sms: previewSentSms, web: previewSentWeb, social: previewSentSocial },
+  REVISION_REQUESTED: { whatsapp: revisionWhatsApp, email: revisionEmail, sms: revisionSms, web: revisionWeb, social: revisionSocial },
+  HTML_PREVIEW_APPROVED: { whatsapp: previewApprovedWhatsApp, email: previewApprovedEmail, sms: previewApprovedSms, web: previewApprovedWeb, social: previewApprovedSocial },
+  PAYMENT_RECEIVED: { whatsapp: paymentReceivedWhatsApp, email: paymentReceivedEmail, sms: paymentReceivedSms, web: paymentReceivedWeb, social: paymentReceivedSocial },
+  FINAL_DELIVERY_READY: { whatsapp: deliveryReadyWhatsApp, email: deliveryReadyEmail, sms: deliveryReadySms, web: deliveryReadyWeb, social: deliveryReadySocial },
+  FINAL_DELIVERY_COMPLETED: { whatsapp: deliveryCompletedWhatsApp, email: deliveryCompletedEmail, sms: deliveryCompletedSms, web: deliveryCompletedWeb, social: deliveryCompletedSocial },
+  PROJECT_CLOSED: { whatsapp: projectClosedWhatsApp, email: projectClosedEmail, sms: projectClosedSms, web: projectClosedWeb, social: projectClosedSocial },
 }
 
 /** The message pair for a stage. */
@@ -812,6 +1171,74 @@ export function pipelineMessage(stage: PipelineMessageStage, v: PipelineVariable
 } {
   const copy = PIPELINE_COPY[stage]
   return { whatsapp: copy.whatsapp(v), email: copy.email(v) }
+}
+
+/** The message for one stage on one channel. Social channels share the
+ *  short social copy with the channel recorded on the message. */
+export function pipelineMessageForChannel(
+  stage: PipelineMessageStage,
+  channel: PipelineChannelKind,
+  v: PipelineVariables,
+): PipelineMessage {
+  const copy = PIPELINE_COPY[stage]
+  switch (channel) {
+    case 'WHATSAPP':
+      return copy.whatsapp(v)
+    case 'EMAIL':
+      return copy.email(v)
+    case 'SMS':
+      return copy.sms(v)
+    case 'WEB':
+      return copy.web(v)
+    case 'FACEBOOK':
+    case 'INSTAGRAM':
+    case 'LINKEDIN':
+    case 'X':
+    case 'MESSENGER':
+      return copy.social(v, channel)
+  }
+}
+
+// ------------------------------------------------------------
+// Placeholder validation — every required variable must be present
+// before a message is sent. Placeholders follow the master spec:
+// [CLIENT_ID] [CLIENT_NAME] [BUSINESS_NAME] [BUSINESS_TYPE]
+// [PROJECT_NAME] [RECOMMENDED_PLAN] [FINAL_SCOPE] [MEETING_LINK]
+// [HTML_PREVIEW_URL]
+// ------------------------------------------------------------
+
+/** Variables required before a stage message may be sent. */
+export const REQUIRED_VARIABLES_BY_STAGE: Record<PipelineMessageStage, readonly (keyof PipelineVariables)[]> = {
+  FIRST_MESSAGE: ['clientId', 'clientName'],
+  BUSINESS_TYPE_RECEIVED: ['clientId', 'clientName', 'businessType', 'recommendedPlan'],
+  SCOPE_DETAILS_RECEIVED: ['clientId', 'clientName'],
+  FINAL_SCOPE_APPROVED: ['clientId', 'clientName', 'finalScope'],
+  MEETING_REQUESTED: ['clientId', 'clientName', 'meetingLink'],
+  SCOPE_APPROVED: ['clientId', 'clientName'],
+  HTML_PREVIEW_SENT: ['clientId', 'clientName', 'htmlPreviewUrl'],
+  REVISION_REQUESTED: ['clientId', 'clientName'],
+  HTML_PREVIEW_APPROVED: ['clientId', 'clientName'],
+  PAYMENT_RECEIVED: ['clientId', 'clientName'],
+  FINAL_DELIVERY_READY: ['clientId', 'clientName'],
+  FINAL_DELIVERY_COMPLETED: ['clientId', 'clientName'],
+  PROJECT_CLOSED: ['clientId', 'clientName'],
+} as const
+
+export type PlaceholderValidation = {
+  ok: boolean
+  /** Variable keys that are missing or empty for this stage. */
+  missing: string[]
+}
+
+/** Validate that every required placeholder for a stage is filled.
+ *  Never throws — callers must refuse to send when `ok` is false. */
+export function validatePipelineVariables(stage: PipelineMessageStage, v: PipelineVariables): PlaceholderValidation {
+  const required = REQUIRED_VARIABLES_BY_STAGE[stage] ?? []
+  const missing = required.filter((key) => {
+    const value = v[key]
+    return value === null || value === undefined || String(value).trim().length === 0
+  })
+  return { ok: missing.length === 0, missing }
 }
 
 // ------------------------------------------------------------

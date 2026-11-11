@@ -6,17 +6,21 @@ import { sendCommunication, emailTemplate, escapeHtml } from '@/lib/comms'
 import { newCorrelationId, logError, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES, COMPANY } from '@/lib/constants'
 import { PAD_CSS, padHeader, padMeta, padFooter, padSignatures, docDate } from '@/lib/letterhead'
+import { getDefaultBranding, brandingCss, brandingPadHeader, brandingPadFooter, sealHtmlFor } from '@/lib/document-branding'
 import { evaluateDeliveryAcceptance, evaluateProjectClosure } from '@/lib/lifecycle-policy'
 import { hasExplicitContactConsent, selectWelcomeChannel } from '@/lib/contact-policy'
 import { hasAcceptedPreviewDelivery } from '@/lib/preview-policy'
 import { createHandoverManifest, parseHandoverManifest, verifyHandoverArtifacts } from '@/lib/handover-artifacts'
 import { normalizeIdentity, resolveOrCreateVerifiedClient, type VerifiedIdentityProof } from '@/lib/identity-resolver'
+import { updateStage } from '@/lib/conversation-state'
 import { sendPipelineMessage, recordStageChange, type PipelineChannel, type PipelineSendResult } from '@/lib/pipeline/send'
 import type { PipelineVariables } from '@/lib/pipeline/templates'
 import { assertDeliveryRules, screenAiContent } from '@/lib/pipeline/rules'
 import { nextScopeVersionNumber, normalizeTo21PointScope } from '@/lib/scope-validator'
 import { normalizeFactoryScopeManifest } from '@/lib/factory/scope-manifest'
 import { toMinorUnits } from '@/lib/invoice-policy'
+import { detectOutOfScopeRevisionSignals } from '@/lib/payment-policy'
+import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 import type { Prisma } from '@prisma/client'
 import {
   checkGovernedAction,
@@ -233,15 +237,17 @@ export async function intakeLead(input: {
       await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSING' } })
     }
 
+    const safeMessage = redactSensitiveCrmData(sanitizeText(input.message, 8000)).text
+
     if (isNewClient) {
-      await rememberMemory({ scope: 'CLIENT', key: `origin:${clientRow.id}`, content: `Client originated from ${input.source} on ${new Date().toISOString()}. First message: ${sanitizeText(input.message, 500)}`, clientId: clientRow.id, importance: 7 })
+      await rememberMemory({ scope: 'CLIENT', key: `origin:${clientRow.id}`, content: `Client originated from ${input.source} on ${new Date().toISOString()}. First message: ${safeMessage.slice(0, 500)}`, clientId: clientRow.id, importance: 7 })
     }
 
     // Save the original inbound message
     await db.communication.create({
       data: {
         clientId: clientRow.id, channel: createData.source, direction: 'IN',
-        sender: sanitizeText(input.name, 200) || null, body: sanitizeText(input.message, 8000),
+        sender: sanitizeText(input.name, 200) || null, body: safeMessage,
         providerMessageId: input.providerMessageId ?? null,
         status: 'RECEIVED',
       },
@@ -252,13 +258,13 @@ export async function intakeLead(input: {
       where: { clientId: clientRow.id },
       create: {
         clientId: clientRow.id,
-        requirements: sanitizeText(input.message, 4000),
+        requirements: safeMessage.slice(0, 4000),
         projectType: input.projectType || null,
         budgetRange: input.budgetRange || null,
         tracking: input.tracking ? JSON.stringify(input.tracking) : null,
         sourceDetails: input.source,
       },
-      update: { requirements: sanitizeText(input.message, 4000) },
+      update: { requirements: safeMessage.slice(0, 4000) },
     })
 
     await stepLog(log.id, 'client_created', { clientId: clientRow.clientId })
@@ -300,6 +306,9 @@ export async function intakeLead(input: {
           channels: welcomeChannels,
           agentCode: 'COM-010',
           workflowId: log.id,
+          nextPendingAction: 'Share your business type and main project goal',
+          nextPendingActor: 'CLIENT',
+          followUpStage: 'CONTACTED',
         })
         welcomeResult = {
           status: welcome.status,
@@ -323,6 +332,9 @@ export async function intakeLead(input: {
       // Business detection runs after the welcome attempt. It may update
       // businessType, but only an accepted welcome can advance the pipeline.
       const businessRun = await detectBusiness(clientRow.id, input.message, { advanceStage: welcomeAccepted })
+      if (welcomeAccepted && businessRun.ok && businessRun.json) {
+        await updateStage(clientRow.id, clientRow.clientId, 'BUSINESS_IDENTIFIED').catch(() => null)
+      }
       await finishLog(log.id, 'SUCCESS', { clientId: clientRow.clientId, leadId: lead.id, welcomeAccepted, businessDetectionOk: businessRun.ok })
     } else {
       // A returning client. Their reply may now carry the business type,
@@ -595,7 +607,7 @@ export function formatScopeForClient(content: Record<string, unknown>, clientId:
   const factoryManifest = normalizeFactoryScopeManifest(content.factoryManifest)
   if (factoryManifest.ok) {
     const manifest = factoryManifest.manifest
-    text += `\nSOFTWARE FACTORY DELIVERABLE\nApplication: ${manifest.applicationName}\nVertical: ${manifest.vertical}\nApproved modules: ${manifest.modules.join(', ')}\nLanguage: ${manifest.language} · Currency: ${manifest.currency} · Brand color: ${manifest.primaryColor}\nDelivery format: ${manifest.deliveryFormat} (source archive only; this workflow does not deploy to production)\nHosting and deployment terms: ${manifest.hostingAndDeployment}\nClient responsibilities: ${manifest.clientResponsibilities}\n`
+    text += `\nAPPLICATION DELIVERABLE SPECIFICATION\nApplication: ${manifest.applicationName}\nVertical: ${manifest.vertical}\nApproved modules: ${manifest.modules.join(', ')}\nLanguage: ${manifest.language} · Currency: ${manifest.currency} · Brand color: ${manifest.primaryColor}\nDelivery format: ${manifest.deliveryFormat} (source archive only; this workflow does not deploy to production)\nHosting and deployment terms: ${manifest.hostingAndDeployment}\nClient responsibilities: ${manifest.clientResponsibilities}\n`
   }
   text += '\nTIMELINE\n'
   timeline.forEach((t) => { text += `• ${t.phase ?? ''} (${t.weeks ?? '?'} week(s)): ${t.activities ?? ''}\n` })
@@ -637,31 +649,80 @@ export async function clientScopeDecision(clientRowId: string, decision: 'APPROV
     return { next: 'REQUEST_PREVIEW', sent }
   }
   if (decision === 'REVISION_REQUESTED') {
+    const cleanNotes = sanitizeText(notes, 4000)
+    const outOfScopeCheck = detectOutOfScopeRevisionSignals(cleanNotes)
     await db.scopeOfWork.update({ where: { id: finalScope.id }, data: { status: 'SUPERSEDED' } })
     const run = await runAgent('REV-032', {
-      input: `Current scope: ${finalScope.content}\nClient revision notes: ${notes ?? ''}`,
+      input: `Current scope: ${finalScope.content}\nClient revision notes: ${cleanNotes}`,
       clientId: client.id, workflow: 'SCOPE_REVISION', expectJson: true,
     })
-    let newScopeId: string | null = null
-    if (run.ok && run.json) {
-      const scope = await db.scopeOfWork.create({
-        data: {
-          clientId: client.id, version: finalScope.version + 1, status: 'AWAITING_ADMIN_APPROVAL',
-          summary: sanitizeText(String(run.json.newVersionSummary ?? ''), 1000),
-          content: JSON.stringify({ ...JSON.parse(finalScope.content || '{}'), ...(run.json as object) }),
-          aiNotes: run.output.slice(0, 8000), generatedBy: 'REV-032',
-        },
-      })
-      newScopeId = scope.id
-      await db.approvalRequest.create({
-        data: {
-          type: 'FINAL_SCOPE_SEND', title: `Approve revised scope for ${client.clientId}`,
-          description: `Revision requested by client. v${scope.version} generated.`,
-          clientId: client.id, agentCode: 'REV-032', payload: JSON.stringify({ scopeId: scope.id }), risk: 'MEDIUM', requestedBy: 'REV-032',
-        },
-      })
-      await setStage(client.id, 'SCOPE_REVIEW', 'Revision generated, awaiting admin approval')
+
+    let priorContent: Record<string, unknown> = {}
+    try {
+      const parsed = JSON.parse(finalScope.content || '{}') as unknown
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        priorContent = parsed as Record<string, unknown>
+      }
+    } catch {
+      priorContent = {}
     }
+
+    const nextVersion = finalScope.version + 1
+    const aiSucceeded = Boolean(run.ok && run.json)
+    const mergedContent = aiSucceeded
+      ? {
+          ...priorContent,
+          ...(run.json as Record<string, unknown>),
+          clientRevisionNotes: cleanNotes,
+          outOfScopeReviewRequired: outOfScopeCheck.flagged,
+        }
+      : {
+          ...priorContent,
+          clientRevisionNotes: cleanNotes,
+          revisionDraftMode: 'HUMAN_REVIEW_REQUIRED',
+          outOfScopeReviewRequired: outOfScopeCheck.flagged,
+        }
+    const summaryText = aiSucceeded
+      ? sanitizeText(String(run.json?.newVersionSummary ?? ''), 1000) || `Revised scope v${nextVersion} prepared from client revision request.`
+      : `Client revision notes captured on v${nextVersion} for operator review${outOfScopeCheck.flagged ? ' (potential out-of-scope expansion flagged)' : ''}.`
+
+    const scope = await db.scopeOfWork.create({
+      data: {
+        clientId: client.id,
+        version: nextVersion,
+        status: 'AWAITING_ADMIN_APPROVAL',
+        summary: summaryText,
+        content: JSON.stringify(mergedContent),
+        aiNotes: aiSucceeded
+          ? run.output.slice(0, 8000)
+          : `Deterministic revision capture (AI runtime unavailable: ${run.error ?? 'provider offline'}). Client notes: ${cleanNotes.slice(0, 2000)}`,
+        generatedBy: aiSucceeded ? 'REV-032' : 'REV-032-FALLBACK',
+      },
+    })
+    const newScopeId: string | null = scope.id
+    await db.approvalRequest.create({
+      data: {
+        type: 'FINAL_SCOPE_SEND',
+        title: outOfScopeCheck.flagged
+          ? `Approve revised scope for ${client.clientId} (out-of-scope commercial review required)`
+          : `Approve revised scope for ${client.clientId}`,
+        description: outOfScopeCheck.flagged
+          ? `Revision requested by client. v${scope.version} prepared. Potential out-of-scope additions detected (${outOfScopeCheck.signals.join(', ')}) — verify commercial/timeline impact before sending.`
+          : `Revision requested by client. v${scope.version} generated.`,
+        clientId: client.id,
+        agentCode: 'REV-032',
+        payload: JSON.stringify({
+          scopeId: scope.id,
+          outOfScopeReviewRequired: outOfScopeCheck.flagged,
+          outOfScopeSignals: outOfScopeCheck.signals,
+          aiDrafted: aiSucceeded,
+        }),
+        risk: outOfScopeCheck.flagged ? 'HIGH' : 'MEDIUM',
+        requestedBy: 'REV-032',
+      },
+    })
+    await setStage(client.id, 'SCOPE_REVIEW', 'Revision recorded, awaiting admin approval')
+
     // The revision acknowledgement is auto-sent; the revised scope still
     // waits for the admin approval above.
     const sent = await sendPipelineMessage({
@@ -670,7 +731,12 @@ export async function clientScopeDecision(clientRowId: string, decision: 'APPROV
       variables: pipelineVars(client),
       agentCode: 'REV-032',
     })
-    return { next: 'ADMIN_APPROVAL', newScopeId, sent }
+    return {
+      next: 'ADMIN_APPROVAL',
+      newScopeId,
+      outOfScopeReviewRequired: outOfScopeCheck.flagged,
+      sent,
+    }
   }
   // CLARIFICATION → meeting only when client asks
   const meeting = await db.meeting.create({
@@ -778,7 +844,13 @@ export async function generatePreview(clientRowId: string) {
 
   const existingCount = await db.preview.count({ where: { clientId: client.id } })
   const token = publicToken()
-  const html = buildPreviewHtml(client, content, existingCount + 1)
+  // Fetch latest approved branding (SOW uses seal when enabled)
+  let brandingForPreview: import('@/lib/document-branding').DocumentBrandingConfig | null = null
+  try {
+    const { getDocumentBranding } = await import('@/lib/document-branding')
+    brandingForPreview = await getDocumentBranding()
+  } catch { brandingForPreview = null }
+  const html = buildPreviewHtml(client, content, existingCount + 1, brandingForPreview)
   const preview = await db.preview.create({
     data: {
       token, clientId: client.id, projectId: null, scopeVersion: finalScope.version,
@@ -810,7 +882,7 @@ export async function generatePreview(clientRowId: string) {
   return { previewId: updated.id, token, link, status: updated.status, reused: false, delivery: attempts }
 }
 
-function buildPreviewHtml(client: { clientId: string; name: string; businessName: string | null }, content: Record<string, unknown>, version: number): string {
+function buildPreviewHtml(client: { clientId: string; name: string; businessName: string | null }, content: Record<string, unknown>, version: number, brandingOverride?: import('@/lib/document-branding').DocumentBrandingConfig | null): string {
   const items = Array.isArray(content.items) ? (content.items as Array<Record<string, string>>) : []
   const timeline = Array.isArray(content.timeline) ? (content.timeline as Array<Record<string, string>>) : []
   const pp = (content.paymentPolicy ?? {}) as Record<string, unknown>
@@ -818,12 +890,17 @@ function buildPreviewHtml(client: { clientId: string; name: string; businessName
   const timelineRows = timeline.map((t) => `<li><strong>${escapeHtml(t.phase ?? '')}</strong> <span>(${escapeHtml(String(t.weeks ?? '?'))} week${String(t.weeks ?? '') === '1' ? '' : 's'})</span><p>${escapeHtml(t.activities ?? '')}</p></li>`).join('')
   const clientDisplayName = escapeHtml(client.name)
   const issued = docDate()
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex,nofollow"/><title>Scope of Work — ${escapeHtml(client.clientId)} — Tech360</title><style>${PAD_CSS}
+  const branding = brandingOverride === undefined ? getDefaultBranding() : (brandingOverride ?? getDefaultBranding())
+  const css = brandingCss(branding)
+  const headerHtml = brandingPadHeader(branding, "Scope of Work — Project Preview")
+  const footerHtml = brandingPadFooter(branding, "This scope preview is confidential and intended for the addressed recipient only. Not a tax invoice.")
+  const sealHtml = sealHtmlFor('SOW' as never, branding)
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex,nofollow"/><title>Scope of Work — ${escapeHtml(client.clientId)} — Tech360</title><style>${css}
 .hello{margin:26px 0 6px;font-size:22px}
 .intro{color:#526173;font-size:14px;line-height:1.7;max-width:64ch}
 </style></head><body>
 <div class="sheet">
-${padHeader("Scope of Work — Project Preview")}
+${headerHtml}
 ${padMeta([
     { label: "Client reference", value: escapeHtml(client.clientId), brand: true },
     { label: "Document", value: `SOW Preview v${version}` },
@@ -842,10 +919,13 @@ ${padMeta([
 <div><b>${escapeHtml(String(pp.finalPct ?? '—'))}%</b><br/><small>On final delivery</small></div>
 </div>
 <div class="note"><strong>Project terms:</strong> HTML Preview where included in the agreed process · Final source-code handover after required payments have cleared unless otherwise agreed · Changes to approved scope may require an approved price or schedule adjustment.</div>
+<div style="position:relative">
 ${padSignatures(clientDisplayName, "Client approval of scope preview")}
+${sealHtml ? `<div style="position:absolute;right:0;bottom:-8px">${sealHtml}</div>` : ''}
+</div>
 <div class="acts no-print"><a class="btn btn-a" href="#approve" id="approveBtn">✓ Approve this preview</a><a class="btn btn-r" href="#revise" id="reviseBtn">Request changes</a></div>
 </main>
-${padFooter("This scope preview is confidential and intended for the addressed recipient only. Not a tax invoice.")}
+${footerHtml}
 </div>
 <script>
 (function(){
@@ -1028,7 +1108,20 @@ export async function sendApprovedPaymentInstruction(payload: {
   return { results }
 }
 
-export async function recordPayment(clientRowId: string, input: { amount: number; currency?: string; method?: string; transactionId?: string; milestone?: string; notes?: string; invoiceId?: string }) {
+export async function recordPayment(
+  clientRowId: string,
+  input: {
+    amount: number
+    currency?: string
+    method?: string
+    transactionId?: string
+    milestone?: string
+    notes?: string
+    invoiceId?: string
+    proofFileId?: string | null
+    initialStatus?: 'PENDING' | 'SUBMITTED' | 'UNDER_VERIFICATION'
+  },
+) {
   const client = await db.client.findUnique({ where: { id: clientRowId }, include: { projects: true } })
   if (!client) throw new Error('Client not found')
   // Per-invoice allocation (idurar/frappe parity): when an invoice is linked,
@@ -1043,6 +1136,19 @@ export async function recordPayment(clientRowId: string, input: { amount: number
     invoiceId = invoice.id
     invoiceProjectId = invoice.projectId
   }
+  let validProofFileId: string | null = null
+  if (input.proofFileId) {
+    const proof = await db.fileRecord.findFirst({
+      where: { id: input.proofFileId, clientId: client.id, scanStatus: { not: 'REJECTED' } },
+      select: { id: true },
+    })
+    if (!proof) throw new Error('Payment proof file was not found for this client.')
+    validProofFileId = proof.id
+  }
+  const safeInitialStatus =
+    input.initialStatus === 'SUBMITTED' || input.initialStatus === 'UNDER_VERIFICATION'
+      ? input.initialStatus
+      : 'PENDING'
   const fallbackProject = client.projects.filter((p) => !['COMPLETED', 'CANCELLED'].includes(p.status)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
   const project = invoiceProjectId ?? fallbackProject?.id ?? null
   const payment = await db.payment.create({
@@ -1052,7 +1158,8 @@ export async function recordPayment(clientRowId: string, input: { amount: number
       amount: input.amount, currency: input.currency ?? 'USD',
       method: input.method ?? null, transactionId: input.transactionId || undefined,
       milestone: input.milestone ?? null, notes: sanitizeText(input.notes, 2000) || null,
-      status: 'PENDING',
+      proofFileId: validProofFileId,
+      status: safeInitialStatus,
     },
   })
   return payment

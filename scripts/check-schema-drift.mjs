@@ -87,15 +87,23 @@ for (const raw of schemaSrc.split('\n')) {
 const columns = new Map()  // table.column -> { type, notNull, default }
 const indexes = new Map()  // table -> Map(name -> { unique, cols })
 const tables = new Set()
+const orderProblems = []
 
 const migrationsDir = join(root, 'prisma/migrations')
-for (const dir of readdirSync(migrationsDir).filter((d) => /^\d+_/.test(d)).sort()) {
+// Match Prisma CLI's exact migration directory sort order (`a.localeCompare(b)`).
+for (const dir of readdirSync(migrationsDir).filter((d) => /^\d+_/.test(d)).sort((a, b) => a.localeCompare(b))) {
   const sql = readFileSync(join(migrationsDir, dir, 'migration.sql'), 'utf8')
-  for (const statement of sql.split(';')) {
+  const uncommentedSql = sql.replace(/^\s*--.*$/gm, '')
+  for (const statement of uncommentedSql.split(';')) {
     const create = /CREATE TABLE(?: IF NOT EXISTS)?\s+`?(\w+)`?\s*\(([\s\S]*)\)/i.exec(statement)
     if (create) {
       const table = create[1]
       tables.add(table)
+      for (const fk of statement.matchAll(/REFERENCES\s+`?(\w+)`?\s*\(/gi)) {
+        if (!tables.has(fk[1])) {
+          orderProblems.push(`ORDER         ${dir} — CREATE TABLE ${table} references ${fk[1]} before it is created`)
+        }
+      }
       if (!indexes.has(table)) indexes.set(table, new Map())
       for (const line of create[2].split('\n')) {
         const column = /^\s*`(\w+)`\s+([A-Z]+(?:\(\d+(?:,\d+)?\))?)\s*(NOT NULL|NULL)?\s*(DEFAULT\s+('[^']*'|[\w().]+))?/i.exec(line)
@@ -120,7 +128,14 @@ for (const dir of readdirSync(migrationsDir).filter((d) => /^\d+_/.test(d)).sort
     const alter = /ALTER TABLE\s+`?(\w+)`?/i.exec(statement)
     if (!alter) continue
     const table = alter[1]
-    tables.add(table)
+    if (!tables.has(table)) {
+      orderProblems.push(`ORDER         ${dir} — ALTER TABLE ${table} runs before ${table} is created`)
+    }
+    for (const fk of statement.matchAll(/REFERENCES\s+`?(\w+)`?\s*\(/gi)) {
+      if (!tables.has(fk[1])) {
+        orderProblems.push(`ORDER         ${dir} — ALTER TABLE ${table} references ${fk[1]} before it is created`)
+      }
+    }
     for (const c of statement.matchAll(/(?:ADD|MODIFY) COLUMN\s+`?(\w+)`?\s+([A-Z]+(?:\(\d+(?:,\d+)?\))?)\s*(NOT NULL|NULL)?\s*(DEFAULT\s+('[^']*'|[\w().]+))?/gi)) {
       columns.set(`${table}.${c[1]}`, {
         type: c[2].toUpperCase(),
@@ -137,10 +152,13 @@ for (const dir of readdirSync(migrationsDir).filter((d) => /^\d+_/.test(d)).sort
       })
     }
   }
-  for (const statement of sql.split(';')) {
+  for (const statement of uncommentedSql.split(';')) {
     const createIndex = /CREATE (UNIQUE )?INDEX\s+`?(\w+)`?\s+ON\s+`?(\w+)`?\s*\(([^)]*)\)/i.exec(statement)
     if (createIndex) {
       const table = createIndex[3]
+      if (!tables.has(table)) {
+        orderProblems.push(`ORDER         ${dir} — CREATE INDEX ${createIndex[2]} on ${table} runs before ${table} is created`)
+      }
       if (!indexes.has(table)) indexes.set(table, new Map())
       indexes.get(table).set(createIndex[2], {
         unique: Boolean(createIndex[1]),
@@ -149,7 +167,12 @@ for (const dir of readdirSync(migrationsDir).filter((d) => /^\d+_/.test(d)).sort
       continue
     }
     const dropIndex = /DROP INDEX\s+`?(\w+)`?\s+ON\s+`?(\w+)`?/i.exec(statement)
-    if (dropIndex) indexes.get(dropIndex[2])?.delete(dropIndex[1])
+    if (dropIndex) {
+      if (!tables.has(dropIndex[2])) {
+        orderProblems.push(`ORDER         ${dir} — DROP INDEX ${dropIndex[1]} on ${dropIndex[2]} runs before ${dropIndex[2]} is created`)
+      }
+      indexes.get(dropIndex[2])?.delete(dropIndex[1])
+    }
   }
 }
 
@@ -211,7 +234,7 @@ function indexName(model, fields, unique) {
   return `${model.physical}_${fields.join('_')}_${unique ? 'key' : 'idx'}`
 }
 
-const problems = []
+const problems = [...orderProblems]
 
 for (const model of models.values()) {
   if (!tables.has(model.physical)) {

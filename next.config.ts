@@ -54,6 +54,50 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Private Software Factory surfaces must never be indexed: the control
+      // center, the company application portal and every factory API response.
+      {
+        source: "/factory/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
+      // Every operator/admin surface, not just the factory control center.
+      // `public/robots.txt` states that these paths send this header, so the
+      // claim has to be true for all of them. Note this is a crawl directive,
+      // never an access control — the API guards remain authoritative.
+      {
+        source: "/admin/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        source: "/pipeline/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        source: "/design-kit/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        source: "/portal/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
+        source: "/api/factory/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+        ],
+      },
+      // Content negotiation: the same URL serves HTML or Markdown depending on
+      // `Accept` (see src/proxy.ts). Shared caches must key on that header, so
+      // it is declared here — the framework rewrites `Vary` on its own
+      // responses, which would otherwise drop the value set in middleware.
+      {
+        source: "/:path*",
+        headers: [{ key: "Vary", value: "Accept" }],
+      },
       {
         source: "/:path*",
         headers: [

@@ -31,6 +31,7 @@ export function PageHero({
       )}
       aria-labelledby="page-hero-title"
     >
+      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-[#0052AC] via-[#008E93] to-[#2EAF2A]" />
       {/* subtle brand geometry — two soft radial washes, no decorative noise */}
       <div
         aria-hidden="true"
@@ -46,7 +47,7 @@ export function PageHero({
             <ol className="flex flex-wrap items-center gap-1.5 text-sm text-white/60">
               <li>
                 <a
-                  href="#/"
+                  href="/"
                   className="rounded-sm outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
                 >
                   Home

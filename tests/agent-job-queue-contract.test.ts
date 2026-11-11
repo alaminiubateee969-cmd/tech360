@@ -40,7 +40,7 @@ function agentJobModel(): string {
 /** The nullability the committed DDL leaves `AgentJob.agentCode` with. */
 function ddlAgentCodeNullable(): boolean {
   let nullable: boolean | null = null
-  for (const dir of readdirSync(migrationsDir).filter((d) => /^\d+_/.test(d)).sort()) {
+  for (const dir of readdirSync(migrationsDir).filter((d) => /^\d+_/.test(d)).sort((a, b) => a.localeCompare(b))) {
     const sql = readFileSync(join(migrationsDir, dir, 'migration.sql'), 'utf8')
     for (const line of sql.split('\n')) {
       const created = /^\s*`agentCode`\s+VARCHAR\(\d+\)\s+(NOT NULL|NULL)/i.exec(line)

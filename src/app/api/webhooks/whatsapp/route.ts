@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { intakeLead } from '@/lib/journey'
 import { sanitizeText, rateLimit, clientIp, logError, audit, constantTimeEquals } from '@/lib/security'
+import { verifyWhatsAppHandshake } from '@/lib/whatsapp-webhook'
 import { toE164 } from '@/lib/phone'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent, resolveVerifiedClientIdentity } from '@/lib/identity-resolver'
 import type { VerifiedIdentityProof } from '@/lib/identity-policy'
@@ -10,16 +11,21 @@ import type { VerifiedIdentityProof } from '@/lib/identity-policy'
 export const dynamic = 'force-dynamic'
 
 // WhatsApp Cloud API webhook verification (GET)
+//
+// The subscription handshake compares the shared verify token in constant
+// time (see @/lib/whatsapp-webhook): `===` on a secret leaks its length and
+// matching prefix through response timing. An unset WHATSAPP_VERIFY_TOKEN
+// fails closed.
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
-  const mode = url.searchParams.get('hub.mode')
-  const token = url.searchParams.get('hub.verify_token')
-  const challenge = url.searchParams.get('hub.challenge')
-  const expected = process.env.WHATSAPP_VERIFY_TOKEN
-  if (mode === 'subscribe' && expected && token === expected) {
-    return new Response(challenge ?? '', { status: 200 })
-  }
-  return new Response('Forbidden', { status: 403 })
+  const result = verifyWhatsAppHandshake({
+    mode: url.searchParams.get('hub.mode'),
+    token: url.searchParams.get('hub.verify_token'),
+    challenge: url.searchParams.get('hub.challenge'),
+    expected: process.env.WHATSAPP_VERIFY_TOKEN,
+  })
+  if (!result.ok) return new Response('Forbidden', { status: 403 })
+  return new Response(result.challenge, { status: 200 })
 }
 
 type WaMessage = {
@@ -87,7 +93,8 @@ export async function POST(req: NextRequest) {
         }
         const contact = contacts.find((item) => item.wa_id === m.from) ?? contacts[0]
         const name = sanitizeText(contact?.profile?.name ?? '', 200)
-        const text = sanitizeText(m.text?.body ?? `[${m.type ?? 'media'} message]`, 4000)
+        const { redactSensitiveCrmData } = await import('@/lib/sensitive-redaction')
+        const text = redactSensitiveCrmData(sanitizeText(m.text?.body ?? `[${m.type ?? 'media'} message]`, 4000)).text
         const proof: VerifiedIdentityProof = { type: 'PHONE', value: phone, verificationSource: 'WHATSAPP_SIGNATURE' }
 
         // Only a correctly signed provider event establishes a verified phone
@@ -193,36 +200,29 @@ async function handleWhatsAppReply(input: { client: { id: string; clientId: stri
   const isFormalStage = ['SCOPE_REVIEW', 'FINAL_SCOPE', 'CLIENT_APPROVAL', 'PAYMENT_PENDING', 'PROJECT_ACTIVE', 'DELIVERY', 'HANDOVER'].includes(input.client.pipelineStage)
   const emailCanonical = Boolean(input.client.email) && isFormalStage
 
-  if (emailCanonical) {
-    // Formal detail should go to email — send concise WhatsApp notice
-    const { sendCommunication } = await import('@/lib/comms')
-    await sendCommunication({
-      clientId: input.client.id,
-      channel: 'WHATSAPP',
-      to: input.phone,
-      body: `Tech360 · Ref ${input.client.clientId}\nWe sent details to your email (${input.client.email}). Please check it and reply there when a detailed answer is needed.\n\n${result.reply.slice(0, 500)}`,
-      agentCode: 'CHAT-AI',
-    })
-    const { recordOutbound } = await import('@/lib/conversation-state')
-    await recordOutbound(input.client.id, input.client.clientId, result.reply, 'WHATSAPP').catch(() => null)
-  } else {
-    const { sendCommunication } = await import('@/lib/comms')
-    const sendRes = await sendCommunication({
-      clientId: input.client.id,
-      channel: 'WHATSAPP',
-      to: input.phone,
-      body: result.reply.slice(0, 4000),
-      agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
-    })
-    // Honest status: only claim sent if provider accepted
-    const { recordOutbound } = await import('@/lib/conversation-state')
-    await recordOutbound(input.client.id, input.client.clientId, result.reply, 'WHATSAPP').catch(() => null)
-    // Persist delivery status already handled by sendCommunication
-    if (!sendRes.result.ok) {
-      // Log the honest failure; customer already has SYSTEM message explaining fallback
-      const { logError: le } = await import('@/lib/security')
-      await le({ source: 'WEBHOOK', code: `WA_SEND_${sendRes.result.status}`, message: `Outbound WhatsApp ${sendRes.result.status}: ${sendRes.result.error ?? 'unknown'}`, clientId: input.client.clientId }).catch(() => null)
-    }
+  const { sendCommunication } = await import('@/lib/comms')
+  const outboundBody = emailCanonical
+    ? `Tech360 · Ref ${input.client.clientId}\nWe sent details to your email (${input.client.email}). Please check it and reply there when a detailed answer is needed.\n\n${result.reply.slice(0, 500)}`
+    : result.reply.slice(0, 4000)
+  const sendRes = await sendCommunication({
+    clientId: input.client.id,
+    channel: 'WHATSAPP',
+    to: input.phone,
+    body: outboundBody,
+    agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
+  })
+  if (!sendRes.result.ok) {
+    const { logError: le } = await import('@/lib/security')
+    await le({
+      source: 'WEBHOOK',
+      code: `WA_SEND_${sendRes.result.status}`,
+      message: `Outbound WhatsApp ${sendRes.result.status}: ${sendRes.result.error ?? 'unknown'}`,
+      clientId: input.client.clientId,
+    }).catch(() => null)
+    return
   }
+
+  const { recordOutbound } = await import('@/lib/conversation-state')
+  await recordOutbound(input.client.id, input.client.clientId, outboundBody, 'WHATSAPP', input.client.pipelineStage, result.nextAction, result.nextActor, result.nextDueDate).catch(() => null)
 }
 

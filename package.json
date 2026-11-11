@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "preview:setup": "node scripts/preview/setup.mjs",
-    "build": "node scripts/prisma.mjs generate && node scripts/prisma.mjs migrate deploy && next build --webpack && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "build": "node scripts/prisma.mjs generate && node scripts/prisma.mjs migrate deploy && next build --webpack && node scripts/copy-standalone-assets.mjs",
     "prestart": "node scripts/validate-production-env.mjs",
     "start:check": "NODE_ENV=production node scripts/start-production.mjs --check",
     "install:check": "node scripts/install.mjs --check",
@@ -13,7 +13,9 @@
     "start": "NODE_ENV=production node scripts/start-production.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test --experimental-test-module-mocks tests/**/*.test.ts",
+    "test": "node scripts/test.mjs",
+    "preview:test-db": "node scripts/preview/setup-test-db.mjs",
+    "test:offline": "npm run preview:test-db && PREVIEW_SQLITE_URL=file:$PWD/.preview/test.db DATABASE_URL=file:$PWD/.preview/test.db NODE_ENV=test tsx --test --experimental-test-module-mocks tests/**/*.test.ts",
     "test:business": "tsx --test tests/business-policies.test.ts",
     "db:verify": "node scripts/verify-database.mjs",
     "verify:ai": "tsx scripts/verify-ai-production.ts --out docs/ai-production-verification.json",
@@ -21,12 +23,19 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:deploy": "node scripts/prisma.mjs migrate deploy",
+    "migrations:doctor": "node scripts/prisma-migration-doctor.mjs",
+    "migrations:check": "node scripts/check-migration-immutability.mjs",
+    "migrations:publish": "node scripts/check-migration-immutability.mjs --update",
     "schema:mysql": "node scripts/convert-schema-to-mysql.mjs",
     "schema:check": "node scripts/convert-schema-to-mysql.mjs --check",
     "schema:drift": "node scripts/check-schema-drift.mjs",
     "start:bun": "NODE_ENV=production bun .next/standalone/server.js",
     "hostinger:build": "npm run build",
-    "check:conflicts": "node scripts/check-conflict-markers.mjs"
+    "check:conflicts": "node scripts/check-conflict-markers.mjs",
+    "check:assets": "node scripts/verify-industry-assets.mjs && node scripts/verify-service-images.mjs",
+    "verify:factory:policy": "tsx --test tests/factory-control-policy.test.ts",
+    "verify:factory:db": "tsx --test tests/factory-control-db.test.ts",
+    "verify:factory:http": "node scripts/factory/verify-http.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -107,6 +116,8 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@libsql/client": "^0.15.15",
+    "@prisma/adapter-libsql": "^6.19.3",
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -121,6 +132,9 @@
   "overrides": {
     "@next/eslint-plugin-next": {
       "fast-glob": "npm:tinyglobby@0.2.17"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.5"
     },
     "@prisma/config": {
       "deepmerge-ts": "^8.0.2"
