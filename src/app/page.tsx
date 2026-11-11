@@ -24,7 +24,6 @@ import LegalView from '@/components/site/LegalView'
 import FaqView from '@/components/site/FaqView'
 import PortalView from '@/components/site/PortalView'
 import DesignKitView from '@/components/site/DesignKitView'
-import AgentPipelineView from '@/components/site/AgentPipelineView'
 import PlatformView from '@/components/site/PlatformView'
 
 const AdminApp = lazy(() => import('@/components/admin/AdminApp'))
@@ -245,7 +244,7 @@ function PublicView({
     case 'faq': return <FaqView />
     case 'design-kit': return <DesignKitView />
     case 'portal': return <PortalView />
-    case 'pipeline': return <AgentPipelineView />
+    case 'pipeline': return <ProcessView />
     default: return <UnknownPublicRoute navigate={navigate} />
   }
 }

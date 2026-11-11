@@ -42,7 +42,7 @@ export function PrimaryLink({
       onClick={onClick}
       className={cn(
         BASE,
-        "bg-[#009FE3] text-white shadow-[0_1px_2px_rgba(6,59,143,0.25)] hover:bg-[#0090CC] hover:shadow-[0_4px_14px_rgba(0,159,227,0.35)]",
+        "bg-[#0052A5] text-white shadow-[0_1px_2px_rgba(6,59,143,0.25)] hover:bg-[#087337] hover:shadow-[0_4px_14px_rgba(8,115,55,0.25)]",
         SIZES[size],
         className
       )}
@@ -75,7 +75,7 @@ export function PrimaryButton({
       onClick={onClick}
       className={cn(
         BASE,
-        "bg-[#009FE3] text-white shadow-[0_1px_2px_rgba(6,59,143,0.25)] hover:bg-[#0090CC] hover:shadow-[0_4px_14px_rgba(0,159,227,0.35)]",
+        "bg-[#0052A5] text-white shadow-[0_1px_2px_rgba(6,59,143,0.25)] hover:bg-[#087337] hover:shadow-[0_4px_14px_rgba(8,115,55,0.25)]",
         SIZES[size],
         className
       )}

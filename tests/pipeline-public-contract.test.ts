@@ -143,20 +143,20 @@ describe('master specification copy is complete and safe to publish', () => {
 })
 
 describe('the operator pipeline stays private and out of the public website', () => {
-  it('resolves /pipeline as a noindex operator surface that is excluded from the sitemap', () => {
+  it('resolves /pipeline as a noindex customer process surface excluded from the sitemap', () => {
     const route = resolvePublicRoute(['pipeline'])
     assert.ok(route)
     assert.equal(route.path, '/pipeline')
     assert.equal(route.noIndex, true)
-    assert.match(route.title, /Operator|Workspace/i)
+    assert.match(route.title, /Delivery Process/i)
     assert.ok(getStaticPublicRoutePaths().includes('/pipeline'))
     assert.ok(!/\$\{SITE_URL\}\/pipeline/.test(read('src/app/sitemap.ts')), 'private operator surfaces must not be published in the sitemap')
   })
 
-  it('is routed in the hash SPA but never linked from public chrome', () => {
+  it('routes the public URL to customer process content without bundling the operator view', () => {
     const page = read('src/app/page.tsx')
-    assert.match(page, /case 'pipeline': return <AgentPipelineView \/>/)
-    assert.match(page, /import AgentPipelineView from '@\/components\/site\/AgentPipelineView'/)
+    assert.match(page, /case 'pipeline': return <ProcessView \/>/)
+    assert.doesNotMatch(page, /import AgentPipelineView from '@\/components\/site\/AgentPipelineView'/)
     const header = read('src/components/site/SiteHeader.tsx')
     assert.ok(!/#\/pipeline/.test(header), 'the public header must not advertise the operator pipeline')
     const footer = read('src/components/site/SiteFooter.tsx')

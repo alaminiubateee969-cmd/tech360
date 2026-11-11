@@ -11,7 +11,7 @@ import type { IndustryRegistryEntry } from "./types";
 const education = assembleIndustry({
   slug: "education",
   name: "Education",
-  tagline: "Admissions, learning, assessment, and institutional operations on the six-plane platform",
+  tagline: "Admissions, learning, assessment, and institutional operations with connected business software",
   category: "education-sector",
   physical: false,
   hero: {

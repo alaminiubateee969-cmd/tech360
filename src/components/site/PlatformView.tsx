@@ -21,9 +21,10 @@ export default function PlatformView() {
   return (
     <div>
       <PageHero
-        eyebrow="The Tech360 Platform"
+        eyebrow="Company-in-a-Box"
         title="Your Business. One Connected Platform. Complete Control."
-        description="Tech360 combines custom software engineering with a connected operational backbone — role-based workspaces, client portals, human-approved AI workflows, and full source-code ownership."
+        description="Connect the people, information, and workflows that help your business move forward. We work with you to define a solution around your goals and an agreed scope."
+        breadcrumb={[{ label: "Platform" }]}
       >
         <div className="flex flex-wrap gap-3">
           <PrimaryLink href="/contact">
@@ -131,7 +132,13 @@ export default function PlatformView() {
             </OutlineLink>
           </div>
 
-          <RevealList className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <p className="mt-6 max-w-3xl text-sm leading-6 text-[#526173]">
+            These are illustrative concepts, not verified customer projects or a
+            promise of ready-to-use products. Features and delivery depend on the
+            agreed scope.
+          </p>
+
+          <RevealList className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {PRODUCED_SYSTEMS.map((sys) => {
               const sysImg = getProducedSystemImage(sys.slug);
               const targetHref = sysImg?.href ?? "/industries";
@@ -163,7 +170,7 @@ export default function PlatformView() {
                     <div className="flex flex-1 flex-col p-6">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-semibold uppercase tracking-wider text-[#0079AC]">
-                          {sys.category}
+                          {sys.category} · Illustrative concept
                         </span>
                         <span className="rounded-md bg-[#F8FAFC] px-2.5 py-1 text-[11px] font-semibold text-[#475569]">
                           Client-owned build

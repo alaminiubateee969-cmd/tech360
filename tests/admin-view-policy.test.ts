@@ -21,6 +21,13 @@ describe('Admin / Super Admin console access', () => {
     }
   })
 
+  it('restricts both factory views to Super Admin', () => {
+    for (const view of ['factory', 'factoryControl']) {
+      assert.equal(canAccessAdminView('ADMIN', view), false, view)
+      assert.equal(canAccessAdminView('SUPER_ADMIN', view), true, view)
+    }
+  })
+
   it('denies workforce access to lower-rank and unknown roles', () => {
     for (const role of [undefined, null, '', 'STAFF', 'MANAGER', 'SALES', 'SUPPORT', 'FINANCE', 'PROJECT_MANAGER', 'DEVELOPER', 'AUDITOR', 'CLIENT', 'made-up-role', '__proto__', 'constructor']) {
       for (const view of ['agents', 'command', 'settings']) assert.equal(canAccessAdminView(role, view), false, `${role}: ${view}`)

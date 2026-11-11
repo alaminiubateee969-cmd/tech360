@@ -153,7 +153,8 @@ export function SiteHeader({
         }
       }}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <div aria-hidden="true" className="h-1 bg-gradient-to-r from-[#0052AC] via-[#008E93] to-[#2EAF2A]" />
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <a
           href="/"
@@ -164,10 +165,10 @@ export function SiteHeader({
           <Image src="/images/tech360-logo.png" alt="TECH360" width={36} height={36} priority className="shrink-0" />
           <div className="flex flex-col leading-none">
             <span className="text-lg font-extrabold tracking-tight text-[#0B1F33]">
-              TECH<span className="text-[#009FE3]">360</span>
+              TECH<span className="text-[#087C35]">360</span>
             </span>
             <span className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 xl:block">
-              Enterprise Software
+              Smart Solutions for a Digital Tomorrow
             </span>
           </div>
         </a>
