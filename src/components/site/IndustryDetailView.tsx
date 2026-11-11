@@ -8,7 +8,8 @@ import { getIndustryBySlug } from "@/data/industries";
 import { imageFor } from "@/data/images";
 import { industryImage, industryImageAlt } from "@/data/industry-images";
 import { PageHero } from "./PageHero";
-import IndustryExperience from "./IndustryExperience";
+import IndustryExperience from "./IndustryExperience"
+import IndustryBlueprint from "./IndustryBlueprint";
 import EducationSolutions from "./EducationSolutions";
 import { CtaBand } from "./CtaBand";
 import { ImageView } from "./ImageView";
@@ -204,6 +205,9 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
           </Reveal>
         </div>
       </section>
+
+      {/* Full blueprint: solutions, workflows, architecture, governance delivery */}
+      {blueprint ? <IndustryBlueprint entry={blueprint} /> : null}
 
       {/* Recommended services */}
       <section aria-labelledby="recommended-heading" className="bg-white">

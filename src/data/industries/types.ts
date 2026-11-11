@@ -104,6 +104,23 @@ export interface IndustryWorkflow {
 
 export type AutonomyLevel = "A0" | "A1" | "A2" | "A3";
 
+/**
+ * Honest lifecycle status for a solution specification.
+ *
+ * A solution may never advertise a status it cannot evidence — see
+ * `src/data/industries/maturity.ts`, which caps every status at the highest
+ * level the committed evidence supports. Everything in this repository is
+ * currently at most `SPECIFIED`: a complete specification, not working software.
+ */
+export type SolutionMaturity =
+  | "CONCEPT"
+  | "SPECIFIED"
+  | "DESIGN READY"
+  | "DEMO AVAILABLE"
+  | "IMPLEMENTED"
+  | "TESTED"
+  | "DEPLOYABLE";
+
 export interface AiUseCase {
   useCaseId: string;
   name: string;
@@ -174,6 +191,15 @@ export interface ModuleSpec {
   effort: { design: number; build: number; test: number };
   /** 22: Acceptance criteria (testable). */
   acceptanceCriteria: string[];
+  /**
+   * 23: Lifecycle status the specification claims.
+   *
+   * Optional; treated as `SPECIFIED` when absent, which is the truthful status
+   * for a specification. The effective status shown to users is always
+   * evidence-capped by `assessSolution()` — declaring `TESTED` here without
+   * committed source and tests does not raise the published badge.
+   */
+  maturity?: SolutionMaturity;
 }
 
 /* ------------------------------------------------------------------ */
@@ -443,6 +469,18 @@ export interface ValidationIssue {
 export const FLAGSHIP_MIN_WORKFLOWS = 26;
 export const FLAGSHIP_MIN_MODULES = 52;
 
+/**
+ * Minimum industry-specific solution specifications every industry must carry.
+ *
+ * A "solution" is a `ModuleSpec`: a 22-field, industry-specific specification
+ * with capabilities, roles, entities, workflows, KPIs, AI use cases, controls,
+ * SLA and acceptance criteria. Platform-level app planes (`applications`) are
+ * shared across industries and are NOT counted toward this minimum — counting
+ * them would let a generic eight-entry list masquerade as eight sector
+ * solutions.
+ */
+export const MIN_SOLUTIONS_PER_INDUSTRY = 8;
+
 /** Non-Latin scripts that must never appear in English-only content. */
 const NON_LATIN_SCRIPTS: RegExp =
   /[\u0400-\u04FF\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u0E00-\u0E7F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]/;
@@ -631,6 +669,27 @@ export function validateIndustrySolution(
   // Contract-level checks
   d.workflows.forEach((wf, i) => issues.push(...validateWorkflow(wf, `data.workflows[${i}]`)));
   d.modules.forEach((m, i) => issues.push(...validateModule(m, `data.modules[${i}]`)));
+
+  // Every industry must specify at least MIN_SOLUTIONS_PER_INDUSTRY distinct
+  // industry-specific solutions, with unique IDs.
+  if (d.modules.length < MIN_SOLUTIONS_PER_INDUSTRY) {
+    issues.push({
+      path: "data.modules",
+      code: "COUNT",
+      message: `Industry "${entry.slug}" requires ≥${MIN_SOLUTIONS_PER_INDUSTRY} solution specifications (got ${d.modules.length})`,
+    });
+  }
+  const seenModuleIds = new Set<string>();
+  d.modules.forEach((m, i) => {
+    if (seenModuleIds.has(m.id)) {
+      issues.push({
+        path: `data.modules[${i}].id`,
+        code: "DUPLICATE",
+        message: `Duplicate solution id "${m.id}" in "${entry.slug}"`,
+      });
+    }
+    seenModuleIds.add(m.id);
+  });
 
   // Visual assets
   entry.visualAssets.forEach((a, i) => issues.push(...validateVisualAsset(a, `visualAssets[${i}]`)));
