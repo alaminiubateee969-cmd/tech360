@@ -1,7 +1,5 @@
 import {
   COMPANY,
-  PLATFORM_PILLARS,
-  PRODUCED_SYSTEMS,
   SERVICES,
   INDUSTRIES,
   CASE_STUDIES,
@@ -86,7 +84,7 @@ const SECTION_TITLES: Record<string, { title: string; summary: string }> = {
   },
   platform: {
     title: 'Company-in-a-Box Software Platform',
-    summary: 'A modular platform with an industry template library, versioned modules, isolated tenant provisioning, staging promotion, and unified client messaging.',
+    summary: 'Connected business workflows, customer relationships, reporting, portals, and integrations tailored to an agreed scope.',
   },
   services: {
     title: 'Solutions & Engineering Services',
@@ -131,13 +129,7 @@ export function renderMarkdownForPath(pathname: string): string | null {
   }
 
   if (a === 'platform' && !b) {
-    return (
-      `# Company-in-a-Box Software Platform\n\n` +
-      PLATFORM_PILLARS.map((p) => `## ${p.title}\n_${p.tagline}_\n\n${p.description}\n\n${list(p.provides)}`).join('\n\n') +
-      `\n\n## Representative system templates\n` +
-      PRODUCED_SYSTEMS.map((s) => `- **${s.title}** (${s.category}) — ${s.whatYouGet}`).join('\n') +
-      CONTACT_FOOTER
-    )
+    return `# Company-in-a-Box\n\nA connected approach to customer relationships, team workflows, reporting, portals, and documents. Integrations, support, security, data ownership, and handover are defined in the agreed scope of work.${CONTACT_FOOTER}`
   }
 
   if (a === 'services' && !b) {

@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const g = await requireActor(req, 'STAFF')
+  const g = await requireActor(req)
   if (guardFailed(g)) return g
   const body = await readBody(req)
   const result = await runScopedJob(g.actor, text(body.companyId, 60), text(body.jobId, 60))
