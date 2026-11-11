@@ -896,7 +896,7 @@ export default function IndustryBlueprint({ entry }: { entry: IndustryRegistryEn
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <a
-              href="#request-quote"
+              href="#/contact"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#063B8F] px-5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#052f72] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2"
             >
               Request a quote
