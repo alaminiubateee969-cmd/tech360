@@ -8,6 +8,7 @@ import {
   BookOpen,
   Building2,
   Clapperboard,
+  Dna,
   ExternalLink,
   FileBarChart,
   FolderKanban,
@@ -20,6 +21,7 @@ import {
   Newspaper,
   Network,
   Radar,
+  ScanSearch,
   ScrollText,
   Search,
   Settings,
@@ -69,6 +71,8 @@ import { CommunicationsView } from './CommunicationsView'
 import { ConversationsView } from './ConversationsView'
 import { ContentStudioView } from './ContentStudioView'
 import { FactoryView } from './FactoryView'
+import { ReaView } from './ReaView'
+import { EvolutionView } from './EvolutionView'
 import { MarketingDashboardView } from './MarketingDashboardView'
 import { FeedsView } from './FeedsView'
 import { MediaStudioView } from './MediaStudioView'
@@ -144,6 +148,13 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     items: [
       { id: 'factory', label: 'App Factory', icon: Boxes },
       { id: 'media', label: 'Media Studio', icon: Clapperboard },
+    ],
+  },
+  {
+    section: 'Reverse Engineering',
+    items: [
+      { id: 'rea', label: 'Reverse Engineer', icon: ScanSearch },
+      { id: 'evolution', label: 'Evolution Loop', icon: Dna },
     ],
   },
   {
@@ -233,6 +244,8 @@ const VIEW_TITLES: Record<ViewId, string> = {
   media: 'Media Studio',
   feeds: 'Feed Hub',
   telephony: 'Calls & SMS',
+  rea: 'Reverse Engineer Anything',
+  evolution: 'Evolution Loop',
 }
 
 export default function AdminApp({ onExit }: { onExit: () => void }) {
@@ -625,6 +638,10 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <PromptLibraryView />
               ) : view === 'knowledge' ? (
                 <KnowledgeView />
+              ) : view === 'rea' ? (
+                <ReaView />
+              ) : view === 'evolution' ? (
+                <EvolutionView />
               ) : view === 'factory' ? (
                 <FactoryView />
               ) : view === 'media' ? (

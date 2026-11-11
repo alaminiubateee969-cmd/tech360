@@ -1794,3 +1794,152 @@ model KnowledgeRelation {
   @@unique([fromKey, toKey, type])
   @@index([toKey, type])
 }
+
+// ============================================================
+// REA STUDIO — reverse-engineering teardowns, evidence-bound
+// ============================================================
+// One row per analyzed target. The Evidence record, the teardown report, the
+// spoken script and the markdown are all persisted so a teardown can be
+// re-read, re-spoken and diffed without re-fetching the target.
+//
+// A REFUSED row is a real result: the admission policy declined the target and
+// the reason is stored. Nothing is deleted to make the console look tidy.
+// No target credential, cookie or set-cookie value is ever written here —
+// fetch-target.ts redacts them before they reach this model.
+model ReaTarget {
+  id                 String   @id @default(cuid())
+  code               String   @unique // REA-2026-0001
+  kind               String   // WEBSITE | WEB_APP | HTML_SNIPPET | HAR_CAPTURE | JS_BUNDLE
+  url                String @db.Text
+  finalUrl           String? @db.Text
+  host               String   // indexable, so VARCHAR(191) is deliberate
+  question           String? @db.Text
+  status             String   @default("PENDING") // PENDING | ANALYZED | REFUSED | FAILED
+  httpStatus         Int      @default(0)
+  bytes              Int      @default(0)
+  digest             String?  @db.Char(64)
+  renderModel        String   @default("UNKNOWN") // SSR | HYDRIDATED | SPA_SHELL | UNKNOWN
+  evidenceId         String?
+  evidence           String? @db.LongText // JSON: the complete Evidence record
+  teardown           String? @db.LongText // JSON: TeardownReport
+  spoken             String? @db.LongText // the script the voice surface reads
+  markdown           String? @db.LongText
+  limitations        String? @db.LongText // JSON array
+  unknowns           String? @db.LongText // JSON array
+  observedCount      Int      @default(0)
+  inferredCount      Int      @default(0)
+  routeCandidates    Int      @default(0)
+  endpointCandidates Int      @default(0)
+  coverageComplete   Boolean  @default(false)
+  refusalCode        String?
+  refusalReason      String? @db.Text
+  durationMs         Int?
+  createdBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  reconstructions ReaReconstruction[]
+
+  @@index([status])
+  @@index([host])
+  @@index([createdAt])
+  @@index([kind])
+}
+
+// An ORIGINAL application derived from a teardown's observed information
+// architecture. `provenance` records what was refused (always non-empty) so a
+// reviewer can see the copy boundary was applied, not just claimed.
+// appId/appCode are scalar references: the lineage survives even if the
+// generated app is later deleted.
+model ReaReconstruction {
+  id          String    @id @default(cuid())
+  code        String    @unique // RR-2026-0001
+  targetId    String
+  target      ReaTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  appId       String?
+  appCode     String?
+  brief       String @db.LongText // JSON: the factory brief handed to buildPlan
+  provenance  String @db.LongText // JSON: derived / copied(refusals) / notReconstructable
+  pages       String @db.LongText // JSON: the derived original page list
+  confidence  Float     @default(0)
+  status      String    @default("PLANNED") // PLANNED | BUILT | DISCARDED
+  statement   String @db.Text
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([targetId])
+  @@index([status])
+  @@index([appId])
+}
+
+// ============================================================
+// EVOLUTION LOOP — governed, approval-gated self-modification
+// ============================================================
+// The agent evolves CONFIGURED BEHAVIOUR (prompts, skill configuration, REA
+// heuristics, agent runtime parameters, playbooks). It never edits source code,
+// never runs a command, and can never touch an immutable control. See
+// src/lib/evolution/policy.ts for the boundary and docs/AI_SELF_EVOLUTION.md.
+
+// A generation is one observe → propose → gate → apply cycle. It advances only
+// when something was actually applied; proposing alone does not evolve anything.
+// The generation number IS the identity: it is monotonic, unique by definition
+// and is what a human quotes ("what changed in generation 4?"), so it is the
+// primary key rather than an opaque cuid plus a duplicate unique column.
+model EvolutionGeneration {
+  generation       Int       @id
+  parentGeneration Int?
+  observations     Int       @default(0)
+  proposed         Int       @default(0)
+  applied          Int       @default(0)
+  rejected         Int       @default(0)
+  rolledBack       Int       @default(0)
+  surfaces         String? @db.Text // JSON array of governed surfaces touched
+  summary          String @db.Text
+  startedAt        DateTime  @default(now())
+  closedAt         DateTime?
+
+  proposals EvolutionProposal[]
+}
+
+// One proposed self-modification. `patch` carries its own before-snapshot, so
+// every APPLIED row remains reversible forever without re-reading anything.
+// `approvalId` links to the existing ApprovalRequest that gates it — the loop
+// reuses the platform's approval machinery rather than inventing a second gate.
+model EvolutionProposal {
+  id             String   @id @default(cuid())
+  code           String   @unique // EVO-2026-0001
+  generation     Int
+  // Restrict, not Cascade: a generation that has proposals is lineage and may
+  // not be deleted out from under them.
+  generationRecord EvolutionGeneration @relation(fields: [generation], references: [generation], onDelete: Restrict)
+  surface        String   // PROMPT_TEMPLATE | SKILL_CONFIG | REA_HEURISTIC | AGENT_PARAM | PLAYBOOK
+  targetKey      String @db.Text
+  title          String @db.Text
+  rationale      String @db.Text
+  effect         String @db.Text
+  rollbackNote   String @db.Text
+  patch          String @db.LongText // JSON: EvolutionPatch incl. before/after
+  evidence       String @db.LongText // JSON: the observations that motivated it
+  risk           String   @default("LOW") // LOW | MEDIUM | HIGH | CRITICAL (computed, never self-declared)
+  riskScore      Int      @default(0)
+  riskReasons    String? @db.Text
+  status         String   @default("PENDING") // PENDING | APPROVED | REJECTED | APPLIED | FAILED | ROLLED_BACK
+  approvalId     String?
+  proposedBy     String?
+  decidedBy      String?
+  decisionNote   String? @db.Text
+  beforeSnapshot String? @db.LongText
+  afterSnapshot  String? @db.LongText
+  appliedAt      DateTime?
+  rolledBackAt   DateTime?
+  validationCode String?
+  failureReason  String? @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([generation])
+  @@index([surface])
+  @@index([approvalId])
+}

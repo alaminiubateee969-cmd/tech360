@@ -69,7 +69,20 @@
     "PaymentReceipt.snapshot",
     "RefundCase.evidenceNotes",
     "DepartmentCapabilityAssessment.evidence",
-    "SocialPost.text"
+    "SocialPost.text",
+    "ReaTarget.evidence",
+    "ReaTarget.teardown",
+    "ReaTarget.spoken",
+    "ReaTarget.markdown",
+    "ReaTarget.limitations",
+    "ReaTarget.unknowns",
+    "ReaReconstruction.brief",
+    "ReaReconstruction.provenance",
+    "ReaReconstruction.pages",
+    "EvolutionProposal.patch",
+    "EvolutionProposal.evidence",
+    "EvolutionProposal.beforeSnapshot",
+    "EvolutionProposal.afterSnapshot"
   ],
   "Text": [
     "Session.userAgent",
@@ -189,7 +202,22 @@
     "SocialPost.mediaUrl",
     "SocialPost.mediaPrompt",
     "SocialPost.externalUrl",
-    "SocialPost.error"
+    "SocialPost.error",
+    "ReaTarget.url",
+    "ReaTarget.finalUrl",
+    "ReaTarget.question",
+    "ReaTarget.refusalReason",
+    "ReaReconstruction.statement",
+    "EvolutionGeneration.surfaces",
+    "EvolutionGeneration.summary",
+    "EvolutionProposal.targetKey",
+    "EvolutionProposal.title",
+    "EvolutionProposal.rationale",
+    "EvolutionProposal.effect",
+    "EvolutionProposal.rollbackNote",
+    "EvolutionProposal.riskReasons",
+    "EvolutionProposal.decisionNote",
+    "EvolutionProposal.failureReason"
   ],
   "LongBlob": [
     "FileRecord.content"

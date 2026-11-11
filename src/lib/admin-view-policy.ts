@@ -7,7 +7,7 @@ export type AdminViewId =
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
   | 'factory' | 'media' | 'feeds' | 'telephony' | 'prompts' | 'marketingDashboard'
   | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
-  | 'workforce' | 'pipeline'
+  | 'workforce' | 'pipeline' | 'rea' | 'evolution'
 
 export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN'> = {
   dashboard: 'STAFF',
@@ -52,6 +52,11 @@ export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 
   dcc: 'SUPER_ADMIN',
   workforce: 'SUPER_ADMIN',
   pipeline: 'MANAGER',
+  // Reverse engineering an external target and self-modification are both
+  // internal automation: ADMIN to analyze, SUPER_ADMIN to evolve. Neither is
+  // ever mentioned on the public website (docs/AI_VISIBILITY_POLICY.md).
+  rea: 'ADMIN',
+  evolution: 'SUPER_ADMIN',
 }
 
 const ROLE_VIEWS: Record<string, readonly AdminViewId[]> = {
