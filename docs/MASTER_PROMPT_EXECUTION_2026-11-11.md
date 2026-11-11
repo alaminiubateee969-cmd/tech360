@@ -3,6 +3,8 @@
 **Date:** 2026-11-11
 **Branch:** `arena/33a25d55-tech360`
 **Base commit:** `c3d1f6d` (merge of PR #67 into `main`)
+**Pull request:** https://github.com/alaminiubateee969-cmd/tech360/pull/70
+**CI:** run 43006022738 — success (30/30 steps)
 **Author:** Arena coding agent
 
 This report records what was audited, what was changed, what was verified, and what
@@ -182,8 +184,9 @@ No existing route, API, database model or migration was modified or removed.
 | Full suite | `npx tsx --test tests/*.test.ts` | 1421 tests: **1330 pass**, 9 fail, 82 cancelled — all failures/cancellations are `@prisma/client did not initialize yet` |
 | Industry data validator | `validateIndustrySolution()` over all 20 registries | **0 issues**, min 8 solutions, 204 total |
 | Production build | `npx next build --webpack` | **Compiles and prerenders** all routes (20 industry pages, 12 project pages) once the type-check step is bypassed for the blocked Prisma client. The bypass was applied temporarily for verification only and reverted — `next.config.ts` is unchanged. |
-| Typecheck | `npx tsc --noEmit` | **BLOCKED** — 57 errors, all caused by the ungenerated Prisma client (see §5) |
-| Runtime DB / E2E / RBAC / tenant isolation | `npm run test:offline` | **BLOCKED** — requires a MySQL/SQLite runtime and a generated client |
+| Typecheck (local) | `npx tsc --noEmit` | **BLOCKED locally** — 57 errors from the ungenerated Prisma client |
+| Runtime DB / RBAC / tenant isolation (local) | `npm run test:offline` | **BLOCKED locally** — no MySQL in the sandbox |
+| **CI — full pipeline** | `gh run view 43006022738` | **PASS** — all 30 steps green (see §4.1) |
 
 Generated static pages confirmed on disk after the build:
 
@@ -194,21 +197,45 @@ Generated static pages confirmed on disk after the build:
 
 ---
 
-## 5. Blockers (not resolved, not hidden)
+### 4.1 CI result (authoritative)
 
-1. **Prisma client generation is unreachable in this sandbox.**
-   `npx prisma generate` requests `binaries.prisma.sh`, which is outside the sandbox network
-   allowlist, so `@prisma/client` stays a stub (`PrismaClient: any`). The 57 type errors and
-   all 9 suite failures are the same root cause. CI installs from the public internet and runs
-   `prisma generate` before typecheck, so this is an environment limitation — but it is
-   **unverified here**, and must be confirmed green in GitHub Actions before merge.
-2. **No database runtime.** MySQL is unavailable, so payment gating, tenant isolation, agent
-   job idempotency, webhook replay protection and handover flows could not be exercised.
-   These are covered by committed tests that cannot run in this environment.
-3. **No browser.** Lighthouse, axe, and responsive visual regression were not run; the
-   accessibility claims in §3.2 are design-level (semantics, focus management, labels),
-   not audit results.
-4. **No deployment authorization.** Nothing was deployed. Production health is unverified.
+GitHub Actions run **43006022738** on this branch: **success**, all 30 steps, 6m01s.
+The steps that matter for this change:
+
+| CI step | Result |
+|---|---|
+| Secret scan | success |
+| Reject unresolved merge-conflict markers | success |
+| Verify industry payload assets exist under `public/` | success |
+| Published migrations are immutable and correctly ordered | success |
+| Committed migrations reproduce the schema (no drift) | success |
+| Generate Prisma client | success |
+| Apply migrations to disposable MySQL | success |
+| **Lint** | success |
+| **Typecheck** | success |
+| **Business and database isolation tests (MySQL)** | success |
+| **Production build** | success |
+
+This settles the two local blockers: the 57 type errors and 9 test failures observed in the
+agent sandbox were caused solely by `@prisma/client` being ungenerated there. With a real
+client and a real MySQL, the branch type-checks, lints, passes the database/isolation suites
+and builds for production.
+
+## 5. Residual limitations
+
+1. **Staging verification has not been performed.** CI proves the branch is safe to deploy;
+   it does not prove a staging deployment. Not run here.
+2. **No browser in the agent sandbox.** Lighthouse, axe and responsive visual-regression
+   evidence were not produced. The accessibility work in §3.2 is design-level (semantics,
+   roving tabindex, labelled panels, focus visibility, text-plus-colour status), and the
+   repository has no axe/Playwright runner to lean on.
+3. **Phase 5 (interactive demos) is unimplemented.** No demo authentication, sample tenant
+   dataset, role demonstration or reset flow exists, so no solution may claim
+   `DEMO AVAILABLE`. The maturity model enforces this rather than trusting copy.
+4. **No deployment authorization.** Nothing was deployed; production health is unverified.
+5. **Page weight on the flagship industry.** Manufacturing renders 52 solution cards
+   (≈284 KB HTML, 0.41 s server render in dev). Acceptable now; pagination or windowing is
+   the natural next step if the library grows.
 
 ---
 
@@ -229,7 +256,7 @@ Generated static pages confirmed on disk after the build:
 | 10 — Security audit | **Partial** | Policies and guards exist; cross-tenant runtime tests blocked |
 | 11 — Performance, SEO, accessibility | **Partial** | Metadata, canonicals, sitemap, robots and structured data present and now cover project routes; no measurement evidence |
 | 12 — Production testing | **Partial** | See §4 — lint/tests/build pass within the environment limit |
-| 13 — PR & merge | **PR opened as draft** | Not merged: CI and review are prerequisites |
+| 13 — PR & merge | **PR open, CI green** | https://github.com/alaminiubateee969-cmd/tech360/pull/70 — not merged: review and staging verification are still prerequisites |
 | 14 — Final acceptance | **Not met** | Criteria 12–15 (all tests pass, staging verified, PR merged, production healthy) cannot be satisfied in this environment |
 
 ### Honest statement about the 160 solutions
