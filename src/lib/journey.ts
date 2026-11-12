@@ -10,6 +10,9 @@ import { getDefaultBranding, brandingCss, brandingPadHeader, brandingPadFooter, 
 import { evaluateDeliveryAcceptance, evaluateProjectClosure } from '@/lib/lifecycle-policy'
 import { hasExplicitContactConsent, selectWelcomeChannel } from '@/lib/contact-policy'
 import { hasAcceptedPreviewDelivery } from '@/lib/preview-policy'
+import { PREVIEW_CLIENT_SCRIPT } from '@/lib/preview-client-script'
+import { requireApprovedScope, requirePreviewBeforePayment } from '@/lib/lifecycle-gates'
+import { sourcePaymentEvidence } from '@/lib/source-payment'
 import { createHandoverManifest, parseHandoverManifest, verifyHandoverArtifacts } from '@/lib/handover-artifacts'
 import { normalizeIdentity, resolveOrCreateVerifiedClient, type VerifiedIdentityProof } from '@/lib/identity-resolver'
 import { updateStage } from '@/lib/conversation-state'
@@ -816,8 +819,7 @@ export async function createHumanTask(input: {
 export async function generatePreview(clientRowId: string) {
   const client = await db.client.findUnique({ where: { id: clientRowId }, include: { lead: true, scopes: true, projects: true } })
   if (!client) throw new Error('Client not found')
-  const finalScope = client.scopes.filter((s) => s.status === 'FINAL').sort((a, b) => b.version - a.version)[0]
-  if (!finalScope) throw new Error('Final scope required before preview')
+  const finalScope = await requireApprovedScope(client.id)
 
   const content = JSON.parse(finalScope.content || '{}') as Record<string, unknown>
   const now = new Date()
@@ -875,10 +877,14 @@ export async function generatePreview(clientRowId: string) {
   }
 
   const accepted = hasAcceptedPreviewDelivery(attempts)
-  const updated = accepted
-    ? await db.preview.update({ where: { id: preview.id }, data: { status: 'SENT', sentAt: new Date() } })
-    : preview
-  if (accepted) await db.previewEvent.create({ data: { previewId: preview.id, type: 'SENT' } })
+  let updated = preview
+  if (accepted) {
+    // A fast recipient may have viewed or decided before the provider call
+    // returns. Mark dispatch without reverting the newer preview state.
+    await db.preview.updateMany({ where: { id: preview.id, status: 'GENERATED' }, data: { status: 'SENT' } })
+    updated = await db.preview.update({ where: { id: preview.id }, data: { sentAt: new Date() } })
+    await db.previewEvent.create({ data: { previewId: preview.id, type: 'SENT' } })
+  }
   return { previewId: updated.id, token, link, status: updated.status, reused: false, delivery: attempts }
 }
 
@@ -927,20 +933,7 @@ ${sealHtml ? `<div style="position:absolute;right:0;bottom:-8px">${sealHtml}</di
 </main>
 ${footerHtml}
 </div>
-<script>
-(function(){
-  var t = location.pathname.split('/').pop();
-  function act(decision){
-    fetch('/api/preview/' + t + '/action', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision:decision})})
-      .then(function(r){return r.json()}).then(function(d){
-        alert(decision==='APPROVED' ? 'Thank you! Your approval was recorded. Team Tech360 will continue with payment instructions.' : 'Thank you! Your change request was recorded. Team Tech360 will review it.');
-      }).catch(function(){ alert('Could not record — please contact info@bdtech360.com'); });
-  }
-  var a=document.getElementById('approveBtn'); if(a) a.addEventListener('click',function(e){e.preventDefault();act('APPROVED');});
-  var r=document.getElementById('reviseBtn'); if(r) r.addEventListener('click',function(e){e.preventDefault();var n=prompt('Please describe your change requests:'); if(n) fetch('/api/preview/'+t+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision:'REVISION_REQUESTED',notes:n})}).then(function(){alert('Change request recorded. Thank you!');});});
-  fetch('/api/preview/' + t + '/view', {method:'POST'}).catch(function(){});
-})();
-</script></body></html>`
+${PREVIEW_CLIENT_SCRIPT}</body></html>`
 }
 
 // ------------------------------------------------------------
@@ -1002,8 +995,7 @@ export async function recordPreviewDecision(
 export async function requestPayment(clientRowId: string, actor: string) {
   const client = await db.client.findUnique({ where: { id: clientRowId }, include: { scopes: true, projects: true, payments: true } })
   if (!client) throw new Error('Client not found')
-  const finalScope = client.scopes.filter((s) => s.status === 'FINAL').sort((a, b) => b.version - a.version)[0]
-  if (!finalScope) throw new Error('Final scope required')
+  const { scope: finalScope } = await requirePreviewBeforePayment(client.id)
 
   let invoicesDeferred = 0
   const run = await runAgent('PAY-016', {
@@ -1088,6 +1080,7 @@ export async function sendApprovedPaymentInstruction(payload: {
 }, approvalId: string, adminUserId: string) {
   const client = await db.client.findUnique({ where: { id: payload.clientRowId } })
   if (!client) throw new Error('Client not found')
+  await requirePreviewBeforePayment(client.id)
   const results: string[] = []
   if (client.whatsapp) {
     const r = await sendCommunication({
@@ -1411,13 +1404,14 @@ type PrepareHandoverResult =
 export async function prepareHandover(clientRowId: string, projectId: string, actor: string): Promise<PrepareHandoverResult> {
   const project = await db.project.findUnique({
     where: { id: projectId },
-    include: { client: true, payments: true, handovers: true, deliveries: true, tasks: true },
+    include: { client: true, payments: true, refundCases: true, handovers: true, deliveries: true, tasks: true },
   })
   if (!project) throw new Error('Project not found')
   if (project.clientId !== clientRowId) throw new Error('Project does not belong to this client')
 
-  const paid = project.payments.filter((payment) => payment.status === 'PAID').reduce((total, payment) => total + payment.amount, 0)
-  const fullPayment = project.totalAmount > 0 ? paid >= project.totalAmount : paid > 0
+  const evidence = sourcePaymentEvidence({ totalAmount: project.totalAmount, currency: project.currency, payments: project.payments, refunds: project.refundCases })
+  const paid = evidence.netPaid
+  const fullPayment = evidence.cleared
   if (!fullPayment) {
     await logError({ source: 'AUTOMATION', code: 'HANDOVER_BLOCKED', message: `Handover blocked for ${project.code}: payment incomplete (${paid}/${project.totalAmount})`, clientId: project.client.clientId, workflow: 'HANDOVER' })
     return { blocked: true, reason: `Full payment verification required before handover. Paid: ${paid} ${project.currency} of ${project.totalAmount} ${project.currency}.` }
@@ -1533,10 +1527,9 @@ export async function releaseHandover(handoverId: string, adminUserId: string, a
     throw new Error('Approval and handover tenant do not match.')
   }
 
-  const project = await db.project.findUnique({ where: { id: handover.projectId }, include: { payments: true, client: true, tasks: true } })
+  const project = await db.project.findUnique({ where: { id: handover.projectId }, include: { payments: true, refundCases: true, client: true, tasks: true } })
   if (!project) throw new Error('Project not found')
-  const paid = project.payments.filter((payment) => payment.status === 'PAID').reduce((total, payment) => total + payment.amount, 0)
-  const fullPayment = project.totalAmount > 0 ? paid >= project.totalAmount : paid > 0
+  const fullPayment = sourcePaymentEvidence({ totalAmount: project.totalAmount, currency: project.currency, payments: project.payments, refunds: project.refundCases }).cleared
   // The two non-negotiable rules, enforced in code: Source Code After
   // Full Payment, and an admin approval for every handover release.
   assertDeliveryRules({ paymentConfirmed: fullPayment, sourceCodeRelease: true, adminApproved: true })

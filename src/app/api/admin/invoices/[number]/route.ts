@@ -318,6 +318,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ nu
     return Response.json({ ok: true, invoice: transition.invoice })
   }
 
+  // Issuing exposes a payable invoice in the portal; sending requests payment.
+  // Both require the current scope decision and actual preview-view evidence.
+  if (action === 'issue' || action === 'send') {
+    const { requirePreviewBeforePayment } = await import('@/lib/lifecycle-gates')
+    try {
+      await requirePreviewBeforePayment(invoice.client.id, invoice.scopeVersion)
+    } catch (error) {
+      return Response.json({ error: error instanceof Error ? error.message : 'Preview evidence required before payment.', code: 'LIFECYCLE_EVIDENCE_REQUIRED' }, { status: 409 })
+    }
+  }
+
   // ---------------- 4. ISSUE (make visible in Client Portal without faking email) ----------------
   if (action === 'issue') {
     if (!canTransitionInvoiceStatus(invoice.status, 'ISSUED')) {

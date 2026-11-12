@@ -161,6 +161,10 @@ export function resolveChannels(client: ClientContact, requested?: PipelineChann
 export async function sendPipelineMessage(request: PipelineSendRequest): Promise<PipelineSendResult> {
   const client = await db.client.findUnique({ where: { id: request.clientRowId } })
   if (!client) throw new Error('Client not found')
+  if (request.stage === 'HTML_PREVIEW_APPROVED') {
+    const { requirePreviewBeforePayment } = await import('@/lib/lifecycle-gates')
+    await requirePreviewBeforePayment(client.id)
+  }
 
   // Placeholder validation — refuse to compose/send when a required
   // variable for this stage is missing. The message is never sent with
