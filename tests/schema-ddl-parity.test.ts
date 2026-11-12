@@ -68,7 +68,7 @@ function parseSchema(): Model[] {
 
 function parseDdl(): Map<string, Map<string, string>> {
   const tables = new Map<string, Map<string, string>>()
-  const dirs = readdirSync(join(ROOT, 'prisma/migrations')).filter((d) => /^\d+_/.test(d)).sort((a, b) => a.localeCompare(b))
+  const dirs = readdirSync(join(ROOT, 'prisma/migrations')).filter((d) => /^(?:\d+|v\d+)_/.test(d)).sort((a, b) => a.localeCompare(b))
   for (const dir of dirs) {
     const sql = readFileSync(join(ROOT, 'prisma/migrations', dir, 'migration.sql'), 'utf8')
     for (const statement of sql.split(';')) {

@@ -1,5 +1,5 @@
 {
-  "$comment": "Published Prisma migrations are immutable: renaming, deleting or editing one is a breaking change for every database that already applied it (see docs/HOSTINGER_SSH_RECOVERY.md §5). Add new migrations with `npm run migrations:publish`; the name must sort after every entry here.",
+  "$comment": "Published Prisma migrations are immutable: renaming, deleting or editing one is a breaking change for every database that already applied it (see docs/HOSTINGER_SSH_RECOVERY.md §5). Add new migrations with `npm run migrations:publish`; the name must sort AFTER every entry here as a plain string (Prisma applies migrations in directory-name order). Digit-only prefixes cannot do that while 9_commerce_invoices_sequences exists, so new migrations use v2_, v3_, …",
   "migrations": {
     "0_init": "f8634f2b489e7a149a4ccedb39079581f7082fbfd0391942ea21f208a95ba476",
     "10_chat_consent_idempotency": "a5558cb48322761c6d4de738ccc28febef2e2d8951bebe2b7910f071875862f8",
@@ -18,6 +18,7 @@
     "8_agent_job_tool_calls": "e9befa4db1c5c206a1c1484ac96f7af0f0ec72eeb6212d49bafc8aba2c20dede",
     "8_private_ai_platform": "e42f520fb58286ad1213b94b2521b8b41073eb36d32b2b9a73dc2aee7a75aa37",
     "93_post_review_grid": "89cf55d104fd2786457292245fd720910e042c8a89a51fc6493b92ad34b06072",
-    "9_commerce_invoices_sequences": "3838f9c9e319f6b6620d81eb03aa68126ea5ecaaf1760948bf6572520f4aee4a"
+    "9_commerce_invoices_sequences": "3838f9c9e319f6b6620d81eb03aa68126ea5ecaaf1760948bf6572520f4aee4a",
+    "v2_rea_evolution": "f25e85bfdbbbb02b4ba23bc8594bfa60b379bca6c427e738115a6a3855f067c7"
   }
 }
