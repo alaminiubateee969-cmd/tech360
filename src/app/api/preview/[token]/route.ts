@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { sanitizeText } from '@/lib/security'
 import { previewExpiredHtml, previewGoneHtml } from './expired-html'
+import { upgradeLegacyPreviewHandler } from '@/lib/preview-client-script'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,11 +20,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   const terminal = preview.status === 'APPROVED' || preview.status === 'REVISION_REQUESTED'
   if (!terminal && preview.expiresAt && preview.expiresAt.getTime() < Date.now()) {
     if (preview.status !== 'EXPIRED') {
-      await db.preview.update({ where: { id: preview.id }, data: { status: 'EXPIRED' } })
-      await db.previewEvent.create({ data: { previewId: preview.id, type: 'EXPIRED' } })
+      const expired = await db.preview.updateMany({ where: { id: preview.id, status: { in: ['GENERATED', 'SENT', 'VIEWED'] }, expiresAt: { lte: new Date() } }, data: { status: 'EXPIRED' } })
+      if (expired.count) await db.previewEvent.create({ data: { previewId: preview.id, type: 'EXPIRED' } })
     }
     return new Response(previewExpiredHtml(), { status: 410, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' } })
   }
 
-  return new Response(preview.html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' } })
+  return new Response(upgradeLegacyPreviewHandler(preview.html), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' } })
 }
