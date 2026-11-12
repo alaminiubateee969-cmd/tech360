@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "preview:setup": "node scripts/preview/setup.mjs",
-    "build": "node scripts/prisma.mjs generate && node scripts/prisma.mjs migrate deploy && next build --webpack && node scripts/copy-standalone-assets.mjs",
+    "build": "node scripts/prisma.mjs generate && node scripts/prisma-migration-reconcile.mjs && node scripts/prisma.mjs migrate deploy && next build --webpack && node scripts/copy-standalone-assets.mjs",
     "prestart": "node scripts/validate-production-env.mjs",
     "start:check": "NODE_ENV=production node scripts/start-production.mjs --check",
     "install:check": "node scripts/install.mjs --check",
