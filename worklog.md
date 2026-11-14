@@ -837,3 +837,14 @@ Work Log:
 
 Stage Summary:
 - The P3009 recovery is now: back up → `npm run migrations:doctor` (read-only, says exactly which objects exist and which way to resolve) → `--resolve <name> --as applied|rolled-back --confirm` → redeploy. Rename-and-wedge can no longer ship: CI fails on a renamed, deleted, edited or out-of-order migration. The production database itself was not touched from here.
+
+---
+Task ID: failed-run-reconciliation-2026-11-14
+Task: Recover failed-merge work and missing requested files without discarding features.
+
+- Audited full Git history, every remote tip, all 74 PRs and all 416 returned Actions runs.
+- All owner-listed failed-run commits already integrated. Of 174 failed/cancelled runs, 171 exact SHAs are ancestors; remaining three are the documented retired Bun/VPS deployment run and two explicitly temporary engine-fetch diagnostics.
+- Investigated four non-ancestor remote tips: patch-identical squash (#15), two tree-identical reverse merges, and superseded deployment work. Closed PR #43 history is joined; 95 incoming preserved versions verified against recorded Git blob hashes.
+- Added docs/FAILED_RUN_RECOVERY_2026-11-14.md, complete machine-readable ledger, read-only check:recovery command and six regression tests. No missing application feature was found; did not reintroduce obsolete deployments or conflicting prototype configuration.
+- Validation: clean npm ci; lint; typecheck with generated MySQL client; all 1,683 tests passed (0 failed/skipped/cancelled, disposable SQLite adapter); recovery check; conflict/assets/schema parity/drift/19 migration immutability checks; production next build --webpack; standalone asset copy verification.
+- No production database/provider/deployment changes. Full npm run build (which includes migrate deploy) was not run; existing production acceptance blockers remain open. See report for scope and exact evidence.

@@ -31,6 +31,7 @@
     "schema:drift": "node scripts/check-schema-drift.mjs",
     "start:bun": "NODE_ENV=production bun .next/standalone/server.js",
     "hostinger:build": "npm run build",
+    "check:recovery": "node scripts/verify-recovery-history.mjs",
     "check:conflicts": "node scripts/check-conflict-markers.mjs",
     "check:assets": "node scripts/verify-industry-assets.mjs && node scripts/verify-service-images.mjs",
     "verify:factory:policy": "tsx --test tests/factory-control-policy.test.ts",
