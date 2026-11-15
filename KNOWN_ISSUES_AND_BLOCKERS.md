@@ -1,7 +1,8 @@
 # Known Issues and Blockers
 
-**Updated:** 2026-11-14 UTC
-**Audited source:** `8d62c852787c3e8e936b3b32ef2fdd45b391d0c6` on `arena/8a6db089-tech360`
+**Updated:** 2026-11-15 UTC
+**Latest code verification:** [`docs/FINAL_PROJECT_CHECK_2026-11-15.md`](docs/FINAL_PROJECT_CHECK_2026-11-15.md) — `main` baseline `63fb0ce90cccf7a258f4ac721b7a239fbdb157df` plus the accompanying fix branch; 1,694 local tests and 49/49 preview HTTP checks passed. Production acceptance remains blocked.
+**Prior production-evidence audit:** `8d62c852787c3e8e936b3b32ef2fdd45b391d0c6` on `arena/8a6db089-tech360`
 **Release verdict:** **NOT PRODUCTION READY — critical external evidence remains BLOCKED**
 
 The authoritative current audit is
@@ -12,7 +13,7 @@ remain historical evidence and must not override this register.
 
 | ID | Status | Why it matters | Required authorized action |
 |---|---|---|---|
-| B-001 | BLOCKED | The live Hostinger deployment does not expose an exact deployed commit SHA, so it cannot be tied to the audited source even though application version `0.2.1` is live. | Capture hPanel source repository, branch, SHA, Node 22, build/start commands and deployment/runtime log IDs. Do not expose secrets. |
+| B-001 | BLOCKED — code support added, deployment unverified | The health route now embeds the build's commit and source state, but no current Hostinger response/log has been inspected to tie production to that revision. | Deploy the reviewed main SHA, compare `/api/health` `release.commit` and `release.sourceState` with hPanel, and capture Node 22, build/start commands and deployment/runtime log IDs. Do not expose secrets. |
 | B-002 | BLOCKED | Live `/api/health` reports MySQL connected and core schema available, but production migration history, controlled CRUD/transaction checks, grants and data consistency were not inspected. | Database owner runs the read-only verifier and controlled acceptance checks; retain redacted evidence. |
 | B-003 | PARTIAL | Apex, HTTP input and `www` reached the canonical HTTPS app through external fetching. Raw redirect status, DNS records, certificate issuer/SAN/expiry and renewal alert were not captured because direct sandbox TLS is restricted. | Capture DNS and raw `curl -I`/certificate evidence from an authorized external client and verify expiry monitoring. |
 | B-004 | BLOCKED | Backup and isolated restore tooling is tested, but no current production `last-run.json` / `last-drill.json`, offsite copy, measured RTO or accepted RPO was provided. | Configure host cron, run a real backup and isolated restore drill, and retain the no-secret evidence described in `docs/BACKUP_AND_RESTORE.md`. |

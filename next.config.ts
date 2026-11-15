@@ -1,9 +1,17 @@
 import type { NextConfig } from "next";
+import { resolveBuildIdentity } from "./scripts/build-identity.mjs";
 
 const CANONICAL_ORIGIN = "https://bdtech360.com";
+const buildIdentity = resolveBuildIdentity();
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Only public source metadata is embedded. Standalone deployments do not
+  // contain .git, so reading HEAD in the health route at runtime is unreliable.
+  env: {
+    TECH360_BUILD_SHA: buildIdentity.commit,
+    TECH360_BUILD_SOURCE_STATE: buildIdentity.sourceState,
+  },
   reactStrictMode: false,
   // Next dev protects its HMR/runtime resources from foreign origins. Allow the
   // Arena preview proxy and loopback diagnostics; production is unaffected.
@@ -102,7 +110,9 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // Arena embeds the development preview cross-origin. Keep production
+          // clickjacking protection intact while allowing the preview iframe.
+          ...(process.env.NODE_ENV === "development" ? [] : [{ key: "X-Frame-Options", value: "SAMEORIGIN" }]),
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           // Do not include subdomains: automation.bdtech360.com and other

@@ -1,5 +1,7 @@
 # Test and QA Report
 
+> **Latest verification: 2026-11-15.** See [the final project check](docs/FINAL_PROJECT_CHECK_2026-11-15.md): 1,694 local tests, lint/typecheck, optimized build, dependency/schema/asset checks and 49/49 preview Factory HTTP checks pass. Real production deployment and provider acceptance remain unverified. The dated report below is historical, not the current test result.
+
 - **Audit date:** 2026-10-03
 - **GitHub `main`:** `9f11195809c30ff21b7f61779373b63bd15513f9`
 - **Working branch:** `arena/01a1006a-tech360` (source changes are still uncommitted at this checkpoint)
