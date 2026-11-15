@@ -848,3 +848,18 @@ Task: Recover failed-merge work and missing requested files without discarding f
 - Added docs/FAILED_RUN_RECOVERY_2026-11-14.md, complete machine-readable ledger, read-only check:recovery command and six regression tests. No missing application feature was found; did not reintroduce obsolete deployments or conflicting prototype configuration.
 - Validation: clean npm ci; lint; typecheck with generated MySQL client; all 1,683 tests passed (0 failed/skipped/cancelled, disposable SQLite adapter); recovery check; conflict/assets/schema parity/drift/19 migration immutability checks; production next build --webpack; standalone asset copy verification.
 - No production database/provider/deployment changes. Full npm run build (which includes migrate deploy) was not run; existing production acceptance blockers remain open. See report for scope and exact evidence.
+
+---
+Task ID: company-os-software-factory-slice-1-2026-11-14
+Task: Phase 1-2 — Super Admin App Launcher + access control foundation for the Company OS & Software Factory unification.
+Branch: arena/08fbfca5-tech360 (branched from main e8de3808). Commit e549fd8. PR #76 (open, mergeable, not auto-merged).
+
+Work Log:
+- Repo audit: inspected prisma/schema.prisma (97 models incl. full Factory suite), AdminApp, ControlCenter + 13 panels, src/lib/factory/control/* (access/catalog/provision/releases/backup/health/integrations/runtime), all /api/factory/* routes, auth (scrypt sessions + CSRF + 2FA), test conventions (offline SQLite adapter via libsql; fake-Prisma module mocks leak across test files — avoided).
+- Mirrored Prisma 6.19.3 engines (commit c2990dca) from owengretzinger/prisma-engines-mirror via api.github.com into node_modules/@prisma/engines (sha256-verified); `prisma generate` + `tsc --noEmit` now 0 errors (fixes 54 pre-existing placeholder-type errors).
+- Implemented private Super Admin App Launcher (`appLauncher` view, VIEW_MIN_ROLE SUPER_ADMIN): 38-app catalog in 8 categories with real per-app implementation status (live only when a route/view is wired), search, categories, recently used, per-operator favorites persisted in the existing `Setting` model (no migration), responsive grid, honest empty/loading states. Nav section "Company OS & Software Factory" in AdminApp; factory apps moved out of "Product Factory".
+- API routes: GET /api/admin/app-launcher/catalog, GET/POST favorites, GET/POST recent — all requireActor() => SUPER_ADMIN, CSRF on mutations, rate limited.
+- Tests: tests/app-launcher-access.test.ts (view policy for all non-Super Admin roles; source-level Super Admin guards on all app-launcher routes; DB-backed tenant isolation: company-scoped FactoryRecord access, Super Admin has NO automatic private-company grant), extended tests/factory-super-admin-boundary.test.ts.
+- Validation: tsc 0 errors; eslint 0 on touched files; full suite 1690/1690 pass (0 fail) on disposable SQLite.
+
+Honest limits: this is slice 1 of a multi-phase build. Remaining phases: Company OS profile editor, Template/Module lifecycle UI, SOW→Invoice→Payment→Factory pipeline, Build Queue, AI dev workspace/QA, Deployment/Release/Backup/Monitoring centers, AI Command Center, full documentation set, end-to-end production build. No production deployment triggered; no migrations added; no existing CRM/auth/factory routes modified.

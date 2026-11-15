@@ -40,7 +40,7 @@ import {
   Mail,
   MessagesSquare,
   PhoneCall,
-  Rss, Layers3, Palette } from 'lucide-react'
+  Rss, Layers3, Palette, LayoutGrid } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
@@ -72,6 +72,7 @@ import { ConversationsView } from './ConversationsView'
 import { ContentStudioView } from './ContentStudioView'
 import { FactoryView } from './FactoryView'
 import { ControlCenter } from './factory/ControlCenter'
+import { AppLauncherView } from './AppLauncherView'
 import { ReaView } from './ReaView'
 import { EvolutionView } from './EvolutionView'
 import { MarketingDashboardView } from './MarketingDashboardView'
@@ -147,10 +148,16 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
   {
     section: 'Product Factory',
     items: [
-      { id: 'factory', label: 'App Factory', icon: Boxes },
-      { id: 'factoryControl', label: 'Software Factory Control Center', icon: Layers3 },
       { id: 'media', label: 'Media Studio', icon: Clapperboard },
       { id: 'designKit', label: 'Design Kit', icon: Palette },
+    ],
+  },
+  {
+    section: 'Company OS & Software Factory',
+    items: [
+      { id: 'appLauncher', label: 'App Launcher', icon: LayoutGrid },
+      { id: 'factory', label: 'AI Software Factory', icon: Boxes },
+      { id: 'factoryControl', label: 'Software Factory Control Center', icon: Layers3 },
     ],
   },
   {
@@ -266,6 +273,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   telephony: 'Calls & SMS',
   rea: 'Reverse Engineer Anything',
   evolution: 'Evolution Loop',
+  appLauncher: 'App Launcher',
 }
 
 export default function AdminApp({ onExit }: { onExit: () => void }) {
@@ -665,6 +673,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <ReaView />
               ) : view === 'evolution' ? (
                 <EvolutionView />
+              ) : view === 'appLauncher' && canAccessView('appLauncher') ? (
+                <AppLauncherView onNavigate={navigate} />
               ) : view === 'factory' ? (
                 <FactoryView />
               ) : view === 'factoryControl' ? (
