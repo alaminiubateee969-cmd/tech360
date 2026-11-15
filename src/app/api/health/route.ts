@@ -76,6 +76,10 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     app: 'tech360-platform',
     version: packageJson.version,
+    release: {
+      commit: process.env.TECH360_BUILD_SHA || 'unknown',
+      sourceState: process.env.TECH360_BUILD_SOURCE_STATE || 'unknown',
+    },
     checks,
     channels: channelStatuses(),
     uptimeSeconds: Math.floor(process.uptime()),
