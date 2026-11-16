@@ -20,6 +20,18 @@ describe('factory control-plane boundary', () => {
       assert.match(source, /minRole: 'SUPER_ADMIN'/, path)
     }
   })
+
+  it('guards the private App Launcher routes as Super Admin', () => {
+    for (const path of [
+      'src/app/api/admin/app-launcher/catalog/route.ts',
+      'src/app/api/admin/app-launcher/favorites/route.ts',
+      'src/app/api/admin/app-launcher/recent/route.ts',
+    ]) {
+      const source = readFileSync(path, 'utf8')
+      assert.match(source, /requireActor\(req\)/, path)
+      assert.doesNotMatch(source, /requireActor\(req, 'STAFF'\)/, path)
+    }
+  })
 })
 
 describe('public confidentiality regression checks', () => {

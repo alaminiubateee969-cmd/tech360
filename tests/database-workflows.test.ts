@@ -613,6 +613,9 @@ describe('approved source handover end-to-end', () => {
     })
 
     try {
+      const unverified = await prepareHandover(alphaId, project.id, 'test-super-admin')
+      assert.equal(unverified.blocked, true, 'PAID without independent verification must not unlock source')
+      await db.payment.update({ where: { id: payment.id }, data: { verifiedAt: new Date(), verifiedBy: 'test-super-admin' } })
       const prepared = await prepareHandover(alphaId, project.id, 'test-super-admin')
       if (prepared.blocked) throw new Error(prepared.reason)
       assert.equal(prepared.blocked, false)

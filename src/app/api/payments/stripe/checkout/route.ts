@@ -78,6 +78,12 @@ export async function POST(req: Request) {
     include: { payments: { select: { amount: true, status: true } } },
   })
   if (!invoice) return Response.json({ error: 'Invoice not found for this account.' }, { status: 404 })
+  const { requirePreviewBeforePayment } = await import('@/lib/lifecycle-gates')
+  try {
+    await requirePreviewBeforePayment(client.id, invoice.scopeVersion)
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : 'Preview evidence required before payment.', code: 'LIFECYCLE_EVIDENCE_REQUIRED' }, { status: 409 })
+  }
 
   const { computeInvoiceSettlement, isCustomerVisibleInvoiceStatus, isPayableInvoiceStatus, resolveInvoiceTotalMinor } =
     await import('@/lib/invoice-policy')

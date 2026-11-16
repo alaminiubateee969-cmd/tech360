@@ -209,6 +209,27 @@ async function defaultSeedFloor(prefix: string, year: number): Promise<number> {
     })
     return maxSequenceFromIdentifiers(rows.map((r) => r.caseNumber), prefix, year)
   }
+  if (prefix === 'REA') {
+    const rows = await db.reaTarget.findMany({
+      where: { code: { startsWith: head } },
+      select: { code: true },
+    })
+    return maxSequenceFromIdentifiers(rows.map((r) => r.code), prefix, year)
+  }
+  if (prefix === 'RR') {
+    const rows = await db.reaReconstruction.findMany({
+      where: { code: { startsWith: head } },
+      select: { code: true },
+    })
+    return maxSequenceFromIdentifiers(rows.map((r) => r.code), prefix, year)
+  }
+  if (prefix === 'EVO') {
+    const rows = await db.evolutionProposal.findMany({
+      where: { code: { startsWith: head } },
+      select: { code: true },
+    })
+    return maxSequenceFromIdentifiers(rows.map((r) => r.code), prefix, year)
+  }
   return 0
 }
 
@@ -242,6 +263,25 @@ export async function nextRefundCaseNumber(options?: { now?: Date; year?: number
   const prefix = options?.prefix ?? 'RFD-'
   const digits = options?.digits ?? 4
   return defaultAllocate({ prefix, digits, year: options?.year }, options?.now)
+}
+
+/**
+ * REA Studio teardown code: `REA-2026-0001`.
+ * Allocated from the monotonic counter, never from `count()`, so a deleted or
+ * refused target never causes a code to be reused.
+ */
+export async function nextReaCode(options?: { now?: Date; year?: number }): Promise<string> {
+  return defaultAllocate({ prefix: 'REA', digits: 4, year: options?.year }, options?.now)
+}
+
+/** Reconstruction lineage code: `RR-2026-0001`. */
+export async function nextReconstructionCode(options?: { now?: Date; year?: number }): Promise<string> {
+  return defaultAllocate({ prefix: 'RR', digits: 4, year: options?.year }, options?.now)
+}
+
+/** Evolution proposal code: `EVO-2026-0001`. */
+export async function nextEvolutionCode(options?: { now?: Date; year?: number }): Promise<string> {
+  return defaultAllocate({ prefix: 'EVO', digits: 4, year: options?.year }, options?.now)
 }
 
 export function secureToken(bytes = 24): string {

@@ -91,7 +91,7 @@ const orderProblems = []
 
 const migrationsDir = join(root, 'prisma/migrations')
 // Match Prisma CLI's exact migration directory sort order (`a.localeCompare(b)`).
-for (const dir of readdirSync(migrationsDir).filter((d) => /^\d+_/.test(d)).sort((a, b) => a.localeCompare(b))) {
+for (const dir of readdirSync(migrationsDir).filter((d) => /^(?:\d+|v\d+)_/.test(d)).sort((a, b) => a.localeCompare(b))) {
   const sql = readFileSync(join(migrationsDir, dir, 'migration.sql'), 'utf8')
   const uncommentedSql = sql.replace(/^\s*--.*$/gm, '')
   for (const statement of uncommentedSql.split(';')) {

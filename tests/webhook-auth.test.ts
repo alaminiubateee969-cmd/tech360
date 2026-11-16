@@ -92,8 +92,8 @@ describe('the inbound email webhook fails closed with its dedicated credential',
 describe('the WhatsApp webhook verifies the Meta signature', () => {
   const src = read('src/app/api/webhooks/whatsapp/route.ts')
   it('reads the raw body (re-serialising would break the HMAC)', () => {
-    assert.ok(src.includes('req.text()'))
-    assert.ok(src.includes('JSON.parse(rawBody)'))
+    assert.ok(src.includes('readBoundedBody(req,'))
+    assert.ok(src.indexOf("update(rawBody)") < src.indexOf('JSON.parse(rawBody)'))
   })
   it('checks x-hub-signature-256 as sha256 HMAC', () => {
     assert.ok(src.includes('x-hub-signature-256'))

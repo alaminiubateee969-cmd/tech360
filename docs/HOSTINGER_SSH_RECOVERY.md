@@ -127,6 +127,28 @@ after every digit-only prefix (`"94_x" < "9_commerce_x"`, because `"4" < "_"`),
 so the next generation is `v2_…`, then `v3_…`. Add a migration, then publish it
 deliberately with `npm run migrations:publish`.
 
+### Automatic reconciliation in the build (2026-11-12)
+
+Hostinger's build is the only place migrations run, and the failed row can sit
+under the *old* name (`13_post_review_grid`), which the doctor refuses to
+resolve because that directory no longer exists. `npm run build` therefore runs
+`scripts/prisma-migration-reconcile.mjs` between `prisma generate` and
+`prisma migrate deploy`. It acts **only** when a `13_post_review_grid` /
+`93_post_review_grid` row is failed, and decides from `information_schema`:
+
+| Observed `PostReview` | Action |
+|---|---|
+| table + foreign key present | stale row rolled back, `93_post_review_grid` recorded applied |
+| absent | row rolled back; `migrate deploy` applies `93_post_review_grid` |
+| table without its FK, `SocialPost` present, no orphaned reviews | runs the migration's own `ADD CONSTRAINT`, then records applied |
+| table without its FK, **empty**, FK cannot be added | drops the empty table, rolls back; deploy re-creates it |
+| anything else (unexpected columns, orphaned rows) | **refuses**, changes nothing, build fails with the reason |
+
+It never deletes a history row and never drops a table holding data. Failed
+rows of any other migration are untouched and still need the manual procedure
+below. `--dry-run` prints the plan only; `TECH360_MIGRATION_RECONCILE=off`
+disables it. Covered by `tests/migration-reconcile.test.ts`.
+
 ### Recovery procedure
 
 **Step 0 — backup.** hPanel → Databases (export), or hPanel → Backups.

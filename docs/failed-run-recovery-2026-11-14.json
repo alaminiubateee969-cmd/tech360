@@ -1,0 +1,2778 @@
+{
+  "auditedAt": "2026-11-14",
+  "repository": "alaminiubateee969-cmd/tech360",
+  "baseCommit": "511cb6ec57d6f58df38d78e3d8759a8a62d03ab4",
+  "scope": {
+    "actionsRunsReturned": 416,
+    "pullRequestsReturned": 74,
+    "note": "All runs returned by gh run list --limit 1000, and all PRs returned by gh pr list --state all --limit 200 at audit time. This is a historical snapshot, not a live CI verdict."
+  },
+  "runs": [
+    {
+      "id": 36621453810,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "855295b68f72a5ab8abf71b0598a8f2e4f48ed31",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36621453810",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36625340746,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "d424a2fbe72b38f91dabe6608a6e525d69fb7075",
+      "branch": "arena/01a0eebb-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36625340746",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36629126070,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "85a1833bedbf05bcbda6862ebdd44bf38124062b",
+      "branch": "arena/01a0eebb-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36629126070",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36629584408,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "110897407c3fa5e54d9ff72f78bb32aa9d9297eb",
+      "branch": "arena/01a0eebb-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36629584408",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36657052054,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "b73dc1d52d1d66681b3adb4da888ff6556cbf7c2",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36657052054",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36724831428,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "9061587f4c83004e0edddff1a0fc67a0588c49b9",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36724831428",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36724831507,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "9061587f4c83004e0edddff1a0fc67a0588c49b9",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36724831507",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36725197876,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "bd5be49d26d47772bda38650ff514d885fdd7329",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36725197876",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36725197881,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "bd5be49d26d47772bda38650ff514d885fdd7329",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36725197881",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36725454493,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "00aad99a1b9a26ae09afbc1fe1c6a9c56a6b4a81",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36725454493",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36725454588,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "00aad99a1b9a26ae09afbc1fe1c6a9c56a6b4a81",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36725454588",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36725842183,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "95d4766fd10add14a7ccfc388ac2e0737128bec9",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36725842183",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36726130809,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "b0f6daa9cb4a2284ff490581ede2355351c20197",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36726130809",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36726132336,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "b0f6daa9cb4a2284ff490581ede2355351c20197",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36726132336",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36726223766,
+      "workflow": "deploy-production",
+      "conclusion": "cancelled",
+      "sha": "1d607c0ca1a00cba05f2bc21f952cbd1a797a4b4",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36726223766",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36726232247,
+      "workflow": "deploy-production",
+      "conclusion": "cancelled",
+      "sha": "10a1e6bd5cbb4ca964a08ee356cccafc91c70502",
+      "branch": "fix/hostinger-main-auto-deploy",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36726232247",
+      "resolution": "superseded-deployment",
+      "replacementCommit": "16d778ab82f8f33b80a755890b287f7c8ff3c3af",
+      "reason": "PR #9 uses Bun/SSH/VPS deployment. The maintained Hostinger native Git/Node 22 path explicitly retired this workflow; do not re-enable a second production deployer."
+    },
+    {
+      "id": 36726240644,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "d82f0307b7efe40bd96c7a251100a927024bbc82",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36726240644",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36726529699,
+      "workflow": "deploy-production",
+      "conclusion": "failure",
+      "sha": "b0574ec43b9b4c85358c0767f77be756470dff7d",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36726529699",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36753663466,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "16d778ab82f8f33b80a755890b287f7c8ff3c3af",
+      "branch": "arena/01a0f285-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36753663466",
+      "resolution": "integrated"
+    },
+    {
+      "id": 36759733110,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "f6e6f6372777d8a01a4dd1f8ff5c1cd7cfc632a4",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/36759733110",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37049077311,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "3b313e0f6ff8b2a8a66b65a7cb8b393960933c4f",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37049077311",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37050582410,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "e703d8c3afa1c58f4123879d1b9499196ec23843",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37050582410",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37050594192,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "69b517d43bfb0e499acbc54f5749f6886003b884",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37050594192",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37050604962,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "ce93bf356445e490adac080f1bf391222a3afbaa",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37050604962",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37050611162,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "fe2872961cc0f7e5e4a23d5f114f6a0dcaae451a",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37050611162",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37050619140,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "b7ec78c5ff6f5081ebb692f13b643480df493a8c",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37050619140",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37050633432,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "91b966bfa8d1a41b76666a51605bc9c4bcdeef77",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37050633432",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37050663450,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "70f249c8711bb5fb6213df7e53d2444db87eeff1",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37050663450",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37077483077,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "f8a841aae28a4082b8e53dfbabbd1f2ad32ad79c",
+      "branch": "arena/01a0fec4-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37077483077",
+      "resolution": "temporary-diagnostic",
+      "replacementCommit": "16d778ab82f8f33b80a755890b287f7c8ff3c3af",
+      "reason": "Temporary engine-fetch workflow explicitly marked session-only and removed before merge. Native Hostinger deployment supersedes GitHub deployment/engine-fetch workflows; not application deliverables."
+    },
+    {
+      "id": 37077549998,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "af0be9668b0b0e40e97546903a70dea014ff98e1",
+      "branch": "arena/01a0fec4-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37077549998",
+      "resolution": "temporary-diagnostic",
+      "replacementCommit": "16d778ab82f8f33b80a755890b287f7c8ff3c3af",
+      "reason": "Temporary engine-fetch workflow explicitly marked session-only and removed before merge. Native Hostinger deployment supersedes GitHub deployment/engine-fetch workflows; not application deliverables."
+    },
+    {
+      "id": 37078297562,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "437a1adbab31b6ec8d47b0e2c8cc0478cfa8bde5",
+      "branch": "arena/01a0fec4-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37078297562",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37105036994,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "0f54c224e3cc295c3450eb62341699b6e6ce0a45",
+      "branch": "arena/01a1006a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37105036994",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37105058177,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "0f54c224e3cc295c3450eb62341699b6e6ce0a45",
+      "branch": "arena/01a1006a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37105058177",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37105170581,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "58ef63e99570e82273f602a429f918a2ec13949d",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37105170581",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106234798,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "a477e344580111f531f8284de8ac7f363f32f6cb",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106234798",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106234827,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "a477e344580111f531f8284de8ac7f363f32f6cb",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106234827",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106246777,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "a477e344580111f531f8284de8ac7f363f32f6cb",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106246777",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106299589,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "142e5499dc6007e397da03f27dc79c6be2364491",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106299589",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106302051,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "142e5499dc6007e397da03f27dc79c6be2364491",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106302051",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106326244,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "c9ef079435ef23e7a0f14e39241ee262227053cb",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106326244",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106328544,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "c9ef079435ef23e7a0f14e39241ee262227053cb",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106328544",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106562872,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "f416b7e4c02b679426b67f75a465f04dbdafe0ba",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106562872",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106565736,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "f416b7e4c02b679426b67f75a465f04dbdafe0ba",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106565736",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106973320,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "7d5d034cad18ee5e42710ff20ca10611441d0b19",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106973320",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37106977393,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "7d5d034cad18ee5e42710ff20ca10611441d0b19",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37106977393",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37107210059,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "39f183afe8f2482e1346514174ad783ff12339cc",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37107210059",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37107213773,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "39f183afe8f2482e1346514174ad783ff12339cc",
+      "branch": "arena/01a1009d-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37107213773",
+      "resolution": "integrated"
+    },
+    {
+      "id": 37633028048,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "12d527ec328b499ad2682b8e7e40d387c2dfa870",
+      "branch": "arena/d8803ccc-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/37633028048",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38006981422,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "12b33bb6b9b46c5e728da72d8344a2cf5847b441",
+      "branch": "arena/51057752-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38006981422",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38009789765,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "0b586239e2cf524e2accd6fab1f41b79b92cabc8",
+      "branch": "arena/51057752-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38009789765",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38009806337,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "0b586239e2cf524e2accd6fab1f41b79b92cabc8",
+      "branch": "arena/51057752-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38009806337",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119256806,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "8d2f8de1ef05709fe8f6278445606d3117a559d7",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119256806",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119334220,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "6e9394ec630d0e13b1dddb27c5331313239059da",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119334220",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119384944,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "4d82b0fb678219f66c300c1c9c193287a36a8f4f",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119384944",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119405625,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "3f77d72af0818758375ebeca3d9b14ef66b05bde",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119405625",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119437383,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "43daed4085e26924af77e14e4415c18deb568d30",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119437383",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119447875,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "43daed4085e26924af77e14e4415c18deb568d30",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119447875",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119704765,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "4988181273dfe504d625c0b9f303770eec8033c7",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119704765",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119707470,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "4988181273dfe504d625c0b9f303770eec8033c7",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119707470",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119731519,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "7e1786c54c3ee44bef0e0c6492d3dc8bfaa22fec",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119731519",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38119734278,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "7e1786c54c3ee44bef0e0c6492d3dc8bfaa22fec",
+      "branch": "arena/98c3bc30-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38119734278",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38120229896,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "76d60e503642795f321f036655921859fab061c6",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38120229896",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38123640171,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "ec98e3cfb506350fd288052efb096ddef3628dd8",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38123640171",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38123691750,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "ec98e3cfb506350fd288052efb096ddef3628dd8",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38123691750",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38128306243,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "3925aacaa74f97583dfc7bd6b91630876d3f626c",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128306243",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38128308640,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "3925aacaa74f97583dfc7bd6b91630876d3f626c",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128308640",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38128477184,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "a16d4e6bae92bd4b40987a89935f623a26a2ba0b",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128477184",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38128481134,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "a16d4e6bae92bd4b40987a89935f623a26a2ba0b",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128481134",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38128612978,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "19ef67452bdd633681d8706492b9c51a432a2194",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128612978",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38128616274,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "19ef67452bdd633681d8706492b9c51a432a2194",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38128616274",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38138085050,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "4ec5c5e890311d9be8dbeec159dd6a68cbece289",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38138085050",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38138087715,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "4ec5c5e890311d9be8dbeec159dd6a68cbece289",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38138087715",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38138263828,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "4b138b5a2cf4e39e0375568b65e0ea5c5841435b",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38138263828",
+      "resolution": "integrated"
+    },
+    {
+      "id": 38138266740,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "4b138b5a2cf4e39e0375568b65e0ea5c5841435b",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/38138266740",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39174649419,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "7251a0c238872af89ca45fa6624735f20d8155a9",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39174649419",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39174649463,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "7251a0c238872af89ca45fa6624735f20d8155a9",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39174649463",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39177026868,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "28ff968591c68fe7ff8a4f8f3a7e90ecaad60605",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39177026868",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39177980246,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "28ff968591c68fe7ff8a4f8f3a7e90ecaad60605",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39177980246",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39178448379,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "2ec3c675b7b68fe1c58e2bdd46f55a0117a3c300",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39178448379",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39178448383,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "2ec3c675b7b68fe1c58e2bdd46f55a0117a3c300",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39178448383",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39178451366,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "2ec3c675b7b68fe1c58e2bdd46f55a0117a3c300",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39178451366",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39178800671,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "3d9cbef5b8de4af180384cd52a6647b1661f1395",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39178800671",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39178804685,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "3d9cbef5b8de4af180384cd52a6647b1661f1395",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39178804685",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39179221590,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "5644c9829064c95ee8f6fe7991cdc74b11687b82",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39179221590",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39179225286,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "5644c9829064c95ee8f6fe7991cdc74b11687b82",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39179225286",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39180057876,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "d116741575bcc75fc0362f56b324bb71b0902b0a",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39180057876",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39180060795,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "d116741575bcc75fc0362f56b324bb71b0902b0a",
+      "branch": "arena/059cc90a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39180060795",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39203944668,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "79320340e39c9b752888850a2c7ec4c81474b44c",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39203944668",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39203944813,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "79320340e39c9b752888850a2c7ec4c81474b44c",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39203944813",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39203949375,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "79320340e39c9b752888850a2c7ec4c81474b44c",
+      "branch": "arena/5d9c5644-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39203949375",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39227650826,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "f09f237b09b134bfa0ee1627289068fa8295a3fe",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39227650826",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39233844399,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "9dbf5bb22d24121255e4071d3bf6932a6e24030b",
+      "branch": "arena/113a1ac7-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39233844399",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39233892806,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "9dbf5bb22d24121255e4071d3bf6932a6e24030b",
+      "branch": "arena/113a1ac7-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39233892806",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39969018062,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "f72b2976bd91a9ed143dcc35e90f9e7b780d9f28",
+      "branch": "arena/0a9758de-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39969018062",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39969069481,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "f72b2976bd91a9ed143dcc35e90f9e7b780d9f28",
+      "branch": "arena/0a9758de-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39969069481",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39974830004,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "9e2ab184c654bdaa72dfe9ab8973fbc71fbea655",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39974830004",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39976034862,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "bdbd4e183803cc9944831e5b76910b87a6ce17e0",
+      "branch": "arena/2960e44a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39976034862",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39976265993,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "35eace9b5d1cd0ae5153f3f99c1f5a9153a5cc4c",
+      "branch": "arena/2960e44a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39976265993",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39977037697,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "2371866c6963cba49fc85ddec6f139160cd87b32",
+      "branch": "arena/2960e44a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39977037697",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39979884411,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "2371866c6963cba49fc85ddec6f139160cd87b32",
+      "branch": "arena/2960e44a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39979884411",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39979982711,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "0bbe16d03cd768c17acc2b973c73f654a5960970",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39979982711",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39983705615,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "1890fff2d5bb7ac0f7ac534205ede93c1801eabd",
+      "branch": "arena/0a9758de-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39983705615",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39983736045,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "b92a1e5888f84d6dff6d25bd1d377f9a2def7d64",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39983736045",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39984052247,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "ab7310048f3438b272d2d10686a2683a8023be41",
+      "branch": "arena/ec94bd86-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39984052247",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39985928003,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "ab7310048f3438b272d2d10686a2683a8023be41",
+      "branch": "arena/ec94bd86-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39985928003",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39987386883,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "766e5c248a8134028c5b3254500f9da63d0ea8df",
+      "branch": "arena/ec94bd86-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39987386883",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39987390546,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "766e5c248a8134028c5b3254500f9da63d0ea8df",
+      "branch": "arena/ec94bd86-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39987390546",
+      "resolution": "integrated"
+    },
+    {
+      "id": 39987759027,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "4f43807811b330b716e930d19b9c7988841eafa2",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/39987759027",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40004708577,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "0ac469840afd2825fef38b1b130d0f0588acae28",
+      "branch": "arena/c08e85f1-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40004708577",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40004793362,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "0ac469840afd2825fef38b1b130d0f0588acae28",
+      "branch": "arena/c08e85f1-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40004793362",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40015241001,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "76afd22ec5064d89cc6b060211b54e48ff2a10ac",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40015241001",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40023364983,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "3694e01f97c3e8c99afbe028aebec4fe8c430362",
+      "branch": "arena/44929c49-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40023364983",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40025199581,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "9201973fde4f58e524d8f9f56d45e0177c0881df",
+      "branch": "arena/44929c49-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40025199581",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40025919444,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "e56cecd07b1e397ececf12bc2b8e85472018c9b4",
+      "branch": "arena/44929c49-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40025919444",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40026026357,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "70e3fe9072f2e97ddddb1e72eb3a93e3236905e2",
+      "branch": "arena/44929c49-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40026026357",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40027023211,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "07d7ef089754c455dac6ac1af946acaa3e163aff",
+      "branch": "arena/44929c49-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40027023211",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40027023285,
+      "workflow": "zz-diagnose-mysql",
+      "conclusion": "failure",
+      "sha": "07d7ef089754c455dac6ac1af946acaa3e163aff",
+      "branch": "arena/44929c49-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40027023285",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40045174348,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "2a522accabee8874386eaa26b45ba84bb4132e37",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40045174348",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40207364862,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "8789ba99faaf2089edc7950b416893325290d6d9",
+      "branch": "integration/tech360-merge",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40207364862",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40207377853,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "d8c73b1a0f26755c363d8e2b536e4e5ad7819474",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40207377853",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40393252909,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "fbe8d430ea46248be8b9a8cf1465e27c9d19ce90",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40393252909",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40393768719,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "f4e566138ae9338b92cdfdf6c5dbc59d5b3e2e1c",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40393768719",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40642900359,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "aa48625929baecd58e50773b8239ab092dee762a",
+      "branch": "arena/ad324aec-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40642900359",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40650996203,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "cb3e12678acd323d935c89c11ba1075e012e6fa0",
+      "branch": "arena/ad324aec-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40650996203",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40774946025,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "d2a68e40892d4c7a7949338212bf8dc7c20f8985",
+      "branch": "arena/dca79602-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40774946025",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40774968937,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "d2a68e40892d4c7a7949338212bf8dc7c20f8985",
+      "branch": "arena/dca79602-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40774968937",
+      "resolution": "integrated"
+    },
+    {
+      "id": 40775127395,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "3c10b6c7c4e63bfa56fe66ca2c0296d2004210e2",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/40775127395",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41018273092,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "9b3bbc5a18187be35369261965327ec7b131949c",
+      "branch": "arena/35a29cec-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41018273092",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41018302774,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "e3068488cff36e461243e068d89d849c4787f07d",
+      "branch": "arena/35a29cec-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41018302774",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41018311560,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "e3068488cff36e461243e068d89d849c4787f07d",
+      "branch": "arena/35a29cec-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41018311560",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41058434532,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "5f0cade92188d044a4cca0382aec0d173c9b22f6",
+      "branch": "arena/7bcf6c43-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41058434532",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41099690583,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "5f0cade92188d044a4cca0382aec0d173c9b22f6",
+      "branch": "arena/7bcf6c43-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41099690583",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41099778796,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "fb69a13e4421bd11f3e1887072b827a24e66bec2",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41099778796",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41167341597,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "fac2a06290c60e546fc9ba65431dd90429c6c5ed",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41167341597",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41195668109,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "4e8e22fe2aab742bc1728382dbd34dcb7796de16",
+      "branch": "arena/b6858c66-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41195668109",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41195745563,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "4e8e22fe2aab742bc1728382dbd34dcb7796de16",
+      "branch": "arena/b6858c66-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41195745563",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41200173778,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "8d08ee587a42fddb2e8eed7c75bb8aeca49ad880",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41200173778",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41488811230,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "3d655ca9d977f50ac6431bd41571697200353896",
+      "branch": "arena/d7d6a770-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41488811230",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41612037357,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "56b15dae4131c34baf0f81bdf70fa5803d316ded",
+      "branch": "arena/d7d6a770-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41612037357",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41652654396,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "11f50b9a94dc6ed3021e76b1337ba9cc7867fd27",
+      "branch": "arena/d7d6a770-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41652654396",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41655464789,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "11f50b9a94dc6ed3021e76b1337ba9cc7867fd27",
+      "branch": "arena/d7d6a770-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41655464789",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41655484672,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "173f0edb474507aacd679dfeca5b1bb68c66ca1d",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41655484672",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41781508208,
+      "workflow": "mysql-baseline",
+      "conclusion": "failure",
+      "sha": "3b904265e336188431316f55d9619979a20e0fef",
+      "branch": "arena/5e69a6c8-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41781508208",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41781508225,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "3b904265e336188431316f55d9619979a20e0fef",
+      "branch": "arena/5e69a6c8-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41781508225",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41791088207,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "061227183358c505e2750731b097a4a425367f6e",
+      "branch": "arena/5e69a6c8-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41791088207",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41805086512,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "7884f67f812e66965c9bb10baef74f589c7f7ca9",
+      "branch": "arena/5e69a6c8-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41805086512",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41808454357,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "7884f67f812e66965c9bb10baef74f589c7f7ca9",
+      "branch": "arena/5e69a6c8-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41808454357",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41809421079,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "0903c2e67ac46a426fa06e19e8e5bb5362e0d0f4",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41809421079",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41810215405,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "24a035e86db3f9c911c340ed614cd370a2288c68",
+      "branch": "arena/df401d4e-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41810215405",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41812703433,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "e6366e496c3cf77284f0b8970c190de951ae930d",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41812703433",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41820709658,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "ad8c34750661d498e16c76879ddfa4d049bc95f4",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41820709658",
+      "resolution": "integrated"
+    },
+    {
+      "id": 41832918676,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "97e8469383ef48cb90f3ae0d68e2566264c81f2a",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/41832918676",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42554738243,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "3f5456d71cdde0051fb36052a79711c60f8dd5c2",
+      "branch": "arena/f578e244-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42554738243",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42556815255,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "8a40ee2b62be050c5f2e276df9b2b65078b50761",
+      "branch": "arena/f578e244-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42556815255",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42563211735,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "fe73999f008cc35eb7a09fe325e1dd4d6896aac4",
+      "branch": "fix/production-upstream-communication",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42563211735",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42563254721,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "100d04b35191195a685ec6ee6a1effb67e076a68",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42563254721",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42580522348,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "f0bb46d976016cb5dbbd6b416886ad0673cd58d2",
+      "branch": "arena/f578e244-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42580522348",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42580580541,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "f0bb46d976016cb5dbbd6b416886ad0673cd58d2",
+      "branch": "arena/f578e244-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42580580541",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42580929212,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "cb8c29572288fe166915bc1f115e35f4f42b2703",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42580929212",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42584347791,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "b2e02e2298e1b4b46261ed42ec2a03882979a45e",
+      "branch": "arena/ca6ac00a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42584347791",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42584395934,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "b2e02e2298e1b4b46261ed42ec2a03882979a45e",
+      "branch": "arena/ca6ac00a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42584395934",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42671949211,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "95ab0c8331f17caa123c6261b52148f2c5ae7984",
+      "branch": "arena/5f2a22c2-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42671949211",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42678741240,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "85c3843c7d475e05c4bb09ab62ecd11f6c1990ad",
+      "branch": "arena/5f2a22c2-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42678741240",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42678853527,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "73700bd034791bde39698b1cd18f5f9019c7fe7f",
+      "branch": "arena/5f2a22c2-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42678853527",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42693738932,
+      "workflow": "ci",
+      "conclusion": "cancelled",
+      "sha": "11450729c6cceabb86a4377c984a2a017fdbdd40",
+      "branch": "arena/5f2a22c2-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42693738932",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42693782539,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "11450729c6cceabb86a4377c984a2a017fdbdd40",
+      "branch": "arena/5f2a22c2-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42693782539",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42695004492,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "d267775007b8f62ddbdcdd9f281b60621c5454bd",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42695004492",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42767280007,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "ac144df8daf5460ce0a7df50fff496928e4b738f",
+      "branch": "arena/c73361e4-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42767280007",
+      "resolution": "integrated"
+    },
+    {
+      "id": 42767286096,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "ac144df8daf5460ce0a7df50fff496928e4b738f",
+      "branch": "arena/c73361e4-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/42767286096",
+      "resolution": "integrated"
+    },
+    {
+      "id": 43034240194,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "503d70c1ce8d22a405f2b5f1f1527d5f73ac91d4",
+      "branch": "arena/ad2cfb88-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/43034240194",
+      "resolution": "integrated"
+    },
+    {
+      "id": 43036356201,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "d2124d7d669cd4c6b12681bb8010d8a0b92459ce",
+      "branch": "arena/ad2cfb88-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/43036356201",
+      "resolution": "integrated"
+    },
+    {
+      "id": 43073529776,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "1e055dae869a984315da8063717bea666a130a02",
+      "branch": "arena/ad2cfb88-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/43073529776",
+      "resolution": "integrated"
+    },
+    {
+      "id": 43073535206,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "1e055dae869a984315da8063717bea666a130a02",
+      "branch": "arena/ad2cfb88-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/43073535206",
+      "resolution": "integrated"
+    },
+    {
+      "id": 43073577577,
+      "workflow": "ci",
+      "conclusion": "failure",
+      "sha": "7ebef48328f06c7886b676db79911335912e8904",
+      "branch": "main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/actions/runs/43073577577",
+      "resolution": "integrated"
+    }
+  ],
+  "pullRequests": [
+    {
+      "headRefName": "arena/8a6db089-tech360",
+      "headRefOid": "0b27393a18a437f44547833a56e9eaa17e57289f",
+      "mergeCommit": {
+        "oid": "511cb6ec57d6f58df38d78e3d8759a8a62d03ab4"
+      },
+      "number": 74,
+      "state": "MERGED",
+      "title": "Add Master SOP production readiness audit",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/74"
+    },
+    {
+      "headRefName": "arena/c517acce-tech360",
+      "headRefOid": "94065c2819b0e31052284a1cff21f02d3c6f5d2e",
+      "mergeCommit": {
+        "oid": "8d62c852787c3e8e936b3b32ef2fdd45b391d0c6"
+      },
+      "number": 73,
+      "state": "MERGED",
+      "title": "Harden preview lifecycle and WhatsApp processing",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/73"
+    },
+    {
+      "headRefName": "arena/2cc7380f-tech360",
+      "headRefOid": "24f6e72fd5e374b1e5c02458e19fa8b44bbd745d",
+      "mergeCommit": {
+        "oid": "e7a84f480e232b3e29a88b0f0b8ec7198cb7f206"
+      },
+      "number": 72,
+      "state": "MERGED",
+      "title": "fix(deploy): unblock Hostinger build (P3009 post_review_grid + restore Factory schema)",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/72"
+    },
+    {
+      "headRefName": "arena/ad2cfb88-tech360",
+      "headRefOid": "1e055dae869a984315da8063717bea666a130a02",
+      "mergeCommit": {
+        "oid": "7ebef48328f06c7886b676db79911335912e8904"
+      },
+      "number": 71,
+      "state": "MERGED",
+      "title": "feat(rea,evolution): REA Studio teardown + approval-gated self-evolution",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/71"
+    },
+    {
+      "headRefName": "arena/33a25d55-tech360",
+      "headRefOid": "8d986f68d410fc57013ac0e871016cd4916cd759",
+      "mergeCommit": {
+        "oid": "45878253c5e30f5e232cc3dc111f4ad7ab443a1b"
+      },
+      "number": 70,
+      "state": "MERGED",
+      "title": "Industry blueprint rendering, 204-solution library, project detail pages & evidence-capped maturity",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/70"
+    },
+    {
+      "headRefName": "arena/2299814f-tech360",
+      "headRefOid": "d660ddd26e8c2af255aa8b03789501045e8fd5ef",
+      "mergeCommit": {
+        "oid": "53bb4d2ccc9769c50d7e121bff52c8ce9c997bb3"
+      },
+      "number": 69,
+      "state": "MERGED",
+      "title": "Resolve merge conflicts for #67 against latest main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/69"
+    },
+    {
+      "headRefName": "arena/8e149e11-tech360",
+      "headRefOid": "254adfe7cf6deca5934d7f433d59a0dbe3f8801d",
+      "mergeCommit": {
+        "oid": "ae3ae2bf761efcd8db0032dc3c7676fea8ae6197"
+      },
+      "number": 68,
+      "state": "MERGED",
+      "title": "TECH360 Phase 0 baseline: Prisma test adapter declared, real logo in public chrome, baseline evidence report",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/68"
+    },
+    {
+      "headRefName": "arena/065d5495-tech360",
+      "headRefOid": "53bb4d2ccc9769c50d7e121bff52c8ce9c997bb3",
+      "mergeCommit": {
+        "oid": "c3d1f6d1a1ffeac5e81241754fdaede1e3992130"
+      },
+      "number": 67,
+      "state": "MERGED",
+      "title": "Improve TECH360 branding and factory access boundaries",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/67"
+    },
+    {
+      "headRefName": "arena/2073fcff-tech360",
+      "headRefOid": "556808ec26494d92cd56cb42ed7ff505228d9ec4",
+      "mergeCommit": {
+        "oid": "b8486a7848e1228b98c2b46aefa7cf2f71f613d0"
+      },
+      "number": 66,
+      "state": "MERGED",
+      "title": "feat(brand,documents): measured brand tokens, letterhead page template & 17 official document renderers",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/66"
+    },
+    {
+      "headRefName": "main",
+      "headRefOid": "9d0547bef6f56e8407d61a639d18d29d48bc5d2e",
+      "mergeCommit": {
+        "oid": "d3a41224f29427278e5d15a63bb31bdb2b516522"
+      },
+      "number": 65,
+      "state": "MERGED",
+      "title": "Merge pull request #64 from alaminiubateee969-cmd/arena/c73361e4-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/65"
+    },
+    {
+      "headRefName": "arena/c73361e4-tech360",
+      "headRefOid": "5d7ffc659f7fcb13b97a8a3e605e380cf8232b20",
+      "mergeCommit": {
+        "oid": "9d0547bef6f56e8407d61a639d18d29d48bc5d2e"
+      },
+      "number": 64,
+      "state": "MERGED",
+      "title": "feat(site): 35 bespoke 1600\u00d71000 WebP visuals, ServiceCard system, AI Solutions grid & platform hardening",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/64"
+    },
+    {
+      "headRefName": "main",
+      "headRefOid": "806e80d38b03aa97f5d5d0cd9602e1e55f4e54a7",
+      "mergeCommit": {
+        "oid": "2bf3027d73646adf6c4bf49d089ff25c55af2bc2"
+      },
+      "number": 63,
+      "state": "MERGED",
+      "title": "Merge pull request #62 from alaminiubateee969-cmd/arena/e1474e5a-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/63"
+    },
+    {
+      "headRefName": "arena/e1474e5a-tech360",
+      "headRefOid": "0147e9766f872ef47dc87181e5b14201e0ed3035",
+      "mergeCommit": {
+        "oid": "806e80d38b03aa97f5d5d0cd9602e1e55f4e54a7"
+      },
+      "number": 62,
+      "state": "MERGED",
+      "title": "TECH360 master audit: omnichannel, confidentiality, WebChat/Email diagnostics",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/62"
+    },
+    {
+      "headRefName": "arena/e5927b11-tech360",
+      "headRefOid": "da6ae5317baeb24482f5d2345626edffe0d1b8ff",
+      "mergeCommit": {
+        "oid": "93cb25256075f8c8e2f30529c21b2e148f0aad77"
+      },
+      "number": 61,
+      "state": "MERGED",
+      "title": "fix(ci): avoid secret-scan false positive in test fixture",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/61"
+    },
+    {
+      "headRefName": "arena/5f2a22c2-tech360",
+      "headRefOid": "11450729c6cceabb86a4377c984a2a017fdbdd40",
+      "mergeCommit": {
+        "oid": "d267775007b8f62ddbdcdd9f281b60621c5454bd"
+      },
+      "number": 60,
+      "state": "MERGED",
+      "title": "Agent readiness: machine-readable crawler + MCP surfaces (with four review fixes)",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/60"
+    },
+    {
+      "headRefName": "arena/c4e71951-tech360",
+      "headRefOid": "c17a04c90ac2751cac02bb016d0174996af75439",
+      "mergeCommit": {
+        "oid": "fc66262e4bb169f065f780e313e5cf7308a713aa"
+      },
+      "number": 59,
+      "state": "MERGED",
+      "title": "fix(migrations): P3009 recovery doctor + published-migration immutability gate",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/59"
+    },
+    {
+      "headRefName": "arena/db400ead-tech360",
+      "headRefOid": "bdb0607e81e59fd5d55b8cf79bb3cdc3181ba46e",
+      "mergeCommit": {
+        "oid": "624998b932dd663775f54c4897a3b6478f2e4c70"
+      },
+      "number": 58,
+      "state": "MERGED",
+      "title": "fix: point all 81 industry-payload assets at real files and gate them in CI",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/58"
+    },
+    {
+      "headRefName": "arena/7e73c4e1-tech360",
+      "headRefOid": "50ee81b5402e50d2339370b7dd37a1e5ceddd8e2",
+      "mergeCommit": {
+        "oid": "b654f09cfb5c59b9c60bafd63502bd41e03f8c59"
+      },
+      "number": 57,
+      "state": "MERGED",
+      "title": "docs: Hostinger SSH recovery runbook + P3009 failed-migration procedure",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/57"
+    },
+    {
+      "headRefName": "arena/93cc23fa-tech360",
+      "headRefOid": "92c32231f72f6e605e29e87733a42930a680394a",
+      "mergeCommit": {
+        "oid": "6c942b58137e540bb0d307b518e45c9f5fc5e45a"
+      },
+      "number": 56,
+      "state": "MERGED",
+      "title": "fix: port orphaned PR #52 pipeline state, isolate main CI concurrency, and harden test/gitignore hygiene",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/56"
+    },
+    {
+      "headRefName": "arena/34b66937-tech360",
+      "headRefOid": "5720ac50beea072a67427a36dc4757526dad1e4c",
+      "mergeCommit": {
+        "oid": "47a92040ee292e2ba0b8c6b339fd948439a91254"
+      },
+      "number": 55,
+      "state": "MERGED",
+      "title": "Harden invoice CAS/emails, AI timeouts, Factory transactions, and self-hosted industry experiences",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/55"
+    },
+    {
+      "headRefName": "arena/ca6ac00a-tech360",
+      "headRefOid": "affbfa9a97c0214d0b4daead35681392bce97738",
+      "mergeCommit": {
+        "oid": "d6fca457343346d955dd1f76eccd477e72fffc77"
+      },
+      "number": 54,
+      "state": "MERGED",
+      "title": "fix: restore local-businesses payload eaten by local-* gitignore (red typecheck on main)",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/54"
+    },
+    {
+      "headRefName": "arena/f578e244-tech360",
+      "headRefOid": "f0bb46d976016cb5dbbd6b416886ad0673cd58d2",
+      "mergeCommit": {
+        "oid": "cb8c29572288fe166915bc1f115e35f4f42b2703"
+      },
+      "number": 53,
+      "state": "MERGED",
+      "title": "Global Industries Platform (20 payloads) + agent-ready site for bdtech360.com",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/53"
+    },
+    {
+      "headRefName": "fix/production-upstream-communication",
+      "headRefOid": "fe73999f008cc35eb7a09fe325e1dd4d6896aac4",
+      "mergeCommit": {
+        "oid": "100d04b35191195a685ec6ee6a1effb67e076a68"
+      },
+      "number": 52,
+      "state": "MERGED",
+      "title": "Fix TECH360 AI communication and delivery-state safeguards",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/52"
+    },
+    {
+      "headRefName": "arena/df401d4e-tech360",
+      "headRefOid": "24a035e86db3f9c911c340ed614cd370a2288c68",
+      "mergeCommit": {
+        "oid": "e6366e496c3cf77284f0b8970c190de951ae930d"
+      },
+      "number": 51,
+      "state": "MERGED",
+      "title": "Fix CI secret scan and platform type error",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/51"
+    },
+    {
+      "headRefName": "arena/5e69a6c8-tech360",
+      "headRefOid": "7884f67f812e66965c9bb10baef74f589c7f7ca9",
+      "mergeCommit": {
+        "oid": "0903c2e67ac46a426fa06e19e8e5bb5362e0d0f4"
+      },
+      "number": 50,
+      "state": "MERGED",
+      "title": "feat: TECH360 letterhead, secure docs, email-gated chat & Company-in-a-Box platform",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/50"
+    },
+    {
+      "headRefName": "arena/d7d6a770-tech360",
+      "headRefOid": "11f50b9a94dc6ed3021e76b1337ba9cc7867fd27",
+      "mergeCommit": {
+        "oid": "173f0edb474507aacd679dfeca5b1bb68c66ca1d"
+      },
+      "number": 49,
+      "state": "MERGED",
+      "title": "Arena/d7d6a770 tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/49"
+    },
+    {
+      "headRefName": "arena/b6858c66-tech360",
+      "headRefOid": "4e8e22fe2aab742bc1728382dbd34dcb7796de16",
+      "mergeCommit": {
+        "oid": "8d08ee587a42fddb2e8eed7c75bb8aeca49ad880"
+      },
+      "number": 48,
+      "state": "MERGED",
+      "title": "Fix Admin dashboard access and AI provider diagnostics",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/48"
+    },
+    {
+      "headRefName": "arena/7bcf6c43-tech360",
+      "headRefOid": "5f0cade92188d044a4cca0382aec0d173c9b22f6",
+      "mergeCommit": {
+        "oid": "fb69a13e4421bd11f3e1887072b827a24e66bec2"
+      },
+      "number": 47,
+      "state": "MERGED",
+      "title": "feat(marketing): review grid with rendered posters and real per-post \u2026",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/47"
+    },
+    {
+      "headRefName": "arena/35a29cec-tech360",
+      "headRefOid": "e3068488cff36e461243e068d89d849c4787f07d",
+      "mergeCommit": {
+        "oid": "fac2a06290c60e546fc9ba65431dd90429c6c5ed"
+      },
+      "number": 46,
+      "state": "MERGED",
+      "title": "Work showcase gallery, intake attribution, lead follow-up automation, installer + cPanel guide",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/46"
+    },
+    {
+      "headRefName": "arena/dca79602-tech360",
+      "headRefOid": "d2a68e40892d4c7a7949338212bf8dc7c20f8985",
+      "mergeCommit": {
+        "oid": "3c10b6c7c4e63bfa56fe66ca2c0296d2004210e2"
+      },
+      "number": 45,
+      "state": "MERGED",
+      "title": "Update TECH360 legal policies and workflow copy",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/45"
+    },
+    {
+      "headRefName": "arena/9cc02c9c-tech360",
+      "headRefOid": "967477ffac1f1dcb9e87f0db29e16059d835bb5f",
+      "mergeCommit": {
+        "oid": "bad8d3f601855ff3159fc4708999895f862759fa"
+      },
+      "number": 44,
+      "state": "MERGED",
+      "title": "merge: resolve all 95 conflicts from #43 without discarding anything",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/44"
+    },
+    {
+      "headRefName": "integration/tech360-merge",
+      "headRefOid": "99ee375d5d6f99b5211a8476ce3de96b1362ad96",
+      "mergeCommit": null,
+      "number": 43,
+      "state": "CLOSED",
+      "title": "fix: resolve TECH360 merge conflicts",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/43"
+    },
+    {
+      "headRefName": "arena/ad324aec-tech360",
+      "headRefOid": "22e5129e308b008b1ba00f225b001a632a72e915",
+      "mergeCommit": {
+        "oid": "e5860021bb8cc34525fd546b2be9eb3d87326545"
+      },
+      "number": 42,
+      "state": "MERGED",
+      "title": "Arena/ad324aec tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/42"
+    },
+    {
+      "headRefName": "arena/e56c843a-tech360",
+      "headRefOid": "4f0993a1e8272fc01781eed2f66a207382921e30",
+      "mergeCommit": {
+        "oid": "fb883e8e35a005c99cdf467ebfaaeb845d819822"
+      },
+      "number": 41,
+      "state": "MERGED",
+      "title": "fix(merge): repair PR #39's committed conflicts \u2014 main installs, tests, builds and runs again",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/41"
+    },
+    {
+      "headRefName": "main",
+      "headRefOid": "fbe8d430ea46248be8b9a8cf1465e27c9d19ce90",
+      "mergeCommit": {
+        "oid": "f4e566138ae9338b92cdfdf6c5dbc59d5b3e2e1c"
+      },
+      "number": 40,
+      "state": "MERGED",
+      "title": " Tech360 platform delivery: AI workforce controls, Marketing Dashboard, premium redesign, gateway & merge-conflict fix",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/40"
+    },
+    {
+      "headRefName": "integration/tech360-merge",
+      "headRefOid": "8789ba99faaf2089edc7950b416893325290d6d9",
+      "mergeCommit": {
+        "oid": "d8c73b1a0f26755c363d8e2b536e4e5ad7819474"
+      },
+      "number": 39,
+      "state": "MERGED",
+      "title": "Integration/tech360 merge",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/39"
+    },
+    {
+      "headRefName": "arena/71693fb1-tech360",
+      "headRefOid": "b931cd2fdd043d4e80c84f3c654249b6d401f147",
+      "mergeCommit": {
+        "oid": "a078f40d3d8ea1f182899354842d2ca6e6ba6e3c"
+      },
+      "number": 38,
+      "state": "MERGED",
+      "title": "Shared Admin AI command center, pipeline safeguards, and Hostinger env guide",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/38"
+    },
+    {
+      "headRefName": "arena/7fc398c7-tech360",
+      "headRefOid": "bd40af4b6e0772b6e35497d324456df7a59aa63b",
+      "mergeCommit": {
+        "oid": "7c489a799baf92bda615f8e4a6b195888cf05548"
+      },
+      "number": 37,
+      "state": "MERGED",
+      "title": "Post-audit remediation: WhatsApp removal, MySQL backups, production startup gate, payment safeguards",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/37"
+    },
+    {
+      "headRefName": "arena/090c0cdc-tech360",
+      "headRefOid": "c67f15e7757b0434b3f22e2f242b0a52e627cb6f",
+      "mergeCommit": {
+        "oid": "10077647884c381fae1deb5e3cd729c2b03138fb"
+      },
+      "number": 36,
+      "state": "MERGED",
+      "title": "fix(runtime): clear Edge instrumentation warnings and record final audit",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/36"
+    },
+    {
+      "headRefName": "arena/090c0cdc-tech360",
+      "headRefOid": "69834ebebe544cd1b538ad136bbb6b353574830c",
+      "mergeCommit": {
+        "oid": "deacaabcf159b03d4b1051ac0531ba6dcc3258c7"
+      },
+      "number": 35,
+      "state": "MERGED",
+      "title": "fix(ci): audit 251 workflow runs and clear the last lint warning",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/35"
+    },
+    {
+      "headRefName": "arena/44929c49-tech360",
+      "headRefOid": "9a1f47ce0d1d4f96bfad0c41c65daccf071fe846",
+      "mergeCommit": {
+        "oid": "ac6e759e46d6cee2d4e13d0919efb5b8de1c9a4f"
+      },
+      "number": 34,
+      "state": "MERGED",
+      "title": "fix(deps): clear npm audit advisories failing main CI",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/34"
+    },
+    {
+      "headRefName": "arena/44929c49-tech360",
+      "headRefOid": "ab65ba1c016a7e50eeb2a13a1faa801140957257",
+      "mergeCommit": {
+        "oid": "2a522accabee8874386eaa26b45ba84bb4132e37"
+      },
+      "number": 33,
+      "state": "MERGED",
+      "title": "Phase 2B governance gates, AI roster on admin dashboards, and CI fixes for main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/33"
+    },
+    {
+      "headRefName": "arena/c08e85f1-tech360",
+      "headRefOid": "0ac469840afd2825fef38b1b130d0f0588acae28",
+      "mergeCommit": {
+        "oid": "76afd22ec5064d89cc6b060211b54e48ff2a10ac"
+      },
+      "number": 32,
+      "state": "MERGED",
+      "title": "Harden TECH360 intake, identity review, and DCC agent governance",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/32"
+    },
+    {
+      "headRefName": "arena/ec94bd86-tech360",
+      "headRefOid": "766e5c248a8134028c5b3254500f9da63d0ea8df",
+      "mergeCommit": {
+        "oid": "4f43807811b330b716e930d19b9c7988841eafa2"
+      },
+      "number": 31,
+      "state": "MERGED",
+      "title": "chore(deps): bump next to 16.4.3 to fix critical audit GHSA-2464/673q/p3m5",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/31"
+    },
+    {
+      "headRefName": "arena/0a9758de-tech360",
+      "headRefOid": "1890fff2d5bb7ac0f7ac534205ede93c1801eabd",
+      "mergeCommit": {
+        "oid": "b92a1e5888f84d6dff6d25bd1d377f9a2def7d64"
+      },
+      "number": 30,
+      "state": "MERGED",
+      "title": "chore(security): patch Next.js advisory in lockfile (0 npm audit vuln\u2026",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/30"
+    },
+    {
+      "headRefName": "arena/2960e44a-tech360",
+      "headRefOid": "2371866c6963cba49fc85ddec6f139160cd87b32",
+      "mergeCommit": {
+        "oid": "0bbe16d03cd768c17acc2b973c73f654a5960970"
+      },
+      "number": 29,
+      "state": "MERGED",
+      "title": "Arena/2960e44a tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/29"
+    },
+    {
+      "headRefName": "arena/0a9758de-tech360",
+      "headRefOid": "f72b2976bd91a9ed143dcc35e90f9e7b780d9f28",
+      "mergeCommit": {
+        "oid": "9e2ab184c654bdaa72dfe9ab8973fbc71fbea655"
+      },
+      "number": 28,
+      "state": "MERGED",
+      "title": "Platform Hardening: Security Fixes, 10-Role RBAC, Itemized Invoices, Verified Receipts, Refunds, CRM Merge & 21-Point SOW",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/28"
+    },
+    {
+      "headRefName": "arena/224c8f7e-tech360",
+      "headRefOid": "2e0c1c2bdda5c967d7e6b289843ba18a9af850e6",
+      "mergeCommit": {
+        "oid": "8d3b48d1c2db1b8219c8f1fb8f26bcf5db8485af"
+      },
+      "number": 27,
+      "state": "MERGED",
+      "title": "Add audited invoice drafts and dashboard safeguards",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/27"
+    },
+    {
+      "headRefName": "arena/113a1ac7-tech360",
+      "headRefOid": "01775a1921fff4c57ec33d4a7855ef244404087b",
+      "mergeCommit": {
+        "oid": "fa36f7e750b1efb90bb5372a1b4475de86a625ef"
+      },
+      "number": 26,
+      "state": "MERGED",
+      "title": "fix(schema): the AgentJob.agentCode nullability drift CI found on main, and the merge that caused it",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/26"
+    },
+    {
+      "headRefName": "arena/059cc90a-tech360",
+      "headRefOid": "eb97931822a0322e2c2b2d74521dcf579c5aee70",
+      "mergeCommit": {
+        "oid": "00157a5c1fe1d907a942e00f061e11e8b1838408"
+      },
+      "number": 25,
+      "state": "MERGED",
+      "title": "feat: the AI Enterprise Operating System and the eleven-stage AI Agent communication pipeline",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/25"
+    },
+    {
+      "headRefName": "arena/5d9c5644-tech360",
+      "headRefOid": "79320340e39c9b752888850a2c7ec4c81474b44c",
+      "mergeCommit": {
+        "oid": "f09f237b09b134bfa0ee1627289068fa8295a3fe"
+      },
+      "number": 24,
+      "state": "MERGED",
+      "title": "feat: execute allowlisted AgentJob tools safely",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/24"
+    },
+    {
+      "headRefName": "arena/5d9c5644-tech360",
+      "headRefOid": "112c9e9b21d2cc6cd6fc18a845fe85fdc287a32b",
+      "mergeCommit": {
+        "oid": "889941e82b2b14edff856c271d3480122a102c63"
+      },
+      "number": 23,
+      "state": "MERGED",
+      "title": "fix: repair Client 360 and CI regressions",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/23"
+    },
+    {
+      "headRefName": "arena/98c3bc30-tech360",
+      "headRefOid": "7e1786c54c3ee44bef0e0c6492d3dc8bfaa22fec",
+      "mergeCommit": {
+        "oid": "76d60e503642795f321f036655921859fab061c6"
+      },
+      "number": 22,
+      "state": "MERGED",
+      "title": "feat: Phase 0\u20132D \u2014 Buffer\u2194Mureka\u2194Qwen product polish + unified inbox 360\u00b0 + AgentOS orchestration",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/22"
+    },
+    {
+      "headRefName": "arena/51057752-tech360",
+      "headRefOid": "6bdb3c6f50cc54ef6932fd4ac36bf021a5070629",
+      "mergeCommit": {
+        "oid": "aad33e3ac9b3883e4b1d6d7cedaceecec59e3d78"
+      },
+      "number": 21,
+      "state": "MERGED",
+      "title": "Round 19+20 \u2014 Final production audit & completion: honest degradation, homepage stats, point-12 design system, E2E evidence, audit report",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/21"
+    },
+    {
+      "headRefName": "arena/3b287e56-tech360",
+      "headRefOid": "a9e7329e269f384ceeb344a00ff061b96be2d466",
+      "mergeCommit": {
+        "oid": "bf2d1c18201e51cbeea4a33d20e125ad2a0d8fb0"
+      },
+      "number": 20,
+      "state": "MERGED",
+      "title": "fix(outbox): bound failed-communication retries + evidence-based Phase 1 audit",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/20"
+    },
+    {
+      "headRefName": "arena/58d15b5d-tech360",
+      "headRefOid": "7df9b622e1974a33b01a8595da0f8c97ff0ec393",
+      "mergeCommit": {
+        "oid": "b0b677664bb6b0bdb6ea24566b58ff67d78f68e2"
+      },
+      "number": 19,
+      "state": "MERGED",
+      "title": "docs(ai): pin the verification report to the exact tree it validated",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/19"
+    },
+    {
+      "headRefName": "arena/58d15b5d-tech360",
+      "headRefOid": "e1d5b470d4c6c55a1014eb705abd8648737617bf",
+      "mergeCommit": {
+        "oid": "5eda53de22898c66e04a96311e3b30f98cdd05fa"
+      },
+      "number": 18,
+      "state": "MERGED",
+      "title": "fix(ai): daily agent quota reset (found during final production verification)",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/18"
+    },
+    {
+      "headRefName": "arena/58d15b5d-tech360",
+      "headRefOid": "66b5f8b3ef6f2d234d3b29d20829cd1148bfb744",
+      "mergeCommit": {
+        "oid": "cb8bd7df76c2864b1df7e703d379ca4ed941ea9b"
+      },
+      "number": 17,
+      "state": "MERGED",
+      "title": "Final production AI verification: code-level evidence for all 44 agents",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/17"
+    },
+    {
+      "headRefName": "arena/d8803ccc-tech360",
+      "headRefOid": "2e20a1a237f836d69673cdf391d96baf20d1928a",
+      "mergeCommit": {
+        "oid": "7ba1f226e1485a9ddcaaeb373d6f833ea48548c9"
+      },
+      "number": 16,
+      "state": "MERGED",
+      "title": "Production AI agent execution and operations hardening",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/16"
+    },
+    {
+      "headRefName": "arena/2a5dc330-tech360",
+      "headRefOid": "29600d6a47ebdcb269f3e37c14a26c9f22669e98",
+      "mergeCommit": {
+        "oid": "286c4336be4d9d3ac640c67744a1028a826b1de4"
+      },
+      "number": 15,
+      "state": "MERGED",
+      "title": "Fix Hostinger production build and auto deployment",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/15"
+    },
+    {
+      "headRefName": "arena/01a100cf-tech360",
+      "headRefOid": "22aa99c687f1e00152552237efa34255505019fe",
+      "mergeCommit": {
+        "oid": "1842895ae829a39847acc5b0026c7607840aa33d"
+      },
+      "number": 14,
+      "state": "MERGED",
+      "title": "fix: stabilize production CSS build",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/14"
+    },
+    {
+      "headRefName": "arena/01a1009d-tech360",
+      "headRefOid": "d9ccadc800b00c2bd2d012dd7437b5d825daab84",
+      "mergeCommit": {
+        "oid": "181f59581fced13706ab650f347ef314b1edaec7"
+      },
+      "number": 13,
+      "state": "MERGED",
+      "title": "AI Software Factory + Media Studio + Feed Hub + Call/SMS centre, with live verification of all 134 supplied references",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/13"
+    },
+    {
+      "headRefName": "arena/01a1006a-tech360",
+      "headRefOid": "0f54c224e3cc295c3450eb62341699b6e6ce0a45",
+      "mergeCommit": {
+        "oid": "58ef63e99570e82273f602a429f918a2ec13949d"
+      },
+      "number": 12,
+      "state": "MERGED",
+      "title": "audit: harden production startup and deployment safety",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/12"
+    },
+    {
+      "headRefName": "arena/01a0fec4-tech360",
+      "headRefOid": "e724884eb1e81019fd26fef5c3f31804e5fa13f5",
+      "mergeCommit": {
+        "oid": "9f11195809c30ff21b7f61779373b63bd15513f9"
+      },
+      "number": 11,
+      "state": "MERGED",
+      "title": "fix(deploy): repair Prisma engine EACCES in Hostinger production build",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/11"
+    },
+    {
+      "headRefName": "arena/01a0fde7-tech360",
+      "headRefOid": "a938f20deda0d1985af6b49c575bc88083080323",
+      "mergeCommit": {
+        "oid": "807c3a737c06e3034a0261ecb3e69abb41f4c1b0"
+      },
+      "number": 10,
+      "state": "MERGED",
+      "title": "fix(deploy): align Hostinger Node.js app and CI",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/10"
+    },
+    {
+      "headRefName": "fix/hostinger-main-auto-deploy",
+      "headRefOid": "10a1e6bd5cbb4ca964a08ee356cccafc91c70502",
+      "mergeCommit": null,
+      "number": 9,
+      "state": "CLOSED",
+      "title": "Fix/hostinger main auto deploy",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/9"
+    },
+    {
+      "headRefName": "arena/01a0f3e8-tech360",
+      "headRefOid": "10eb310c1cfc21ffd9a398da280ebff1e25056a2",
+      "mergeCommit": {
+        "oid": "3b313e0f6ff8b2a8a66b65a7cb8b393960933c4f"
+      },
+      "number": 8,
+      "state": "MERGED",
+      "title": "Merge pull request #6 from alaminiubateee969-cmd/main",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/8"
+    },
+    {
+      "headRefName": "arena/01a0fa12-tech360",
+      "headRefOid": "a171a2b8f456512f9655ec824fd4bf340aff2172",
+      "mergeCommit": {
+        "oid": "c735e1798c91a780e4ebaf0498c77e834d56631d"
+      },
+      "number": 7,
+      "state": "MERGED",
+      "title": "Security hardening + OTP/httpSMS, SEO audit, marketing kit, diagrams, n8n W26",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/7"
+    },
+    {
+      "headRefName": "main",
+      "headRefOid": "8bd8d24de28339e0e3cd522b53f3455e18f4993e",
+      "mergeCommit": {
+        "oid": "10eb310c1cfc21ffd9a398da280ebff1e25056a2"
+      },
+      "number": 6,
+      "state": "MERGED",
+      "title": "Merge pull request #5 from alaminiubateee969-cmd/arena/01a0f3e8-tech360",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/6"
+    },
+    {
+      "headRefName": "arena/01a0f3e8-tech360",
+      "headRefOid": "33a4baeea8cc503aa94022a6b82344ee1da40d56",
+      "mergeCommit": {
+        "oid": "8bd8d24de28339e0e3cd522b53f3455e18f4993e"
+      },
+      "number": 5,
+      "state": "MERGED",
+      "title": "Make Hostinger the production deployment owner",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/5"
+    },
+    {
+      "headRefName": "arena/01a0f285-tech360",
+      "headRefOid": "036505fe6d843d1d760f919e9c464a23aad81786",
+      "mergeCommit": {
+        "oid": "50b4f61c50c196418b9d8767b02cd2cab696343a"
+      },
+      "number": 4,
+      "state": "MERGED",
+      "title": "Node.js 22 runtime, npm ci lockfile repair, and Super Admin bootstrap hardening",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/4"
+    },
+    {
+      "headRefName": "arena/01a0f285-tech360",
+      "headRefOid": "3b3ccfcf800c881fd32b256fbbbcb4d1578cb677",
+      "mergeCommit": {
+        "oid": "f6e6f6372777d8a01a4dd1f8ff5c1cd7cfc632a4"
+      },
+      "number": 3,
+      "state": "MERGED",
+      "title": "Migrate Prisma SQLite \u2192 MySQL (root deployment blocker) + harden Hostinger deploy",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/3"
+    },
+    {
+      "headRefName": "fix/hostinger-main-auto-deploy",
+      "headRefOid": "10a1e6bd5cbb4ca964a08ee356cccafc91c70502",
+      "mergeCommit": {
+        "oid": "d82f0307b7efe40bd96c7a251100a927024bbc82"
+      },
+      "number": 2,
+      "state": "MERGED",
+      "title": "Fix Hostinger production auto-deploy",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/2"
+    },
+    {
+      "headRefName": "arena/01a0eebb-tech360",
+      "headRefOid": "e05fbdc2381223c2e9f5031dda9208f5caba0989",
+      "mergeCommit": {
+        "oid": "b73dc1d52d1d66681b3adb4da888ff6556cbf7c2"
+      },
+      "number": 1,
+      "state": "MERGED",
+      "title": "Complete TECH360 production-readiness, security, and regression work",
+      "url": "https://github.com/alaminiubateee969-cmd/tech360/pull/1"
+    }
+  ],
+  "preservedFiles": [
+    {
+      "path": "legacy/integration/2026-10-28/.github/workflows/ci.yml",
+      "blob": "fe64d6af5e4e5b0340981b18b0fe5e90630c542c"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/.gitignore",
+      "blob": "e9847b846a300986799422389b3d81a14c11b3ec"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/Caddyfile",
+      "blob": "e4fb2a1abdc3542f710cab68b4b9d342865238f1"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/DEPLOYMENT.md",
+      "blob": "507db2e4e524183cc8742fa653a905c254424acb"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/KNOWN_ISSUES_AND_BLOCKERS.md",
+      "blob": "cb06b2c7456767bfd1cd5a60996984c8fad7a808"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/OFFICIAL-DOCUMENTS.md",
+      "blob": "3407a6b53499f8e81a5fd3c75a661163f486c24f"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/README.md",
+      "blob": "1de815a3381f10912ad839886f62e774fa8a6e32"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/bun.lock",
+      "blob": "c36396b735cb69bb28cd5be584b9ac89f9fc991b"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/docs/OPERATIONS_GUIDEBOOK.md",
+      "blob": "6bb8b6d1bd2473a6b67094a7610d8d735b167028"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/docs/REFERENCE_VERIFICATION_MATRIX.md",
+      "blob": "4dd4c5de47d31a5157db0da6d1cd51ec0ceb756f"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/eslint.config.mjs",
+      "blob": "55aaa0653a483bd960a237dc927486403b467ea1"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/next.config.ts",
+      "blob": "0bd2f1124a09380d96f5128412059e51f4af8106"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/package.json",
+      "blob": "4de2cebba2333477ea0c38bc91052131f694bf53"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/prisma/schema.prisma",
+      "blob": "c5744e15c1052f24e8ab016ae184f9d9d6027ffc"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/prisma/seed.ts",
+      "blob": "be55e4638cf93bc78ea996dedb447d72a50dcca4"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/public/robots.txt",
+      "blob": "6018e701fc7dd0317cda9eceea390524322e8a05"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/scripts/mysql-schema-map.json",
+      "blob": "552e1ac7fa77530e4cf4150502aa6245ffeb7d3d"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/scripts/preview/seed-demo.ts",
+      "blob": "6e4306fe34fcb1abe2cffe2ecd18b51598b52247"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/scripts/preview/setup.mjs",
+      "blob": "a35694cfaa1389b88c5b3d12c90ce5df17dda762"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/scripts/verify-reference-links.mjs",
+      "blob": "134f65628eb5a82dbce020a8de0bd1410be6721a"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/agents/export/route.ts",
+      "blob": "92fd7bc880661875fcb4dad6a798dde5963aa24a"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/clients/[id]/enrich/route.ts",
+      "blob": "ef26dadaaedfb917ec2c980329ce4435730ba50c"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/content/generate/route.ts",
+      "blob": "c27304e875b5b2cf1e8332df4bc9ab7724535dac"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/content/review/route.ts",
+      "blob": "d9a912cc80ebea964a8a09de5698af52064f4eeb"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/factory/apps/[id]/export/route.ts",
+      "blob": "3c0c9943c28676a044f88efbbc26ab15dbbf6c83"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/factory/apps/[id]/route.ts",
+      "blob": "ff2bd2bcc0a7c24d5684faabc43989808a9a2b30"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/factory/apps/route.ts",
+      "blob": "c7a9015d8940d6814c85d57ea5b2a92145b1aaf6"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/media/jobs/[id]/route.ts",
+      "blob": "b3c63c679af3ff55c7728ef444b35afb28787344"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/media/jobs/route.ts",
+      "blob": "1feed1c71529a972273a5b0cc2336085650c8c63"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/newsletter/campaigns/draft/route.ts",
+      "blob": "bdb96293dcf5f4965aa8eddeb89f033abc2d3e0f"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/newsletter/draft/route.ts",
+      "blob": "88c71cad8e6ad2b0aa3c9b641a43c4132004658c"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/newsletter/route.ts",
+      "blob": "ed82cf4d5cb1256cb02f617d5527054e40404f74"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/projects/[id]/route.ts",
+      "blob": "b71a8b099ecb8ae0f227c52e7af327859561338d"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/projects/[id]/tasks/[taskId]/route.ts",
+      "blob": "287a896cc844c8aaf5755e8b9ae63a9acca76634"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/admin/scopes/route.ts",
+      "blob": "d80035eea0e38b6fb26760734fd9062eb474764c"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/agents/route.ts",
+      "blob": "b0fe710958ea4f950c4ba216e4e55ec5b03d2f70"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/blog/[slug]/route.ts",
+      "blob": "ccaf5b0463b13e2fd579222ee1d0b961a8c64e6e"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/blog/route.ts",
+      "blob": "eacd4130343e12e5f99d22aaa8c87684c4f030d2"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/chat/session/route.ts",
+      "blob": "de47327a4ce0a51153833d46215657716e122441"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/reviews/route.ts",
+      "blob": "2fa49dd275e0df097bd98ff1ba852c757f0c4741"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/skills/route.ts",
+      "blob": "e59801482bfd9acc6c4b784e91e426b31ba30587"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/tasks/route.ts",
+      "blob": "c4114765dd0126df2d328d2a93cac8efa516a9c2"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/api/track/route.ts",
+      "blob": "e8f50e2774423f542baa413c3bc7feac76be2be2"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/globals.css",
+      "blob": "bf187abd7b9de93162672cc780c0c3424cdfdcac"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/layout.tsx",
+      "blob": "daaa7729cd3a4d8e9374b8008a12974d67375360"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/app/page.tsx",
+      "blob": "0ea6c066e4b8a77bdf199dec13cffe780375f8e1"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/admin/AgentsView.tsx",
+      "blob": "ceebfbb0fca967f7a56df56798fb174776974baf"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/admin/FactoryView.tsx",
+      "blob": "4a8e3deabf2dfd93810b9eb57419fdfd1d10afe8"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/admin/LoginScreen.tsx",
+      "blob": "ce24866d22bf7f8548cbdc6c60cd9e6c75c5e917"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/admin/ProjectsView.tsx",
+      "blob": "9c45cdc4ab88cef56a4006297880c9dbda7f7d1c"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/admin/SeoAuditView.tsx",
+      "blob": "2b9ee9c528bdcf2955d6a0a4248df5432392c607"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/AboutView.tsx",
+      "blob": "53a0891cdaef83a21cfad0f08765a303b5404f25"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/ChatWidget.tsx",
+      "blob": "0a78b909ffc07dc7eeae9a9acc9d4ab8dd8d2e1b"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/ContactView.tsx",
+      "blob": "cac14abce5448cf2ede94bb7de0403ddc6fd4230"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/CtaBand.tsx",
+      "blob": "9b4324286428db6235554d10e4f9b62c1f7ad5eb"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/DesignKitView.tsx",
+      "blob": "1d0b90750ad92f4e82857ce90df607c165a87f4d"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/HomeView.tsx",
+      "blob": "f6cccdc2381e43b429004799e244e26d8c9491d8"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/LegalView.tsx",
+      "blob": "dfaded92b641957f5577af44e880642903afb3fa"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/PortalView.tsx",
+      "blob": "9d6cfc4ad72721168bea9e23c2a9b5a660882fbd"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/ServiceDetailView.tsx",
+      "blob": "e536c17e244b782c72ba402e0588174b860d6399"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/ServicesView.tsx",
+      "blob": "2a383740be1a4635444b2b93b366fba0df5dce36"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/SiteFooter.tsx",
+      "blob": "2a9fcbbd84b8ecfc9d548915ed141630721899c8"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/SiteHeader.tsx",
+      "blob": "ea0e17f391018e03089ef55d413e12216f76a4b0"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/buttons.tsx",
+      "blob": "d3682b47b4665058f91c0948df26c64f68479a37"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/concepts.tsx",
+      "blob": "999583c5c05441107b0d58f2d966e6755e186f66"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/diagram-kit.tsx",
+      "blob": "1dd7e010a1fe50f7e47f957599d0636aeced0fd9"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/site/diagrams.tsx",
+      "blob": "11fd230d5c0be01e790030f1872c4f6ae4e42af4"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/components/ui/progress.tsx",
+      "blob": "e7a416c375109c29e844f0ecee7e0645a03ec301"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/data/site.ts",
+      "blob": "6367e1eeda9bb0fa6c644d13ad4e7cab4b428c23"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/admin-client.ts",
+      "blob": "b689b44406994919477fb484048b6fae9b3c0bee"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/agents/engine.ts",
+      "blob": "b298900af9095d8033d27a66ef456949e086c177"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/agents/jobs.ts",
+      "blob": "010f5f746fbdf6484636c2f263cd91a555e3afb1"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/agents/registry.ts",
+      "blob": "021c0fe7fbfabacc4549b5a8f45ea1f3a3e4bc0e"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/ai-workforce-policy.ts",
+      "blob": "8166419be37581388172a762081f69fe034ea58d"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/auth.ts",
+      "blob": "373891ddaa8cd67ad14f5fa8f812bc340082c39f"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/chat-onboarding.ts",
+      "blob": "544b20f86e2b87977486fd29eca08b3851b74318"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/chat-orchestrator.ts",
+      "blob": "43b086afdcf05b00d0125847d85d7fe88e67e757"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/chat.ts",
+      "blob": "4f8b03a8c563b82cc883656ef15593d452a75b28"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/comms.ts",
+      "blob": "7c50d486b6d8cc1d1a9c3d12ec66a62a294139b9"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/constants.ts",
+      "blob": "e70a43102f4a27ba6198118b350bda622463f222"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/contact-policy.ts",
+      "blob": "23f0f915abf5f671f1cdeb16bbeda93fbc64c5bf"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/db.ts",
+      "blob": "7dfb80c4c07e35547d16aa4a3f91d75b43c5494c"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/discovery.ts",
+      "blob": "b2da9d054c9bba0fa75bb486a771f82a2033a6e1"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/journey.ts",
+      "blob": "4249a8ec40b7e66bc0f8e67a7486f453e1d257cc"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/letterhead.ts",
+      "blob": "d082c6491826a6868b09e117992a6ab5a6e60704"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/src/lib/preview-db.ts",
+      "blob": "2da213a1548d07802f0fbce33eae6064242d2022"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/tests/ai-workforce-rbac.test.ts",
+      "blob": "a988ae2cd179c8c34fd7d1fd9a4b9ea53033dd5f"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/tests/contact-consent-evidence.test.ts",
+      "blob": "e6e406ebffd7e236776615b9cd0bd1551092c48c"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/tests/migration-parity.test.ts",
+      "blob": "3704e5d0be8d2a59101560bf2eec18442cc4ea61"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/tests/public-route-catalog.test.ts",
+      "blob": "92572af9d0dbbcb2378317ef4569ffc261dae048"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/tests/schema-ddl-parity.test.ts",
+      "blob": "8dc781b987518c3f703f6978486d2dac95e152cc"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/tests/seo-audit.test.ts",
+      "blob": "a16523d2b15f26b07a8307f53c82b0d75df2bc8b"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/tests/tech360-messaging-repair.test.ts",
+      "blob": "6baad8721d597f69162a847ce836261bd4f3ba9b"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/tsconfig.json",
+      "blob": "3b3bdf4aff15e2e04f7f6a481e051e4e4c899c95"
+    },
+    {
+      "path": "legacy/integration/2026-10-28/worklog.md",
+      "blob": "bc68e3e07ac877f26ea69a702e8b742df273f585"
+    }
+  ]
+}

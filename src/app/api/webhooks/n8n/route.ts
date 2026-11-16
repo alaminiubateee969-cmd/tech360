@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
         const c = await findClient()
         result = await clientScopeDecision(
           c.id,
-          (pickField('decision', 40).toUpperCase() || 'APPROVED') as
+          pickField('decision', 40).toUpperCase() as
             | 'APPROVED'
             | 'REVISION_REQUESTED'
             | 'CLARIFICATION_REQUESTED',

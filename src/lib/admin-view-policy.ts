@@ -7,7 +7,8 @@ export type AdminViewId =
   | 'knowledge' | 'content' | 'blog' | 'analytics' | 'logs' | 'n8n' | 'reports' | 'settings' | 'team'
   | 'factory' | 'factoryControl' | 'media' | 'feeds' | 'telephony' | 'prompts' | 'marketingDashboard'
   | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
-  | 'workforce' | 'pipeline' | 'designKit'
+  | 'workforce' | 'pipeline' | 'designKit' | 'rea' | 'evolution'
+  | 'appLauncher'
 
 export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN'> = {
   dashboard: 'STAFF',
@@ -54,6 +55,15 @@ export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 
   workforce: 'SUPER_ADMIN',
   pipeline: 'MANAGER',
   designKit: 'ADMIN',
+  // Reverse engineering an external target and self-modification are both
+  // internal automation: ADMIN to analyze, SUPER_ADMIN to evolve. Neither is
+  // ever mentioned on the public website (docs/AI_VISIBILITY_POLICY.md).
+  rea: 'ADMIN',
+  evolution: 'SUPER_ADMIN',
+  // Private internal control plane: Company OS, Software Factory, Template &
+  // Module Library, AI Command Center and every factory application are
+  // SUPER_ADMIN only. Never advertised outside the Super Admin console.
+  appLauncher: 'SUPER_ADMIN',
 }
 
 const ROLE_VIEWS: Record<string, readonly AdminViewId[]> = {

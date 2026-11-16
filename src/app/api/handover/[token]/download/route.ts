@@ -5,6 +5,7 @@ import { evaluateHandoverGate } from '@/lib/commerce-policy'
 import { parseHandoverManifest, verifyHandoverArtifacts } from '@/lib/handover-artifacts'
 import { sanitizeText, clientIp, audit, logError, rateLimit } from '@/lib/security'
 import { normalizeUploadName } from '@/lib/files'
+import { sourcePaymentEvidence } from '@/lib/source-payment'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -22,17 +23,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const clean = sanitizeText(token, 64).replace(/[^a-f0-9]/gi, '')
   const handover = await db.handoverRecord.findUnique({
     where: { packageToken: clean },
-    include: { project: { include: { payments: true, client: true } } },
+    include: { project: { include: { payments: true, refundCases: true, client: true } } },
   })
   if (!handover) return Response.json({ error: 'Package not found' }, { status: 404 })
 
-  const paid = handover.project.payments
-    .filter((payment) => payment.status === 'PAID')
-    .reduce((total, payment) => total + payment.amount, 0)
+  const evidence = sourcePaymentEvidence({ totalAmount: handover.project.totalAmount, currency: handover.project.currency, payments: handover.project.payments, refunds: handover.project.refundCases })
   const gate = evaluateHandoverGate({
     status: handover.status,
     totalAmount: handover.project.totalAmount,
-    paidAmount: paid,
+    paidAmount: evidence.cleared ? evidence.netPaid : 0,
     expiryAt: handover.expiryAt,
   })
   if (!gate.allowed) {
