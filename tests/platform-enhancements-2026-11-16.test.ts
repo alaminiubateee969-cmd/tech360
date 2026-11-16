@@ -4,6 +4,13 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { resolveAgentProvider, getAgentProviderStatus, listAgentProviders } from '@/lib/agents/provider-selection'
 import { AI_SERVICES } from '@/lib/free-ai-services'
+import { ENTERPRISE_CONSTITUTIONAL_RULES, constitutionalRuleStats, defaultGovernanceRules } from '@/lib/governance/rules'
+import { WORKFORCE, validateWorkforce } from '@/lib/agents/workforce'
+import { LOGICAL_AGENT_CATALOGUE } from '@/lib/agents/catalogue'
+import { SKILL_CATALOG } from '@/lib/skills/catalog'
+import { SOP_LIBRARY } from '@/lib/sops/library'
+import { promptLibraryIndex } from '@/lib/prompts/library'
+import { DEPARTMENTS } from '@/lib/agents/registry'
 
 const ROOT = resolve(__dirname, '..')
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf8')
@@ -111,5 +118,27 @@ describe('Platform enhancements — multi-provider AI, Agent config, Portal self
     const platformViewSrc = read('src/components/site/PlatformView.tsx')
     assert.match(platformViewSrc, /ECOSYSTEM_MODULES/)
     assert.match(platformViewSrc, /TECH360 AgentOS/)
+  })
+
+  it('maintains 550 versioned Constitutional & Layered Governance Rules (>= 500 target) and complete enterprise workforce catalogues', () => {
+    const stats = constitutionalRuleStats()
+    assert.equal(ENTERPRISE_CONSTITUTIONAL_RULES.length, 550)
+    assert.equal(stats.total, 550)
+    assert.ok(stats.total >= 500)
+    assert.equal(stats.byCategory.CONSTITUTIONAL_CORE, 10)
+    assert.equal(stats.byCategory.COMPANY_POLICY, 5)
+    assert.equal(stats.byCategory.DEPARTMENT_BOUNDARY, 440)
+    assert.equal(stats.byCategory.ROLE_AUTHORITY, 80)
+    assert.equal(stats.byCategory.TASK_SAFETY, 15)
+    assert.equal(defaultGovernanceRules().length, 5)
+
+    // Verify 110 preserved departments, 2,201 AI Employees, 2,200+1 Logical Agents, 10,010 Skills, 70,400 Prompts, 550 SOPs
+    assert.equal(DEPARTMENTS.length, 110)
+    assert.equal(WORKFORCE.length, 2201)
+    assert.equal(validateWorkforce().valid, true)
+    assert.equal(LOGICAL_AGENT_CATALOGUE.length, 2200)
+    assert.equal(SKILL_CATALOG.length, 10010)
+    assert.equal(SOP_LIBRARY.length, 550)
+    assert.equal(promptLibraryIndex(20).size, 70400)
   })
 })

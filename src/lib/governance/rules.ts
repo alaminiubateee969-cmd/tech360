@@ -24,7 +24,8 @@
 //   else runs.
 // ============================================================
 
-import { CONSTITUTION } from '@/lib/agents/registry'
+import { CONSTITUTION, DEPARTMENTS } from '@/lib/agents/registry'
+import { ROLE_ARCHETYPES } from '@/lib/agents/catalogue'
 
 // ------------------------------------------------------------
 // Types
@@ -429,4 +430,406 @@ function enforcementFor(rule: string): string {
   if (lower.includes('escalate')) return 'the escalation rules on the employee profile'
   if (lower.includes('recorded')) return 'the audit writer on every run'
   return 'the quality engine and the audit trail'
+}
+
+// ------------------------------------------------------------
+// Full 550-Rule Constitutional & Layered Governance Catalog
+// ------------------------------------------------------------
+
+export type ConstitutionalCatalogRule = GovernanceRule & {
+  version: string
+  category:
+    | 'CONSTITUTIONAL_CORE'
+    | 'COMPANY_POLICY'
+    | 'DEPARTMENT_BOUNDARY'
+    | 'ROLE_AUTHORITY'
+    | 'TASK_SAFETY'
+}
+
+const TASK_SAFETY_SUBJECTS: Array<{
+  id: string
+  subject: string
+  effect: RuleEffect
+  condition: RuleCondition
+  fromRisk?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  requirement: string
+}> = [
+  {
+    id: 'TASK-001',
+    subject: 'FINANCIAL_DISBURSEMENT',
+    effect: 'REQUIRE_APPROVAL',
+    condition: 'FINANCIAL',
+    fromRisk: 'HIGH',
+    requirement: 'All financial disbursements and refund settlements require explicit Super Admin approval.',
+  },
+  {
+    id: 'TASK-002',
+    subject: 'CLIENT_CONTRACT_EXECUTION',
+    effect: 'REQUIRE_APPROVAL',
+    condition: 'ALWAYS',
+    fromRisk: 'HIGH',
+    requirement: 'Legal commitments, scope revisions, and formal client handovers require human sign-off.',
+  },
+  {
+    id: 'TASK-003',
+    subject: 'PRODUCTION_SCHEMA_MUTATION',
+    effect: 'FORBID',
+    condition: 'ALWAYS',
+    fromRisk: 'CRITICAL',
+    requirement: 'Autonomous schema resets, destructive migrations, and production table drops are forbidden.',
+  },
+  {
+    id: 'TASK-004',
+    subject: 'SOURCE_CODE_RELEASE',
+    effect: 'REQUIRE_APPROVAL',
+    condition: 'TOOL_LIST',
+    fromRisk: 'HIGH',
+    requirement: 'Releasing source code or deployment bundles requires explicit Super Admin release authorization.',
+  },
+  {
+    id: 'TASK-005',
+    subject: 'EXTERNAL_BROADCAST',
+    effect: 'REQUIRE_APPROVAL',
+    condition: 'EXTERNAL_COMMS',
+    fromRisk: 'MEDIUM',
+    requirement: 'Outbound email, SMS, WhatsApp, or social broadcasts require review and approval.',
+  },
+  {
+    id: 'TASK-006',
+    subject: 'LOOP_AGENT_SPAWN',
+    effect: 'REQUIRE_APPROVAL',
+    condition: 'TOOL_LIST',
+    fromRisk: 'HIGH',
+    requirement: 'Spawning a child Loop Agent requires a current DCC certificate, parent eligibility, and Super Admin approval.',
+  },
+  {
+    id: 'TASK-007',
+    subject: 'SECRET_OR_CREDENTIAL_ACCESS',
+    effect: 'FORBID',
+    condition: 'CLIENT_FACING_OUTPUT',
+    fromRisk: 'LOW',
+    requirement: 'Secrets, API keys, tokens, and internal credentials must never be emitted or logged.',
+  },
+  {
+    id: 'TASK-008',
+    subject: 'CROSS_DEPARTMENT_ESCALATION',
+    effect: 'REQUIRE_REVIEW',
+    condition: 'ALWAYS',
+    fromRisk: 'MEDIUM',
+    requirement: 'Cross-department task handoffs must record structured audit telemetry and SLA checkpoints.',
+  },
+  {
+    id: 'TASK-009',
+    subject: 'PII_DATA_PROCESSING',
+    effect: 'REQUIRE_REVIEW',
+    condition: 'CLIENT_FACING_OUTPUT',
+    fromRisk: 'MEDIUM',
+    requirement: 'Client PII must obey data-classification access levels and redaction rules prior to output.',
+  },
+  {
+    id: 'TASK-010',
+    subject: 'QUOTA_OR_BUDGET_OVERRIDE',
+    effect: 'REQUIRE_APPROVAL',
+    condition: 'ALWAYS',
+    fromRisk: 'HIGH',
+    requirement: 'Modifying an agent daily token quota or model routing tier requires Super Admin governance.',
+  },
+  {
+    id: 'TASK-011',
+    subject: 'EMERGENCY_KILL_SWITCH',
+    effect: 'REQUIRE_APPROVAL',
+    condition: 'ALWAYS',
+    fromRisk: 'CRITICAL',
+    requirement: 'Activating or clearing a department/global emergency pause must be logged with actor attribution.',
+  },
+  {
+    id: 'TASK-012',
+    subject: 'INVOICE_ISSUANCE',
+    effect: 'REQUIRE_APPROVAL',
+    condition: 'FINANCIAL',
+    fromRisk: 'MEDIUM',
+    requirement: 'Issuing or voiding a client invoice requires finance verification and human approval.',
+  },
+  {
+    id: 'TASK-013',
+    subject: 'SECURITY_VULNERABILITY_SCAN',
+    effect: 'REQUIRE_REVIEW',
+    condition: 'ALWAYS',
+    fromRisk: 'HIGH',
+    requirement: 'High-severity security scan findings must trigger an immediate audit record and review.',
+  },
+  {
+    id: 'TASK-014',
+    subject: 'KNOWLEDGE_BASE_PUBLICATION',
+    effect: 'REQUIRE_REVIEW',
+    condition: 'PUBLISHED_RESULT',
+    fromRisk: 'MEDIUM',
+    requirement: 'Publishing knowledge articles or SOP revisions requires factual verification and version tagging.',
+  },
+  {
+    id: 'TASK-015',
+    subject: 'SYNTHETIC_BENCHMARK_AUDIT',
+    effect: 'REQUIRE_REVIEW',
+    condition: 'ALWAYS',
+    fromRisk: 'LOW',
+    requirement: 'Fallback or synthetic execution traces must be explicitly labeled and never reported as live inference.',
+  },
+]
+
+/**
+ * Build the complete 550-rule Enterprise Constitutional & Layered Governance
+ * Catalog spanning all 110 preserved departments and 20 role archetypes:
+ * - 10 Global Constitutional Rules (GLOBAL-CONST-001..010)
+ * - 5 Company Operational Rules (COMPANY-POL-001..005)
+ * - 440 Department Boundary Rules (110 departments × 4 rules: scope, PII/client output, financial/external approval, DCC gate)
+ * - 80 Role Archetype Rules (20 role archetypes × 4 rules: tool permission, escalation, quality gate, audit logging)
+ * - 15 Task Safety Rules (TASK-001..015)
+ * Total = 550 versioned rules (>= 500 target).
+ */
+export function buildConstitutionalRuleCatalog(): ConstitutionalCatalogRule[] {
+  const createdAt = new Date('2026-01-01T00:00:00.000Z')
+  const catalog: ConstitutionalCatalogRule[] = []
+
+  // 1. 10 Global Constitutional Core Rules
+  CONSTITUTION_WITH_ENFORCEMENT.forEach((entry) => {
+    const code = `GLOBAL-CONST-${String(entry.index).padStart(3, '0')}`
+    catalog.push({
+      id: code,
+      version: '1.0.0',
+      category: 'CONSTITUTIONAL_CORE',
+      layer: 'GLOBAL',
+      subject: '*',
+      effect: entry.rule.toLowerCase().includes('approval') ? 'REQUIRE_APPROVAL' : 'REQUIRE_REVIEW',
+      condition: 'ALWAYS',
+      requirement: `${entry.rule} (Enforced by: ${entry.enforcedBy})`,
+      active: true,
+      setBy: 'system:constitution',
+      createdAt,
+    })
+  })
+
+  // 2. 5 Company Operational Rules
+  const companyStatements = [
+    {
+      id: 'COMPANY-POL-001',
+      effect: 'REQUIRE_REVIEW' as const,
+      condition: 'CLIENT_FACING_OUTPUT' as const,
+      requirement: 'All client-facing deliverables must pass brand, quality, and non-disclosure screening before release.',
+    },
+    {
+      id: 'COMPANY-POL-002',
+      effect: 'REQUIRE_APPROVAL' as const,
+      condition: 'FINANCIAL' as const,
+      requirement: 'All company financial commitments, invoices, and payment verifications require human authorization.',
+    },
+    {
+      id: 'COMPANY-POL-003',
+      effect: 'REQUIRE_APPROVAL' as const,
+      condition: 'EXTERNAL_COMMS' as const,
+      requirement: 'All external communications sent on behalf of Tech 360 Solutions require human approval.',
+    },
+    {
+      id: 'COMPANY-POL-004',
+      effect: 'REQUIRE_PERMISSION' as const,
+      condition: 'ALWAYS' as const,
+      requirement: 'Every agent execution must validate declared tool permissions and daily token quota before invocation.',
+    },
+    {
+      id: 'COMPANY-POL-005',
+      effect: 'REQUIRE_REVIEW' as const,
+      condition: 'PUBLISHED_RESULT' as const,
+      requirement: 'Every published result must be backed by verifiable execution telemetry and immutable audit logs.',
+    },
+  ]
+  for (const item of companyStatements) {
+    catalog.push({
+      id: item.id,
+      version: '1.0.0',
+      category: 'COMPANY_POLICY',
+      layer: 'COMPANY',
+      subject: '*',
+      effect: item.effect,
+      condition: item.condition,
+      requirement: item.requirement,
+      active: true,
+      setBy: 'system:constitution',
+      createdAt,
+    })
+  }
+
+  // 3. 440 Department Boundary Rules (110 departments × 4 rules)
+  for (const dept of DEPARTMENTS) {
+    catalog.push(
+      {
+        id: `DEPT-${dept.code}-SCOPE`,
+        version: '1.0.0',
+        category: 'DEPARTMENT_BOUNDARY',
+        layer: 'DEPARTMENT',
+        subject: dept.code,
+        effect: 'REQUIRE_PERMISSION',
+        condition: 'ALWAYS',
+        requirement: `${dept.name} (${dept.code}) agents must operate strictly within ${dept.category} domain permissions and SOPs.`,
+        active: true,
+        setBy: 'system:constitution',
+        createdAt,
+      },
+      {
+        id: `DEPT-${dept.code}-OUTPUT`,
+        version: '1.0.0',
+        category: 'DEPARTMENT_BOUNDARY',
+        layer: 'DEPARTMENT',
+        subject: dept.code,
+        effect: 'REQUIRE_REVIEW',
+        condition: 'CLIENT_FACING_OUTPUT',
+        tools: CLIENT_FACING_TOOLS,
+        requirement: `${dept.name} (${dept.code}) client-facing outputs must be screened for internal prompt/identity leakage.`,
+        active: true,
+        setBy: 'system:constitution',
+        createdAt,
+      },
+      {
+        id: `DEPT-${dept.code}-APPROVAL`,
+        version: '1.0.0',
+        category: 'DEPARTMENT_BOUNDARY',
+        layer: 'DEPARTMENT',
+        subject: dept.code,
+        effect: 'REQUIRE_APPROVAL',
+        condition: 'TOOL_LIST',
+        tools: [...EXTERNAL_COMMS_TOOLS, ...FINANCIAL_TOOLS, 'handover.release', 'agent.create'],
+        fromRisk: 'HIGH',
+        requirement: `${dept.name} (${dept.code}) high-risk external, financial, or child-agent actions require Super Admin approval.`,
+        active: true,
+        setBy: 'system:constitution',
+        createdAt,
+      },
+      {
+        id: `DEPT-${dept.code}-DCC`,
+        version: '1.0.0',
+        category: 'DEPARTMENT_BOUNDARY',
+        layer: 'DEPARTMENT',
+        subject: dept.code,
+        effect: 'REQUIRE_REVIEW',
+        condition: 'PUBLISHED_RESULT',
+        tools: PUBLISHED_RESULT_TOOLS,
+        requirement: `${dept.name} (${dept.code}) autonomous expansion requires a current 9-metric DCC CERTIFIED assessment.`,
+        active: true,
+        setBy: 'system:constitution',
+        createdAt,
+      },
+    )
+  }
+
+  // 4. 80 Role Archetype Rules (20 role archetypes × 4 rules)
+  ROLE_ARCHETYPES.forEach((role, idx) => {
+    const slot = String(idx + 1).padStart(2, '0')
+    const slug = role.slug.toUpperCase().replace(/[^A-Z0-9]+/g, '_')
+    catalog.push(
+      {
+        id: `ROLE-${slot}-PERM`,
+        version: '1.0.0',
+        category: 'ROLE_AUTHORITY',
+        layer: 'ROLE',
+        subject: slug,
+        effect: 'REQUIRE_PERMISSION',
+        condition: 'ALWAYS',
+        requirement: `Role ${role.title} (${slug}) may only invoke tools aligned with its assigned specialist archetype.`,
+        active: true,
+        setBy: 'system:constitution',
+        createdAt,
+      },
+      {
+        id: `ROLE-${slot}-ESC`,
+        version: '1.0.0',
+        category: 'ROLE_AUTHORITY',
+        layer: 'ROLE',
+        subject: slug,
+        effect: 'REQUIRE_REVIEW',
+        condition: 'ALWAYS',
+        fromRisk: 'HIGH',
+        requirement: `Role ${role.title} (${slug}) must escalate uncertain or high-risk tasks to its supervisor before completion.`,
+        active: true,
+        setBy: 'system:constitution',
+        createdAt,
+      },
+      {
+        id: `ROLE-${slot}-QA`,
+        version: '1.0.0',
+        category: 'ROLE_AUTHORITY',
+        layer: 'ROLE',
+        subject: slug,
+        effect: 'REQUIRE_REVIEW',
+        condition: 'PUBLISHED_RESULT',
+        requirement: `Role ${role.title} (${slug}) outputs must pass 6-check quality evaluation prior to publication.`,
+        active: true,
+        setBy: 'system:constitution',
+        createdAt,
+      },
+      {
+        id: `ROLE-${slot}-APPROVAL`,
+        version: '1.0.0',
+        category: 'ROLE_AUTHORITY',
+        layer: 'ROLE',
+        subject: slug,
+        effect: 'REQUIRE_APPROVAL',
+        condition: 'EXTERNAL_COMMS',
+        fromRisk: 'HIGH',
+        requirement: `Role ${role.title} (${slug}) may not dispatch high-risk external communications without human approval.`,
+        active: true,
+        setBy: 'system:constitution',
+        createdAt,
+      },
+    )
+  })
+
+  // 5. 15 Task Safety Rules
+  for (const taskRule of TASK_SAFETY_SUBJECTS) {
+    catalog.push({
+      id: taskRule.id,
+      version: '1.0.0',
+      category: 'TASK_SAFETY',
+      layer: 'TASK',
+      subject: taskRule.subject,
+      effect: taskRule.effect,
+      condition: taskRule.condition,
+      fromRisk: taskRule.fromRisk,
+      requirement: taskRule.requirement,
+      active: true,
+      setBy: 'system:constitution',
+      createdAt,
+    })
+  }
+
+  return catalog
+}
+
+export const ENTERPRISE_CONSTITUTIONAL_RULES: ConstitutionalCatalogRule[] = buildConstitutionalRuleCatalog()
+
+export function constitutionalRuleStats() {
+  const byLayer: Record<GovernanceLayer, number> = {
+    GLOBAL: 0,
+    COMPANY: 0,
+    DEPARTMENT: 0,
+    ROLE: 0,
+    AGENT: 0,
+    TASK: 0,
+  }
+  const byCategory: Record<ConstitutionalCatalogRule['category'], number> = {
+    CONSTITUTIONAL_CORE: 0,
+    COMPANY_POLICY: 0,
+    DEPARTMENT_BOUNDARY: 0,
+    ROLE_AUTHORITY: 0,
+    TASK_SAFETY: 0,
+  }
+  for (const rule of ENTERPRISE_CONSTITUTIONAL_RULES) {
+    byLayer[rule.layer] = (byLayer[rule.layer] ?? 0) + 1
+    byCategory[rule.category] = (byCategory[rule.category] ?? 0) + 1
+  }
+  return {
+    total: ENTERPRISE_CONSTITUTIONAL_RULES.length,
+    target: 500,
+    coreConstitutionCount: CONSTITUTION_WITH_ENFORCEMENT.length,
+    defaultOperationalRulesCount: defaultGovernanceRules().length,
+    byLayer,
+    byCategory,
+  }
 }
