@@ -80,11 +80,13 @@ describe('Platform enhancements — multi-provider AI, Agent config, Portal self
     assert.match(portalViewSrc, /ActivityHistoryCard/)
   })
 
-  it('supports manual CRM Lead/Client creation and bulk CSV import in POST /api/admin/clients and LeadsView', () => {
+  it('supports manual CRM Lead/Client creation, duplicate detection, bulk update, and CSV import in POST /api/admin/clients and LeadsView', () => {
     const clientsRouteSrc = read('src/app/api/admin/clients/route.ts')
     assert.match(clientsRouteSrc, /export async function POST/)
     assert.match(clientsRouteSrc, /LEADS_IMPORTED/)
     assert.match(clientsRouteSrc, /CLIENT_CREATED/)
+    assert.match(clientsRouteSrc, /CLIENTS_BULK_UPDATED/)
+    assert.match(clientsRouteSrc, /skippedDuplicates/)
     assert.match(clientsRouteSrc, /nextClientId/)
 
     const leadsViewSrc = read('src/components/admin/LeadsView.tsx')
@@ -92,10 +94,22 @@ describe('Platform enhancements — multi-provider AI, Agent config, Portal self
     assert.match(leadsViewSrc, /Create Lead \/ Client/)
   })
 
-  it('includes the interactive 3D architecture stack showcase on the public homepage hero', () => {
+  it('enforces 8 governance gates and supports show_failing_agents and create_lead in the NL Command Center', () => {
+    const cmdSrc = read('src/app/api/admin/command/route.ts')
+    assert.match(cmdSrc, /NL_COMMAND_GOVERNANCE_GATES/)
+    assert.match(cmdSrc, /show_failing_agents/)
+    assert.match(cmdSrc, /create_lead/)
+    assert.match(cmdSrc, /gatesPassed/)
+  })
+
+  it('includes the interactive 3D architecture stack showcase on the public homepage hero and Connected Product Ecosystem on PlatformView', () => {
     const homeViewSrc = read('src/components/site/HomeView.tsx')
     assert.match(homeViewSrc, /Hero3dArchitectureShowcase/)
     assert.match(homeViewSrc, /perspective:\s*"1100px"/)
     assert.match(homeViewSrc, /transformStyle:\s*"preserve-3d"/)
+
+    const platformViewSrc = read('src/components/site/PlatformView.tsx')
+    assert.match(platformViewSrc, /ECOSYSTEM_MODULES/)
+    assert.match(platformViewSrc, /TECH360 AgentOS/)
   })
 })

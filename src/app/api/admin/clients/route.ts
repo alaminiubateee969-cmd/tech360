@@ -17,6 +17,10 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1)
   const rawPerPage = Number(url.searchParams.get('perPage') ?? url.searchParams.get('pageSize') ?? 20) || 20
   const perPage = Math.min(100, Math.max(1, rawPerPage))
+  const sortFieldRaw = sanitizeText(url.searchParams.get('sortBy') ?? 'updatedAt', 30)
+  const sortDir: 'asc' | 'desc' = url.searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc'
+  const allowedSortFields = new Set(['updatedAt', 'createdAt', 'score', 'name', 'clientId'])
+  const sortBy = allowedSortFields.has(sortFieldRaw) ? sortFieldRaw : 'updatedAt'
 
   const where = {
     deletedAt: null,
@@ -33,7 +37,7 @@ export async function GET(req: NextRequest) {
 
   const [clients, total] = await Promise.all([
     db.client.findMany({
-      where, orderBy: { updatedAt: 'desc' },
+      where, orderBy: { [sortBy]: sortDir },
       skip: (page - 1) * perPage, take: perPage,
       select: {
         id: true, clientId: true, name: true, businessName: true, businessType: true,
@@ -43,16 +47,69 @@ export async function GET(req: NextRequest) {
     }),
     db.client.count({ where }),
   ])
-  return Response.json({ clients, total, page, perPage })
+  return Response.json({ clients, total, page, perPage, sortBy, sortDir })
 }
+
+const UNGATED_BULK_STAGES = new Set([
+  'NEW',
+  'BUSINESS_TYPE_DETECTED',
+  'PLAN_RECOMMENDED',
+  'SCOPE_COLLECTION',
+  'SCOPE_RECEIVED',
+])
 
 export async function POST(req: NextRequest) {
   const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
 
   const body = await readJson(req)
+  const action = sanitizeText(body.action, 40).toLowerCase()
 
-  // Bulk CSV / JSON import mode
+  // Bulk status / early-stage update
+  if (action === 'bulk_update') {
+    const rawIds = Array.isArray(body.ids) ? body.ids : Array.isArray(body.clientIds) ? body.clientIds : []
+    const ids = rawIds.map((id) => sanitizeText(id, 40)).filter(Boolean).slice(0, 100)
+    if (ids.length === 0) {
+      return Response.json({ error: 'Select at least one record for bulk update.' }, { status: 400 })
+    }
+    const nextStatusRaw = sanitizeText(body.status, 20).toUpperCase()
+    const nextStageRaw = sanitizeText(body.pipelineStage, 40).toUpperCase()
+    const updateData: { status?: string; pipelineStage?: string } = {}
+    if (['LEAD', 'CLIENT', 'ACTIVE', 'COMPLETED', 'CLOSED', 'LOST'].includes(nextStatusRaw)) {
+      updateData.status = nextStatusRaw
+    }
+    if (nextStageRaw) {
+      if (!UNGATED_BULK_STAGES.has(nextStageRaw)) {
+        return Response.json(
+          { error: `Stage ${nextStageRaw} requires governed approval/payment verification and cannot be bulk-assigned.` },
+          { status: 400 },
+        )
+      }
+      updateData.pipelineStage = nextStageRaw
+    }
+    if (!updateData.status && !updateData.pipelineStage) {
+      return Response.json({ error: 'Provide a valid status or ungated pipelineStage to bulk update.' }, { status: 400 })
+    }
+    const res = await db.client.updateMany({
+      where: { OR: [{ id: { in: ids } }, { clientId: { in: ids } }], deletedAt: null },
+      data: updateData,
+    })
+    await audit({
+      actor: g.user.email,
+      userId: g.user.id,
+      action: 'CLIENTS_BULK_UPDATED',
+      entityType: 'Client',
+      ip: g.ip,
+      details: { updatedCount: res.count, ...updateData },
+    })
+    return Response.json({
+      ok: true,
+      updated: res.count,
+      message: `Updated ${res.count} record(s).`,
+    })
+  }
+
+  // Bulk CSV / JSON import mode with duplicate detection
   const importList = Array.isArray(body.records)
     ? body.records
     : Array.isArray(body.rows)
@@ -63,7 +120,12 @@ export async function POST(req: NextRequest) {
     if (rawRecords.length === 0) {
       return Response.json({ error: 'No records provided for import.' }, { status: 400 })
     }
+    const skipDuplicates = body.skipDuplicates !== false
     const created: Array<{ id: string; clientId: string; name: string }> = []
+    const duplicates: Array<{ name: string; existingClientId: string }> = []
+    const seenEmails = new Set<string>()
+    const seenPhones = new Set<string>()
+
     for (const row of rawRecords) {
       if (!row || typeof row !== 'object') continue
       const r = row as Record<string, unknown>
@@ -74,6 +136,30 @@ export async function POST(req: NextRequest) {
       const email = sanitizeEmail(r.email) || null
       const phone = sanitizePhone(r.phone) || null
       const whatsapp = sanitizePhone(r.whatsapp ?? r.phone) || null
+
+      if (skipDuplicates && (email || phone)) {
+        if ((email && seenEmails.has(email)) || (phone && seenPhones.has(phone))) {
+          duplicates.push({ name, existingClientId: 'IN_BATCH_DUPLICATE' })
+          continue
+        }
+        const existing = await db.client.findFirst({
+          where: {
+            deletedAt: null,
+            OR: [
+              ...(email ? [{ email }] : []),
+              ...(phone ? [{ phone }, { whatsapp: phone }] : []),
+            ],
+          },
+          select: { clientId: true },
+        })
+        if (existing) {
+          duplicates.push({ name, existingClientId: existing.clientId })
+          continue
+        }
+      }
+      if (email) seenEmails.add(email)
+      if (phone) seenPhones.add(phone)
+
       const source = sanitizeText(r.source, 40).toUpperCase() || 'CSV_IMPORT'
       const status = ['LEAD', 'CLIENT', 'ACTIVE', 'COMPLETED', 'CLOSED', 'LOST'].includes(
         sanitizeText(r.status, 20).toUpperCase(),
@@ -116,14 +202,16 @@ export async function POST(req: NextRequest) {
       action: 'LEADS_IMPORTED',
       entityType: 'Client',
       ip: g.ip,
-      details: { importedCount: created.length },
+      details: { importedCount: created.length, skippedDuplicates: duplicates.length },
     })
 
     return Response.json({
       ok: true,
       imported: created.length,
+      skippedDuplicates: duplicates.length,
+      duplicates,
       clients: created,
-      message: `Imported ${created.length} lead/client record(s).`,
+      message: `Imported ${created.length} lead/client record(s)${duplicates.length > 0 ? ` (${duplicates.length} duplicate(s) skipped)` : ''}.`,
     })
   }
 
