@@ -110,6 +110,46 @@ export async function GET(req: NextRequest) {
       adminSwitch: null,
     },
     {
+      id: 'openai',
+      name: 'OpenAI API',
+      category: 'AI',
+      state: process.env.OPENAI_API_KEY?.trim() ? 'CONFIGURED' : 'NOT_CONFIGURED',
+      detail: process.env.OPENAI_API_KEY?.trim()
+        ? `OPENAI_API_KEY is present (default model: ${process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'}).`
+        : 'OPENAI_API_KEY is not set.',
+      adminSwitch: null,
+    },
+    {
+      id: 'gemini',
+      name: 'Google Gemini API',
+      category: 'AI',
+      state: (process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY)?.trim() ? 'CONFIGURED' : 'NOT_CONFIGURED',
+      detail: (process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY)?.trim()
+        ? `GEMINI_API_KEY is present (default model: ${process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'}).`
+        : 'GEMINI_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY is not set.',
+      adminSwitch: null,
+    },
+    {
+      id: 'groq',
+      name: 'Groq API',
+      category: 'AI',
+      state: process.env.GROQ_API_KEY?.trim() ? 'CONFIGURED' : 'NOT_CONFIGURED',
+      detail: process.env.GROQ_API_KEY?.trim()
+        ? `GROQ_API_KEY is present (default model: ${process.env.GROQ_MODEL?.trim() || 'llama-3.3-70b-versatile'}).`
+        : 'GROQ_API_KEY is not set.',
+      adminSwitch: null,
+    },
+    {
+      id: 'openrouter',
+      name: 'OpenRouter API',
+      category: 'AI',
+      state: process.env.OPENROUTER_API_KEY?.trim() ? 'CONFIGURED' : 'NOT_CONFIGURED',
+      detail: process.env.OPENROUTER_API_KEY?.trim()
+        ? 'OPENROUTER_API_KEY is present.'
+        : 'OPENROUTER_API_KEY is not set.',
+      adminSwitch: null,
+    },
+    {
       id: 'remote-model',
       name: 'Remote model provider (fallback)',
       category: 'AI',

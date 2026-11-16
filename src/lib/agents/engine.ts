@@ -1,6 +1,16 @@
-import { completeWithFreeModels, type ChatMessage } from './model-provider'
-import { gatewayComplete } from '@/lib/ai-gateway/client'
-import { resolveAgentProvider } from '@/lib/agents/provider-selection'
+import {
+  completeWithFreeModels,
+  completeWithOpenAi,
+  completeWithGemini,
+  completeWithGroq,
+  openAiConfigured,
+  geminiConfigured,
+  groqConfigured,
+  openRouterConfigured,
+  type ChatMessage,
+} from './model-provider'
+import { gatewayComplete, gatewayConfigured } from '@/lib/ai-gateway/client'
+import { resolveAgentProvider, type AgentProviderKind } from '@/lib/agents/provider-selection'
 import { db } from '@/lib/db'
 import { createZaiClient, ZaiProviderError } from '@/lib/ai-provider'
 import { withTimeout, resolveAgentTimeoutMs, isTransientRunError, MAX_RETRY_ATTEMPTS, RunTimeoutError } from '@/lib/agents/resilience'
@@ -297,22 +307,53 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
   try {
     for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt += 1) {
       try {
-        const selectedProvider = resolveAgentProvider()
+        const rawModel = agent.model?.trim() || 'default'
+        let selectedProvider: AgentProviderKind = resolveAgentProvider()
+        const prefixMatch = rawModel.match(/^(openai|gemini|groq|openrouter|ai-gateway|zai):(.+)$/i)
+        if (prefixMatch) {
+          const requestedKind = prefixMatch[1].toLowerCase() as AgentProviderKind
+          if (
+            (requestedKind === 'openai' && openAiConfigured()) ||
+            (requestedKind === 'gemini' && geminiConfigured()) ||
+            (requestedKind === 'groq' && groqConfigured()) ||
+            (requestedKind === 'openrouter' && openRouterConfigured()) ||
+            (requestedKind === 'ai-gateway' && gatewayConfigured())
+          ) {
+            selectedProvider = requestedKind
+          }
+        }
         if (selectedProvider === 'none') {
           // Fail fast with an actionable message instead of falling through
           // to the ZAI client (which would throw a less clear error).
           throw new ZaiProviderError(
             'PROVIDER_NOT_CONFIGURED',
-            'No AI execution provider configured. Set AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN, OPENROUTER_API_KEY, or ZAI_BASE_URL + ZAI_API_KEY on the server.',
+            'No AI execution provider configured. Set OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY, AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN, or ZAI_BASE_URL + ZAI_API_KEY on the server.',
           )
         } else if (selectedProvider === 'ai-gateway') {
           const result = await withTimeout((signal) => gatewayComplete(messages as ChatMessage[], process.env, signal), timeoutMs)
           output = result.output
           provider = result.provider
+          tokensUsed = Math.ceil((messages.reduce((s, m) => s + m.content.length, 0) + output.length) / 4)
         } else if (selectedProvider === 'openrouter') {
           const result = await withTimeout((signal) => completeWithFreeModels(messages as ChatMessage[], process.env, signal), timeoutMs)
           output = result.output
           provider = result.model
+          tokensUsed = result.tokensUsed ?? Math.ceil((messages.reduce((s, m) => s + m.content.length, 0) + output.length) / 4)
+        } else if (selectedProvider === 'openai') {
+          const result = await withTimeout((signal) => completeWithOpenAi(messages as ChatMessage[], process.env, signal, rawModel), timeoutMs)
+          output = result.output
+          provider = result.model
+          tokensUsed = result.tokensUsed
+        } else if (selectedProvider === 'gemini') {
+          const result = await withTimeout((signal) => completeWithGemini(messages as ChatMessage[], process.env, signal, rawModel), timeoutMs)
+          output = result.output
+          provider = result.model
+          tokensUsed = result.tokensUsed
+        } else if (selectedProvider === 'groq') {
+          const result = await withTimeout((signal) => completeWithGroq(messages as ChatMessage[], process.env, signal, rawModel), timeoutMs)
+          output = result.output
+          provider = result.model
+          tokensUsed = result.tokensUsed
         } else {
           const client = createZaiClient()
           const completion = await withTimeout(

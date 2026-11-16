@@ -845,6 +845,7 @@ export interface AgentFull extends AgentRow {
   permissions?: string | string[] | null
   model?: string | null
   dailyQuota?: number | null
+  tokensToday?: number | null
   executionCount?: number | null
   successCount?: number | null
   failureCount?: number | null

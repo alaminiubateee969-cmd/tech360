@@ -1,0 +1,101 @@
+import { describe, it } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { resolveAgentProvider, getAgentProviderStatus, listAgentProviders } from '@/lib/agents/provider-selection'
+import { AI_SERVICES } from '@/lib/free-ai-services'
+
+const ROOT = resolve(__dirname, '..')
+const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf8')
+
+describe('Platform enhancements — multi-provider AI, Agent config, Portal self-service, CRM import, and 3D hero', () => {
+  it('resolves OpenAI, Gemini, Groq, OpenRouter, AI Gateway, and ZAI providers and honours AI_PROVIDER override', () => {
+    assert.equal(resolveAgentProvider({ OPENAI_API_KEY: 'sk-test' }), 'openai')
+    assert.equal(resolveAgentProvider({ GEMINI_API_KEY: 'AIza-test' }), 'gemini')
+    assert.equal(resolveAgentProvider({ GROQ_API_KEY: 'gsk-test' }), 'groq')
+    assert.equal(
+      resolveAgentProvider({
+        OPENAI_API_KEY: 'sk-test',
+        GROQ_API_KEY: 'gsk-test',
+        AI_PROVIDER: 'groq',
+      }),
+      'groq',
+    )
+    const listed = listAgentProviders({ OPENAI_API_KEY: 'sk-test' })
+    assert.equal(listed.length, 6)
+    assert.equal(listed.find((p) => p.kind === 'openai')?.configured, true)
+    assert.ok(AI_SERVICES.some((s) => s.name === 'OpenAI API'))
+    assert.ok(AI_SERVICES.some((s) => s.name === 'Google AI Studio (Gemini)'))
+    assert.ok(AI_SERVICES.some((s) => s.name === 'Groq'))
+
+    const disabledStatus = getAgentProviderStatus({ OPENAI_API_KEY: 'sk-test', AI_PROVIDER: 'none' })
+    assert.equal(disabledStatus.state, 'NOT_CONFIGURED')
+    assert.equal(disabledStatus.configured, false)
+  })
+
+  it('supports per-agent model & dailyQuota updates in PATCH /api/admin/agents/[code] and AgentsView UI', () => {
+    const routeSrc = read('src/app/api/admin/agents/[code]/route.ts')
+    assert.match(routeSrc, /update_config/)
+    assert.match(routeSrc, /dailyQuota/)
+    assert.match(routeSrc, /AGENT_CONFIG_UPDATED/)
+
+    const viewSrc = read('src/components/admin/AgentsView.tsx')
+    assert.match(viewSrc, /update_config/)
+    assert.match(viewSrc, /dailyQuota/)
+    assert.match(viewSrc, /resetTokensToday/)
+  })
+
+  it('exposes all 6 external AI providers in /api/models, ModelsView, and /api/admin/integrations', () => {
+    const modelsRouteSrc = read('src/app/api/models/route.ts')
+    assert.match(modelsRouteSrc, /agentProviders/)
+    assert.match(modelsRouteSrc, /listAgentProviders/)
+
+    const modelsViewSrc = read('src/components/admin/ModelsView.tsx')
+    assert.match(modelsViewSrc, /agentProviders/)
+    assert.match(modelsViewSrc, /defaultModel/)
+
+    const integrationsSrc = read('src/app/api/admin/integrations/route.ts')
+    assert.match(integrationsSrc, /id:\s*'openai'/)
+    assert.match(integrationsSrc, /id:\s*'gemini'/)
+    assert.match(integrationsSrc, /id:\s*'groq'/)
+  })
+
+  it('implements Client Portal profile updates, scope feedback, support tickets, payment proof submission, and activity history', () => {
+    const portalMeSrc = read('src/app/api/portal/me/route.ts')
+    assert.match(portalMeSrc, /export async function PATCH/)
+    assert.match(portalMeSrc, /export async function POST/)
+    assert.match(portalMeSrc, /scope_feedback/)
+    assert.match(portalMeSrc, /support_ticket/)
+    assert.match(portalMeSrc, /activityHistory/)
+
+    const portalPaymentSrc = read('src/app/api/portal/payments/submit/route.ts')
+    assert.match(portalPaymentSrc, /PAYMENT_PROOF_SUBMITTED/)
+    assert.match(portalPaymentSrc, /standaloneAmount/)
+
+    const portalViewSrc = read('src/components/site/PortalView.tsx')
+    assert.match(portalViewSrc, /ScopeFeedbackPanel/)
+    assert.match(portalViewSrc, /PaymentProofSubmitPanel/)
+    assert.match(portalViewSrc, /SupportTicketForm/)
+    assert.match(portalViewSrc, /ProfileSettingsCard/)
+    assert.match(portalViewSrc, /ActivityHistoryCard/)
+  })
+
+  it('supports manual CRM Lead/Client creation and bulk CSV import in POST /api/admin/clients and LeadsView', () => {
+    const clientsRouteSrc = read('src/app/api/admin/clients/route.ts')
+    assert.match(clientsRouteSrc, /export async function POST/)
+    assert.match(clientsRouteSrc, /LEADS_IMPORTED/)
+    assert.match(clientsRouteSrc, /CLIENT_CREATED/)
+    assert.match(clientsRouteSrc, /nextClientId/)
+
+    const leadsViewSrc = read('src/components/admin/LeadsView.tsx')
+    assert.match(leadsViewSrc, /Import CSV/)
+    assert.match(leadsViewSrc, /Create Lead \/ Client/)
+  })
+
+  it('includes the interactive 3D architecture stack showcase on the public homepage hero', () => {
+    const homeViewSrc = read('src/components/site/HomeView.tsx')
+    assert.match(homeViewSrc, /Hero3dArchitectureShowcase/)
+    assert.match(homeViewSrc, /perspective:\s*"1100px"/)
+    assert.match(homeViewSrc, /transformStyle:\s*"preserve-3d"/)
+  })
+})

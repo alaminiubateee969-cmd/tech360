@@ -64,6 +64,10 @@ if (aiOpsDriver && !["on", "off"].includes(aiOpsDriver)) {
 // validation as before. Never print provider credentials or endpoint values.
 const hasZai = Boolean(process.env.ZAI_BASE_URL?.trim() && process.env.ZAI_API_KEY?.trim());
 const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY?.trim());
+const hasOpenAi = Boolean(process.env.OPENAI_API_KEY?.trim());
+const hasGemini = Boolean((process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY)?.trim());
+const hasGroq = Boolean(process.env.GROQ_API_KEY?.trim());
+const explicitAiDisabled = ["none", "off", "disabled"].includes((process.env.AI_PROVIDER ?? "").trim().toLowerCase());
 const gatewayBaseUrl = process.env.AI_GATEWAY_BASE_URL?.trim();
 const gatewayToken = process.env.AGENTOS_GATEWAY_TOKEN?.trim();
 let hasGateway = Boolean(gatewayBaseUrl && gatewayToken);
@@ -81,8 +85,8 @@ if (gatewayBaseUrl) {
 }
 if (gatewayBaseUrl && !gatewayToken) errors.push("AGENTOS_GATEWAY_TOKEN (required with AI_GATEWAY_BASE_URL)");
 if (gatewayToken && !gatewayBaseUrl) errors.push("AI_GATEWAY_BASE_URL (required with AGENTOS_GATEWAY_TOKEN)");
-if (!hasZai && !hasOpenRouter && !hasGateway) {
-  errors.push("AI provider (configure AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN, OPENROUTER_API_KEY, or ZAI_BASE_URL + ZAI_API_KEY)");
+if (!hasZai && !hasOpenRouter && !hasOpenAi && !hasGemini && !hasGroq && !hasGateway && !explicitAiDisabled) {
+  errors.push("AI provider (configure OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN, OPENROUTER_API_KEY, ZAI_BASE_URL + ZAI_API_KEY, or AI_PROVIDER=none)");
 }
 
 const zaiBaseUrl = process.env.ZAI_BASE_URL;

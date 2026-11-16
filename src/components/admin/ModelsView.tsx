@@ -45,12 +45,23 @@ type ProviderEntry = {
   embeddingModel: string | null
 }
 
+type AgentProviderCatalogItem = {
+  kind: string
+  name: string
+  configured: boolean
+  active: boolean
+  defaultModel: string
+  envKeys: string[]
+  detail: string
+}
+
 type ModelsResponse = {
   service: string
   detail: string
   gateway: { enabled: boolean; configured: boolean }
   providers: ProviderEntry[]
   agentProvider: { provider: string; state: string; configured: boolean; detail: string }
+  agentProviders?: AgentProviderCatalogItem[]
   catalogue: CatalogueEntry[]
   installed: Array<{ name: string; sizeBytes?: number; family?: string; parameterSize?: string }>
   installedError: string | null
@@ -92,7 +103,7 @@ export default function ModelsView() {
       </div>
 
       <div className="mb-4" role="status" aria-label="AI workforce provider status">
-        <SectionCard title="AI workforce execution provider" description="Used by Core Agents, the Command Center and website chat. This is separate from the private model service below.">
+        <SectionCard title="AI workforce execution provider" description="Used by Core Agents, the Command Center and website chat. Supports AI Gateway, OpenRouter, OpenAI, Google Gemini, Groq, and ZAI. Override priority with AI_PROVIDER.">
           <div className={CARD + ' p-4'}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-mono text-sm text-slate-200">{data?.agentProvider.provider ?? 'Checking configuration…'}</span>
@@ -101,6 +112,27 @@ export default function ModelsView() {
             <p className="mt-2 text-xs leading-relaxed text-slate-400">{data?.agentProvider.detail ?? 'Reading server configuration without exposing credentials.'}</p>
             <p className="mt-2 text-[11px] text-slate-500">Configuration is not a live health check. Run a read-only agent task to verify the provider. Keys are managed in the server environment, not in the browser.</p>
           </div>
+          {data?.agentProviders && data.agentProviders.length > 0 ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {data.agentProviders.map((ap) => (
+                <div key={ap.kind} className={CARD + ' p-3'}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-200">{ap.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      {ap.active ? (
+                        <span className="rounded bg-[#009FE3]/20 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[#009FE3]">
+                          ACTIVE
+                        </span>
+                      ) : null}
+                      <StatusBadge status={ap.configured ? 'CONFIGURED' : 'NOT_CONFIGURED'} />
+                    </div>
+                  </div>
+                  <p className="mt-1 font-mono text-[11px] text-slate-400">Default model: {ap.defaultModel}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">{ap.detail}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </SectionCard>
       </div>
 
