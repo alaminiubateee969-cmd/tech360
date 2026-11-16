@@ -77,6 +77,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (transactionId) {
+    const duplicateTx = await db.payment.findFirst({
+      where: {
+        transactionId,
+        ...(paymentId ? { id: { not: paymentId } } : {}),
+      },
+      select: { id: true, status: true },
+    })
+    if (duplicateTx) {
+      return Response.json(
+        {
+          error: 'This transaction reference has already been submitted on another payment record.',
+          code: 'DUPLICATE_TRANSACTION_ID',
+        },
+        { status: 409 },
+      )
+    }
+  }
+
   // Case 1: Updating an existing PENDING / FAILED payment record for this client
   if (paymentId) {
     const existing = await db.payment.findFirst({

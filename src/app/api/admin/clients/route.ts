@@ -58,6 +58,8 @@ const UNGATED_BULK_STAGES = new Set([
   'SCOPE_RECEIVED',
 ])
 
+const inFlightClientKeys = new Set<string>()
+
 export async function POST(req: NextRequest) {
   const g = await guard(req, { minRole: 'STAFF' })
   if (isResponse(g)) return g
@@ -236,62 +238,109 @@ export async function POST(req: NextRequest) {
     ? rawStage
     : 'NEW'
   const notes = sanitizeText(body.notes, 4000) || null
+  const allowDuplicate = body.allowDuplicate === true
 
-  const clientId = await nextClientId()
-  const client = await db.client.create({
-    data: {
-      clientId,
-      name,
-      businessName,
-      businessType,
-      email,
-      phone,
-      whatsapp,
-      country,
-      source,
-      status,
-      pipelineStage,
-      notes,
-      lead: {
-        create: {
-          requirements: notes,
-          sourceDetails: source,
-          qualifiedAt: new Date(),
+  const dedupeKeys = [
+    ...(email ? [`email:${email.toLowerCase()}`] : []),
+    ...(phone ? [`phone:${phone}`] : []),
+    ...(whatsapp && whatsapp !== phone ? [`phone:${whatsapp}`] : []),
+  ]
+
+  if (!allowDuplicate && dedupeKeys.length > 0) {
+    if (dedupeKeys.some((k) => inFlightClientKeys.has(k))) {
+      return Response.json(
+        { error: 'A concurrent creation request for this email or phone is already in progress.', code: 'DUPLICATE_IN_FLIGHT' },
+        { status: 409 },
+      )
+    }
+    for (const k of dedupeKeys) inFlightClientKeys.add(k)
+  }
+
+  try {
+    if (!allowDuplicate && (email || phone || whatsapp)) {
+      const existing = await db.client.findFirst({
+        where: {
+          deletedAt: null,
+          OR: [
+            ...(email ? [{ email }] : []),
+            ...(phone ? [{ phone }, { whatsapp: phone }] : []),
+            ...(whatsapp && whatsapp !== phone ? [{ phone: whatsapp }, { whatsapp }] : []),
+          ],
+        },
+        select: { id: true, clientId: true, name: true },
+      })
+      if (existing) {
+        return Response.json(
+          {
+            error: `A client/lead with this email or phone already exists (${existing.clientId} — ${existing.name}).`,
+            code: 'DUPLICATE_CLIENT',
+            existingClientId: existing.clientId,
+          },
+          { status: 409 },
+        )
+      }
+    }
+
+    const clientId = await nextClientId()
+    const client = await db.client.create({
+      data: {
+        clientId,
+        name,
+        businessName,
+        businessType,
+        email,
+        phone,
+        whatsapp,
+        country,
+        source,
+        status,
+        pipelineStage,
+        notes,
+        lead: {
+          create: {
+            requirements: notes,
+            sourceDetails: source,
+            qualifiedAt: new Date(),
+          },
         },
       },
-    },
-    select: {
-      id: true,
-      clientId: true,
-      name: true,
-      businessName: true,
-      businessType: true,
-      email: true,
-      whatsapp: true,
-      country: true,
-      source: true,
-      status: true,
-      pipelineStage: true,
-      score: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  })
+      select: {
+        id: true,
+        clientId: true,
+        name: true,
+        businessName: true,
+        businessType: true,
+        email: true,
+        whatsapp: true,
+        country: true,
+        source: true,
+        status: true,
+        pipelineStage: true,
+        score: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
 
-  await audit({
-    actor: g.user.email,
-    userId: g.user.id,
-    action: 'CLIENT_CREATED',
-    entityType: 'Client',
-    entityId: client.id,
-    clientId: client.clientId,
-    ip: g.ip,
-    details: { status: client.status, pipelineStage: client.pipelineStage, source: client.source },
-  })
+    await audit({
+      actor: g.user.email,
+      userId: g.user.id,
+      action: 'CLIENT_CREATED',
+      entityType: 'Client',
+      entityId: client.id,
+      clientId: client.clientId,
+      ip: g.ip,
+      details: { status: client.status, pipelineStage: client.pipelineStage, source: client.source },
+    })
 
-  return Response.json({
-    ok: true,
-    client,
-    message: `Created ${client.status.toLowerCase()} ${client.clientId}.`,
-  })
+    return Response.json({
+      ok: true,
+      client,
+      message: `Created ${client.status.toLowerCase()} ${client.clientId}.`,
+    })
+  } finally {
+    if (!allowDuplicate) {
+      for (const k of dedupeKeys) inFlightClientKeys.delete(k)
+    }
+  }
 }

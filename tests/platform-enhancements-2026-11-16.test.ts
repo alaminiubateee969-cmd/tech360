@@ -77,6 +77,7 @@ describe('Platform enhancements — multi-provider AI, Agent config, Portal self
 
     const portalPaymentSrc = read('src/app/api/portal/payments/submit/route.ts')
     assert.match(portalPaymentSrc, /PAYMENT_PROOF_SUBMITTED/)
+    assert.match(portalPaymentSrc, /DUPLICATE_TRANSACTION_ID/)
     assert.match(portalPaymentSrc, /standaloneAmount/)
 
     const portalViewSrc = read('src/components/site/PortalView.tsx')
@@ -93,6 +94,8 @@ describe('Platform enhancements — multi-provider AI, Agent config, Portal self
     assert.match(clientsRouteSrc, /LEADS_IMPORTED/)
     assert.match(clientsRouteSrc, /CLIENT_CREATED/)
     assert.match(clientsRouteSrc, /CLIENTS_BULK_UPDATED/)
+    assert.match(clientsRouteSrc, /DUPLICATE_CLIENT/)
+    assert.match(clientsRouteSrc, /DUPLICATE_IN_FLIGHT/)
     assert.match(clientsRouteSrc, /skippedDuplicates/)
     assert.match(clientsRouteSrc, /nextClientId/)
 
