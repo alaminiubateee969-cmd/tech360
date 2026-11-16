@@ -236,7 +236,21 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     }
   }
 
-  if (run.clientId && !agentMayAccessClient({ permissions: agent.permissions }, run.actingForClientId ?? null, run.clientId)) {
+  // Tenant scope. A run that names a client IS acting for that client — the
+  // caller is trusted server code and supplies the subject of the run. Callers
+  // that need to act for a *different* client must pass actingForClientId
+  // explicitly (see the durable job worker); the policy then denies the run
+  // unless the agent holds `read:all`.
+  //
+  // Regression fixed here: this check previously used only the optional
+  // actingForClientId, so every client-scoped run that did not pass it — the
+  // website chat orchestrator, business detection, plan recommendation, scope
+  // draft/review, meetings, payment requests and ops follow-ups — was denied
+  // with CROSS_CLIENT_DENIED. The agents were ACTIVE and correctly configured,
+  // but no customer-facing AI turn could ever reach a provider, so webchat
+  // always returned the honest "AI is unavailable" fallback.
+  const actingForClientId = run.actingForClientId ?? run.clientId ?? null
+  if (run.clientId && !agentMayAccessClient({ permissions: agent.permissions }, actingForClientId, run.clientId)) {
     await logError({ source: 'AGENT', code: 'CROSS_CLIENT_DENIED', message: `Agent ${agentCode} attempted to act on a client it is not scoped to`, correlationId, workflow: run.workflow })
     await db.auditLog.create({
       data: {

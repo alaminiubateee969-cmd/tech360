@@ -145,11 +145,32 @@ export async function POST(req: NextRequest) {
             source: 'WHATSAPP',
             name: name || 'WhatsApp Contact',
             whatsapp: phone,
+            preferredContact: 'WHATSAPP',
             message: `WhatsApp first message: ${text}`,
             providerMessageId: m.id,
             verifiedIdentities: [proof],
+            // The customer just messaged us, so the 24-hour service window is
+            // open and the orchestrator below sends the single first reply.
+            suppressWelcome: true,
           })
           await audit({ actor: 'webhook:WHATSAPP', action: 'NEW_LEAD_FROM_WHATSAPP', clientId: result.clientId, ip })
+
+          // Answer the FIRST message too. Previously only returning contacts
+          // received an AI reply, so a new WhatsApp customer got silence.
+          const created = await db.client.findUnique({ where: { id: result.clientRowId } })
+          if (created) {
+            try {
+              await handleWhatsAppReply({ client: created, phone, text, providerMessageId: m.id })
+            } catch (replyError) {
+              await logError({
+                source: 'WEBHOOK',
+                code: 'WA_REPLY_FAILED',
+                message: replyError instanceof Error ? replyError.message : String(replyError),
+                clientId: result.clientId,
+                workflow: 'WHATSAPP_REPLY',
+              }).catch(() => null)
+            }
+          }
           await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: result.clientRowId })
         }
       } catch (error) {

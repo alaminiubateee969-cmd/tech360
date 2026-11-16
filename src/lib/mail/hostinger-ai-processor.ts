@@ -43,6 +43,8 @@ export interface HostingerAiProcessResult {
 
 interface StoredHostingerMetadata {
   source?: string
+  /** Mailbox UID of the inbound message; used for In-Reply-To threading. */
+  uid?: number
   senderName?: string | null
   inReplyTo?: string | null
   receivedAt?: string | null
@@ -352,6 +354,10 @@ export async function processHostingerInboundMessages(options?: {
           body: htmlBody,
           storedBody: aiOutcome.reply,
           agentCode: aiOutcome.wasAiGenerated ? 'EML-012' : 'EMAIL-FALLBACK',
+          // Reply in the customer's own thread: the provider copies the source
+          // Message-Id into In-Reply-To/References (and flags it \\Answered)
+          // only when the source UID + folder are supplied.
+          thread: typeof meta.uid === 'number' ? { uid: meta.uid, folder: 'INBOX' } : undefined,
         })
         if (!sendRes.result.ok) {
           await logError({

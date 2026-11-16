@@ -1,0 +1,195 @@
+{
+  "baseUrl": "http://localhost:3000",
+  "clientId": "TECH-2026-000117",
+  "email": "journey.1794400770028@example.com",
+  "startedAt": "2026-11-11T12:39:35.163Z",
+  "totals": {
+    "steps": 36,
+    "passed": 36,
+    "failed": 0,
+    "blocked": 0,
+    "notVerified": 0
+  },
+  "steps": [
+    {
+      "step": "Admin login",
+      "status": "PASS",
+      "detail": "role=SUPER_ADMIN"
+    },
+    {
+      "step": "CSRF cookie issued",
+      "status": "PASS",
+      "detail": "t360_session,t360_csrf"
+    },
+    {
+      "step": "Public contact form → Client ID",
+      "status": "PASS",
+      "detail": "TECH-2026-000117"
+    },
+    {
+      "step": "CRM record readable by admin with permanent Client ID",
+      "status": "PASS",
+      "detail": "TECH-2026-000117 stage=NEW"
+    },
+    {
+      "step": "DETECT_BUSINESS",
+      "status": "PASS",
+      "detail": "Business detected: eCommerce"
+    },
+    {
+      "step": "RECOMMEND_PLAN",
+      "status": "PASS",
+      "detail": "Plan recommended: eCommerce Platform"
+    },
+    {
+      "step": "ASK_SCOPE_QUESTIONS",
+      "status": "PASS",
+      "detail": "Scope questions generated. Delivery: WHATSAPP:FAILED, EMAIL:NOT_CONFIGURED"
+    },
+    {
+      "step": "SUBMIT_SCOPE",
+      "status": "PASS",
+      "detail": "Draft Scope of Work generated and queued for admin approval."
+    },
+    {
+      "step": "SOW draft requires admin approval (no self-approval by the AI)",
+      "status": "PASS",
+      "detail": "v1 status=AWAITING_ADMIN_APPROVAL generatedBy=SCP-008"
+    },
+    {
+      "step": "Super Admin approves final SOW (FINAL_SCOPE_SEND)",
+      "status": "PASS",
+      "detail": "Final scope sent via WHATSAPP:FAILED + EMAIL:NOT_CONFIGURED. Client approval next."
+    },
+    {
+      "step": "SOW stored with version + status",
+      "status": "PASS",
+      "detail": "v1 status=FINAL"
+    },
+    {
+      "step": "SOW versioned and approved by a human admin",
+      "status": "PASS",
+      "detail": "v1 status=FINAL approvedBy=cmwc2qjb20000msnz5ib9z7p6"
+    },
+    {
+      "step": "CLIENT_SCOPE_DECISION",
+      "status": "PASS",
+      "detail": "Client decision recorded. Next: REQUEST_PREVIEW"
+    },
+    {
+      "step": "GENERATE_PREVIEW",
+      "status": "PASS",
+      "detail": "Preview generated but not sent. Channel status: WHATSAPP:FAILED, EMAIL:NOT_CONFIGURED. Share only through an authorized channel. Link: http://localhost:3000/api/preview/b6aa54fa5f84a99333c7461f43353463"
+    },
+    {
+      "step": "HTML preview generated with token + version",
+      "status": "PASS",
+      "detail": "preview=cmwc3w02600cewdnz3q2z8koe v? token=b6aa54fa… status=GENERATED"
+    },
+    {
+      "step": "PREVIEW_DECISION",
+      "status": "PASS",
+      "detail": "Preview approval recorded. The payment step is queued for admin approval."
+    },
+    {
+      "step": "REQUEST_PAYMENT",
+      "status": "PASS",
+      "detail": "Payment instructions prepared and queued for Super Admin approval. Nothing was sent to the client yet — approve the PAYMENT_INSTRUCTION request in the Approvals view to send it."
+    },
+    {
+      "step": "Super Admin approves payment instruction (PAYMENT_INSTRUCTION)",
+      "status": "PASS",
+      "detail": "Approved payment instructions sent. Channels: WHATSAPP:FAILED, EMAIL:NOT_CONFIGURED."
+    },
+    {
+      "step": "RECORD_PAYMENT",
+      "status": "PASS",
+      "detail": "Payment recorded with PENDING status. Verify it to activate gates."
+    },
+    {
+      "step": "Payment recorded as PENDING (not auto-verified)",
+      "status": "PASS",
+      "detail": "[{\"id\":\"cmwc3w0c800d4wdnztc0bsjb9\",\"status\":\"PENDING\",\"amount\":500}]"
+    },
+    {
+      "step": "Super Admin approves gated pipeline message (PIPELINE_MESSAGE)",
+      "status": "PASS",
+      "detail": "Approved HTML_PREVIEW_APPROVED message sent. Channels: WHATSAPP:FAILED, EMAIL:NOT_CONFIGURED."
+    },
+    {
+      "step": "Payment verification refused without Super Admin approval",
+      "status": "PASS",
+      "detail": "approval raised"
+    },
+    {
+      "step": "Super Admin approves payment verification",
+      "status": "PASS",
+      "detail": "Approved. The action is not executed here. Repeat the request with this approval id to run it."
+    },
+    {
+      "step": "Payment verified through governed action",
+      "status": "PASS",
+      "detail": "Payment verified. Project status and pipeline updated."
+    },
+    {
+      "step": "START_PROJECT",
+      "status": "PASS",
+      "detail": "Project PRJ-2026-0106 activated; 8 existing task(s) were retained without duplication."
+    },
+    {
+      "step": "Project created and linked to Client ID",
+      "status": "PASS",
+      "detail": "PRJ-2026-0106:ACTIVE"
+    },
+    {
+      "step": "Project tasks persisted with IDs and completed with evidence",
+      "status": "PASS",
+      "detail": "8/8 task(s) completed"
+    },
+    {
+      "step": "Source artifact attached, scanned and stored",
+      "status": "PASS",
+      "detail": "HTTP 200"
+    },
+    {
+      "step": "PREPARE_HANDOVER",
+      "status": "PASS",
+      "detail": "Verified artifact manifest prepared and queued for Super Admin approval."
+    },
+    {
+      "step": "Super Admin releases source handover (SOURCE_HANDOVER)",
+      "status": "PASS",
+      "detail": "Approved source package released with 1 pinned artifact(s); the secure ZIP is assembled when downloaded. Client notification status: FAILED. Portal/download link: http://localhost:3000/api/handover/875493a9b1422e09ccf439224b33521f/download"
+    },
+    {
+      "step": "Handover package created with token + expiry",
+      "status": "PASS",
+      "detail": "status=RELEASED token=875493a9…"
+    },
+    {
+      "step": "Client downloads protected package with token",
+      "status": "PASS",
+      "detail": "HTTP 200"
+    },
+    {
+      "step": "Client confirms delivery + password change",
+      "status": "PASS",
+      "detail": "Delivery acceptance recorded and password change confirmed. Support will separately verify the source package before closure."
+    },
+    {
+      "step": "CLOSE_PROJECT",
+      "status": "PASS",
+      "detail": "Project closed and completed."
+    },
+    {
+      "step": "REQUEST_REVIEW",
+      "status": "PASS",
+      "detail": "Review + referral requested. Real Review/Referral records created; client submits via portal, admin moderates."
+    },
+    {
+      "step": "Final pipeline stage recorded",
+      "status": "PASS",
+      "detail": "stage=COMPLETED status=COMPLETED"
+    }
+  ]
+}

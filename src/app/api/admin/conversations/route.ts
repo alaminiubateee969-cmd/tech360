@@ -47,10 +47,34 @@ export async function GET(req: NextRequest) {
     if (m.agentEmail) lastAgentByConversation.set(m.conversationId, m.agentEmail)
   }
 
+  // Permanent Client ID per conversation (follow the merge pointer so the
+  // inbox never shows an identity that was merged away). The list previously
+  // omitted it entirely, so the Communication Center could not search by or
+  // display Client ID.
+  const clientRowIds = [...new Set(conversations.map((c) => c.clientId).filter((id): id is string => Boolean(id)))]
+  const clientRows = clientRowIds.length
+    ? await db.client.findMany({
+        where: { id: { in: clientRowIds } },
+        select: { id: true, clientId: true, mergedIntoId: true, deletedAt: true },
+      })
+    : []
+  const mergedTargets = clientRows.map((c) => c.mergedIntoId).filter((id): id is string => Boolean(id))
+  const mergedRows = mergedTargets.length
+    ? await db.client.findMany({ where: { id: { in: mergedTargets } }, select: { id: true, clientId: true } })
+    : []
+  const mergedNameById = new Map(mergedRows.map((c) => [c.id, c.clientId]))
+  const displayClientIdByRowId = new Map(
+    clientRows.map((c) => [
+      c.id,
+      c.deletedAt ? null : c.mergedIntoId ? (mergedNameById.get(c.mergedIntoId) ?? null) : c.clientId,
+    ]),
+  )
+
   return Response.json({
     conversations: conversations.map((c) => ({
       id: c.id,
       anonId: c.anonId,
+      clientId: c.clientId ? (displayClientIdByRowId.get(c.clientId) ?? null) : null,
       status: c.status,
       visitorName: c.visitorName,
       visitorEmail: c.visitorEmail,

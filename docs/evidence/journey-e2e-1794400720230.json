@@ -1,0 +1,180 @@
+{
+  "baseUrl": "http://localhost:3000",
+  "clientId": "TECH-2026-000115",
+  "email": "journey.1794400717368@example.com",
+  "startedAt": "2026-11-11T12:38:40.230Z",
+  "totals": {
+    "steps": 33,
+    "passed": 29,
+    "failed": 1,
+    "blocked": 0,
+    "notVerified": 3
+  },
+  "steps": [
+    {
+      "step": "Admin login",
+      "status": "PASS",
+      "detail": "role=SUPER_ADMIN"
+    },
+    {
+      "step": "CSRF cookie issued",
+      "status": "PASS",
+      "detail": "t360_session,t360_csrf"
+    },
+    {
+      "step": "Public contact form → Client ID",
+      "status": "PASS",
+      "detail": "TECH-2026-000115"
+    },
+    {
+      "step": "CRM record readable by admin with permanent Client ID",
+      "status": "PASS",
+      "detail": "TECH-2026-000115 stage=NEW"
+    },
+    {
+      "step": "DETECT_BUSINESS",
+      "status": "PASS",
+      "detail": "Business detected: eCommerce"
+    },
+    {
+      "step": "RECOMMEND_PLAN",
+      "status": "PASS",
+      "detail": "Plan recommended: eCommerce Platform"
+    },
+    {
+      "step": "ASK_SCOPE_QUESTIONS",
+      "status": "PASS",
+      "detail": "Scope questions generated. Delivery: WHATSAPP:FAILED, EMAIL:NOT_CONFIGURED"
+    },
+    {
+      "step": "SUBMIT_SCOPE",
+      "status": "PASS",
+      "detail": "Draft Scope of Work generated and queued for admin approval."
+    },
+    {
+      "step": "SOW draft requires admin approval (no self-approval by the AI)",
+      "status": "PASS",
+      "detail": "v1 status=AWAITING_ADMIN_APPROVAL generatedBy=SCP-008"
+    },
+    {
+      "step": "Super Admin approves final SOW (FINAL_SCOPE_SEND)",
+      "status": "PASS",
+      "detail": "Final scope sent via WHATSAPP:FAILED + EMAIL:NOT_CONFIGURED. Client approval next."
+    },
+    {
+      "step": "SOW stored with version + status",
+      "status": "PASS",
+      "detail": "v1 status=FINAL"
+    },
+    {
+      "step": "SOW versioned and approved by a human admin",
+      "status": "PASS",
+      "detail": "v1 status=FINAL approvedBy=cmwc2qjb20000msnz5ib9z7p6"
+    },
+    {
+      "step": "CLIENT_SCOPE_DECISION",
+      "status": "PASS",
+      "detail": "Client decision recorded. Next: REQUEST_PREVIEW"
+    },
+    {
+      "step": "GENERATE_PREVIEW",
+      "status": "PASS",
+      "detail": "Preview generated but not sent. Channel status: WHATSAPP:FAILED, EMAIL:NOT_CONFIGURED. Share only through an authorized channel. Link: http://localhost:3000/api/preview/0bc217fc21c8f74f5867b9cdc2f5e3bf"
+    },
+    {
+      "step": "HTML preview generated with token + version",
+      "status": "PASS",
+      "detail": "preview=cmwc3uvp5004swdnz5sfzw4ca v? token=0bc217fc… status=GENERATED"
+    },
+    {
+      "step": "PREVIEW_DECISION",
+      "status": "PASS",
+      "detail": "Preview approval recorded. The payment step is queued for admin approval."
+    },
+    {
+      "step": "REQUEST_PAYMENT",
+      "status": "PASS",
+      "detail": "Payment instructions prepared and queued for Super Admin approval. Nothing was sent to the client yet — approve the PAYMENT_INSTRUCTION request in the Approvals view to send it."
+    },
+    {
+      "step": "Super Admin approves payment instruction (PAYMENT_INSTRUCTION)",
+      "status": "PASS",
+      "detail": "Approved payment instructions sent. Channels: WHATSAPP:FAILED, EMAIL:NOT_CONFIGURED."
+    },
+    {
+      "step": "RECORD_PAYMENT",
+      "status": "PASS",
+      "detail": "Payment recorded with PENDING status. Verify it to activate gates."
+    },
+    {
+      "step": "Payment recorded as PENDING (not auto-verified)",
+      "status": "PASS",
+      "detail": "[{\"id\":\"cmwc3uvw5005iwdnz6407v5nv\",\"status\":\"PENDING\",\"amount\":500}]"
+    },
+    {
+      "step": "Super Admin approves gated pipeline message (PIPELINE_MESSAGE)",
+      "status": "PASS",
+      "detail": "Approved HTML_PREVIEW_APPROVED message sent. Channels: WHATSAPP:FAILED, EMAIL:NOT_CONFIGURED."
+    },
+    {
+      "step": "Payment verification refused without Super Admin approval",
+      "status": "PASS",
+      "detail": "approval raised"
+    },
+    {
+      "step": "Super Admin approves payment verification",
+      "status": "PASS",
+      "detail": "Approved. The action is not executed here. Repeat the request with this approval id to run it."
+    },
+    {
+      "step": "Payment verified through governed action",
+      "status": "PASS",
+      "detail": "Payment verified. Project status and pipeline updated."
+    },
+    {
+      "step": "START_PROJECT",
+      "status": "PASS",
+      "detail": "Project PRJ-2026-0104 activated, but task generation did not produce a persisted breakdown. No AI-generated task completion is being claimed."
+    },
+    {
+      "step": "Project created and linked to Client ID",
+      "status": "PASS",
+      "detail": "PRJ-2026-0104:ACTIVE"
+    },
+    {
+      "step": "PREPARE_HANDOVER",
+      "status": "PASS",
+      "detail": "BLOCKED: Every project task must be completed before source handover can be prepared."
+    },
+    {
+      "step": "Super Admin releases source handover",
+      "status": "NOT VERIFIED",
+      "detail": "no pending approval found"
+    },
+    {
+      "step": "Handover package created with token + expiry",
+      "status": "NOT VERIFIED",
+      "detail": "no handover in project payload"
+    },
+    {
+      "step": "Client confirmation (password change)",
+      "status": "NOT VERIFIED",
+      "detail": "handover token unavailable"
+    },
+    {
+      "step": "CLOSE_PROJECT",
+      "status": "FAIL",
+      "detail": "Action failed: Cannot close: client delivery acceptance is not confirmed."
+    },
+    {
+      "step": "REQUEST_REVIEW",
+      "status": "PASS",
+      "detail": "Review + referral requested. Real Review/Referral records created; client submits via portal, admin moderates."
+    },
+    {
+      "step": "Final pipeline stage recorded",
+      "status": "PASS",
+      "detail": "stage=REFERRAL_REQUESTED status=ACTIVE"
+    }
+  ]
+}

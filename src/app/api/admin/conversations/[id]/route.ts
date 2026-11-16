@@ -123,6 +123,20 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         },
       }).catch(() => null)
     }
+    // HUMAN TAKEOVER (root cause fixed): replying as staff never paused the
+    // AI, so the assistant could answer over a colleague mid-conversation.
+    // A human reply now claims the conversation until an explicit release.
+    if (conversation.clientId) {
+      const linkedClient = await db.client.findUnique({
+        where: { id: conversation.clientId },
+        select: { id: true, clientId: true, deletedAt: true },
+      }).catch(() => null)
+      if (linkedClient && !linkedClient.deletedAt) {
+        const { setHumanTakeover } = await import('@/lib/conversation-state')
+        await setHumanTakeover(linkedClient.id, linkedClient.clientId, true).catch(() => null)
+      }
+    }
+
     await audit({
       actor: g.user.email,
       action: 'CHAT_REPLY',
@@ -138,10 +152,59 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     })
   }
 
+  // ---------------- takeover / release ----------------
+  if (action === 'takeover' || action === 'release') {
+    if (!conversation.clientId) {
+      return Response.json({ error: 'This conversation has no linked Client ID yet — reply once to link it.' }, { status: 400 })
+    }
+    const linkedClient = await db.client.findUnique({
+      where: { id: conversation.clientId },
+      select: { id: true, clientId: true, deletedAt: true },
+    })
+    if (!linkedClient || linkedClient.deletedAt) {
+      return Response.json({ error: 'Linked client record is not available.' }, { status: 400 })
+    }
+    const { setHumanTakeover } = await import('@/lib/conversation-state')
+    const takeOver = action === 'takeover'
+    await setHumanTakeover(linkedClient.id, linkedClient.clientId, takeOver)
+    const sys = await db.chatMessage.create({
+      data: {
+        conversationId,
+        sender: 'SYSTEM',
+        body: takeOver
+          ? `A TECH360 team member has joined this conversation. Automated replies are paused until the team releases it.`
+          : `Automated assistant replies are enabled again for this conversation.`,
+      },
+    })
+    await db.chatConversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: new Date(), lastMessagePreview: sys.body.slice(0, 120), lastSender: 'SYSTEM' },
+    })
+    await audit({
+      actor: g.user.email,
+      action: takeOver ? 'CHAT_TAKEOVER' : 'CHAT_TAKEOVER_RELEASED',
+      userId: g.user.id,
+      entityType: 'ChatConversation',
+      entityId: conversationId,
+      ip: g.ip,
+    })
+    return Response.json({ ok: true, humanTakeover: takeOver, messageId: sys.id })
+  }
+
   // ---------------- close ----------------
   if (action === 'close') {
     const now = new Date()
     await db.chatConversation.update({ where: { id: conversationId }, data: { status: 'CLOSED' } })
+    if (conversation.clientId) {
+      const linked = await db.client.findUnique({
+        where: { id: conversation.clientId },
+        select: { id: true, clientId: true },
+      }).catch(() => null)
+      if (linked) {
+        const { setClosed } = await import('@/lib/conversation-state')
+        await setClosed(linked.id, linked.clientId, true).catch(() => null)
+      }
+    }
     const sys = await db.chatMessage.create({
       data: { conversationId, sender: 'SYSTEM', body: `Conversation closed by ${g.user.email}` },
     })
