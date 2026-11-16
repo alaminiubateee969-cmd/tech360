@@ -69,6 +69,16 @@ function fakeClient(messages: Msg[], options: { textFailUid?: number } = {}): Ho
       const m = messages.find((x) => x.uid === uid)
       return { text: m?.text ?? '', html: m?.html ?? '' }
     },
+    // The inbound sync never touches these; they exist so the fake satisfies
+    // the full adapter surface and a sync cannot accidentally call them.
+    async listFolders() { throw new Error('sync must not manage folders') },
+    async getQuota() { throw new Error('sync must not read the quota') },
+    async listMessages() { throw new Error('sync must use searchInbox') },
+    async getMessageAttachment() { throw new Error('sync must not download attachments') },
+    async moveMessage() { throw new Error('sync must not move messages') },
+    async setMessageFlags() { throw new Error('sync must not change flags') },
+    async createFolder() { throw new Error('sync must not create folders') },
+    async listWebhooks() { throw new Error('sync must not manage webhooks') },
   }
 }
 

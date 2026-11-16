@@ -141,7 +141,7 @@ export default function ChatWidget() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [preferredContact, setPreferredContact] = useState<'SMS' | 'Email'>('SMS')
+  const [preferredContact, setPreferredContact] = useState<'CHAT' | 'SMS' | 'Email'>('CHAT')
   const [contactConsent, setContactConsent] = useState(false)
   const [subject, setSubject] = useState('')
   const [initialMsg, setInitialMsg] = useState('')
@@ -587,9 +587,10 @@ export default function ChatWidget() {
             {!showThread && !showClosed && (
               <form onSubmit={startConversation} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
                 <p className="text-sm leading-relaxed text-slate-600">
-                  Welcome to TECH360. Share your email (and a phone number if you prefer SMS) and our team
-                  will reply on the channel you choose to understand the project and prepare a written
-                  proposal. Prefer email? Write to info@bdtech360.com at any time.
+                  Welcome to TECH360. Tell us what you need and our assistant will answer here right away —
+                  no account or email required. Add an email or mobile number only if you would like the
+                  first reply (or formal documents) delivered on that channel. Prefer email? Write to
+                  info@bdtech360.com at any time.
                 </p>
                 <div className="space-y-1">
                   <label htmlFor="chat-name" className="text-xs font-medium text-slate-700">
@@ -609,7 +610,7 @@ export default function ChatWidget() {
                   <label htmlFor="chat-email" className="text-xs font-medium text-slate-700">
                     Email {preferredContact === 'Email'
                       ? <><span className="text-[#EF4444]" aria-hidden="true">*</span><span className="sr-only">(required)</span></>
-                      : <span className="font-normal text-slate-400">(optional for SMS-first — share it now or reply to our follow-up message)</span>}
+                      : <span className="font-normal text-slate-400">(optional for SMS-first and chat replies — you can share it at any time)</span>}
                   </label>
                   <input
                     id="chat-email"
@@ -622,18 +623,23 @@ export default function ChatWidget() {
                     placeholder="you@company.com"
                     className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#009FE3] focus:outline-none focus:ring-2 focus:ring-[#009FE3]/30"
                   />
-                  <p className="text-[11px] leading-relaxed text-slate-500">{preferredContact === 'Email' ? 'Service follow-up uses email. A typed address is contact information only — portal sign-in always requires a one-time code.' : 'If you provide an email now we will use it for follow-up; otherwise our first SMS will ask for it. A typed address is contact information only — portal sign-in always requires a one-time code.'}</p>
+                  <p className="text-[11px] leading-relaxed text-slate-500">{preferredContact === 'Email' ? 'Service follow-up uses email. A typed address is contact information only — portal sign-in always requires a one-time code.' : 'Optional. If you provide an email we will use it for formal documents and follow-up. A typed address is contact information only — portal sign-in always requires a one-time code.'}</p>
                 </div>
                 <fieldset className="space-y-2">
-                  <legend className="text-xs font-medium text-slate-700">First service reply</legend>
-                  <div className="flex gap-2">
-                    {(['SMS', 'Email'] as const).map((method) => (
+                  <legend className="text-xs font-medium text-slate-700">Where should we answer first?</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {(['CHAT', 'SMS', 'Email'] as const).map((method) => (
                       <button key={method} type="button" onClick={() => setPreferredContact(method)} aria-pressed={preferredContact === method}
                         className={`min-h-9 rounded-lg border px-3 text-xs font-semibold ${preferredContact === method ? 'border-[#009FE3] bg-sky-50 text-sky-800' : 'border-slate-300 text-slate-600'}`}>
-                        {method === 'SMS' ? 'SMS first' : 'Email first'}
+                        {method === 'CHAT' ? 'Here in chat' : method === 'SMS' ? 'SMS first' : 'Email first'}
                       </button>
                     ))}
                   </div>
+                  {preferredContact === 'CHAT' && (
+                    <p className="text-[11px] leading-relaxed text-slate-500">
+                      Recommended. Your enquiry is saved with a Client ID immediately and our assistant answers here. Share an email later whenever you want a written proposal copy.
+                    </p>
+                  )}
                   {preferredContact === 'SMS' && (
                     <div className="space-y-1">
                       <label htmlFor="chat-phone" className="text-xs font-medium text-slate-700">Mobile number <span className="text-[#EF4444]" aria-hidden="true">*</span></label>
@@ -682,7 +688,7 @@ export default function ChatWidget() {
                     className="mt-0.5 size-4 shrink-0 accent-[#009FE3]"
                   />
                   <span>
-                    I consent to TECH360 LLC storing this enquiry and using my selected first-reply channel ({preferredContact}) for service-related updates about this request. If I selected SMS, I agree to receive service-related texts at the number provided; message/data rates may apply. No marketing messages without separate opt-in. See the{" "}
+                    I consent to TECH360 LLC storing this enquiry under a Client ID and replying on my selected first-reply channel ({preferredContact === 'CHAT' ? 'this chat' : preferredContact}) for service-related updates about this request. If I selected SMS, I agree to receive service-related texts at the number provided; message/data rates may apply. No marketing messages without separate opt-in. See the{" "}
                     <a href="/legal/privacy" className="font-semibold underline underline-offset-2">Privacy Policy</a>.
                   </span>
                 </label>
@@ -698,7 +704,7 @@ export default function ChatWidget() {
                 )}
                 <button
                   type="submit"
-                  disabled={busy || !contactConsent || (preferredContact === 'Email' && !email.trim()) || (preferredContact === 'SMS' && !phone.trim())}
+                  disabled={busy || !contactConsent || (preferredContact === 'Email' && !email.trim()) || (preferredContact === 'SMS' && !phone.trim()) || initialMsg.trim().length < 1}
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white shadow transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3]/50 focus-visible:ring-offset-2 disabled:opacity-60"
                   style={{ background: 'linear-gradient(135deg, #009FE3 0%, #063B8F 100%)' }}
                 >

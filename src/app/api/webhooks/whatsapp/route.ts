@@ -122,9 +122,38 @@ export async function POST(req: NextRequest) {
                 await logError({ source: 'WEBHOOK', code: 'WA_REPLY_FAILED', message: 'WhatsApp reply failed or has an uncertain outcome; review before sending again.', clientId: existing.clientId, workflow: 'WHATSAPP_REPLY' }).catch(() => null)
               }
             } else {
-              const result = await intakeLead({ source: 'WHATSAPP', name: name || 'WhatsApp Contact', whatsapp: phone, message: `WhatsApp first message: ${text}`, providerMessageId: m.id, verifiedIdentities: [proof] })
+              // First signed message: create the prospect Client ID. The reply is
+              // suppressed inside intakeLead because the customer is already
+              // here, in the open service window — the orchestrator below sends
+              // the single first answer.
+              const result = await intakeLead({
+                source: 'WHATSAPP',
+                name: name || 'WhatsApp Contact',
+                whatsapp: phone,
+                preferredContact: 'WHATSAPP',
+                message: `WhatsApp first message: ${text}`,
+                providerMessageId: m.id,
+                verifiedIdentities: [proof],
+                suppressWelcome: true,
+              })
               clientRowId = result.clientRowId
               await audit({ actor: 'webhook:WHATSAPP', action: 'NEW_LEAD_FROM_WHATSAPP', clientId: result.clientId, ip })
+              // Answer the FIRST message too. Previously only returning contacts
+              // received a reply, so a brand-new WhatsApp customer got silence.
+              const created = await Promise.resolve()
+                .then(() => db.client.findUnique({ where: { id: result.clientRowId } }))
+                .catch(() => null)
+              if (created) {
+                try {
+                  await handleWhatsAppReply({ client: created, phone, text, providerMessageId: m.id })
+                } catch {
+                  await logError({ source: 'WEBHOOK', code: 'WA_REPLY_FAILED', message: 'WhatsApp first reply failed or has an uncertain outcome; review before sending again.', clientId: result.clientId, workflow: 'WHATSAPP_REPLY' }).catch(() => null)
+                }
+              } else {
+                // The lead was created but could not be re-read. The message is
+                // still stored; surface it instead of dropping the customer.
+                await logError({ source: 'WEBHOOK', code: 'WA_FIRST_REPLY_SKIPPED', message: 'New WhatsApp lead stored but the first reply could not be prepared because the client record could not be read.', clientId: result.clientId, workflow: 'WHATSAPP_REPLY' }).catch(() => null)
+              }
             }
             if (!(await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: clientRowId }))) failed = true
           } catch (error) {

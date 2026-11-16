@@ -4,7 +4,7 @@ import { toE164 } from '@/lib/phone'
 import { DEAD_LETTER, backoffMs, decideRetry, scheduleAfterFailure } from '@/lib/outbox-retry'
 import { classifyOutbound } from '@/lib/governance/outbound'
 import { HOSTINGER_MAIL_ENV, readHostingerMailConfig } from '@/lib/mail/hostinger-config'
-import { createHostingerMailClient, sendHostingerEmail } from '@/lib/mail/hostinger-mail'
+import { createHostingerMailClient, sendHostingerEmail, type HostingerThreadRef } from '@/lib/mail/hostinger-mail'
 import { outboundPlainText } from '@/lib/mail/hostinger-inbound-policy'
 
 // ============================================================
@@ -120,7 +120,12 @@ export function isHostingerMailSelected(): boolean {
  * The result is PROVIDER ACCEPTANCE (HTTP 204). Hostinger returns no message
  * id and no delivery confirmation, so this function never reports delivery.
  */
-async function sendEmailViaHostinger(to: string, subject: string, bodyHtml: string): Promise<SendResult> {
+async function sendEmailViaHostinger(
+  to: string,
+  subject: string,
+  bodyHtml: string,
+  thread?: HostingerThreadRef,
+): Promise<SendResult> {
   const status = readHostingerMailConfig()
   if (status.state !== 'CONFIGURED') {
     const reason = status.state === 'INVALID'
@@ -131,7 +136,7 @@ async function sendEmailViaHostinger(to: string, subject: string, bodyHtml: stri
   const html = wrapEmailHtml(subject, bodyHtml)
   const text = `${subject}\n\n${outboundPlainText(bodyHtml)}\n\n${COMPANY.email}`
   const result = await sendHostingerEmail(
-    { to, subject, html, text },
+    { to, subject, html, text, ...(thread ? { inReplyTo: thread } : {}) },
     { client: createHostingerMailClient(status.config), displayName: 'Tech360' },
   )
   return {
@@ -202,7 +207,14 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
 // path calls it directly so a retry updates the ORIGINAL row instead of
 // inserting a duplicate.
 // ------------------------------------------------------------
-export async function dispatchChannel(entry: { channel: string; to?: string; subject?: string; body: string }): Promise<SendResult> {
+export async function dispatchChannel(entry: {
+  channel: string
+  to?: string
+  subject?: string
+  body: string
+  /** Reply into an existing mailbox thread (provider UID + folder). */
+  thread?: HostingerThreadRef
+}): Promise<SendResult> {
   switch (entry.channel) {
     case 'WHATSAPP':
       return sendWhatsApp(entry.to ?? '', entry.body)
@@ -211,7 +223,7 @@ export async function dispatchChannel(entry: { channel: string; to?: string; sub
       // HOSTINGER_MAIL_ENABLED=true selects the Hostinger Mail API exclusively.
       // An enabled but invalid configuration refuses the send; it never falls
       // back silently to SMTP.
-      if (isHostingerMailSelected()) return sendEmailViaHostinger(entry.to ?? '', subject, entry.body)
+      if (isHostingerMailSelected()) return sendEmailViaHostinger(entry.to ?? '', subject, entry.body, entry.thread)
       return sendEmail(entry.to ?? '', subject, wrapEmailHtml(subject, entry.body))
     }
     case 'SMS':
@@ -249,6 +261,8 @@ export async function sendCommunication(entry: {
   storedBody?: string
   /** Extra JSON stored on the Communication row (e.g. the plain-text copy of an HTML email body). */
   metadata?: string
+  /** Reply into an existing mailbox thread so the customer sees one conversation. */
+  thread?: HostingerThreadRef
 }): Promise<{ communicationId: string; result: SendResult }> {
   const { redactSensitiveCrmData } = await import('@/lib/sensitive-redaction')
   const safeStoredBody = redactSensitiveCrmData(entry.storedBody ?? entry.body).text.slice(0, 20000)
@@ -526,7 +540,22 @@ export function wrapEmailHtml(subject: string, bodyHtml: string): string {
   </td></tr></table></body></html>`
 }
 
-export function escapeHtml(s: string): string {
+/**
+ * HTML-escape any value. Structured values (a 21-section SOW can hold objects
+ * or arrays inside an item) previously crashed with "s.replace is not a
+ * function", which broke HTML preview generation for real scopes.
+ */
+export function escapeHtml(value: unknown): string {
+  let s: string
+  if (typeof value === 'string') s = value
+  else if (value === null || value === undefined) s = ''
+  else if (typeof value === 'number' || typeof value === 'boolean') s = String(value)
+  else if (Array.isArray(value)) s = value.map((item) => escapeHtml(item)).join(', ')
+  else if (typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    const preferred = record.name ?? record.title ?? record.label ?? record.description ?? record.detail
+    s = preferred !== undefined ? escapeHtml(preferred) : JSON.stringify(record)
+  } else s = String(value)
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c))
 }
 

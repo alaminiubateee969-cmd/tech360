@@ -525,6 +525,7 @@ Produce your reply now:`
       const result = await runAgent(code, {
         input: prompt.slice(0, 24000),
         clientId: input.context.id,
+        actingForClientId: input.context.id,
         workflow: 'CHAT_ONE_QA',
       })
       if (result.ok && result.output) {
