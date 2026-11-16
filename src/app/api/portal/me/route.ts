@@ -13,6 +13,13 @@ import { PIPELINE_STAGES } from '@/lib/constants'
 import { formatScopeForClient } from '@/lib/journey'
 import { paymentStatusLabel } from '@/lib/payment-policy'
 import { audit, clientIp, rateLimit, readJson, sanitizeText } from '@/lib/security'
+import {
+  canReadDocument,
+  listEmailDestinations,
+  listGeneratedDocuments,
+  listSentEmailDocumentArchives,
+  type DocumentRecord,
+} from '@/lib/document-storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,6 +78,33 @@ export async function GET(req: NextRequest) {
     take: 50,
     select: { id: true, originalName: true, mimeType: true, size: true, note: true, scanStatus: true, relatedType: true, classification: true, createdAt: true },
   })
+
+  // Official generated documents — strictly filtered by canReadDocument for CLIENT role
+  // so internal DRAFT or REJECTED documents or other tenants' records are never exposed.
+  const allClientDocs = await listGeneratedDocuments({ clientPublicId: client.clientId })
+  const officialDocuments = allClientDocs
+    .filter((d) =>
+      canReadDocument(
+        { role: 'CLIENT' },
+        { ...d, createdAt: new Date(d.createdAt), updatedAt: new Date(d.updatedAt) } as DocumentRecord,
+        { clientPublicId: client.clientId },
+      ),
+    )
+    .map((d) => ({
+      documentId: d.documentId,
+      documentType: d.documentType,
+      version: d.version,
+      title: d.title,
+      approvalStatus: d.approvalStatus,
+      finalizationStatus: d.finalizationStatus,
+      sha256: d.sha256,
+      createdAt: d.createdAt,
+    }))
+
+  const [sentDocumentArchives, emailDestinations] = await Promise.all([
+    listSentEmailDocumentArchives({ clientPublicId: client.clientId }),
+    listEmailDestinations({ clientPublicId: client.clientId, onlyActiveAuthorized: true }),
+  ])
 
   const activityHistory = await db.auditLog.findMany({
     where: {
@@ -214,6 +248,25 @@ export async function GET(req: NextRequest) {
       action: a.action,
       entityType: a.entityType,
       at: a.createdAt,
+    })),
+    officialDocuments,
+    sentDocumentArchives: sentDocumentArchives.map((a) => ({
+      id: a.id,
+      subject: a.subject,
+      documentId: a.documentId,
+      documentVersion: a.documentVersion,
+      documentSha256: a.documentSha256,
+      portalFileRecordId: a.portalFileRecordId,
+      recipientEmail: a.recipientEmail,
+      sentAt: a.sentAt,
+      deliveryStatus: a.deliveryStatus,
+    })),
+    emailDestinations: emailDestinations.map((d) => ({
+      id: d.id,
+      recipientName: d.recipientName,
+      email: d.email,
+      purpose: d.purpose,
+      verified: d.verified,
     })),
     policy: {
       previewBeforePayment: true,

@@ -1807,7 +1807,7 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
                         id="reg-details"
                         value={regDetails}
                         onChange={(e) => setRegDetails(e.target.value)}
-                        placeholder="Describe your software, website, CRM, or AI project requirements (at least 15 characters)…"
+                        placeholder="Describe your software, website, CRM, or workflow automation project requirements (at least 15 characters)…"
                         className="min-h-20"
                         required
                       />

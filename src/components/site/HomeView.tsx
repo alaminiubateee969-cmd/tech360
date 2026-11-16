@@ -100,8 +100,8 @@ const HERO_3D_LAYERS = [
   },
   {
     code: "LAYER 03",
-    title: "Governed AI Agent Workforce",
-    detail: "44 specialized agents across 110 departments with human approval gates.",
+    title: "Automated Workflow & Quality Verification",
+    detail: "44 specialized operational workflows across 110 departments with human approval gates.",
     accent: "from-[#009FE3]/30 to-[#18B83A]/25 border-[#5AE07A]/35",
     depth: 14,
   },
@@ -116,7 +116,7 @@ const HERO_3D_LAYERS = [
 
 const HERO_ECOSYSTEM_PRODUCTS = [
   { name: "TECH360 CRM", tag: "20-Stage Pipeline", accent: "border-[#009FE3]/50 bg-[#0066CC]/25 text-[#9BEBFF]" },
-  { name: "TECH360 AgentOS", tag: "44 Governed Agents", accent: "border-[#FFB347]/50 bg-[#E8501A]/25 text-[#FFD38A]" },
+  { name: "TECH360 Operations", tag: "44 Governed Workflows", accent: "border-[#FFB347]/50 bg-[#E8501A]/25 text-[#FFD38A]" },
   { name: "TECH360 Flow", tag: "Workflow Automation", accent: "border-[#5AE07A]/45 bg-[#18B83A]/20 text-[#86F2A1]" },
   { name: "TECH360 Client Hub", tag: "Portal & Handover", accent: "border-[#7FD4FF]/45 bg-[#07152B]/70 text-white" },
   { name: "TECH360 Intelligence", tag: "Analytics & Audit", accent: "border-[#009FE3]/40 bg-[#063B8F]/35 text-[#B8E8FF]" },
@@ -203,7 +203,7 @@ function Hero3dArchitectureShowcase() {
                 Connected Global Infrastructure
               </p>
               <p className="mt-0.5 text-xs font-semibold text-white">
-                Unified Identity · Multi-Channel Intake · Governed AI Execution
+                Unified Identity · Multi-Channel Intake · Governed Workflow Execution
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {HERO_ECOSYSTEM_PRODUCTS.map((prod) => (
