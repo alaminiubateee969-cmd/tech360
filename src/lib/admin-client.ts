@@ -1006,10 +1006,20 @@ export interface N8nResponse { workflows?: N8nWorkflowRow[] }
 
 export interface HealthResponse {
   status?: string | null
-  db?: boolean | string | null
-  agents?: number | null
-  channels?: Record<string, boolean | string> | null
+  app?: string | null
+  timestamp?: string | null
   version?: string | null
+  release?: { commit?: string | null; sourceState?: string | null } | null
+  uptimeSeconds?: number | null
+  channels?: Record<string, boolean | string> | null
+  checks?: {
+    database?: { status?: string | null; detail?: string | null } | null
+    modelService?: { status?: string | null; detail?: string | null } | null
+    localModels?: { status?: string | null; detail?: string | null } | null
+    registries?: { status?: string | null; detail?: string | null } | null
+    taskQueue?: { status?: string | null; detail?: string | null } | null
+    knowledgeCorpus?: { status?: string | null; detail?: string | null } | null
+  } | null
 }
 
 // ------------------------------------------------------------
