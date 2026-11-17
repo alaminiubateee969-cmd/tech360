@@ -1,7 +1,7 @@
 "use client";
 
 import { SectionHeading } from "./SectionHeading";
-import { AIAssistantLink, PrimaryLink } from "./buttons";
+import { LiveSupportLink, PrimaryLink } from "./buttons";
 
 /**
  * Closing call-to-action band used across views: deep gradient,
@@ -37,7 +37,7 @@ export function CtaBand({
         />
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <PrimaryLink href={primaryHref}>{primaryLabel}</PrimaryLink>
-          <AIAssistantLink />
+          <LiveSupportLink />
         </div>
         <p className="mt-6 text-xs text-white/50">
           Every engagement is on-record: Client ID, written scope, verified payments, full handover.
