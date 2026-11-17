@@ -57,6 +57,10 @@ At the 2026-11-17 live probe:
 
 The last point violates the internal visibility policy. The review branch changes the contract so public `/api/health` reports only application/version, release identity and database UP/DOWN; detailed provider, channel and subsystem diagnostics are served from Super Admin-protected `/api/health/deep`. The Super Admin Settings view is updated to use the protected endpoint. This fix is **pending CI, review, merge and deployment**.
 
+## Dependency security gate
+
+The latest PR CI run `44149470204` for head `00896d0b5940081621086548e5756ece9b250634` **failed** at `Audit npm dependencies (full and production)`. It reported **12 findings (1 moderate, 11 high)**. The lockfile resolves Next.js `16.4.3`, which is affected through `16.4.4` and fixed in `16.4.5+`; it also resolves picomatch `4.0.7`, affected by GHSA-fc5q-39xc-vjpf. The picomatch advisory did not state a patched release as of 2026-11-17. Typecheck, full tests and the production build were not reached in that CI run. The branch must remain draft until the dependency tree is remediated or an explicitly approved, narrowly scoped risk exception is recorded; no audit suppression has been added.
+
 ## Changes in the review branch
 
 1. Minimise public health output and keep detailed health diagnostics behind the Super Admin guard.
@@ -65,8 +69,9 @@ The last point violates the internal visibility policy. The review branch change
 4. Remove internal Company-in-a-Box naming and internal workflow counts from public-facing home, platform, navigation, metadata, structured data and `llms.txt` copy. Customer-facing service capabilities remain visible.
 5. Present public chat as Live Support; remove visible AI-assistant status, reply and error wording.
 6. Replace internal admin/CRM dashboard screenshots in the public showcase with customer-facing portal and CRM solution visuals.
-7. Expand Marketing Agencies and Digital Transformation Consulting sector content using the supplied source file, without creating duplicate service routes or changing the 20-industry/21-service catalogue.
-8. Update the Operations Guidebook and add an image/static-asset recovery runbook.
+7. Expand Education with recruitment-to-visa casework, secure documents and B2B partner portals; expand Marketing Agencies and Digital Transformation Consulting using the supplied source file, without creating duplicate service routes or changing the 20-industry/21-service catalogue.
+8. Fix industry detail recommendation cards to use the matching service visual rather than repeating the industry hero image.
+9. Update the Operations Guidebook and add image/static-asset and dependency-security runbooks.
 
 ## Open work â€” do not mark complete
 
@@ -103,4 +108,4 @@ See [OPERATIONS_GUIDEBOOK.md](OPERATIONS_GUIDEBOOK.md), including **Appendix A â
 
 ## Release verdict
 
-**Not production-ready / not 100% complete.** The current branch contains targeted source and documentation improvements, but no CI result, merge, production deployment, authenticated portal acceptance, production database acceptance or restore-drill evidence has yet been obtained.
+**Not production-ready / not 100% complete.** The latest CI run failed at the dependency security gate; typecheck, full tests and build remain unverified for this branch. No merge, production deployment, authenticated portal acceptance, production database acceptance or restore-drill evidence has been obtained.
