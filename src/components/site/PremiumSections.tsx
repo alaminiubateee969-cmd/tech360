@@ -328,18 +328,18 @@ export function HowItWorks() {
 
 /* ---------------- Features (§9) ---------------- */
 const FEATURES = [
-  { icon: Workflow, title: "Workflow orchestration", text: "Multi-step automations with retries, scheduling and failure alerts — so processes finish even when a step hiccups.", why: "Why it matters: fewer dropped tasks and hand-offs." },
-  { icon: Bot, title: "AI-assisted task management", text: "Assistants prepare drafts, summaries and next actions inside your existing queues, ready for human approval.", why: "Why it matters: people review and decide, not copy-paste." },
-  { icon: Link2, title: "Integration management", text: "Connected accounts and webhooks with visible status, so a broken link is found before your customers notice.", why: "Why it matters: no silent integration failures." },
-  { icon: BarChart3, title: "Analytics and reporting", text: "Operational dashboards and scheduled reports reconciled from one source of truth.", why: "Why it matters: meetings start from agreed numbers." },
-  { icon: Lock, title: "Role-based access control", text: "Super Admin, Admin, staff and client roles see only what their work requires.", why: "Why it matters: least-privilege access by default." },
-  { icon: ScrollText, title: "Activity monitoring & audit trails", text: "Who did what, when — across approvals, publishing, payments and automations.", why: "Why it matters: every action is accountable and reviewable." },
+  { icon: Workflow, title: "Workflow orchestration", text: "Multi-step business automations with retries, scheduling and failure handling, designed around your existing processes.", why: "Why it matters: fewer dropped tasks and manual hand-offs." },
+  { icon: Bot, title: "AI-enabled business workflows", text: "AI capabilities can prepare drafts, summaries and suggested next actions inside your business systems, with human review for important decisions.", why: "Why it matters: teams spend less time on repetitive preparation." },
+  { icon: Link2, title: "API and integration engineering", text: "Connect business applications through documented APIs, webhooks and validated data flows.", why: "Why it matters: fewer disconnected systems and duplicate records." },
+  { icon: BarChart3, title: "Analytics and reporting", text: "Operational dashboards and scheduled reports built around agreed business measures.", why: "Why it matters: teams work from consistent information." },
+  { icon: Lock, title: "Role-based access control", text: "Business owners, administrators, team members and clients receive access appropriate to their responsibilities.", why: "Why it matters: sensitive information stays appropriately restricted." },
+  { icon: ScrollText, title: "Activity monitoring & audit trails", text: "Record important approvals, publishing actions, payments and workflow changes for review.", why: "Why it matters: important actions remain accountable." },
 ];
 export function FeaturesGrid() {
   return (
     <section aria-labelledby="features-h" className="bg-[#F7FAFC]">
       <div className={wrap}>
-        <SectionHeading id="features-h" eyebrow="Platform features" title="Built-In Controls, Not Bolted-On Promises" description="Every feature below is implemented in the production platform and exercised daily — not a roadmap slide." />
+        <SectionHeading id="features-h" eyebrow="Engineering capabilities" title="Governance and Reliability Built Into the Design" description="These capabilities can be designed into the solution and verified against the requirements and acceptance criteria agreed for each engagement." />
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
             <Reveal key={f.title}>
@@ -367,9 +367,9 @@ export function DashboardShowcase() {
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <Reveal>
             <div>
-              <SectionHeading id="showcase-h" align="left" eyebrow="Product showcase" title="The Console Your Team Actually Runs On" description="The administrative console and client portal are real, role-based applications — leads, projects, approvals, content, marketing and reporting in one place. Previews below are interface illustrations of the shipped product, with no customer data." />
+              <SectionHeading id="showcase-h" align="left" eyebrow="Solution examples" title="A Clearer View of Your Business Operations" description="Illustrative interface concepts show how client portals, CRM workflows, automation and reporting can fit together. Actual features and integrations are confirmed in each project's written scope." />
               <ul className="mt-6 space-y-2.5">
-                {["Lead-to-invoice pipeline with stage history", "Approval queues for content, publishing and payments", "Marketing dashboard: idea → draft → approve → publish", "Knowledge, memory and activity audit built in"].map((c) => (
+                {["Customer and project records connected in one workflow", "Milestone, approval and delivery visibility", "Secure document sharing and client access", "Dashboards for operational and commercial reporting"].map((c) => (
                   <li key={c} className="flex gap-2 text-sm text-[#33475B]"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#18B83A]" aria-hidden="true" />{c}</li>
                 ))}
               </ul>
@@ -381,8 +381,8 @@ export function DashboardShowcase() {
           </Reveal>
           <Reveal>
             <div className="grid gap-4">
-              <img src="/images/admin-dashboard.png" alt="Illustrative preview of the Tech360 administrative dashboard interface" loading="lazy" decoding="async" width={1344} height={768} sizes="(max-width: 1023px) 100vw, 50vw" className="w-full rounded-2xl border border-[#E2E8F0] shadow-[0_18px_44px_rgba(11,31,51,0.12)]" />
-              <img src="/images/crm-dashboard.png" alt="Illustrative preview of the Tech360 CRM console interface" loading="lazy" decoding="async" width={1344} height={768} sizes="(max-width: 1023px) 100vw, 50vw" className="w-full rounded-2xl border border-[#E2E8F0] shadow-[0_18px_44px_rgba(11,31,51,0.12)]" />
+              <img src="/images/platform/platform-client-portal.webp" alt="Illustrative client portal experience showing project milestones and shared documents" loading="lazy" decoding="async" width={1600} height={1000} sizes="(max-width: 1023px) 100vw, 50vw" className="w-full rounded-2xl border border-[#E2E8F0] shadow-[0_18px_44px_rgba(11,31,51,0.12)]" />
+              <img src="/images/platform/platform-crm-operations.webp" alt="Illustrative CRM and business operations workflow interface" loading="lazy" decoding="async" width={1600} height={1000} sizes="(max-width: 1023px) 100vw, 50vw" className="w-full rounded-2xl border border-[#E2E8F0] shadow-[0_18px_44px_rgba(11,31,51,0.12)]" />
             </div>
           </Reveal>
         </div>
@@ -404,7 +404,7 @@ export function IntegrationsGrid() {
   return (
     <section aria-labelledby="integrations-h" className="bg-[#F7FAFC]">
       <div className={wrap}>
-        <SectionHeading id="integrations-h" eyebrow="Integrations" title="Connect the Tools Your Business Already Uses" description="Honest status labels: nothing here is claimed 'connected' until your accounts are linked and verified. Configuration happens inside your admin dashboard, with credentials stored securely on your host." />
+        <SectionHeading id="integrations-h" eyebrow="Integrations" title="Connect the Tools Your Business Already Uses" description="Provider availability and account permissions are checked before an integration is represented as connected. Credentials are handled through approved secure access processes." />
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {INTEGRATIONS.map((g) => (
             <Reveal key={g.cat}>
