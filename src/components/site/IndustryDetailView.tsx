@@ -16,7 +16,7 @@ import { ImageView } from "./ImageView";
 import { Icon } from "./icons";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
-import { PrimaryLink, AIAssistantLink } from "./buttons";
+import { PrimaryLink, LiveSupportLink } from "./buttons";
 
 export default function IndustryDetailView({ slug }: { slug: string }) {
   const industry = getIndustry(slug);
@@ -275,7 +275,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
                   Start Your Project
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </PrimaryLink>
-                <AIAssistantLink />
+                <LiveSupportLink />
               </div>
             </div>
           </Reveal>
