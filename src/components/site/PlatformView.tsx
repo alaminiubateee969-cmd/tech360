@@ -226,7 +226,7 @@ export default function PlatformView() {
 
               <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/15 pt-4">
                 <span className="text-xs text-white/65">
-                  Shared foundation: Scrypt Auth · 12-Role RBAC · AuditLog · Tenant Isolation
+                  Engineering principles: secure authentication · least-privilege roles · audit trails · tenant isolation
                 </span>
                 <LinkArrow href={activeProduct.href}>
                   Explore {activeProduct.name}
