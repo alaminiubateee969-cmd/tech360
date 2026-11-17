@@ -24,7 +24,22 @@ import {
 } from 'lucide-react'
 
 type PortalData = {
-  client: { clientId: string; name: string; businessName: string | null; businessType: string | null; stage: string; stageLabel: string; progressPct: number }
+  client: {
+    clientId: string
+    name: string
+    businessName: string | null
+    businessType: string | null
+    email?: string | null
+    phone?: string | null
+    whatsapp?: string | null
+    preferredContact?: string | null
+    country?: string | null
+    city?: string | null
+    timezone?: string | null
+    stage: string
+    stageLabel: string
+    progressPct: number
+  }
   project: { code: string; name: string; status: string; totalAmount: number; paidAmount: number; currency: string; paymentStatus: string; startedAt: string | null; timelineWeeks: number | null; tasks: Array<{ title: string; status: string }>; taskProgress: number | null } | null
   scope: { version: number; approvedAt: string | null; text: string } | null
   preview: { link: string; status: string; version: number } | null
@@ -34,12 +49,13 @@ type PortalData = {
   handover: { status: string; downloadLink: string | null; confirmLink: string | null; passwordChangeRequested: boolean; passwordChangeConfirmed: boolean } | null
   delivery: { status: string; confirmedAt: string | null } | null
   paymentReadiness?: { configured: boolean; status: 'ACTIVE' | 'NOT_CONFIGURED' | 'DISABLED'; message: string; stripeReady: boolean }
-  payments: Array<{ id?: string; milestone: string | null; amount: number; currency: string; status: string; verifiedAt: string | null; receiptAvailable?: boolean; receiptNumber?: string | null }>
+  payments: Array<{ id?: string; milestone: string | null; amount: number; currency: string; status: string; statusLabel?: string; proofSubmitted?: boolean; verifiedAt: string | null; receiptAvailable?: boolean; receiptNumber?: string | null }>
   invoices: Array<{ number: string; amount: number; remainingAmount?: number; currency: string; status: string; payable?: boolean; dueAt?: string | null; notes: string | null }>
   communications: Array<{ channel: string; direction: string; subject: string | null; preview: string; status: string; at: string }>
   meetings: Array<{ id: string; status: string; scheduledAt: string | null; reason: string | null; channel: string | null; bookingLink: string | null; notes: string | null; clientResponse: string | null; clientRespondedAt: string | null }>
   documents: Array<{ id: string; name: string; mimeType: string; size: number; note: string | null; scanStatus: string; direction: string; classification: string; at: string }>
-  policy: { previewBeforePayment: boolean; sourceAfterFullPayment: boolean; supportContact: string; whatsapp: string }
+  activityHistory?: Array<{ id: string; action: string; entityType: string | null; at: string }>
+  policy: { previewBeforePayment: boolean; sourceAfterFullPayment: boolean; supportContact: string; whatsapp?: string }
 }
 
 const STAGE_LABELS_SHORT: Record<string, string> = {
@@ -209,6 +225,19 @@ export default function PortalView() {
                   <div><p className="text-xl font-bold text-[#18B83A]">{fmtMoney(data.project.paidAmount, data.project.currency)}</p><p className="text-xs text-slate-500">Paid & verified</p></div>
                   <div><p className="text-xl font-bold text-[#063B8F]">{data.project.paymentStatus}</p><p className="text-xs text-slate-500">Payment status</p></div>
                 </div>
+                {data.project.tasks && data.project.tasks.length > 0 ? (
+                  <div className="mt-4 border-t border-[#E2E8F0] pt-4">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Project Milestones &amp; Tasks</p>
+                    <ul className="space-y-1.5">
+                      {data.project.tasks.map((task, idx) => (
+                        <li key={idx} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-xs">
+                          <span className="font-medium text-[#0B1F33]">{task.title}</span>
+                          <Badge variant={statusTone(task.status)} className="capitalize">{task.status.replace(/_/g, ' ').toLowerCase()}</Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <EmptyLine text="Your project is created after preview approval and payment verification — you will see it here the moment it starts." />
@@ -218,12 +247,23 @@ export default function PortalView() {
           {/* Scope */}
           <SectionCard icon={<FileText className="h-5 w-5" />} title={data.scope ? `Final Scope of Work (v${data.scope.version})` : 'Scope of Work'}>
             {data.scope ? (
-              <details className="group">
-                <summary className="cursor-pointer list-none text-sm font-medium text-[#009FE3] hover:text-[#063B8F]">
-                  <span className="inline-flex items-center gap-1">View the full approved document <ArrowRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" /></span>
-                </summary>
-                <pre className="mt-4 whitespace-pre-wrap rounded-xl bg-[#F4FAFF] p-4 font-sans text-[13px] leading-relaxed text-slate-700">{data.scope.text}</pre>
-              </details>
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                  <span>Document version v{data.scope.version}</span>
+                  {data.scope.approvedAt ? (
+                    <Badge variant="default" className="bg-[#18B83A] text-white">Approved {fmtDate(data.scope.approvedAt)}</Badge>
+                  ) : (
+                    <Badge variant="secondary">Awaiting client review</Badge>
+                  )}
+                </div>
+                <details className="group">
+                  <summary className="cursor-pointer list-none text-sm font-medium text-[#009FE3] hover:text-[#063B8F]">
+                    <span className="inline-flex items-center gap-1">View the full approved document <ArrowRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" /></span>
+                  </summary>
+                  <pre className="mt-4 whitespace-pre-wrap rounded-xl bg-[#F4FAFF] p-4 font-sans text-[13px] leading-relaxed text-slate-700">{data.scope.text}</pre>
+                </details>
+                <ScopeFeedbackPanel approvedAt={data.scope.approvedAt} onDone={load} />
+              </div>
             ) : (
               <EmptyLine text="Your final scope appears here once drafted and approved. Nothing is signed or paid before you approve it in writing." />
             )}
@@ -266,6 +306,12 @@ export default function PortalView() {
                 <p className="mt-3 text-xs text-slate-400">Official receipts are generated only after server-verified settlement — never for pending, failed, or refunded entries.</p>
               </div>
             ) : <EmptyLine text="No payments recorded yet. Payment milestones appear here after you approve your preview." />}
+            <PaymentProofSubmitPanel
+              payments={data.payments}
+              invoices={data.invoices}
+              documents={data.documents}
+              onDone={load}
+            />
           </SectionCard>
 
           {/* Invoices — per-invoice payment allocation, Pay Now only when Stripe is actively configured */}
@@ -276,9 +322,10 @@ export default function PortalView() {
           />
 
           {/* Communications */}
-          <SectionCard icon={<MessageSquare className="h-5 w-5" />} title="Our communication history">
+          <SectionCard icon={<MessageSquare className="h-5 w-5" />} title="Support Tickets & Communication History">
+            <SupportTicketForm onDone={load} />
             {data.communications.length > 0 ? (
-              <ul className="max-h-80 space-y-3 overflow-y-auto pr-1">
+              <ul className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
                 {data.communications.map((c, i) => (
                   <li key={i} className="flex gap-3 rounded-xl border border-[#E2E8F0] bg-white p-3">
                     <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${c.direction === 'IN' ? 'bg-[#063B8F]/10 text-[#063B8F]' : 'bg-[#18B83A]/10 text-[#116b26]'}`}>
@@ -358,11 +405,13 @@ export default function PortalView() {
           </Card>
 
           {/* Review + referral feedback (right rail keeps both columns balanced) */}
+          <ProfileSettingsCard client={data.client} onDone={load} />
           <ReviewCard review={data.review} stage={data.client.stage} onDone={load} />
           <ReferralCard referral={data.referral} onDone={load} />
 
           {/* Meetings — schedule + responses */}
           <MeetingsCard meetings={data.meetings} onDone={load} />
+          <ActivityHistoryCard items={data.activityHistory ?? []} />
         </div>
       </div>
     </div>
@@ -1068,8 +1117,511 @@ function EmptyLine({ text }: { text: string }) {
   return <p className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-500">{text}</p>
 }
 
+// ---------------- Scope approval & revision feedback ----------------
+function ScopeFeedbackPanel({ approvedAt, onDone }: { approvedAt: string | null; onDone: () => void }) {
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function submitDecision(decision: 'APPROVE' | 'REQUEST_CHANGES') {
+    if (decision === 'REQUEST_CHANGES' && notes.trim().length < 5) {
+      toast.error('Please enter your requested scope revisions (at least 5 characters).')
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/portal/me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'scope_feedback', decision, notes: notes.trim() }),
+      })
+      const j = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+      if (!res.ok) toast.error(j.error ?? 'Could not record scope response.')
+      else {
+        toast.success(j.message ?? 'Scope response recorded.')
+        setNotes('')
+        onDone()
+      }
+    } catch {
+      toast.error('Connection problem. Please retry.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5">
+      <p className="text-xs font-semibold text-[#0B1F33]">
+        {approvedAt ? 'Need an addendum or revision note?' : 'Review & confirm your written Scope of Work'}
+      </p>
+      <Textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        maxLength={2000}
+        placeholder={approvedAt ? 'Add a scope addendum or revision question for your project team…' : 'Optional approval note or list any requested scope changes…'}
+        className="mt-2 min-h-16 bg-white text-xs"
+      />
+      <div className="mt-2.5 flex flex-wrap gap-2">
+        {!approvedAt ? (
+          <Button
+            size="sm"
+            disabled={busy}
+            onClick={() => void submitDecision('APPROVE')}
+            className="h-8 gap-1.5 bg-[#18B83A] text-xs font-semibold text-white hover:bg-[#116b26]"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Approve Written Scope
+          </Button>
+        ) : null}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={() => void submitDecision('REQUEST_CHANGES')}
+          className="h-8 border-[#063B8F]/30 text-xs text-[#063B8F] hover:bg-[#063B8F]/5"
+        >
+          Request Scope Revision
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// ---------------- Manual payment proof submission ----------------
+function PaymentProofSubmitPanel({
+  payments,
+  invoices,
+  documents,
+  onDone,
+}: {
+  payments: PortalData['payments']
+  invoices: PortalData['invoices']
+  documents: PortalData['documents']
+  onDone: () => void
+}) {
+  const pendingPayments = payments.filter((p) => p.id && ['PENDING', 'SUBMITTED'].includes(p.status))
+  const payableInvoices = invoices.filter((inv) => inv.payable && inv.status !== 'PAID')
+  const [open, setOpen] = useState(false)
+  const [targetInvoice, setTargetInvoice] = useState(payableInvoices[0]?.number ?? '')
+  const [targetPaymentId, setTargetPaymentId] = useState(pendingPayments[0]?.id ?? '')
+  const [method, setMethod] = useState('BANK_TRANSFER')
+  const [transactionId, setTransactionId] = useState('')
+  const [proofFileId, setProofFileId] = useState('')
+  const [notes, setNotes] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  if (pendingPayments.length === 0 && payableInvoices.length === 0) return null
+
+  async function submitProof(e: React.FormEvent) {
+    e.preventDefault()
+    if (!transactionId.trim() && !proofFileId) {
+      toast.error('Enter your payment transaction/reference ID or attach an uploaded receipt file.')
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/portal/payments/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentId: targetPaymentId || undefined,
+          invoiceNumber: !targetPaymentId ? targetInvoice || undefined : undefined,
+          method,
+          transactionId: transactionId.trim(),
+          proofFileId: proofFileId || undefined,
+          notes: notes.trim(),
+        }),
+      })
+      const j = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+      if (!res.ok) toast.error(j.error ?? 'Could not submit payment proof.')
+      else {
+        toast.success(j.message ?? 'Payment proof submitted for verification.')
+        setTransactionId('')
+        setNotes('')
+        setOpen(false)
+        onDone()
+      }
+    } catch {
+      toast.error('Connection problem. Please retry.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold text-[#0B1F33]">Paid by Bank Transfer, bKash, or Nagad?</p>
+          <p className="text-[11px] text-slate-500">Submit your transaction reference so Finance can verify settlement and issue your official receipt.</p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => setOpen((v) => !v)}
+          className="h-8 border-[#063B8F]/30 text-xs font-semibold text-[#063B8F]"
+        >
+          {open ? 'Hide form' : 'Submit Payment Proof'}
+        </Button>
+      </div>
+      {open ? (
+        <form onSubmit={submitProof} className="mt-3 space-y-3 border-t border-[#E2E8F0] pt-3 text-xs">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {pendingPayments.length > 0 ? (
+              <div>
+                <Label htmlFor="proof-payment-id" className="text-xs">Milestone Payment</Label>
+                <select
+                  id="proof-payment-id"
+                  value={targetPaymentId}
+                  onChange={(e) => setTargetPaymentId(e.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs"
+                >
+                  <option value="">Select by Invoice instead</option>
+                  {pendingPayments.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.milestone ?? 'Payment'} — {fmtMoney(p.amount, p.currency)} ({p.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+            {payableInvoices.length > 0 && !targetPaymentId ? (
+              <div>
+                <Label htmlFor="proof-invoice-no" className="text-xs">Invoice Number</Label>
+                <select
+                  id="proof-invoice-no"
+                  value={targetInvoice}
+                  onChange={(e) => setTargetInvoice(e.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs"
+                >
+                  {payableInvoices.map((inv) => (
+                    <option key={inv.number} value={inv.number}>
+                      {inv.number} — {fmtMoney(inv.remainingAmount ?? inv.amount, inv.currency)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+            <div>
+              <Label htmlFor="proof-method" className="text-xs">Payment Method</Label>
+              <select
+                id="proof-method"
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+                className="mt-1 h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs"
+              >
+                <option value="BANK_TRANSFER">Bank Transfer / Wire</option>
+                <option value="BKASH">bKash</option>
+                <option value="NAGAD">Nagad</option>
+                <option value="MANUAL">Other Verified Transfer</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="proof-txn" className="text-xs">Transaction / Reference ID</Label>
+              <Input
+                id="proof-txn"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                placeholder="e.g. TRX-98412031"
+                className="mt-1 h-9 bg-white font-mono text-xs"
+              />
+            </div>
+            {documents.filter((d) => d.direction === 'UPLOADED').length > 0 ? (
+              <div>
+                <Label htmlFor="proof-file" className="text-xs">Uploaded Receipt Document (optional)</Label>
+                <select
+                  id="proof-file"
+                  value={proofFileId}
+                  onChange={(e) => setProofFileId(e.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs"
+                >
+                  <option value="">None selected</option>
+                  {documents
+                    .filter((d) => d.direction === 'UPLOADED')
+                    .map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            ) : null}
+          </div>
+          <div>
+            <Label htmlFor="proof-notes" className="text-xs">Notes (optional)</Label>
+            <Input
+              id="proof-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Sender account name, bank branch, or milestone note"
+              className="mt-1 h-9 bg-white text-xs"
+            />
+          </div>
+          <Button type="submit" size="sm" disabled={busy} className="h-8 bg-[#063B8F] text-xs font-semibold text-white hover:bg-[#0B1F33]">
+            {busy ? 'Submitting…' : 'Record Payment Proof for Verification'}
+          </Button>
+        </form>
+      ) : null}
+    </div>
+  )
+}
+
+// ---------------- Support ticket & direct portal message form ----------------
+function SupportTicketForm({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [category, setCategory] = useState('GENERAL')
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function submitTicket(e: React.FormEvent) {
+    e.preventDefault()
+    if (message.trim().length < 5) {
+      toast.error('Please write a message of at least 5 characters.')
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/portal/me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'support_ticket',
+          category,
+          subject: subject.trim() || `${category} support request`,
+          message: message.trim(),
+        }),
+      })
+      const j = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+      if (!res.ok) toast.error(j.error ?? 'Could not send message.')
+      else {
+        toast.success(j.message ?? 'Message sent to your project team.')
+        setSubject('')
+        setMessage('')
+        setOpen(false)
+        onDone()
+      }
+    } catch {
+      toast.error('Connection problem. Please retry.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold text-[#0B1F33]">Open a Support Ticket or Message Your Team</p>
+          <p className="text-[11px] text-slate-500">Every message is logged under your Client ID and notifies the assigned team immediately.</p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => setOpen((v) => !v)}
+          className="h-8 gap-1.5 bg-[#009FE3] text-xs font-semibold text-white hover:bg-[#063B8F]"
+        >
+          <Send className="h-3.5 w-3.5" aria-hidden="true" /> {open ? 'Close' : 'New Support Ticket'}
+        </Button>
+      </div>
+      {open ? (
+        <form onSubmit={submitTicket} className="mt-3 space-y-2.5 border-t border-[#E2E8F0] pt-3 text-xs">
+          <div className="grid gap-2.5 sm:grid-cols-3">
+            <div>
+              <Label htmlFor="ticket-category" className="text-xs">Category</Label>
+              <select
+                id="ticket-category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="mt-1 h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-xs"
+              >
+                <option value="GENERAL">General Inquiry</option>
+                <option value="TECHNICAL">Technical Support</option>
+                <option value="SCOPE">Scope / Deliverable</option>
+                <option value="BILLING">Billing / Invoice</option>
+                <option value="DELIVERY">Handover / Deployment</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <Label htmlFor="ticket-subject" className="text-xs">Subject</Label>
+              <Input
+                id="ticket-subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Brief summary of your question or request"
+                className="mt-1 h-9 bg-white text-xs"
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="ticket-message" className="text-xs">Message</Label>
+            <Textarea
+              id="ticket-message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              maxLength={4000}
+              placeholder="Write your question, support request, or project update…"
+              className="mt-1 min-h-20 bg-white text-xs"
+            />
+          </div>
+          <Button type="submit" size="sm" disabled={busy} className="h-8 gap-1.5 bg-[#063B8F] text-xs font-semibold text-white hover:bg-[#0B1F33]">
+            <Send className="h-3.5 w-3.5" aria-hidden="true" /> {busy ? 'Sending…' : 'Send Support Ticket'}
+          </Button>
+        </form>
+      ) : null}
+    </div>
+  )
+}
+
+// ---------------- Client profile & settings card ----------------
+function ProfileSettingsCard({ client, onDone }: { client: PortalData['client']; onDone: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(client.name)
+  const [businessName, setBusinessName] = useState(client.businessName ?? '')
+  const [businessType, setBusinessType] = useState(client.businessType ?? '')
+  const [preferredContact, setPreferredContact] = useState(client.preferredContact ?? 'EMAIL')
+  const [country, setCountry] = useState(client.country ?? '')
+  const [city, setCity] = useState(client.city ?? '')
+  const [timezone, setTimezone] = useState(client.timezone ?? '')
+  const [busy, setBusy] = useState(false)
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault()
+    if (name.trim().length < 2) {
+      toast.error('Name must be at least 2 characters.')
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/portal/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          businessName: businessName.trim(),
+          businessType: businessType.trim(),
+          preferredContact,
+          country: country.trim(),
+          city: city.trim(),
+          timezone: timezone.trim(),
+        }),
+      })
+      const j = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+      if (!res.ok) toast.error(j.error ?? 'Could not update profile.')
+      else {
+        toast.success(j.message ?? 'Profile updated.')
+        setEditing(false)
+        onDone()
+      }
+    } catch {
+      toast.error('Connection problem. Please retry.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <SectionCard icon={<ShieldCheck className="h-5 w-5" />} title="Profile & Contact Settings">
+      {!editing ? (
+        <div className="space-y-2 text-xs text-slate-600">
+          <div className="flex justify-between gap-2"><span className="text-slate-400">Client ID</span><span className="font-mono font-semibold text-[#063B8F]">{client.clientId}</span></div>
+          <div className="flex justify-between gap-2"><span className="text-slate-400">Name</span><span className="font-medium text-[#0B1F33]">{client.name}</span></div>
+          <div className="flex justify-between gap-2"><span className="text-slate-400">Business</span><span>{client.businessName || '—'}</span></div>
+          <div className="flex justify-between gap-2"><span className="text-slate-400">Industry / Type</span><span>{client.businessType || '—'}</span></div>
+          {client.email ? <div className="flex justify-between gap-2"><span className="text-slate-400">Verified Email</span><span className="truncate">{client.email}</span></div> : null}
+          {client.phone || client.whatsapp ? <div className="flex justify-between gap-2"><span className="text-slate-400">Phone</span><span>{client.phone || client.whatsapp}</span></div> : null}
+          <div className="flex justify-between gap-2"><span className="text-slate-400">Preferred Channel</span><span>{client.preferredContact || 'EMAIL'}</span></div>
+          <div className="flex justify-between gap-2"><span className="text-slate-400">Location</span><span>{[client.city, client.country].filter(Boolean).join(', ') || '—'}</span></div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setEditing(true)}
+            className="mt-2 h-8 w-full border-[#CBD8E6] text-xs font-medium text-[#063B8F]"
+          >
+            Edit Profile &amp; Preferences
+          </Button>
+        </div>
+      ) : (
+        <form onSubmit={saveProfile} className="space-y-2.5 text-xs">
+          <div>
+            <Label htmlFor="prof-name" className="text-xs">Full Name</Label>
+            <Input id="prof-name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 h-8 text-xs" required />
+          </div>
+          <div>
+            <Label htmlFor="prof-biz" className="text-xs">Business / Organization Name</Label>
+            <Input id="prof-biz" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-1 h-8 text-xs" />
+          </div>
+          <div>
+            <Label htmlFor="prof-type" className="text-xs">Industry / Business Type</Label>
+            <Input id="prof-type" value={businessType} onChange={(e) => setBusinessType(e.target.value)} className="mt-1 h-8 text-xs" />
+          </div>
+          <div>
+            <Label htmlFor="prof-channel" className="text-xs">Preferred Notification Channel</Label>
+            <select
+              id="prof-channel"
+              value={preferredContact}
+              onChange={(e) => setPreferredContact(e.target.value)}
+              className="mt-1 h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs"
+            >
+              <option value="EMAIL">Email</option>
+              <option value="WHATSAPP">WhatsApp</option>
+              <option value="SMS">SMS</option>
+              <option value="CHAT">Portal Chat</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label htmlFor="prof-city" className="text-xs">City</Label>
+              <Input id="prof-city" value={city} onChange={(e) => setCity(e.target.value)} className="mt-1 h-8 text-xs" />
+            </div>
+            <div>
+              <Label htmlFor="prof-country" className="text-xs">Country</Label>
+              <Input id="prof-country" value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1 h-8 text-xs" />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="prof-tz" className="text-xs">Timezone</Label>
+            <Input id="prof-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="e.g. America/Chicago or UTC" className="mt-1 h-8 text-xs" />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button type="submit" size="sm" disabled={busy} className="h-8 flex-1 bg-[#009FE3] text-xs font-semibold text-white hover:bg-[#063B8F]">
+              {busy ? 'Saving…' : 'Save Changes'}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)} className="h-8 text-xs">
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+    </SectionCard>
+  )
+}
+
+// ---------------- Client activity history card ----------------
+function ActivityHistoryCard({ items }: { items: NonNullable<PortalData['activityHistory']> }) {
+  return (
+    <SectionCard icon={<Clock className="h-5 w-5" />} title="Account Activity History">
+      {items.length > 0 ? (
+        <ul className="max-h-64 space-y-2 overflow-y-auto pr-1 text-xs">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2">
+              <span className="font-medium capitalize text-[#0B1F33]">
+                {item.action.replace(/_/g, ' ').toLowerCase()}
+              </span>
+              <span className="shrink-0 text-[11px] text-slate-400">{fmtDate(item.at)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <EmptyLine text="Your portal sign-ins, approvals, file uploads, and payment submissions are logged here automatically." />
+      )}
+    </SectionCard>
+  )
+}
+
 // ---------------- Login panel ----------------
 function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
+  const [mode, setMode] = useState<'login' | 'register'>('login')
   const [clientId, setClientId] = useState('')
   const [contact, setContact] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -1077,6 +1629,14 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [otp, setOtp] = useState<{ challenge: string; channel: string; sentTo: string } | null>(null)
   const [code, setCode] = useState('')
   const formRef = useRef<HTMLFormElement>(null)
+
+  // New client registration state
+  const [regName, setRegName] = useState('')
+  const [regBusiness, setRegBusiness] = useState('')
+  const [regEmail, setRegEmail] = useState('')
+  const [regDetails, setRegDetails] = useState('')
+  const [regConsent, setRegConsent] = useState(false)
+  const [regSuccess, setRegSuccess] = useState<{ clientId?: string | null; message: string } | null>(null)
 
   const post = async (body: Record<string, string>) => {
     const res = await fetch('/api/portal/login', {
@@ -1099,6 +1659,53 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
       else onLoggedIn()
     } catch { setError('Connection problem. Please retry.') }
     finally { setBusy(false) }
+  }
+
+  const registerClient = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    if (regName.trim().length < 2 || !regEmail.trim() || regDetails.trim().length < 15) {
+      setError('Please provide your full name, email address, and project/service requirements (at least 15 characters).')
+      return
+    }
+    if (!regConsent) {
+      setError('Please agree to the Privacy Policy before registering.')
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `portal-reg-${Date.now()}-0001`,
+          consent: true,
+          name: regName.trim(),
+          businessName: regBusiness.trim(),
+          email: regEmail.trim(),
+          preferredContact: 'Email',
+          details: regDetails.trim(),
+          formType: 'portal-registration',
+        }),
+      })
+      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; clientId?: string; message?: string; error?: string }
+      if (!res.ok && res.status !== 202) {
+        setError(j.error ?? 'Registration could not be completed.')
+      } else {
+        setRegSuccess({
+          clientId: j.clientId ?? null,
+          message: j.message ?? 'Your client record has been created.',
+        })
+        if (j.clientId) {
+          setClientId(j.clientId)
+          setContact(regEmail.trim())
+        }
+      }
+    } catch {
+      setError('Connection problem. Please retry.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const verify = async (e?: React.FormEvent) => {
@@ -1136,10 +1743,88 @@ function LoginPanel({ onLoggedIn }: { onLoggedIn: () => void }) {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card className="border-[#E2E8F0] shadow-xl shadow-[#063B8F]/5">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg text-[#0B1F33]"><Lock className="h-5 w-5 text-[#063B8F]" /> Sign in to your portal</CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg text-[#0B1F33]">
+                  <Lock className="h-5 w-5 text-[#063B8F]" />
+                  {mode === 'login' ? 'Sign in to your portal' : 'Register for a Client ID'}
+                </CardTitle>
+                <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('login'); setError(null) }}
+                    className={`rounded-md px-2.5 py-1 font-semibold transition ${mode === 'login' ? 'bg-[#063B8F] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMode('register'); setError(null) }}
+                    className={`rounded-md px-2.5 py-1 font-semibold transition ${mode === 'register' ? 'bg-[#063B8F] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    Register
+                  </button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              {otp ? (
+              {mode === 'register' ? (
+                regSuccess ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-[#18B83A]/30 bg-[#18B83A]/10 p-4 text-sm text-[#0B1F33]">
+                      <p className="font-semibold text-[#116b26]">Registration recorded</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-700">{regSuccess.message}</p>
+                      {regSuccess.clientId ? (
+                        <p className="mt-2 font-mono text-sm font-bold text-[#063B8F]">
+                          Client ID: {regSuccess.clientId}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => { setRegSuccess(null); setMode('login') }}
+                      className="h-11 w-full gap-2 bg-[#009FE3] text-base font-semibold hover:bg-[#063B8F]"
+                    >
+                      Continue to Sign In <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={registerClient} className="space-y-3.5">
+                    <div className="space-y-1">
+                      <Label htmlFor="reg-name">Full Name</Label>
+                      <Input id="reg-name" value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Your full name" required />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="reg-biz">Business / Organization (optional)</Label>
+                      <Input id="reg-biz" value={regBusiness} onChange={(e) => setRegBusiness(e.target.value)} placeholder="Company name" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="reg-email">Email Address</Label>
+                      <Input id="reg-email" type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="you@company.com" required />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="reg-details">Project or Service Scope Summary</Label>
+                      <Textarea
+                        id="reg-details"
+                        value={regDetails}
+                        onChange={(e) => setRegDetails(e.target.value)}
+                        placeholder="Describe your software, website, CRM, or workflow automation project requirements (at least 15 characters)…"
+                        className="min-h-20"
+                        required
+                      />
+                    </div>
+                    <label className="flex cursor-pointer items-start gap-2.5 text-xs text-slate-600">
+                      <Checkbox checked={regConsent} onCheckedChange={(v) => setRegConsent(v === true)} className="mt-0.5" />
+                      <span>I agree to the Privacy Policy and consent to Tech360 creating a Client ID record for my project.</span>
+                    </label>
+                    {error ? (
+                      <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>
+                    ) : null}
+                    <Button type="submit" disabled={busy} className="h-11 w-full gap-2 bg-[#009FE3] text-base font-semibold hover:bg-[#063B8F]">
+                      {busy ? 'Creating Client ID…' : <>Create Client ID <ArrowRight className="h-4 w-4" /></>}
+                    </Button>
+                  </form>
+                )
+              ) : otp ? (
                 <form onSubmit={verify} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="portal-otp">Enter your 6-digit code</Label>

@@ -1,15 +1,19 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Download, Eye, RefreshCw, Search, Table2, Kanban } from 'lucide-react'
+import { Download, Eye, Kanban, Loader2, Plus, RefreshCw, Search, Table2, Upload } from 'lucide-react'
+import { toast } from 'sonner'
 
-import { fmtDateShort, useApi, type ClientsResponse } from '@/lib/admin-client'
+import { fetchJson, fmtDateShort, useApi, type ClientsResponse } from '@/lib/admin-client'
 import { DataTable, type Column } from './shared/DataTable'
 import { EmptyState, PageHeader } from './shared/cards'
 import { Pager } from './shared/Pager'
 import { StatusBadge } from './shared/StatusBadge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -113,6 +117,108 @@ export function LeadsView({
   const [page, setPage] = useState(1)
   const [view, setView] = useState<'table' | 'board'>('table')
 
+  // Create Lead / Client dialog state
+  const [createOpen, setCreateOpen] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newBusinessName, setNewBusinessName] = useState('')
+  const [newBusinessType, setNewBusinessType] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+  const [newStatus, setNewStatus] = useState<string>(mode === 'leads' ? 'LEAD' : 'CLIENT')
+  const [newNotes, setNewNotes] = useState('')
+  const [createBusy, setCreateBusy] = useState(false)
+
+  // CSV Import dialog state
+  const [importOpen, setImportOpen] = useState(false)
+  const [csvText, setCsvText] = useState('')
+  const [importBusy, setImportBusy] = useState(false)
+
+  async function handleCreateRecord(e: React.FormEvent) {
+    e.preventDefault()
+    if (createBusy) return
+    if (newName.trim().length < 2) {
+      toast.error('Enter a name of at least 2 characters.')
+      return
+    }
+    setCreateBusy(true)
+    try {
+      const res = await fetchJson<{ ok: boolean; client?: { id: string; clientId: string }; message?: string }>('/api/admin/clients', {
+        method: 'POST',
+        body: {
+          name: newName.trim(),
+          businessName: newBusinessName.trim(),
+          businessType: newBusinessType.trim(),
+          email: newEmail.trim(),
+          phone: newPhone.trim(),
+          status: newStatus,
+          notes: newNotes.trim(),
+        },
+      })
+      toast.success(res.message ?? 'Created record.')
+      setCreateOpen(false)
+      setNewName('')
+      setNewBusinessName('')
+      setNewBusinessType('')
+      setNewEmail('')
+      setNewPhone('')
+      setNewNotes('')
+      refresh()
+      if (res.client?.id) onOpenClient(res.client.id)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not create record.')
+    } finally {
+      setCreateBusy(false)
+    }
+  }
+
+  async function handleImportCsv(e: React.FormEvent) {
+    e.preventDefault()
+    if (importBusy) return
+    const lines = csvText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+    if (lines.length < 2) {
+      toast.error('Paste a CSV with a header row and at least one data row (e.g. Name,Business,Email,Phone,Source,Status).')
+      return
+    }
+    const headers = lines[0].split(',').map((h) => h.replace(/^"|"$/g, '').trim().toLowerCase())
+    const records = lines.slice(1).map((line) => {
+      const cols = line.split(',').map((c) => c.replace(/^"|"$/g, '').trim())
+      const obj: Record<string, string> = {}
+      headers.forEach((h, i) => {
+        if (h.includes('name') && !h.includes('business')) obj.name = cols[i] ?? ''
+        else if (h.includes('business')) obj.businessName = cols[i] ?? ''
+        else if (h.includes('type')) obj.businessType = cols[i] ?? ''
+        else if (h.includes('email')) obj.email = cols[i] ?? ''
+        else if (h.includes('phone') || h.includes('whatsapp')) obj.phone = cols[i] ?? ''
+        else if (h.includes('source')) obj.source = cols[i] ?? ''
+        else if (h.includes('status')) obj.status = cols[i] ?? ''
+      })
+      return obj
+    }).filter((r) => r.name && r.name.length >= 2)
+
+    if (records.length === 0) {
+      toast.error('No valid rows found. Ensure your CSV has a "Name" column.')
+      return
+    }
+    setImportBusy(true)
+    try {
+      const res = await fetchJson<{ ok: boolean; imported?: number; message?: string }>('/api/admin/clients', {
+        method: 'POST',
+        body: { records },
+      })
+      toast.success(res.message ?? `Imported ${res.imported ?? records.length} records.`)
+      setImportOpen(false)
+      setCsvText('')
+      refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'CSV import failed.')
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
   useEffect(() => {
     const t = setTimeout(() => {
       setQuery(input)
@@ -207,18 +313,32 @@ export function LeadsView({
                 <Kanban className="size-3.5" /> Board
               </button>
             </div>
-            {isLeads ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open('/api/admin/leads/export', '_blank', 'noopener')}
-                className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
-                aria-label="Export leads as CSV"
-                title="Download every non-deleted lead/client as CSV (guard-protected)"
-              >
-                <Download className="size-4" aria-hidden="true" /> Export CSV
-              </Button>
-            ) : null}
+            <Button
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              style={{ background: '#009FE3' }}
+              className="font-semibold text-white"
+            >
+              <Plus className="size-4" aria-hidden="true" /> {isLeads ? 'New Lead' : 'New Client'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+              className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
+            >
+              <Upload className="size-4" aria-hidden="true" /> Import CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open('/api/admin/leads/export', '_blank', 'noopener')}
+              className="border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-slate-100"
+              aria-label="Export leads as CSV"
+              title="Download every non-deleted lead/client as CSV (guard-protected)"
+            >
+              <Download className="size-4" aria-hidden="true" /> Export CSV
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -316,6 +436,98 @@ export function LeadsView({
           <Pager page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} loading={loading} unit="records" />
         </>
       )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="border-slate-800 bg-slate-900 text-slate-100 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isLeads ? 'Create New Lead' : 'Create New Client'}</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Allocates a unique TECH-YYYY-NNNNNN Client ID and records an audited CRM entry.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateRecord} className="space-y-3">
+            <div>
+              <Label htmlFor="crm-new-name" className="text-xs text-slate-300">Full Name *</Label>
+              <Input id="crm-new-name" value={newName} onChange={(e) => setNewName(e.target.value)} required className="mt-1 border-slate-800 bg-slate-950 text-slate-100" />
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <Label htmlFor="crm-new-biz" className="text-xs text-slate-300">Business Name</Label>
+                <Input id="crm-new-biz" value={newBusinessName} onChange={(e) => setNewBusinessName(e.target.value)} className="mt-1 border-slate-800 bg-slate-950 text-slate-100" />
+              </div>
+              <div>
+                <Label htmlFor="crm-new-type" className="text-xs text-slate-300">Industry / Type</Label>
+                <Input id="crm-new-type" value={newBusinessType} onChange={(e) => setNewBusinessType(e.target.value)} className="mt-1 border-slate-800 bg-slate-950 text-slate-100" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <Label htmlFor="crm-new-email" className="text-xs text-slate-300">Email</Label>
+                <Input id="crm-new-email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="mt-1 border-slate-800 bg-slate-950 text-slate-100" />
+              </div>
+              <div>
+                <Label htmlFor="crm-new-phone" className="text-xs text-slate-300">Phone / WhatsApp</Label>
+                <Input id="crm-new-phone" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="+1..." className="mt-1 border-slate-800 bg-slate-950 text-slate-100" />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="crm-new-status" className="text-xs text-slate-300">Initial Status</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger id="crm-new-status" className="mt-1 border-slate-800 bg-slate-950 text-slate-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-slate-800 bg-slate-900 text-slate-100">
+                  {STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>{pretty(s)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="crm-new-notes" className="text-xs text-slate-300">Notes / Initial Inquiry</Label>
+              <Textarea id="crm-new-notes" value={newNotes} onChange={(e) => setNewNotes(e.target.value)} className="mt-1 min-h-20 border-slate-800 bg-slate-950 text-slate-100" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} className="border-slate-700 bg-transparent text-slate-300">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createBusy} style={{ background: '#009FE3' }} className="font-semibold text-white">
+                {createBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                Create Record
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="border-slate-800 bg-slate-900 text-slate-100 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import Leads / Clients from CSV</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Paste CSV rows including a header line (`Name,Business,Email,Phone,Source,Status`). Each imported row receives a unique TECH-YYYY-NNNNNN Client ID.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleImportCsv} className="space-y-3">
+            <Textarea
+              value={csvText}
+              onChange={(e) => setCsvText(e.target.value)}
+              placeholder={'Name,Business,Email,Phone,Source,Status\nJane Doe,Acme Corp,jane@acme.com,+15550192831,REFERRAL,LEAD'}
+              className="min-h-40 border-slate-800 bg-slate-950 font-mono text-xs text-slate-100"
+              required
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setImportOpen(false)} className="border-slate-700 bg-transparent text-slate-300">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={importBusy} style={{ background: '#009FE3' }} className="font-semibold text-white">
+                {importBusy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                Import Records
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

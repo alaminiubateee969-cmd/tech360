@@ -18,6 +18,7 @@ import {
 
 import {
   api,
+  fetchJson,
   fmtDate,
   num,
   parseMaybeJson,
@@ -581,6 +582,9 @@ function AgentDetailDialog({ code, onClose, onUpdated }: { code: string; onClose
   const [statusReason, setStatusReason] = useState('')
   const [statusConfirmation, setStatusConfirmation] = useState('')
   const [statusBusy, setStatusBusy] = useState(false)
+  const [configModel, setConfigModel] = useState<string | null>(null)
+  const [configQuota, setConfigQuota] = useState<string | null>(null)
+  const [configBusy, setConfigBusy] = useState(false)
   const [pendingTaskToolKey, setPendingTaskToolKey] = useState<{ signature: string; key: string } | null>(null)
   const [queuedTaskToolJob, setQueuedTaskToolJob] = useState<{ id: string; status: string; approvalState?: string | null } | null>(null)
   const [runResult, setRunResult] = useState<{
@@ -612,6 +616,35 @@ function AgentDetailDialog({ code, onClose, onUpdated }: { code: string; onClose
       toast.error(err instanceof Error ? err.message : 'Agent status change failed.')
     } finally {
       setStatusBusy(false)
+    }
+  }
+
+  async function saveAgentConfig(resetTokensToday = false) {
+    if (!agent || configBusy) return
+    const nextModel = (configModel ?? String(agent.model ?? 'default')).trim() || 'default'
+    const nextQuota = Number(configQuota ?? agent.dailyQuota ?? 200)
+    if (!Number.isInteger(nextQuota) || nextQuota < 1 || nextQuota > 100_000) {
+      toast.error('Daily quota must be an integer between 1 and 100,000.')
+      return
+    }
+    setConfigBusy(true)
+    try {
+      const res = await fetchJson<{ ok: boolean; message?: string }>(`/api/admin/agents/${encodeURIComponent(code)}`, {
+        method: 'PATCH',
+        body: {
+          action: 'update_config',
+          model: nextModel,
+          dailyQuota: nextQuota,
+          resetTokensToday,
+        },
+      })
+      toast.success(res.message ?? 'Updated agent model and quota configuration.')
+      refresh()
+      onUpdated()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update agent configuration.')
+    } finally {
+      setConfigBusy(false)
     }
   }
 
@@ -750,6 +783,77 @@ function AgentDetailDialog({ code, onClose, onUpdated }: { code: string; onClose
             <div>
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Purpose</p>
               <p className="text-[13px] leading-relaxed text-slate-400">{agent.purpose || '—'}</p>
+            </div>
+
+            <div className="rounded-md border border-slate-800 bg-slate-950/50 p-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Provider Model &amp; Daily Quota Configuration
+                </p>
+                <span className="font-mono text-[11px] text-slate-500">
+                  Today: {num(agent.tokensToday).toLocaleString()} / {(num(agent.dailyQuota || 200) * 1000).toLocaleString()} tokens
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor={`agent-model-${code}`} className="text-[11px] text-slate-400">
+                    Model route (`default` or `provider:model`)
+                  </Label>
+                  <Input
+                    id={`agent-model-${code}`}
+                    list={`agent-model-presets-${code}`}
+                    value={configModel ?? String(agent.model ?? 'default')}
+                    onChange={(e) => setConfigModel(e.target.value)}
+                    placeholder="default, openai:gpt-4o-mini, gemini:gemini-2.5-flash, groq:llama-3.3-70b-versatile"
+                    className="mt-1 h-8 border-slate-800 bg-slate-900 font-mono text-xs text-slate-200"
+                  />
+                  <datalist id={`agent-model-presets-${code}`}>
+                    <option value="default" />
+                    <option value="openai:gpt-4o-mini" />
+                    <option value="openai:gpt-4o" />
+                    <option value="gemini:gemini-2.5-flash" />
+                    <option value="gemini:gemini-2.5-pro" />
+                    <option value="groq:llama-3.3-70b-versatile" />
+                    <option value="openrouter:openrouter/free" />
+                    <option value="zai:glm-4-plus" />
+                  </datalist>
+                </div>
+                <div>
+                  <Label htmlFor={`agent-quota-${code}`} className="text-[11px] text-slate-400">
+                    Daily quota units (1 unit = 1,000 tokens)
+                  </Label>
+                  <Input
+                    id={`agent-quota-${code}`}
+                    type="number"
+                    min={1}
+                    max={100000}
+                    value={configQuota ?? String(agent.dailyQuota ?? 200)}
+                    onChange={(e) => setConfigQuota(e.target.value)}
+                    className="mt-1 h-8 border-slate-800 bg-slate-900 font-mono text-xs text-slate-200"
+                  />
+                </div>
+              </div>
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  disabled={configBusy}
+                  onClick={() => void saveAgentConfig(false)}
+                  style={{ background: ACCENT }}
+                  className="h-7 text-xs font-semibold text-white"
+                >
+                  {configBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
+                  Save Model &amp; Quota
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={configBusy}
+                  onClick={() => void saveAgentConfig(true)}
+                  className="h-7 border-slate-700 bg-transparent text-xs text-slate-300 hover:bg-slate-800"
+                >
+                  Reset Today&apos;s Token Counter
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

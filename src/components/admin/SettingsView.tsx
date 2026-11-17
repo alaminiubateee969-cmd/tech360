@@ -62,6 +62,21 @@ const ENV_DOCS: Array<{ group: string; vars: Array<{ name: string; purpose: stri
       { name: 'N8N_WEBHOOK_BASE', purpose: 'Base URL of your n8n webhook receiver' },
     ],
   },
+  {
+    group: 'AI Providers & Workforce (Optional — choose one or more)',
+    vars: [
+      { name: 'AI_PROVIDER', purpose: 'Active AI provider override: openai, gemini, groq, openrouter, ai-gateway, zai, or none' },
+      { name: 'OPENAI_API_KEY', purpose: 'OpenAI API secret key for AI agents' },
+      { name: 'OPENAI_MODEL', purpose: 'Default OpenAI model (e.g. gpt-4o-mini or gpt-4o)' },
+      { name: 'GEMINI_API_KEY', purpose: 'Google Gemini API key for AI agents (or GOOGLE_GENERATIVE_AI_API_KEY)' },
+      { name: 'GEMINI_MODEL', purpose: 'Default Google Gemini model (e.g. gemini-2.5-flash)' },
+      { name: 'GROQ_API_KEY', purpose: 'Groq API key for fast AI agent inference' },
+      { name: 'GROQ_MODEL', purpose: 'Default Groq model (e.g. llama-3.3-70b-versatile)' },
+      { name: 'OPENROUTER_API_KEY', purpose: 'OpenRouter API key for multi-model & free-tier AI routing' },
+      { name: 'AI_GATEWAY_BASE_URL', purpose: 'Optional shared AI Gateway URL (used with AGENTOS_GATEWAY_TOKEN)' },
+      { name: 'ZAI_API_KEY', purpose: 'Optional ZAI API key (used with ZAI_BASE_URL)' },
+    ],
+  },
 ]
 
 // ------------------------------------------------------------

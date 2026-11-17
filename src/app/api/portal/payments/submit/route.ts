@@ -77,6 +77,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (transactionId) {
+    const duplicateTx = await db.payment.findFirst({
+      where: {
+        transactionId,
+        ...(paymentId ? { id: { not: paymentId } } : {}),
+      },
+      select: { id: true, status: true },
+    })
+    if (duplicateTx) {
+      return Response.json(
+        {
+          error: 'This transaction reference has already been submitted on another payment record.',
+          code: 'DUPLICATE_TRANSACTION_ID',
+        },
+        { status: 409 },
+      )
+    }
+  }
+
   // Case 1: Updating an existing PENDING / FAILED payment record for this client
   if (paymentId) {
     const existing = await db.payment.findFirst({
@@ -136,9 +155,67 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // Case 2: Submitting proof against an issued/payable invoice
+  // Case 2: Submitting proof against an issued/payable invoice, or standalone milestone proof
   if (!invoiceRef) {
-    return Response.json({ error: 'Provide either paymentId or invoiceNumber to submit payment proof.' }, { status: 400 })
+    const standaloneAmount = Number(raw.amount)
+    if (!Number.isFinite(standaloneAmount) || standaloneAmount <= 0) {
+      return Response.json(
+        { error: 'Provide either paymentId, invoiceNumber, or a valid positive amount to submit payment proof.' },
+        { status: 400 },
+      )
+    }
+    const standaloneCurrency = sanitizeText(raw.currency, 8).toUpperCase() || 'USD'
+    const standaloneMilestone = sanitizeText(raw.milestone, 80) || 'Advance'
+    const createdStandalone = await db.payment.create({
+      data: {
+        clientId: client.id,
+        projectId: client.projects[0]?.id ?? null,
+        amount: standaloneAmount,
+        currency: standaloneCurrency,
+        method,
+        transactionId: transactionId || undefined,
+        proofFileId: proofFileId || null,
+        milestone: standaloneMilestone,
+        notes: notes || null,
+        status: policyCheck.status, // strictly 'SUBMITTED'
+      },
+    })
+
+    await audit({
+      actor: `client:${client.clientId}`,
+      action: 'PAYMENT_PROOF_SUBMITTED',
+      clientId: client.clientId,
+      entityType: 'Payment',
+      entityId: createdStandalone.id,
+      details: {
+        amount: standaloneAmount,
+        currency: standaloneCurrency,
+        milestone: standaloneMilestone,
+        status: createdStandalone.status,
+        hasProofFile: Boolean(proofFileId),
+        evidenceOnly: true,
+      },
+      ip,
+    })
+
+    await createNotification({
+      type: 'PAYMENT_PROOF',
+      severity: 'INFO',
+      title: `Payment proof submitted: ${client.clientId}`,
+      body: `${client.clientId} (${client.name}) submitted payment evidence (${standaloneCurrency} ${standaloneAmount}). Reconcile against actual gateway/bank settlement before verifying.`,
+      link: 'finance',
+    })
+
+    return Response.json({
+      ok: true,
+      payment: {
+        id: createdStandalone.id,
+        status: createdStandalone.status,
+        statusLabel: paymentStatusLabel(createdStandalone.status),
+        evidenceOnly: true,
+      },
+      message: policyCheck.notice,
+    }, { status: 201 })
   }
 
   const invoice = await db.invoice.findFirst({

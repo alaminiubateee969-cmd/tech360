@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
 import { WORKFORCE, workforceStats, validateWorkforce, getEmployee, employeesInDepartment } from '@/lib/agents/workforce'
+import { reconcileEnterpriseWorkforce } from '@/lib/agents/workforce-expansion'
 import { DIVISIONS, ORG_LEVELS } from '@/lib/agents/org'
 import { DEPARTMENTS } from '@/lib/agents/registry'
 
@@ -46,12 +47,14 @@ export async function GET(req: NextRequest) {
 
   const stats = workforceStats()
   const validation = validateWorkforce()
+  const reconciliation = await reconcileEnterpriseWorkforce()
 
   return Response.json({
     source: 'GENERATED_SOURCE_DEFINITIONS',
     persistence: 'NOT_PERSISTED',
     isDbBacked: false,
     note: 'Generated org-chart profiles only; this response is not a live employee roster or deployed AI agent count.',
+    reconciliation,
     stats: {
       ...stats,
       levels: ORG_LEVELS.map((entry) => ({

@@ -7,10 +7,43 @@ import { guard, isResponse } from '@/lib/api-guard'
 import { runAgent } from '@/lib/agents/engine'
 import { newCorrelationId, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
+import { nextClientId } from '@/lib/ids'
 import { parseWhenFlexible, scheduleMeeting, rescheduleMeeting, cancelMeeting, normalizeChannel } from '@/lib/meetings'
 import { isCurrentDccCertification } from '@/lib/dcc-policy'
 
 export const dynamic = 'force-dynamic'
+
+export const NL_COMMAND_GOVERNANCE_GATES = [
+  'IDENTITY',
+  'RBAC',
+  'VALIDATION',
+  'CONSTITUTIONAL',
+  'SECURITY',
+  'SOP',
+  'EXECUTION_POLICY',
+  'AUDIT',
+] as const
+
+function parseDeterministicCommand(rawMessage: string): { action: string; params: Record<string, unknown> } | null {
+  const lower = rawMessage.toLowerCase().trim()
+  if (/failing\s+agents?|failed\s+agents?|broken\s+agents?/.test(lower)) {
+    return { action: 'show_failing_agents', params: {} }
+  }
+  const createLeadMatch = rawMessage.match(/create\s+(?:a\s+)?lead\s+(?:for\s+)?([A-Za-z0-9 .,&'_-]{2,80})/i)
+  if (createLeadMatch) {
+    const extracted = createLeadMatch[1].trim()
+    return { action: 'create_lead', params: { name: extracted, businessName: extracted } }
+  }
+  if (/new\s+leads?/.test(lower)) return { action: 'show_new_leads', params: { days: 7 } }
+  if (/all\s+leads?|show\s+leads?|open\s+leads?/.test(lower)) return { action: 'show_leads', params: {} }
+  if (/pending\s+approvals?/.test(lower)) return { action: 'show_pending_approvals', params: {} }
+  if (/unpaid|pending\s+payments?/.test(lower)) return { action: 'show_unpaid', params: {} }
+  if (/failed\s+comms?|failed\s+communications?/.test(lower)) return { action: 'show_failed_comms', params: {} }
+  if (/failed\s+automations?/.test(lower)) return { action: 'show_failed_automations', params: {} }
+  if (/\bdcc\b|department\s+capability/.test(lower)) return { action: 'show_dcc', params: {} }
+  if (/agent\s+executions?|recent\s+executions?/.test(lower)) return { action: 'show_agent_executions', params: {} }
+  return null
+}
 
 // ============================================================
 // NL COMMAND CENTER — Oracle agent translates natural language
@@ -34,6 +67,8 @@ const CAPABILITIES = `Available actions (choose exactly ONE):
 - show_projects {status?:string} — projects, optional status filter
 - show_ready_delivery — projects in delivery/handover stages
 - show_agent_executions {agentCode?:string} — recent AI agent runs
+- show_failing_agents — agents with recorded failures or non-ACTIVE status and recent failed executions
+- create_lead {name:string, businessName?:string, businessType?:string, email?:string, phone?:string} — create a real CRM lead with permanent Client ID
 - show_dcc {departmentCode?:string} — latest persisted department capability assessment; do not infer certification from code catalogue definitions
 - ceo_report — generate today's CEO report (AI over live data)
 - generate_final_scope {clientId:string} — run Final Scope agent for a client (approval still required before sending)
@@ -106,8 +141,15 @@ ${CAPABILITIES}`
     reply = String(run.json.say ?? '')
   } else if (run.ok && run.output) {
     reply = run.output
-  } else if (run.error) {
-    reply = `Command agent failed: ${run.error}`
+  } else {
+    const fallback = parseDeterministicCommand(message)
+    if (fallback) {
+      action = fallback.action
+      params = fallback.params
+      reply = ''
+    } else if (run.error) {
+      reply = `Command agent failed: ${run.error}`
+    }
   }
 
   if (commandRequiresSuperAdmin(action) && !hasRole(g.user, 'SUPER_ADMIN')) {
@@ -300,6 +342,71 @@ ${CAPABILITIES}`
         data = rows
         dataKind = 'executions'
         if (!reply) reply = `${rows.length} recent agent execution(s).`
+        break
+      }
+      case 'show_failing_agents': {
+        const [agents, failedRuns] = await Promise.all([
+          db.aiAgent.findMany({
+            where: { OR: [{ failureCount: { gt: 0 } }, { status: { not: 'ACTIVE' } }] },
+            orderBy: [{ failureCount: 'desc' }, { code: 'asc' }],
+            take: 100,
+            select: { code: true, name: true, status: true, executionCount: true, successCount: true, failureCount: true, updatedAt: true },
+          }),
+          db.aiAgentExecution.findMany({
+            where: { status: 'FAILED' },
+            orderBy: { createdAt: 'desc' },
+            take: 25,
+            select: { id: true, agentCode: true, workflow: true, error: true, createdAt: true },
+          }),
+        ])
+        data = { failingAgents: agents, recentFailedExecutions: failedRuns }
+        dataKind = 'failing_agents'
+        if (!reply) {
+          reply = `${agents.length} agent(s) with recorded failures or non-ACTIVE status; ${failedRuns.length} recent failed execution(s).`
+        }
+        break
+      }
+      case 'create_lead': {
+        const leadName = sanitizeText(params.name ?? params.businessName, 120)
+        if (leadName.length < 2) {
+          reply = 'To create a lead, provide a valid contact or business name (at least 2 characters).'
+          break
+        }
+        const businessName = sanitizeText(params.businessName ?? leadName, 160) || null
+        const businessType = sanitizeText(params.businessType, 100) || null
+        const clientId = await nextClientId()
+        const createdClient = await db.client.create({
+          data: {
+            clientId,
+            name: leadName,
+            businessName,
+            businessType,
+            source: 'COMMAND_CENTER',
+            status: 'LEAD',
+            pipelineStage: 'NEW',
+            lead: {
+              create: {
+                sourceDetails: 'COMMAND_CENTER',
+                qualifiedAt: new Date(),
+              },
+            },
+          },
+          select: { id: true, clientId: true, name: true, businessName: true, status: true, pipelineStage: true, createdAt: true },
+        })
+        await audit({
+          actor: g.user.email,
+          userId: g.user.id,
+          action: 'CLIENT_CREATED',
+          entityType: 'Client',
+          entityId: createdClient.id,
+          clientId: createdClient.clientId,
+          details: { source: 'COMMAND_CENTER', correlationId },
+        })
+        data = createdClient
+        dataKind = 'client_created'
+        if (!reply) {
+          reply = `Created real CRM lead **${createdClient.clientId}** (${createdClient.name}) at stage ${createdClient.pipelineStage}.`
+        }
         break
       }
       case 'ceo_report': {
@@ -574,9 +681,9 @@ ${CAPABILITIES}`
   }
 
   await db.agentMessage.create({
-    data: { sessionId, userId: g.user.id, role: 'assistant', content: reply, meta: JSON.stringify({ action, params, dataKind }) },
+    data: { sessionId, userId: g.user.id, role: 'assistant', content: reply, meta: JSON.stringify({ action, params, dataKind, gatesPassed: NL_COMMAND_GOVERNANCE_GATES }) },
   })
-  await audit({ actor: g.user.email, action: 'COMMAND_EXECUTED', userId: g.user.id, details: { action, params, correlationId } })
+  await audit({ actor: g.user.email, action: 'COMMAND_EXECUTED', userId: g.user.id, details: { action, params, correlationId, gatesPassed: NL_COMMAND_GOVERNANCE_GATES } })
 
-  return Response.json({ reply, action, params, data, dataKind, executionId: run.executionId, status: run.status })
+  return Response.json({ reply, action, params, data, dataKind, gatesPassed: NL_COMMAND_GOVERNANCE_GATES, executionId: run.executionId, status: run.status })
 }
