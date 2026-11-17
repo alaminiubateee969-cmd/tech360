@@ -139,7 +139,7 @@ export default function PlatformView() {
         </div>
       </PageHero>
 
-      {/* Connected TECH360 Product Ecosystem */}
+      {/* Connected Business Capabilities */}
       <section className="border-b border-[#E2E8F0] bg-[#07152B] py-20 text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
@@ -188,7 +188,7 @@ export default function PlatformView() {
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-4">
                 <div>
                   <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#7FD4FF]">
-                    Product Architecture Specification
+                    Capability Detail
                   </span>
                   <h3 className="mt-1 text-2xl font-bold text-white">
                     {activeProduct.name}
@@ -283,7 +283,7 @@ export default function PlatformView() {
       {/* Connected Platform Modules (with dedicated 1600×1000 visuals) */}
       <PlatformGrid />
 
-      {/* Console Preview */}
+      {/* Client Experience Preview */}
       <DashboardShowcase />
 
       {/* Unified Client Messaging */}
