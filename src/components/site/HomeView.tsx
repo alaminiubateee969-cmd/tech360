@@ -86,41 +86,41 @@ const HERO_TRUST = [
 const HERO_3D_LAYERS = [
   {
     code: "LAYER 01",
-    title: "Omnichannel Intake & Client ID",
-    detail: "Consent-evidenced inquiries receive a monotonic TECH-YYYY-NNNNNN identifier.",
+    title: "Connected Customer Channels",
+    detail: "Customer enquiries from approved channels can be connected to a consistent customer record.",
     accent: "from-[#009FE3]/35 to-[#063B8F]/35 border-[#7FD4FF]/40",
     depth: 36,
   },
   {
     code: "LAYER 02",
-    title: "20-Stage CRM & HTML Preview",
-    detail: "Written Scope of Work and interactive HTML preview approved before production.",
+    title: "Custom CRM & Interactive Preview",
+    detail: "Review the proposed experience and written scope before production engineering begins.",
     accent: "from-[#063B8F]/40 to-[#0B1F33]/50 border-white/25",
     depth: 24,
   },
   {
     code: "LAYER 03",
-    title: "Automated Workflow & Quality Verification",
-    detail: "44 specialized operational workflows across 110 departments with human approval gates.",
+    title: "Workflow Automation & Quality Assurance",
+    detail: "Connect business systems, reduce repetitive work and keep important actions under human review.",
     accent: "from-[#009FE3]/30 to-[#18B83A]/25 border-[#5AE07A]/35",
     depth: 14,
   },
   {
     code: "LAYER 04",
-    title: "Client Portal & Source Handover",
-    detail: "Verified milestone settlement unlocks full source-code repository handover.",
+    title: "Secure Client Portal & Source Handover",
+    detail: "Approved milestones, project files and source-code handover are managed through clear delivery controls.",
     accent: "from-[#0B1F33]/60 to-[#061528]/80 border-white/20",
     depth: 4,
   },
 ];
 
 const HERO_ECOSYSTEM_PRODUCTS = [
-  { name: "TECH360 CRM", tag: "20-Stage Pipeline", accent: "border-[#009FE3]/50 bg-[#0066CC]/25 text-[#9BEBFF]" },
-  { name: "TECH360 Operations", tag: "44 Governed Workflows", accent: "border-[#FFB347]/50 bg-[#E8501A]/25 text-[#FFD38A]" },
-  { name: "TECH360 Flow", tag: "Workflow Automation", accent: "border-[#5AE07A]/45 bg-[#18B83A]/20 text-[#86F2A1]" },
-  { name: "TECH360 Client Hub", tag: "Portal & Handover", accent: "border-[#7FD4FF]/45 bg-[#07152B]/70 text-white" },
-  { name: "TECH360 Intelligence", tag: "Analytics & Audit", accent: "border-[#009FE3]/40 bg-[#063B8F]/35 text-[#B8E8FF]" },
-  { name: "TECH360 Studio", tag: "3D & Web Systems", accent: "border-[#FFB347]/40 bg-[#E8501A]/20 text-[#FFE0A8]" },
+  { name: "CRM Solutions", tag: "Custom Client Workflows", accent: "border-[#009FE3]/50 bg-[#0066CC]/25 text-[#9BEBFF]" },
+  { name: "Workflow Automation", tag: "Human-Approved Automation", accent: "border-[#FFB347]/50 bg-[#E8501A]/25 text-[#FFD38A]" },
+  { name: "Integration Engineering", tag: "Connected Business Systems", accent: "border-[#5AE07A]/45 bg-[#18B83A]/20 text-[#86F2A1]" },
+  { name: "Client Portals", tag: "Secure Project Access", accent: "border-[#7FD4FF]/45 bg-[#07152B]/70 text-white" },
+  { name: "Business Intelligence", tag: "Dashboards & Reporting", accent: "border-[#009FE3]/40 bg-[#063B8F]/35 text-[#B8E8FF]" },
+  { name: "Digital Product Studio", tag: "Web & Product Engineering", accent: "border-[#FFB347]/40 bg-[#E8501A]/20 text-[#FFE0A8]" },
 ];
 
 function Hero3dArchitectureShowcase() {
@@ -644,8 +644,8 @@ const STANDARDS = [
     icon: "Eye",
   },
   {
-    title: "Approve-First AI & Operational Safety",
-    body: "AI assistants, outbound messaging, and financial status updates stay inside role-based permissions, human approval checkpoints, and audit trails.",
+    title: "Governed Automation & Operational Safety",
+    body: "Automation, outbound messaging and financial status updates can be controlled through role-based permissions, human approval checkpoints and auditable records.",
     icon: "ShieldCheck",
   },
   {
