@@ -157,10 +157,10 @@ describe('API contracts — every protected route is guarded', () => {
     const showcase = readPublic('src/components/site/PremiumSections.tsx')
     const footer = readPublic('src/components/site/SiteFooter.tsx')
 
-    assert.doesNotMatch(chat, /AI assistant ready|AI assistant unavailable|AI assistant status/i)
+    assert.doesNotMatch(chat, /AI assistant ready|AI assistant unavailable|AI assistant status|our assistant will answer|our assistant answers|Replies may be assisted by AI/i)
     assert.doesNotMatch(home, /44 specialized operational workflows|110 departments|TECH360 Operations|TECH360 Intelligence/)
     assert.doesNotMatch(platform, /Company-in-a-Box|TECH360 Operations|TECH360 Intelligence|agent token consumption|110 departments/)
-    assert.doesNotMatch(showcase, /The Console Your Team Actually Runs On|admin-dashboard\\.png|crm-dashboard\\.png/)
+    assert.doesNotMatch(showcase, /The Console Your Team Actually Runs On|admin-dashboard\.png|crm-dashboard\.png/)
     assert.doesNotMatch(footer, /Company-in-a-Box/)
   })
 })
