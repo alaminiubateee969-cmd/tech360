@@ -1,7 +1,7 @@
 # Known Issues and Blockers
 
 **Updated:** 2026-11-17 UTC
-**Latest code verification:** [`docs/FINAL_PROJECT_CHECK_2026-11-15.md`](docs/FINAL_PROJECT_CHECK_2026-11-15.md) remains the last recorded full local verification (1,694 tests; 49/49 preview HTTP checks). Current `main` was observed at `59e3e339287698920ff40b09547c4cc24397c0eb` on 2026-11-17. The audit/fix branch is not yet CI-verified or deployed. Production acceptance remains blocked.
+**Latest code verification:** [`docs/FINAL_PROJECT_CHECK_2026-11-15.md`](docs/FINAL_PROJECT_CHECK_2026-11-15.md) is the last recorded full local verification (1,694 tests; 49/49 preview HTTP checks). Current `main` was observed at `59e3e339287698920ff40b09547c4cc24397c0eb` on 2026-11-17. Draft PR #80 head `00896d0b5940081621086548e5756ece9b250634` CI run `44149470204` failed at the dependency-audit gate; typecheck, full tests and build were not reached. The branch is not CI-verified or deployed. Production acceptance remains blocked.
 **Prior production-evidence audit:** `8d62c852787c3e8e936b3b32ef2fdd45b391d0c6` on `arena/8a6db089-tech360`
 **Release verdict:** **NOT PRODUCTION READY — critical external evidence remains BLOCKED**
 
@@ -25,11 +25,12 @@ remain historical evidence and must not override this register.
 | B-010 | BLOCKED | Active uptime, infrastructure, SSL-expiry, backup and security alert delivery was not evidenced. | Configure monitors and perform a test alert through the documented escalation route. |
 | B-011 | BLOCKED | Real production admin bootstrap, forced password rotation, TOTP enrollment and representative role-boundary acceptance were not evidenced. | Authorized owner performs the account checks and records IDs/timestamps only, never credentials. |
 | B-012 | BLOCKED | Full production browser/device/manual every-button, provider workflow, accessibility and load acceptance is not signed. | Execute the controlled QA matrix and retain results before handover acceptance. |
+| B-013 | BLOCKED — dependency security gate | Draft PR #80 CI run `44149470204` failed at `Audit npm dependencies (full and production)`. The lockfile resolves Next.js `16.4.3` (affected through `16.4.4`; fixed in `16.4.5+`) and picomatch `4.0.7` (GHSA-fc5q-39xc-vjpf; the advisory currently states no fixed version). The audit reported 12 findings: 1 moderate and 11 high. | Upgrade Next.js and `eslint-config-next` to a patched compatible release, regenerate the lockfile using npm, then re-run full and production audits. For picomatch, wait for a verified upstream fix or remove the affected dependency path; do not suppress the advisory or claim a clean audit without evidence. |
 
 ## Verified baseline (not blockers)
 
 - Exact-SHA GitHub `ci` run `43230152821` passed on `8d62c85`.
-- Local clean install completed; npm full and production audits found 0 vulnerabilities.
+- Historical 2026-11-14 baseline: local clean install completed; npm full and production audits found 0 vulnerabilities. This does not apply to the current PR branch; see B-013.
 - Full test suite passed: 1,677/1,677, 0 failures/skips.
 - ESLint and TypeScript passed.
 - Production Next.js build and standalone asset verification passed.
