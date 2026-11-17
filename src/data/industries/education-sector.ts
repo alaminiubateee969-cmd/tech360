@@ -11,21 +11,21 @@ import type { IndustryRegistryEntry } from "./types";
 const education = assembleIndustry({
   slug: "education",
   name: "Education",
-  tagline: "Admissions, learning, assessment, and institutional operations with connected business software",
+  tagline: "Student recruitment, admissions, visa casework, learning and institutional operations in one connected system",
   category: "education-sector",
   physical: false,
   hero: {
-    headline: "Run the institution on one governed academic system",
-    subhead: "TECH360 Education connects admissions, scheduling, learning delivery, assessment, and accreditation reporting — with USD-only fee and finance reporting for every campus.",
-    alt: "University campus scene with students walking and digital learning spaces",
-    caption: "Institutional operations: admissions, learning, and accreditation",
+    headline: "Connect student recruitment, visa casework and campus operations",
+    subhead: "For universities, colleges and education consultancies, TECH360 Education connects admissions, counsellor follow-up, document vaults, visa case tracking, partner quotas, learning delivery and reporting — with human approvals and role-based access.",
+    alt: "Education technology scene showing student recruitment, university admissions and connected learning operations",
+    caption: "Education operations: recruitment, applications, documents, learning and reporting",
   },
   overview: {
-    summary: "Institutions fail students in the gaps between systems — admitted but not enrolled, enrolled but not scheduled, learning but not assessed, graduating but not accredited. TECH360 Education closes those gaps with one governed flow from application to alumni, USD-only fee finance, and accreditation evidence packs built from daily operations rather than assembled at the last minute.",
+    summary: "Universities, colleges and education consultancies lose continuity when enquiries, applications, documents, visa casework, partner referrals and enrollment are split across inboxes and systems. TECH360 Education can connect student records from enquiry to enrollment and alumni, support recruitment-to-visa casework, manage partner quotas, and retain learning, assessment, fee and accreditation operations with human approval and audit trails.",
     facts: [
-      { label: "Operational workflows", value: "6 (18-field contract)" },
-      { label: "Modules", value: "8 across academic and institutional ops" },
-      { label: "Departments modelled", value: "7" },
+      { label: "Operational workflows", value: "7 (18-field contract)" },
+      { label: "Modules", value: "10 across academic, recruitment and partner ops" },
+      { label: "Departments modelled", value: "10" },
       { label: "IT/OT boundary", value: "Does not apply — data-class boundary" },
     ],
     differentiators: [
@@ -33,6 +33,9 @@ const education = assembleIndustry({
       "Assessment integrity with controlled grade changes",
       "Retention interventions with evidence, not intuition",
       "Accreditation evidence generated from operations",
+      "Recruitment-to-visa case tracking with a secure document vault",
+      "B2B partner portal with quota allocation and application visibility",
+      "Counsellor follow-up tasks and consent-aware communications",
     ],
   },
   businessModels: [
@@ -48,6 +51,9 @@ const education = assembleIndustry({
     { id: "edu-ch-04", title: "Late retention signals", description: "At-risk students identified after withdrawal decisions.", impact: "Retention and reputation loss.", platformResponse: "EDU-WF-05 with early-alert workflows." },
     { id: "edu-ch-05", title: "Accreditation scramble", description: "Evidence assembled manually before visits.", impact: "Stress, gaps, and findings.", platformResponse: "EDU-WF-06 evidence packs from live data." },
     { id: "edu-ch-06", title: "Fee collection friction", description: "Payment plans and collections handled off-system.", impact: "Receivables and cash-flow drag.", platformResponse: "USD fee plans with automated reminders." },
+    { id: "edu-ch-07", title: "Student cases stall between admission and visa", description: "Counsellor follow-ups, application milestones and destination-specific document checklists are tracked in separate inboxes.", impact: "Missed intake deadlines and incomplete student files.", platformResponse: "EDU-WF-07 recruitment-to-visa case journey with a shared case timeline." },
+    { id: "edu-ch-08", title: "Partner quota visibility gaps", description: "Education agents and university partners cannot see their assigned intakes, application status or remaining quota.", impact: "Duplicate referrals, over-allocation and partner disputes.", platformResponse: "EDU-MOD-10 partner portal with approved quota allocation and audit history." },
+    { id: "edu-ch-09", title: "Student documents scattered across channels", description: "Passports, transcripts, language results and visa evidence arrive through email and messaging without version or expiry control.", impact: "Repeated requests, privacy risk and late submissions.", platformResponse: "EDU-MOD-09 secure document vault, checklist and expiry alerts." },
   ],
   departments: [
     { id: "edu-dep-01", name: "Admissions & Recruitment", charter: "Fill the cohort with qualified, fit students.", primaryModules: ["EDU-MOD-01", "EDU-MOD-02"], kpis: ["Yield rate", "Time-to-offer", "Cohort fill %"] },
@@ -57,6 +63,9 @@ const education = assembleIndustry({
     { id: "edu-dep-05", name: "Student Success", charter: "Persist and graduate with support.", primaryModules: ["EDU-MOD-06"], kpis: ["Retention rate", "Time-to-degree", "Intervention uptake"] },
     { id: "edu-dep-06", name: "Finance & Fees", charter: "USD fee integrity and receivables discipline.", primaryModules: ["EDU-MOD-07"], kpis: ["Collection rate", "DSO", "Plan compliance"] },
     { id: "edu-dep-07", name: "Institutional Research", charter: "Accreditation and evidence on demand.", primaryModules: ["EDU-MOD-08"], kpis: ["Evidence pack time", "Data quality", "Report turnaround"] },
+    { id: "edu-dep-08", name: "Student Recruitment & Counselling", charter: "Move qualified student enquiries through applications and enrollment with timely human follow-up.", primaryModules: ["EDU-MOD-02", "EDU-MOD-09"], kpis: ["First response SLA", "Application completion", "Offer-to-enrollment conversion"] },
+    { id: "edu-dep-09", name: "Visa & Document Operations", charter: "Maintain complete, verified and access-controlled student document and visa case files.", primaryModules: ["EDU-MOD-09"], kpis: ["Document readiness", "Review turnaround", "Expiry exceptions"] },
+    { id: "edu-dep-10", name: "Partner Relations", charter: "Onboard approved partners and manage university, intake and quota relationships.", primaryModules: ["EDU-MOD-10"], kpis: ["Partner activation", "Quota utilisation", "Partner application completion"] },
   ],
   roles: [
     { id: "admissions-officer", name: "Admissions Officer", seniority: "frontline", responsibilities: ["Review applications", "Issue offers", "Track yield"], permissions: ["Offer issue", "Application update"], dashboards: ["Admissions pipeline"] },
@@ -67,6 +76,40 @@ const education = assembleIndustry({
     { id: "bursar", name: "Bursar", seniority: "manager", responsibilities: ["Fee plans", "Collections", "Reconciliation"], permissions: ["Plan setup", "Write-off approve (DoA)"], dashboards: ["Receivables"] },
     { id: "dean", name: "Dean", seniority: "executive", responsibilities: ["Academic standards", "Faculty load", "Program health"], permissions: ["Policy approve", "Cross-program view"], dashboards: ["Faculty dashboard"] },
     { id: "ir-analyst", name: "Institutional Research Analyst", seniority: "manager", responsibilities: ["Accreditation evidence", "Outcome reporting"], permissions: ["Evidence assemble", "Report publish"], dashboards: ["Accreditation board"] },
+    { id: "counsellor", name: "Student Counsellor", seniority: "frontline", responsibilities: ["Qualify student enquiries", "Guide course and university shortlists", "Own follow-up tasks"], permissions: ["Assigned student case update", "Counselling note create"], dashboards: ["Counsellor pipeline", "Follow-up queue"] },
+    { id: "visa-case-officer", name: "Visa & Document Case Officer", seniority: "manager", responsibilities: ["Verify student documents", "Maintain destination checklists", "Track visa case milestones"], permissions: ["Assigned document verify", "Visa case update"], dashboards: ["Document readiness", "Visa case board"] },
+    { id: "partner-manager", name: "B2B Partner Manager", seniority: "manager", responsibilities: ["Approve partner onboarding", "Allocate partner quotas", "Review partner performance"], permissions: ["Partner approve", "Quota change request"], dashboards: ["Partner quota board"] },
+    { id: "partner-user", name: "Approved Partner User", seniority: "external", responsibilities: ["Submit referred student enquiries", "Track assigned applications", "Upload approved documents"], permissions: ["Own partner records only", "Assigned application read"], dashboards: ["Partner portal"] },
+
+    {
+      id: "EDU-WF-07", name: "Student Recruitment-to-Visa Case Journey",
+      purpose: "Move a student from first enquiry through counselling, application, document verification, visa case readiness and enrollment with a single audited case timeline.",
+      trigger: "New student enquiry from an approved channel or a partner referral.",
+      department: "Student Recruitment & Counselling", roles: ["counsellor", "admissions-officer", "visa-case-officer", "partner-manager", "partner-user"],
+      inputs: ["Student enquiry and consent", "Student profile", "University/course/intake catalogue", "Partner agreement and quota", "Student documents"],
+      outputs: ["Assigned recruitment case", "Application and offer status", "Verified document checklist", "Visa case readiness record", "Partner quota usage", "Enrollment handoff"],
+      sla: "First-response and document-review SLAs are configurable by channel, destination and intake.",
+      steps: [
+        { id: "S1", name: "Capture enquiry", description: "Create a student case from a web form, approved messaging channel, email or partner referral; record source and consent.", ownerRole: "counsellor", sla: "Configurable by channel", input: "Enquiry + consent", output: "Student recruitment case", system: "Recruitment CRM / P1", approval: "Consent and source verified", automation: "Duplicate-safe lead capture", aiAssist: "A0 — classify enquiry intent for counsellor review", controls: ["Consent evidence", "Duplicate detection", "Source attribution"], dataCaptured: ["Source", "Consent", "Student contact"], exceptionPath: "Missing consent → restrict outbound contact and request permission." },
+        { id: "S2", name: "Assign counsellor and follow-up", description: "Route the case by destination, programme, language and workload; create a due-dated follow-up task.", ownerRole: "counsellor", sla: "Configurable response SLA", input: "New student case", output: "Assigned counsellor + follow-up task", system: "CRM / P1", approval: "Manager handles reassignment exceptions", automation: "Round-robin or rules-based assignment", aiAssist: "A1 — overdue follow-up priority suggestion; counsellor chooses action", controls: ["Role-scoped assignment", "No automatic outbound message"], dataCaptured: ["Owner", "Due date", "Contact history"], exceptionPath: "No available owner → recruitment manager queue." },
+        { id: "S3", name: "Qualify student goals", description: "Record study level, destination preference, budget range, academic profile, language status and intended intake.", ownerRole: "counsellor", sla: "Before shortlist", input: "Student profile + counselling notes", output: "Qualified student profile", system: "Recruitment CRM / P1", approval: "Counsellor confirms profile", automation: "Required-field and missing-information checks", aiAssist: "A0 — profile summary draft for review", controls: ["No automated eligibility decision"], dataCaptured: ["Study goals", "Profile", "Readiness gaps"], exceptionPath: "Insufficient information → create a student follow-up task." },
+        { id: "S4", name: "Shortlist university, course and intake", description: "Compare approved course and intake records against the student's goals; record counsellor recommendations and student acknowledgement.", ownerRole: "counsellor", sla: "Before application", input: "Qualified profile + verified catalogue", output: "Approved course shortlist", system: "Course Catalogue / P1", approval: "Counsellor and student confirm shortlist", automation: "Filter by destination, course and intake", aiAssist: "A0 — shortlist explanation draft; human confirms all options", controls: ["Only verified catalogue records", "No fabricated course or fee data"], dataCaptured: ["University", "Course", "Intake", "Decision rationale"], exceptionPath: "Catalogue data stale → pause recommendation and request verification." },
+        { id: "S5", name: "Open application and check partner quota", description: "Create the application record, associate the referral partner when applicable and validate the assigned quota before submission.", ownerRole: "admissions-officer", sla: "Before university submission", input: "Approved shortlist + student consent", output: "Application record + quota reservation", system: "Admissions / Partner Portal / P1", approval: "Admissions officer approves submission; partner manager approves quota exceptions", automation: "Duplicate application and quota threshold checks", aiAssist: "none", controls: ["Transaction-safe quota usage", "Partner tenant isolation"], dataCaptured: ["Application ID", "Partner ID", "Quota allocation"], exceptionPath: "Quota exhausted or intake closed → block submission and route to partner manager." },
+        { id: "S6", name: "Collect and verify documents", description: "Request documents against the destination and university checklist; store versions, expiry dates and verification outcomes in the secure vault.", ownerRole: "visa-case-officer", sla: "Configured per intake and document type", input: "Application + required document checklist", output: "Versioned document set + readiness status", system: "Document Vault / P1", approval: "Case officer verifies every document", automation: "Missing-item reminders and expiry alerts", aiAssist: "A0 — extract fields and flag missing items; officer verifies source document", controls: ["Encryption", "Least-privilege access", "Version history", "No automated document approval"], dataCaptured: ["Document type", "Version", "Expiry", "Verifier", "Timestamp"], exceptionPath: "Unreadable, expired or inconsistent document → return to applicant with reason." },
+        { id: "S7", name: "Track offer and student decision", description: "Record university requests, offer conditions, student acceptance and any deposit milestone without bypassing human approval.", ownerRole: "admissions-officer", sla: "According to university intake calendar", input: "Submitted application + university response", output: "Offer status + student decision", system: "Admissions / P1", approval: "Admissions officer validates offer terms; student confirms decision", automation: "Deadline reminders and status updates", aiAssist: "A0 — offer summary draft for counsellor review", controls: ["Offer versioning", "No automated acceptance"], dataCaptured: ["Offer terms", "Deadline", "Student decision"], exceptionPath: "Additional evidence requested → create a new document checklist item." },
+        { id: "S8", name: "Prepare visa case checklist", description: "Create a destination-specific visa case checklist and appointment/deadline timeline; record official source references for human verification.", ownerRole: "visa-case-officer", sla: "Before the relevant submission or appointment date", input: "Accepted offer + verified student documents", output: "Visa readiness checklist + case timeline", system: "Visa Case / P1", approval: "Authorized case officer verifies requirements and readiness", automation: "Deadline and missing-item reminders", aiAssist: "A0 — checklist comparison only; never provides legal advice or makes a visa decision", controls: ["Human verification of official requirements", "No automated visa submission or decision"], dataCaptured: ["Destination", "Checklist version", "Appointment", "Case status"], exceptionPath: "Requirement changes → version checklist and re-review affected files." },
+        { id: "S9", name: "Complete pre-departure and enrollment handoff", description: "Record approved pre-departure tasks and hand off the student record to the institution's enrollment/SIS process.", ownerRole: "counsellor", sla: "Before agreed intake close", input: "Offer acceptance + visa case outcome", output: "Pre-departure checklist + enrollment handoff", system: "Applicant Portal / SIS / P1", approval: "Counsellor and registrar confirm handoff", automation: "Checklist completion and notification", aiAssist: "none", controls: ["No visa outcome inferred", "Student acknowledgement"], dataCaptured: ["Handoff date", "Enrollment status", "Outstanding tasks"], exceptionPath: "Delayed or refused case → human case review and next-step plan." },
+        { id: "S10", name: "Close partner and follow-up records", description: "Update partner application status, quota usage and follow-up history; retain the full case timeline for authorized users.", ownerRole: "partner-manager", sla: "At each milestone and case closure", input: "Application, offer and enrollment milestones", output: "Partner status + quota reconciliation + case history", system: "Partner Portal / CRM / P1", approval: "Partner manager approves quota adjustments", automation: "Status sync and reconciliation alerts", aiAssist: "A1 — follow-up priority suggestion; human decides", controls: ["Partner-only record visibility", "Audited quota changes", "Retention policy"], dataCaptured: ["Partner milestone", "Quota used", "Case closure reason"], exceptionPath: "Mismatch in partner/application totals → freeze adjustment and reconcile." },
+      ],
+      kpis: ["First response SLA", "Application completion rate", "Document readiness", "Visa checklist readiness", "Partner quota utilisation"],
+      systems: ["Recruitment CRM", "Course Catalogue", "Admissions", "Document Vault", "Visa Case", "Applicant Portal", "Partner Portal"],
+      exceptions: ["Missing consent", "Incomplete or expired documents", "Intake closed", "Partner quota exhausted", "Destination checklist changed"],
+      controls: ["Human admission decisions", "Human document verification", "No automated visa decisions", "Consent-aware messaging", "Partner tenant isolation", "Audited quota changes"],
+      compliance: ["Institution privacy policy", "Destination-specific document requirements verified by authorized staff", "Records retention and consent policy"],
+      automation: ["Lead capture", "Counsellor assignment", "Follow-up reminders", "Document expiry alerts", "Partner status sync"],
+      aiAssist: ["A0 enquiry and document completeness drafts", "A1 follow-up priority suggestions"],
+      deliverables: ["Student case timeline", "Application status", "Verified document checklist", "Visa readiness record", "Partner quota ledger", "Enrollment handoff"],
+    },
   ],
   workflows: [
     {
@@ -206,6 +249,61 @@ const education = assembleIndustry({
       automation: ["Clause mapping", "Pack assembly", "Action tracking"],
       aiAssist: ["A0 clause draft", "A1 gap finder", "A0 narrative draft"],
       deliverables: ["Evidence packs", "Submissions", "Improvement actions"],
+    },
+
+    {
+      id: "EDU-MOD-09", name: "Student Document Vault & Visa Case Management", domain: "admissions",
+      summary: "Secure, versioned student documents and destination-specific visa case checklists connected to the recruitment pipeline.",
+      problem: "Passports, transcripts, language results and visa evidence arrive through email and messaging without consistent version, expiry or verification control.",
+      capabilities: ["Secure document upload and storage references", "Document checklist by university, course and destination", "Version history with uploader, verifier and timestamp", "Expiry reminders and missing-item follow-up", "Visa case timeline and appointment/deadline tracking", "Counsellor and case-officer handoff", "Applicant-facing document status", "Human verification before any case advances"],
+      roles: ["counsellor", "visa-case-officer", "admissions-officer"],
+      inputs: ["Student application", "Destination checklist", "University document requirements", "Student uploads"],
+      outputs: ["Versioned document register", "Missing-item alerts", "Verified checklist", "Visa case readiness record"],
+      dataEntities: ["StudentRecruitmentCase", "StudentDocument", "DocumentChecklist", "VisaCase", "FollowUpTask"],
+      integrations: ["Secure object storage", "Document extraction/OCR (human verified)", "Email/SMS/WhatsApp Business"],
+      workflows: ["EDU-WF-01", "EDU-WF-07"],
+      kpis: [
+        { name: "Document readiness", formula: "Verified required items / required items", target: "Configurable by intake", unit: "%", frequency: "weekly" },
+        { name: "Review turnaround", formula: "Upload to verification decision", target: "Configurable by document type", unit: "days", frequency: "weekly" },
+      ],
+      aiUseCases: [
+        { useCaseId: "EDU-AI-09", name: "Document checklist assistant", description: "Flags missing or expired items and drafts a request; the case officer verifies every source document.", autonomy: "A0", dataClass: "confidential", humanOwner: "visa-case-officer", approvalStep: "Case officer verifies every item and checklist version", guardrails: ["No immigration/legal advice", "No automated visa submission or decision", "Never fabricates document evidence"], metrics: ["Document completeness", "Review turnaround"], rollbackPlan: "Manual checklist review", modelFamily: "document-extraction" },
+      ],
+      automations: ["Secure upload", "Versioning", "Expiry reminders", "Missing-item follow-up", "Case milestone notifications"],
+      controls: ["Encryption at rest and in transit", "Least-privilege document access", "Version history", "Human verification", "Retention policy"],
+      compliance: ["Institution privacy policy", "Destination-specific requirements verified by authorized staff", "Records retention"],
+      sla: "Review and reminder SLAs are configurable by document type and intake.",
+      dependencies: ["Admissions CRM", "Secure object storage", "Approved communication channels"],
+      rolloutPhases: ["Wave 1"],
+      effort: { design: 8, build: 40, test: 18 },
+      acceptanceCriteria: ["Every document version records uploader and timestamp", "Expired or missing items block readiness status", "Only assigned roles can view sensitive documents", "No automated visa decision or submission occurs"],
+    },
+    {
+      id: "EDU-MOD-10", name: "B2B Partner & University Portal", domain: "partnerships",
+      summary: "A role-scoped workspace for approved education agents and university partners to view assigned catalogues, applications and quota usage.",
+      problem: "Partner referrals, university intake data and quota allocations are difficult to reconcile when each partner works through separate email threads and spreadsheets.",
+      capabilities: ["Partner onboarding and agreement records", "Partner-specific university, course and intake catalogue", "Quota allocation, usage and remaining-capacity views", "Application status visibility for assigned referrals", "Secure document handoff and checklist status", "Partner communication and milestone notifications", "Partner performance and conversion reporting", "Tenant isolation between partner organisations"],
+      roles: ["partner-manager", "partner-user", "admissions-officer"],
+      inputs: ["Partner agreement", "University/course/intake catalogue", "Approved quota allocation", "Student application referrals"],
+      outputs: ["Partner dashboard", "Quota utilisation ledger", "Assigned application status", "Partner performance report"],
+      dataEntities: ["PartnerOrganization", "PartnerQuota", "UniversityIntake", "StudentRecruitmentCase", "FollowUpTask"],
+      integrations: ["SIS", "University/partner catalogue feeds", "Admissions CRM", "Approved messaging channels"],
+      workflows: ["EDU-WF-07", "EDU-WF-01"],
+      kpis: [
+        { name: "Quota utilisation", formula: "Used quota / allocated quota", target: "Configurable by agreement", unit: "%", frequency: "monthly" },
+        { name: "Partner application completion", formula: "Completed assigned applications / submitted applications", target: "Configurable", unit: "%", frequency: "monthly" },
+      ],
+      aiUseCases: [
+        { useCaseId: "EDU-AI-10", name: "Partner quota threshold monitor", description: "Flags approaching quota limits and missing partner records; partner managers approve changes.", autonomy: "A1", dataClass: "confidential", humanOwner: "partner-manager", approvalStep: "Partner manager approves every quota change", guardrails: ["Never changes quotas automatically", "No cross-partner record access"], metrics: ["Quota reconciliation exceptions"], rollbackPlan: "Manual quota ledger review", modelFamily: "rules-and-anomaly-detection" },
+      ],
+      automations: ["Partner onboarding checklist", "Quota threshold alerts", "Application status sync", "Partner milestone notifications"],
+      controls: ["Partner tenant isolation", "Transaction-safe quota usage", "Approved quota changes only", "Audit trail on partner access"],
+      compliance: ["Partner agreement", "Student data-sharing consent", "Institution data policy"],
+      sla: "Quota changes and partner access changes require an approved manager action.",
+      dependencies: ["Partner contracts", "Admissions CRM", "University catalogue"],
+      rolloutPhases: ["Wave 2"],
+      effort: { design: 10, build: 42, test: 20 },
+      acceptanceCriteria: ["Partners can access only assigned records", "Quota usage is transaction-safe", "Quota changes require approval and audit", "Application status is timestamped and traceable"],
     },
   ],
   modules: [
@@ -425,11 +523,23 @@ const education = assembleIndustry({
       effort: { design: 6, build: 32, test: 14 },
       acceptanceCriteria: ["Every evidence item links to source", "Gaps alert owners", "Actions verify independently"],
     },
+
+    { id: "agent-edu-documents", name: "Student Document Checklist Assistant", module: "EDU-MOD-09", autonomy: "A0", description: "Flags missing or expired student documents and drafts a checklist request; the case officer verifies every item.", humanOwner: "visa-case-officer", guardrails: ["No immigration/legal advice", "No automated visa decisions", "No automated document approval"] },
+    { id: "agent-edu-followup", name: "Student Follow-up Prioritizer", module: "EDU-MOD-02", autonomy: "A1", description: "Suggests which student cases need follow-up based on stage and last-contact history; the counsellor chooses the next action.", humanOwner: "counsellor", guardrails: ["No automatic outbound messaging", "Consent and channel rules enforced", "Human chooses all actions"] },
   ],
   agents: [
     { id: "agent-edu-admit", name: "Admissions Completeness Assistant", module: "EDU-MOD-02", autonomy: "A0", description: "Detects missing documents and drafts outreach; officers decide.", humanOwner: "admissions-officer", guardrails: ["Never scores or decides applicants"] },
     { id: "agent-edu-success", name: "Retention Early Alert", module: "EDU-MOD-06", autonomy: "A1", description: "Scores risk with visible reasons; advisors intervene.", humanOwner: "academic-advisor", guardrails: ["Explainable scores; human action only"] },
     { id: "agent-edu-accred", name: "Accreditation Gap Finder", module: "EDU-MOD-08", autonomy: "A1", description: "Lists evidence gaps vs checklist; analyst confirms.", humanOwner: "ir-analyst", guardrails: ["Never fabricates evidence"] },
+
+    { id: "ent-edu-recruitment-case", name: "Student Recruitment Case", description: "Student enquiry and counselling timeline from first contact through application and enrollment handoff.", domain: "admissions", keyAttributes: ["Case ID", "Counsellor", "Destination", "Intake", "Stage"], relations: ["Student", "Application", "PartnerOrganization", "FollowUpTask"], lifecycle: "Enquiry → Qualified → Shortlisted → Applied → Offered → Enrolled/Closed", systemOfRecord: "Recruitment CRM" },
+    { id: "ent-edu-student-document", name: "Student Document", description: "Versioned student document with verification and expiry history.", domain: "admissions", keyAttributes: ["Document ID", "Type", "Version", "Expiry", "Verification"], relations: ["StudentRecruitmentCase", "VisaCase"], lifecycle: "Requested → Uploaded → In Review → Verified/Rejected → Archived", systemOfRecord: "Document Vault" },
+    { id: "ent-edu-document-checklist", name: "Document Checklist", description: "Destination and institution-specific required evidence list with versioned source references.", domain: "admissions", keyAttributes: ["Checklist ID", "Destination", "Version", "Status"], relations: ["StudentRecruitmentCase", "StudentDocument"], lifecycle: "Draft → Approved → Active → Superseded", systemOfRecord: "Document Vault" },
+    { id: "ent-edu-visa-case", name: "Visa Case", description: "Human-managed visa readiness and appointment timeline; does not make eligibility or visa decisions.", domain: "admissions", keyAttributes: ["Visa Case ID", "Destination", "Checklist Version", "Status"], relations: ["StudentRecruitmentCase", "StudentDocument"], lifecycle: "Opened → Checklist → Reviewed → Submitted by authorized person → Outcome recorded/Closed", systemOfRecord: "Visa Case Management" },
+    { id: "ent-edu-partner", name: "Partner Organization", description: "Approved B2B education agent or university partner with scoped access and agreement status.", domain: "partnerships", keyAttributes: ["Partner ID", "Agreement", "Status", "Assigned Catalog"], relations: ["PartnerQuota", "StudentRecruitmentCase"], lifecycle: "Invited → Due Diligence → Approved → Active → Suspended/Closed", systemOfRecord: "Partner Portal" },
+    { id: "ent-edu-partner-quota", name: "Partner Quota", description: "Approved partner allocation and transaction-safe usage by institution, course and intake.", domain: "partnerships", keyAttributes: ["Quota ID", "Partner", "Intake", "Allocated", "Used", "Remaining"], relations: ["PartnerOrganization", "UniversityIntake"], lifecycle: "Draft → Approved → Active → Exhausted/Expired", systemOfRecord: "Partner Portal" },
+    { id: "ent-edu-university-intake", name: "University Intake", description: "Verified university, course, intake dates and available application capacity.", domain: "admissions", keyAttributes: ["University", "Course", "Intake", "Start Date", "Status"], relations: ["StudentRecruitmentCase", "PartnerQuota"], lifecycle: "Draft → Verified → Open → Closed/Archived", systemOfRecord: "Course Catalogue" },
+    { id: "ent-edu-followup-task", name: "Student Follow-up Task", description: "Consent-aware counsellor task with due date, contact channel and completion history.", domain: "admissions", keyAttributes: ["Task ID", "Owner", "Due Date", "Channel", "Status"], relations: ["StudentRecruitmentCase", "Student"], lifecycle: "Created → Due → Completed/Rescheduled/Cancelled", systemOfRecord: "Recruitment CRM" },
   ],
   dataModel: [
     { id: "ent-edu-student", name: "Student Record", description: "Lifecycle record from prospect to alumni.", domain: "academic-core", keyAttributes: ["Student ID", "Program", "Status"], relations: ["Enrollment", "Grade", "Invoice"], lifecycle: "Prospect → Applicant → Enrolled → Completed → Alumni", systemOfRecord: "SIS" },
@@ -440,6 +550,9 @@ const education = assembleIndustry({
     { id: "ent-edu-fee", name: "Fee & Plan", description: "Fee schedules, invoices, and installment plans.", domain: "finance", keyAttributes: ["Invoice ID", "Amount (USD)", "Plan"], relations: ["Student", "Receipt"], lifecycle: "Billed → Partial → Paid → Closed/Defaulted", systemOfRecord: "Finance" },
     { id: "ent-edu-evidence", name: "Evidence Pack", description: "Accreditation evidence with provenance.", domain: "analytics", keyAttributes: ["Pack ID", "Clause", "Approval"], relations: ["ClauseMap"], lifecycle: "Draft → Reviewed → Submitted", systemOfRecord: "Accreditation" },
     { id: "ent-edu-auditlog", name: "Audit Event", description: "Immutable platform audit trail.", domain: "security", keyAttributes: ["Event ID", "Actor"], relations: ["All entities (reference)"], lifecycle: "Append-only", systemOfRecord: "Platform" },
+
+    { id: "portal-edu-applicant", name: "Applicant Portal", audience: "Prospective students and applicants", description: "Enquiry, course shortlist, application status, secure document upload and visa-case checklist.", keyScreens: ["My application", "Course shortlist", "Document checklist", "Offer status", "Visa case milestones"] },
+    { id: "portal-edu-partner", name: "B2B Partner Portal", audience: "Approved education agents and university partners", description: "Partner onboarding, assigned catalogues and intakes, quota usage, referred application status and approved document handoff.", keyScreens: ["Partner dashboard", "University and course catalogue", "Quota allocation and usage", "Referred applications", "Document status"] },
   ],
   portals: [
     { id: "portal-edu-student", name: "Student Portal", audience: "Students", description: "Registration, courses, grades, fees (USD), and support.", keyScreens: ["Register", "Courses", "Grades", "Fees"] },
@@ -452,6 +565,10 @@ const education = assembleIndustry({
     { id: "int-edu-idp", name: "Identity (campus IdP)", direction: "inbound", protocol: "OIDC/SAML", description: "SSO for students, faculty, staff." },
     { id: "int-edu-sis", name: "Legacy SIS feeds", direction: "bidirectional", protocol: "API/file", description: "Migration and coexistence sync." },
     { id: "int-edu-msg", name: "Messaging", direction: "outbound", protocol: "SMTP/SMS API", description: "Notifications and yield sequences." },
+
+    { id: "int-edu-lead", name: "Approved enquiry channels", direction: "inbound", protocol: "Webhook/REST", description: "Web forms, WhatsApp Business, SMS, email and approved social lead connectors with source attribution and consent evidence." },
+    { id: "int-edu-partner", name: "University and partner catalogue feeds", direction: "bidirectional", protocol: "API/file", description: "Verified university, course, intake, application status and partner quota data exchange." },
+    { id: "int-edu-doc", name: "Secure document storage and extraction", direction: "bidirectional", protocol: "REST/S3-compatible", description: "Versioned document storage and optional OCR field extraction; an authorized case officer verifies every extracted value." },
   ],
   analytics: [
     { id: "an-edu-acad", name: "Academic Operations Board", audience: "Registrar / Dean", kpis: [
@@ -464,20 +581,33 @@ const education = assembleIndustry({
       { name: "Net tuition (USD)", formula: "Tuition − aid", target: "Plan ±2%", unit: "USD", frequency: "monthly" },
       { name: "Receivable aging", formula: "Balances >90 days / total", target: "≤5%", unit: "%", frequency: "monthly" },
     ] },
+
+    { id: "an-edu-recruit", name: "Student Recruitment & Visa Readiness Board", audience: "Counsellor / Visa Operations / Partner Manager", kpis: [
+      { name: "First response SLA", formula: "Enquiries answered within agreed SLA / total enquiries", target: "Configurable by channel", unit: "%", frequency: "weekly" },
+      { name: "Application completion", formula: "Complete applications / active applications", target: "Configurable by intake", unit: "%", frequency: "weekly" },
+      { name: "Document readiness", formula: "Verified required documents / required documents", target: "Configurable by destination", unit: "%", frequency: "weekly" },
+      { name: "Partner quota utilisation", formula: "Used approved quota / allocated quota", target: "Per partner agreement", unit: "%", frequency: "monthly" },
+    ] },
   ],
   faqs: [
     { q: "Can this run admissions for competitive programs?", a: "Yes — EDU-WF-01 covers completeness, rubric evaluation with human decisions, committee review, and offer management; scoring autonomy is explicitly prohibited." },
     { q: "How do you protect assessment integrity?", a: "Rubric gating, moderation sampling, audited grade changes, and independent appeal decisions — every change carries actor, reason, and approval." },
     { q: "Is tuition reporting really USD-only?", a: "Yes — every fee, invoice, and finance field is USD ($) and the validator rejects foreign currency anywhere in the payload." },
     { q: "Does accreditation evidence require manual assembly?", a: "No — clause-to-source mapping pulls evidence from live operations with provenance links; packs assemble in ≤1 business day." },
+
+    { q: "Can this support education consultancy recruitment-to-visa workflows and B2B partners?", a: "Yes. The education blueprint includes counsellor follow-up, student application stages, a secure document vault, human-managed visa case checklists, partner-specific application visibility and quota controls. Admission and visa decisions remain with authorized people." },
   ],
   pricing: [16500, 4100, 46000, 10500, 115000, 25000],
   uiScreens: [
     { title: "Admissions Pipeline", description: "Stage view with SLAs, completeness, and yield forecast.", alt: "Admissions pipeline board showing application stages and SLA timers", caption: "Admissions pipeline" },
     { title: "Student Success Caseload", description: "Explainable risk cases with interventions and outcomes.", alt: "Advisor caseload screen with risk scores and intervention plans", caption: "Student success caseload" },
     { title: "Accreditation Evidence Pack", description: "Clause checklist with provenance-linked evidence and gaps.", alt: "Accreditation evidence pack showing clause checklist with linked evidence", caption: "Accreditation evidence pack" },
+
+    { title: "Recruitment-to-Visa Pipeline", description: "Student case stages, counsellor ownership, application milestones and destination-specific document readiness.", alt: "Student recruitment-to-visa pipeline with application stages and counsellor follow-up", caption: "Recruitment-to-visa pipeline" },
+    { title: "Student Document Vault", description: "Versioned uploads, expiry reminders, verification status and restricted case access.", alt: "Secure student document vault with checklist and verification status", caption: "Document vault" },
+    { title: "B2B Partner Quota Dashboard", description: "Approved partner allocations, intake usage, remaining quota and assigned application status.", alt: "B2B education partner portal showing quota allocation and referred application status", caption: "Partner quota dashboard" },
   ],
-  applicationsNote: "admissions, learning delivery, and institutional reporting",
+  applicationsNote: "admissions, student recruitment-to-visa casework, partner management, learning delivery, and institutional reporting",
 });
 
 /* ============================ Schools & Training ============================ */
