@@ -1327,3 +1327,41 @@ Use this runbook when a hero, service card, industry visual or platform image is
 7. **Keep visual accessibility.** Every meaningful image needs descriptive English `alt` text and explicit dimensions/aspect ratio to prevent layout shift. Decorative images use empty alt text only when they convey no information.
 
 **Current live check (2026-11-17):** service and industry page image references were inspected, and the homepage, Services and Education page visuals rendered during browser inspection. A complete browser `naturalWidth` sweep of all 41 detail pages is still a separate release-QA item; do not infer that from the repository asset gate alone.
+
+## Appendix B — Dependency security audit and remediation
+
+Use this runbook before every production release and whenever CI reports a vulnerable dependency.
+
+1. **Reproduce the exact lockfile state.** From the reviewed commit, run:
+
+   ```bash
+   node --version
+   npm --version
+   npm ci --no-audit --no-fund
+   npm audit --audit-level=low
+   npm audit --omit=dev --audit-level=low
+   ```
+
+   Keep the lockfile committed and use the Node version declared in `package.json`.
+
+2. **Identify the complete dependency path.** For each reported package:
+
+   ```bash
+   npm ls next eslint-config-next picomatch --all
+   npm explain next
+   npm explain picomatch
+   ```
+
+   Record the direct package, transitive parents, installed version, advisory ID, severity, affected range and patched version (if one exists).
+
+3. **Upgrade framework packages together.** For Next.js, align `next` and `eslint-config-next` on a compatible patched release. At the 2026-11-17 audit, Next.js `16.4.3` was affected by advisories fixed in `16.4.5+`. Regenerate the lockfile with npm, then run `npm ci`, typecheck, lint, tests and production build. Do not hand-edit package-lock integrity hashes.
+
+4. **Do not force a dependency tree.** Do not run `npm audit fix --force` as a shortcut. Review major-version changes, peer dependencies, Prisma compatibility, Next.js build output and standalone runtime before accepting an upgrade.
+
+5. **Handle advisories with no published fix honestly.** At the 2026-11-17 audit, picomatch `4.0.7` was affected by GHSA-fc5q-39xc-vjpf and the advisory did not state a patched version. Do not mark it resolved because npm prints a generic `fix available` hint. Check the upstream advisory and release metadata again. If no fix exists, keep the release blocked or obtain a written, time-limited risk acceptance that records affected dependency paths, exposure analysis, compensating controls, owner and expiry date.
+
+6. **Re-run both audit scopes.** A production-only clean audit does not prove development tooling is clean; a full audit clean result does not prove production deployment. Both commands in step 1 must pass for a fully clean release unless a narrowly scoped, formally approved exception is documented.
+
+7. **Release gate.** Do not merge or deploy while a high/critical dependency finding is unresolved. A failed audit step means later typecheck, test and build steps may not have run; verify their actual CI job status rather than assuming they passed.
+
+**2026-11-17 observed blocker:** Draft PR #80 CI run `44149470204` failed at the dependency audit gate with 12 findings (1 moderate, 11 high). Typecheck, full tests and production build were not reached. See `KNOWN_ISSUES_AND_BLOCKERS.md` B-013 and `docs/TECH360_PUBLIC_PLATFORM_AUDIT_2026-11-17.md`.
