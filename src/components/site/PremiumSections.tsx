@@ -32,7 +32,7 @@ const cardCls =
 const TRUST = [
   { icon: Link2, title: "Connected business operations", text: "Website, CRM, messaging and reporting in one flow" },
   { icon: Workflow, title: "Workflow automation", text: "Repetitive steps run by approved, auditable automations" },
-  { icon: Bot, title: "AI-assisted productivity", text: "Assistants draft, summarise and prepare — people approve" },
+  { icon: Bot, title: "AI engineering for your business", text: "Client-scoped assistants and automation, with human review for important actions" },
   { icon: BarChart3, title: "Centralized business intelligence", text: "One dashboard instead of five spreadsheet exports" },
 ];
 export function TrustRow() {
