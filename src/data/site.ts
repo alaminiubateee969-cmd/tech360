@@ -948,7 +948,7 @@ export const INDUSTRIES: Industry[] = [
     title: "Marketing Agencies",
     imageKey: "marketing",
     description:
-      "Marketing teams whose value depends on producing, approving and publishing at volume without chaos.",
+      "Marketing agencies managing SEO/SEM, paid search and social, content and video production, landing pages, campaign automation and performance reporting across multiple client accounts.",
     problems: [
       "Content production tracked across chats and boards",
       "Client approval rounds lost in forwarded messages",
@@ -956,9 +956,9 @@ export const INDUSTRIES: Industry[] = [
       "Creative assets scattered across drives and phones",
     ],
     solution:
-      "Content operations systems: structured production pipelines, approval workflows with records, automated publishing and reporting that assembles itself.",
+      "A connected marketing operating model: SEO and SEM planning, paid media coordination, content and video production, landing-page conversion journeys, client approvals, consent-aware campaign automation and attribution reporting.",
     exampleSystem:
-      "A social-first agency runs client content through an approval pipeline — every draft, note and sign-off permanently attached to the campaign record.",
+      "A digital agency connects search strategy, paid campaigns, landing pages, creative approvals and CRM lead routing so each campaign can be reviewed against its agreed objectives and attribution method.",
     recommended: ["n8n-workflow-automation", "client-portals", "ai-business-automation", "business-dashboards"],
   },
   {
