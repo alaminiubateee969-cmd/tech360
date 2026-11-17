@@ -312,7 +312,6 @@ export const SERVICE_IMAGES: Record<string, ServiceImageEntry> = {
     heroAlt: "Illustrative executive transformation roadmap auditing fragmented legacy silos and sequencing phased, ROI-ranked modernization into a connected target architecture",
     concept: "Current-state process audit transitioning via a strategic ROI compass into a phased connected target architecture",
   },
-
 };
 
 /* ---------------- 6 Platform Capability Visuals ---------------- */
