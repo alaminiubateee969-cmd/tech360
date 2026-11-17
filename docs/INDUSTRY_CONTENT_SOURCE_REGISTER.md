@@ -57,8 +57,11 @@ instead of the AML acronym for this reason.
 ### Scope decision (documented)
 
 - **Flagship + Phase 4a–c groups** (manufacturing, commerce-retail,
-  education, healthcare): **6 workflows + 8 modules** per industry
-  (manufacturing: 26 + 52 as the quality bar).
+  education, healthcare) use a **6-workflow + 8-module baseline**. Education
+  was deliberately expanded on 2026-11-17 to **7 workflows + 10 modules** to
+  cover education-consultancy recruitment-to-visa casework, secure student
+  documents and B2B partner quota management. Manufacturing remains the
+  26-workflow + 52-module quality bar.
 - **Phase 4d–f groups** (13 industries): **5 workflows + 7 modules** each —
   a deliberate size control so all 20 slugs reach the full 22-field contract
   with 0 validation issues while keeping payloads maintainable. Every section
