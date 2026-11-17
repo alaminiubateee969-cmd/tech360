@@ -804,18 +804,19 @@ export const INDUSTRIES: Industry[] = [
     title: "Education",
     imageKey: "education",
     description:
-      "Institutions where enquiry handling, admission and communication with guardians decide both reputation and revenue.",
+      "Universities, colleges and education consultancies managing student enquiries, course applications, document checklists, visa casework and B2B university or agent relationships.",
     problems: [
-      "Enquiries answered late or lost across staff phones",
-      "Admission status communicated through repeated calls",
-      "Guardian communication dependent on individual teachers",
-      "No single record of a student's full journey",
+      "Student enquiries and counsellor follow-ups scattered across inboxes and messaging channels",
+      "Applications, offers and intake deadlines tracked in separate spreadsheets",
+      "Passports, transcripts and visa evidence lack version, expiry and verification history",
+      "Education agents and university partners cannot see assigned applications or remaining quotas",
+      "No single case timeline from first enquiry through application, visa readiness and enrollment",
     ],
     solution:
-      "An enquiry-to-admission pipeline with automated follow-up, guardian communication templates and a single record per student from first contact to certificate.",
+      "A student recruitment-to-visa CRM with consent-aware lead capture, counsellor assignment, course and intake shortlists, application stages, secure document vaults, human-managed visa checklists, applicant and B2B partner portals, quota controls and operational reporting.",
     exampleSystem:
-      "A coaching centre automates enquiry follow-up, batch-allocation notices and monthly guardian progress updates — each message logged against the student's record.",
-    recommended: ["custom-crm-development", "whatsapp-automation", "email-automation", "client-portals"],
+      "Illustrative education consultancy workflow: a student enquiry is assigned to a counsellor, matched to a verified course and intake, moved through an application checklist, supported by a versioned document vault and destination-specific visa case timeline, then handed to the institution for enrollment. Approved partners see only their own referrals and quota usage.",
+    recommended: ["custom-crm-development", "client-portals", "whatsapp-automation", "email-automation", "business-dashboards", "api-integrations"],
   },
   {
     slug: "schools-training",
