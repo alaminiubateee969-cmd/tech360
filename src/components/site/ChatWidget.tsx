@@ -176,7 +176,7 @@ export default function ChatWidget() {
       if (nowHidden) setOpen(false)
     }
     window.addEventListener('hashchange', onHash)
-    // External "Live Support" CTAs (AIAssistantLink and header chips) open the
+    // External "Live Support" CTAs (LiveSupportLink and header chips) open the
     // chat through this event — live chat is the site's contact channel.
     const onOpenChat = () => {
       if (!isHashRouteHidden()) setOpen(true)
