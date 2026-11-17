@@ -15,7 +15,7 @@ import { PageHero } from "./PageHero";
 import { SectionHeading } from "./SectionHeading";
 import { CtaBand } from "./CtaBand";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
-import { PrimaryLink, OutlineLink, AIAssistantLink } from "./buttons";
+import { PrimaryLink, OutlineLink, LiveSupportLink } from "./buttons";
 import {
   AI_ADMIN_APPROVAL, AI_ALWAYS_SAVE, AI_AUTO_SEND, CLIENT_ID_FORMAT, CLIENT_ID_PATTERN,
   CRM_PROFILE_FIELDS, FINAL_RULES, PIPELINE_BRAND, PIPELINE_CORE_RULE, PIPELINE_DOMAIN,
@@ -751,7 +751,7 @@ function StartProjectSection() {
             </ul>
             <div className="mt-8 flex flex-wrap gap-3">
               <PrimaryLink href="/portal">Track an existing project <ArrowRight className="size-4" aria-hidden="true" /></PrimaryLink>
-              <AIAssistantLink label="Chat with the AI agent" />
+              <LiveSupportLink label="Chat with the AI agent" />
             </div>
           </Reveal>
 
@@ -912,7 +912,7 @@ export default function AgentPipelineView() {
           >
             Explore all 11 stages <ChevronRight className="size-4" aria-hidden="true" />
           </OutlineLink>
-          <AIAssistantLink label="Chat with the AI agent" />
+          <LiveSupportLink label="Chat with the AI agent" />
         </div>
         <p className="mt-5 flex items-center gap-2 text-xs text-white/60">
           <Sparkles className="size-3.5 text-[#7FD4FF]" aria-hidden="true" />
