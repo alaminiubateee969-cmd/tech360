@@ -79,7 +79,7 @@ const education = assembleIndustry({
     { id: "counsellor", name: "Student Counsellor", seniority: "frontline", responsibilities: ["Qualify student enquiries", "Guide course and university shortlists", "Own follow-up tasks"], permissions: ["Assigned student case update", "Counselling note create"], dashboards: ["Counsellor pipeline", "Follow-up queue"] },
     { id: "visa-case-officer", name: "Visa & Document Case Officer", seniority: "manager", responsibilities: ["Verify student documents", "Maintain destination checklists", "Track visa case milestones"], permissions: ["Assigned document verify", "Visa case update"], dashboards: ["Document readiness", "Visa case board"] },
     { id: "partner-manager", name: "B2B Partner Manager", seniority: "manager", responsibilities: ["Approve partner onboarding", "Allocate partner quotas", "Review partner performance"], permissions: ["Partner approve", "Quota change request"], dashboards: ["Partner quota board"] },
-    { id: "partner-user", name: "Approved Partner User", seniority: "external", responsibilities: ["Submit referred student enquiries", "Track assigned applications", "Upload approved documents"], permissions: ["Own partner records only", "Assigned application read"], dashboards: ["Partner portal"] },
+    { id: "partner-user", name: "Approved Partner User", seniority: "frontline", responsibilities: ["Submit referred student enquiries", "Track assigned applications", "Upload approved documents"], permissions: ["Own partner records only", "Assigned application read"], dashboards: ["Partner portal"] },
 
 
   ],
