@@ -312,6 +312,28 @@ export const SERVICE_IMAGES: Record<string, ServiceImageEntry> = {
     heroAlt: "Illustrative executive transformation roadmap auditing fragmented legacy silos and sequencing phased, ROI-ranked modernization into a connected target architecture",
     concept: "Current-state process audit transitioning via a strategic ROI compass into a phased connected target architecture",
   },
+  "business-digitalization-systems": {
+    slug: "business-digitalization-systems",
+    src: "/images/platform/platform-crm-operations.webp",
+    width: 1600,
+    height: 1000,
+    aspect: "16/10",
+    category: "Enterprise Software & Digital Transformation",
+    href: "/services/business-digitalization-systems",
+    alt: "Business digitalization illustration connecting employee records, operational workflows, inventory and management reporting",
+    concept: "Connected business applications for HR, operations, inventory and management reporting",
+  },
+  "digital-marketing-growth": {
+    slug: "digital-marketing-growth",
+    src: "/images/platform/platform-marketing-operations.webp",
+    width: 1600,
+    height: 1000,
+    aspect: "16/10",
+    category: "Digital Marketing & Growth",
+    href: "/services/digital-marketing-growth",
+    alt: "Digital marketing illustration showing campaign planning, search and social channels, landing pages and a human review workflow",
+    concept: "Campaign planning and measurement across search, paid media, content and CRM follow-up",
+  },
 };
 
 /* ---------------- 6 Platform Capability Visuals ---------------- */
