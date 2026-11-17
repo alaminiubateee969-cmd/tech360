@@ -22,7 +22,7 @@ Content and metadata were inspected for the main public pages:
 - All 21 service detail URLs.
 - All 20 industry detail URLs.
 
-The industry registry already supplies sector-specific challenges, business models, departments, roles/permissions, workflows, modules, integrations, security controls, KPIs and delivery information. Education was expanded from 6 workflows/8 modules to 7 workflows/10 modules to include student recruitment-to-visa casework, counsellor follow-up, a secure document vault, applicant and B2B partner portals, partner quota controls and human-verified visa checklists. Marketing Agencies was expanded to explicitly cover SEO/SEM, paid search and social, content and video production, landing pages, email campaign handoff, conversion tracking and attribution. Digital Transformation Consulting was expanded to include business digitalisation needs such as HR, employee records, attendance, payroll, finance integrations, inventory, POS, project management, team communication, performance reporting, document management and APIs.
+The industry registry already supplies sector-specific challenges, business models, departments, roles/permissions, workflows, modules, integrations, security controls, KPIs and delivery information. Education was expanded from 6 workflows/8 modules to 7 workflows/10 modules to include student recruitment-to-visa casework, counsellor follow-up, a secure document vault, applicant and B2B partner portals, partner quota controls and human-verified visa checklists. Marketing Agencies was expanded to explicitly cover SEO/SEM, paid search and social, content and video production, landing pages, email campaign handoff, conversion tracking and attribution; these capabilities are included in the existing industry blueprint, not a new standalone service route, so the 21-service catalogue remains unchanged. Digital Transformation Consulting was expanded to include business digitalisation needs such as HR, employee records, attendance, payroll, finance integrations, inventory, POS, project management, team communication, performance reporting, document management and APIs.
 
 ### Visual assets
 
@@ -44,7 +44,7 @@ The industry registry already supplies sector-specific challenges, business mode
 | Factory templates API | 401 without a session | Anonymous access is denied |
 | `/api/pipeline/public` | Returns a sanitized public delivery journey | Public contract is appropriately limited |
 
-The `DEVELOPER` role exists inside the authenticated `/#/admin` console. It is not a separate portal, route or independently accepted developer experience.
+The `DEVELOPER` role exists inside the authenticated `/#/admin` console. It is not a separate portal, route or independently accepted developer experience. The API checks in this audit are representative public/protected endpoint checks plus source-level guard tests; they are not a claim that every API route and every authenticated workflow has been exhaustively exercised.
 
 ## Production health observation
 
