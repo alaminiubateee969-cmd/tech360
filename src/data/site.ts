@@ -733,6 +733,68 @@ export const SERVICES: Service[] = [
       "An online store on a maintenance agreement receiving proactive patching and a monthly report — instead of discovering vulnerabilities after an incident.",
   },
   {
+    slug: "business-digitalization-systems",
+    icon: "Workflow",
+    title: "Business Digitalization Systems",
+    tagline: "Connect the everyday systems your teams rely on.",
+    problem:
+      "Employee records, attendance, payroll, purchasing, inventory, point of sale, projects and documents often live in separate tools. Teams repeat the same updates, managers cannot see the full picture, and important approvals disappear into email or spreadsheets.",
+    solution:
+      "We map the processes first, then design and build connected business applications that bring the right records, workflows and reporting together. The scope can include HR, attendance, payroll, finance integrations, inventory, POS, project management, document control and management dashboards.",
+    features: [
+      "Employee records, onboarding and role-based HR workflows",
+      "Attendance, leave and payroll process integrations",
+      "Accounting and finance-system integrations with clear approval boundaries",
+      "Inventory, purchasing, POS and order-tracking workflows",
+      "Project, task, team communication and performance reporting",
+      "Document management, approval history and audit records",
+      "API integrations, data migration planning and validation",
+      "Management dashboards and exportable operational reports",
+    ],
+    tech: ["Next.js", "React", "TypeScript", "MySQL", "PostgreSQL", "Prisma", "REST APIs", "n8n"],
+    workflow: [
+      "Current-state review of people, finance and operational processes",
+      "Process map, roles, data ownership and integration inventory",
+      "Agreed solution architecture, milestones and acceptance criteria",
+      "Interactive preview and workflow review where included in scope",
+      "Build, data migration and system integrations",
+      "Role-based testing, user acceptance and operational handover",
+    ],
+    example:
+      "Illustrative scenario: a multi-location service business connects staff records, attendance, stock, purchasing and project reporting so managers can review operations without reconciling separate spreadsheets.",
+  },
+  {
+    slug: "digital-marketing-growth",
+    icon: "Megaphone",
+    title: "Digital Marketing & Growth",
+    tagline: "A measurable growth system across search, paid media and content.",
+    problem:
+      "Marketing activity becomes difficult to improve when SEO, paid campaigns, social content, landing pages and lead records are managed separately. Spend, enquiries and follow-up cannot be compared consistently.",
+    solution:
+      "We help plan and implement a connected digital marketing programme: search visibility, paid media, content and video, landing pages, campaign automation and reporting. Channel selection, access, budget and success measures are agreed before launch.",
+    features: [
+      "Technical SEO, on-page optimisation and content planning",
+      "Search engine marketing and paid search campaign setup",
+      "Paid social campaign planning and audience testing",
+      "Content strategy, copywriting, social publishing and video assets",
+      "Landing pages, enquiry forms and conversion-rate improvements",
+      "Email and lifecycle automation with consent-aware contact handling",
+      "Analytics, campaign attribution and performance reporting",
+      "Lead routing into CRM and agreed follow-up workflows",
+    ],
+    tech: ["Google Analytics 4", "Google Search Console", "Google Ads", "Meta Ads", "Google Tag Manager", "CRM APIs"],
+    workflow: [
+      "Business goals, audience and current-channel review",
+      "Keyword, competitor and campaign opportunity research",
+      "Channel plan, budget assumptions and measurement design",
+      "Content, creative and landing-page preparation",
+      "Client review and approval before campaign launch",
+      "Campaign monitoring, reporting and agreed optimisation cycles",
+    ],
+    example:
+      "Illustrative scenario: a B2B services firm connects search content, paid campaigns, landing pages and CRM follow-up so campaign enquiries can be evaluated against qualified opportunities.",
+  },
+  {
     slug: "digital-transformation-consulting",
     icon: "Compass",
     title: "Digital Transformation Consulting",
