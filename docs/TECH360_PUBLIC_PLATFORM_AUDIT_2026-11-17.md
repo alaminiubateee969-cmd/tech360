@@ -22,7 +22,7 @@ Content and metadata were inspected for the main public pages:
 - All 21 service detail URLs.
 - All 20 industry detail URLs.
 
-The industry registry already supplies sector-specific challenges, business models, departments, roles/permissions, workflows, modules, integrations, security controls, KPIs and delivery information. Marketing Agencies was expanded to explicitly cover SEO/SEM, paid search and social, content and video production, landing pages, email campaign handoff, conversion tracking and attribution. Digital Transformation Consulting was expanded to include business digitalisation needs such as HR, employee records, attendance, payroll, finance integrations, inventory, POS, project management, team communication, performance reporting, document management and APIs.
+The industry registry already supplies sector-specific challenges, business models, departments, roles/permissions, workflows, modules, integrations, security controls, KPIs and delivery information. Education was expanded from 6 workflows/8 modules to 7 workflows/10 modules to include student recruitment-to-visa casework, counsellor follow-up, a secure document vault, applicant and B2B partner portals, partner quota controls and human-verified visa checklists. Marketing Agencies was expanded to explicitly cover SEO/SEM, paid search and social, content and video production, landing pages, email campaign handoff, conversion tracking and attribution. Digital Transformation Consulting was expanded to include business digitalisation needs such as HR, employee records, attendance, payroll, finance integrations, inventory, POS, project management, team communication, performance reporting, document management and APIs.
 
 ### Visual assets
 
