@@ -138,11 +138,14 @@ describe('API contracts — every protected route is guarded', () => {
     })
   }
 
-  it('the public health route stays unauthenticated and says very little', () => {
+  it('the public health route stays unauthenticated and exposes no internal diagnostics', () => {
     const source = readFileSync(join(API, 'health/route.ts'), 'utf8')
     assert.equal(source.includes('guard('), false, '/api/health must stay public')
-    assert.equal(source.includes('DATABASE_URL'), true)
-    // It must not leak configuration values.
+    assert.match(source, /checks:\s*\{\s*database:/)
+    assert.match(source, /release:\s*\{/)
+    for (const internalField of ['aiProvider', 'aiAgents', 'aiOperations', 'channels', 'heartbeat', 'provider']) {
+      assert.equal(source.includes(internalField), false, `public health must not expose ${internalField}`)
+    }
     assert.equal(/mysql:\/\/[^"']/.test(source), false)
   })
 })
