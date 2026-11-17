@@ -3,8 +3,8 @@ import type { IndustryRegistryEntry } from "./types";
 
 /**
  * Education group — 2 independent, globally applicable, USD-only payloads:
- * education (higher ed / training institutions) and schools-training (K-12
- * and vocational training providers).
+ * education (higher education, education consultancies and student recruitment-to-visa)
+ * and schools-training (K-12 and vocational training providers).
  */
 
 /* ============================ Education (Higher Ed / Institutions) ============================ */
