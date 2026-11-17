@@ -1016,7 +1016,6 @@ export interface HealthResponse {
     database?: { status?: string | null; detail?: string | null } | null
     modelService?: { status?: string | null; detail?: string | null } | null
     localModels?: { status?: string | null; detail?: string | null } | null
-    registries?: { status?: string | null; detail?: string | null } | null
     taskQueue?: { status?: string | null; detail?: string | null } | null
     knowledgeCorpus?: { status?: string | null; detail?: string | null } | null
     registries?: {
