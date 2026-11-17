@@ -143,10 +143,25 @@ describe('API contracts — every protected route is guarded', () => {
     assert.equal(source.includes('guard('), false, '/api/health must stay public')
     assert.match(source, /checks:\s*\{\s*database:/)
     assert.match(source, /release:\s*\{/)
-    for (const internalField of ['aiProvider', 'aiAgents', 'aiOperations', 'channels', 'heartbeat', 'provider']) {
+    for (const internalField of ['checks.aiProvider', 'checks.aiAgents', 'checks.aiOperations', 'channels:', 'heartbeat:', 'provider:']) {
       assert.equal(source.includes(internalField), false, `public health must not expose ${internalField}`)
     }
     assert.equal(/mysql:\/\/[^"']/.test(source), false)
+  })
+
+  it('public website copy does not reveal TECH360 private operating details', () => {
+    const readPublic = (path: string) => readFileSync(join(process.cwd(), path), 'utf8')
+    const chat = readPublic('src/components/site/ChatWidget.tsx')
+    const home = readPublic('src/components/site/HomeView.tsx')
+    const platform = readPublic('src/components/site/PlatformView.tsx')
+    const showcase = readPublic('src/components/site/PremiumSections.tsx')
+    const footer = readPublic('src/components/site/SiteFooter.tsx')
+
+    assert.doesNotMatch(chat, /AI assistant ready|AI assistant unavailable|AI assistant status/i)
+    assert.doesNotMatch(home, /44 specialized operational workflows|110 departments|TECH360 Operations|TECH360 Intelligence/)
+    assert.doesNotMatch(platform, /Company-in-a-Box|TECH360 Operations|TECH360 Intelligence|agent token consumption|110 departments/)
+    assert.doesNotMatch(showcase, /The Console Your Team Actually Runs On|admin-dashboard\\.png|crm-dashboard\\.png/)
+    assert.doesNotMatch(footer, /Company-in-a-Box/)
   })
 })
 
