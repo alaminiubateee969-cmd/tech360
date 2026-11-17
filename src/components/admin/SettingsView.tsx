@@ -446,9 +446,9 @@ function PlatformGovernance() {
 }
 
 export function SettingsView() {
-  const { data, loading, error } = useApi<HealthResponse>('/api/health')
+  const { data, loading, error } = useApi<HealthResponse>('/api/health/deep')
 
-  const dbOk = data?.db === true || data?.db === 'true' || (data?.db ?? '').toString().toUpperCase() === 'OK'
+  const dbOk = String(data?.checks?.database?.status ?? '').toUpperCase() === 'UP'
   const channels = Object.entries(data?.channels ?? {})
 
   return (
@@ -498,7 +498,7 @@ export function SettingsView() {
 
       <SectionCard
         title="Channel Configuration"
-        description="Exactly as reported by /api/health — channels without credentials report NOT_CONFIGURED and cannot send."
+        description="Protected system diagnostics from /api/health/deep — channel states are visible only to authorized operators."
       >
         {loading ? (
           <div className="flex flex-wrap gap-2">
