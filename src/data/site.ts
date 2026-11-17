@@ -29,7 +29,7 @@ export const COMPANY = {
     "Enterprise software, custom platforms, AI engineering and business automation — designed around your workflows, data and long-term ownership.",
 } as const;
 
-// Customer-facing Company-in-a-Box Platform pillars (confidentiality-clean; no internal factory module names)
+// Customer-facing enterprise software and business-automation capability pillars
 export const PLATFORM_PILLARS = [
   {
     key: "operations",
