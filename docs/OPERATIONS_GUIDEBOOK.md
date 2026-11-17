@@ -2,7 +2,7 @@
 
 **Platform:** TECH360 LLC (brand **Tech360**, domain **bdtech360.com**) — website, CRM, client portal,
 AI workforce and delivery automation in one Next.js application.
-**Book version:** 2026-10-24 · **Application version:** 0.2.1 · **Repository:** `alaminiubateee969-cmd/tech360`
+**Book version:** 2026-11-17 · **Application version:** 0.2.1 · **Repository:** `alaminiubateee969-cmd/tech360`
 **Audience:** the platform owner (Super Admin), operations staff, finance, delivery, support, and any engineer
 who has to deploy, run, fix or audit this system.
 
@@ -43,7 +43,7 @@ who has to deploy, run, fix or audit this system.
 
 ## 1. Platform map
 
-### 1.1 One application, four surfaces
+### 1.1 One application, four primary surfaces
 
 There is exactly **one** Next.js application (App Router). Everything is served from the same origin.
 
@@ -54,9 +54,12 @@ There is exactly **one** Next.js application (App Router). Everything is served 
 | **Super Admin console** | `/#/admin` | Staff login (role-based) + optional TOTP | CRM, pipeline, communications, projects, finance, AI workforce, factory, growth, logs, settings |
 | **Design kit** | `/#/design-kit` | none | Live design system: tokens, buttons, diagrams, infographics, mockups |
 
-> **Public contact channels (owner decision 2026-10-24).** The platform publishes **no WhatsApp
-> number and no chat deep link**. Public enquiries arrive through three routes only: the on-site AI
-> assistant / webchat (no phone number needed), the `#/contact` enquiry form, and email
+
+**Developer access boundary (verified 2026-11-17).** The `DEVELOPER` role currently operates inside the authenticated `/#/admin` console with role-scoped views. There is no standalone `/developer` route or independent Developer Portal today; the live `/developer` URL returns 404. Do not describe this as a completed Developer Portal. A dedicated developer workspace requires a separate scoped product implementation and acceptance test.
+
+> **Public contact channels (owner decision 2026-10-24; wording aligned 2026-11-17).** The platform publishes **no WhatsApp
+> number and no chat deep link**. Public enquiries arrive through three routes only: the on-site Live
+> Support / webchat (no phone number needed), the `#/contact` enquiry form, and email
 > `info@bdtech360.com`. Private CRM messaging over the WhatsApp Cloud API still exists as a business
 > integration — it is never advertised as a public contact route. Enforced by
 > `src/lib/site-contact.ts` and pinned by `tests/tech360-messaging-repair.test.ts`.
@@ -69,8 +72,8 @@ Deep links are real URLs, not only hashes: `/services/<slug>`, `/industries/<slu
 
 | Path | Purpose | Notes |
 |---|---|---|
-| `/api/health` | shallow health | app version, DB status, AI provider status, agent count, ops heartbeat, channel flags |
-| `/api/health/deep` | deep health | adds deeper dependency probes |
+| `/api/health` | public liveness/readiness | app version, release commit/source state, database UP/DOWN only; no provider, agent, heartbeat or channel details |
+| `/api/health/deep` | protected deep health | Super Admin-only dependency probes, provider/model status, registries, queues, knowledge and channel diagnostics |
 | `/api/metrics` | counters for monitoring | consumed by external uptime tooling |
 | `/api/ops/cycle` | runs one autonomous ops cycle | requires `OPS_SECRET` header; throttled to ≥45 s |
 | `/api/ops/scan`, `/api/ops/act`, `/api/ops/heartbeat` | ops loop primitives | same secret model |
@@ -86,8 +89,8 @@ Deep links are real URLs, not only hashes: `/services/<slug>`, `/industries/<slu
 | Runtime | Node.js `>=22.0.0 <23`, npm, standalone output |
 | Database | MySQL via Prisma 6.19.3 (`prisma/schema.prisma`) |
 | API route files | **180** under `src/app/api` |
-| Database models | **73** |
-| Migrations | **14** (`prisma/migrations`, baseline `0_init`) |
+| Database models | **101** (verified 2026-11-15 schema baseline) |
+| Migrations | **19** (`prisma/migrations`, baseline `0_init`; verified 2026-11-15) |
 | Admin views | **46** components in `src/components/admin` |
 | Public views | **31** components in `src/components/site` |
 | Shared libraries | **130** TypeScript modules in `src/lib` |
@@ -1294,3 +1297,31 @@ Governance: `ApprovalRequest`, `AuditLog`, `ErrorLog`, `AutomationLog`, `N8nWork
 
 *End of book. Keep this file in the repository and update it in the same pull request as any behavioral
 change. If a procedure here disagrees with the running system, the system is right and the book is a bug.*
+
+## Appendix A — Image and static-asset recovery
+
+Use this runbook when a hero, service card, industry visual or platform image is missing, broken, or appears stale.
+
+1. **Confirm the source mapping.** Check the exact, case-sensitive image path in `src/data/service-images.ts`, `src/data/industry-images.ts` or the relevant component. The matching file must exist under `public/`; do not guess a filename or hotlink an external image.
+2. **Run the repository asset gate before building.** From the repository root:
+
+   ```bash
+   npm ci
+   npm run check:assets
+   ```
+
+   This runs the industry and service visual verifiers. Stop if any image is missing, duplicated where uniqueness is required, has the wrong dimensions, or lacks valid metadata.
+3. **Build the production artifact.** Run `npm run build`. The build includes `scripts/copy-standalone-assets.mjs`; verify the exact image is present under `.next/standalone/public/images/` before deployment.
+4. **Check the deployed asset URL.** For the exact path from the source mapping:
+
+   ```bash
+   curl -fsSI 'https://bdtech360.com/images/services/<exact-file>.webp'
+   curl -fsSI 'https://bdtech360.com/images/industries/<exact-file>.png'
+   ```
+
+   Require HTTP 200, a matching `Content-Type` (`image/webp` or `image/png`) and a non-zero content length. Replace the example path with the exact mapped filename.
+5. **Inspect browser delivery.** Open DevTools → Network → Img, reload without cache, and check the failed request URL, HTTP status, MIME type and response body. In the console, check the relevant image element's `naturalWidth`; it must be greater than zero. A 200 response with `naturalWidth = 0` can indicate corrupt or mismatched image bytes.
+6. **Correct the cause before cache purging.** Fix path case, missing standalone copy, wrong MIME type or stale deployment first. Only then purge the relevant CDN/browser cache and re-test desktop and mobile. Do not hide broken images with CSS or replace them with unrelated stock visuals.
+7. **Keep visual accessibility.** Every meaningful image needs descriptive English `alt` text and explicit dimensions/aspect ratio to prevent layout shift. Decorative images use empty alt text only when they convey no information.
+
+**Current live check (2026-11-17):** service and industry page image references were inspected, and the homepage, Services and Education page visuals rendered during browser inspection. A complete browser `naturalWidth` sweep of all 41 detail pages is still a separate release-QA item; do not infer that from the repository asset gate alone.
