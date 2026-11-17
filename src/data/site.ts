@@ -26,7 +26,7 @@ export const COMPANY = {
   serviceCoverage: "Worldwide",
   tagline: "Strategy. Software. Automation. Growth.",
   subline:
-    "Your private, self-controlled Company-in-a-Box — engineered worldwide for businesses that need to own their software, their data, and their future.",
+    "Enterprise software, custom platforms, AI engineering and business automation — designed around your workflows, data and long-term ownership.",
 } as const;
 
 // Customer-facing Company-in-a-Box Platform pillars (confidentiality-clean; no internal factory module names)
