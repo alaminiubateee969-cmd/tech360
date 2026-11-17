@@ -129,7 +129,7 @@ export function renderMarkdownForPath(pathname: string): string | null {
   }
 
   if (a === 'platform' && !b) {
-    return `# Company-in-a-Box\n\nA connected approach to customer relationships, team workflows, reporting, portals, and documents. Integrations, support, security, data ownership, and handover are defined in the agreed scope of work.${CONTACT_FOOTER}`
+    return `# Enterprise Platforms & Software\n\nTECH360 designs customer relationship systems, team workflows, reporting, client portals and document experiences around each organisation's requirements. Integrations, support, security, data ownership and handover are defined in the agreed scope of work.${CONTACT_FOOTER}`
   }
 
   if (a === 'services' && !b) {
