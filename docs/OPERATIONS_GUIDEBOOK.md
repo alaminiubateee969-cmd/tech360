@@ -49,7 +49,7 @@ There is exactly **one** Next.js application (App Router). Everything is served 
 
 | Surface | Address | Auth | What lives there |
 |---|---|---|---|
-| **Public website** | `/` → hash routes (`#/services`, `#/industries`, `#/work`, `#/blog`, `#/process`, `#/about`, `#/careers`, `#/contact`, `#/legal`, `#/faq`) | none | Marketing site, service/industry detail pages, case studies, blog, careers, contact intake, legal policies, AI chat widget |
+| **Public website** | `/` → hash routes (`#/services`, `#/industries`, `#/work`, `#/blog`, `#/process`, `#/about`, `#/careers`, `#/contact`, `#/legal`, `#/faq`) | none | Marketing site, service/industry detail pages, case studies, blog, careers, contact intake, legal policies, Live Support chat widget |
 | **Client portal** | `/#/portal` | Client ID + contact on file + one-time code | Projects, milestones, previews, approvals, documents, invoices, payments, meetings, handover, review/referral |
 | **Super Admin console** | `/#/admin` | Staff login (role-based) + optional TOTP | CRM, pipeline, communications, projects, finance, AI workforce, factory, growth, logs, settings |
 | **Design kit** | `/#/design-kit` | none | Live design system: tokens, buttons, diagrams, infographics, mockups |
@@ -88,16 +88,18 @@ Deep links are real URLs, not only hashes: `/services/<slug>`, `/industries/<slu
 | Framework | Next.js 16 App Router, React 19, TypeScript 5, Tailwind CSS 4, shadcn/ui |
 | Runtime | Node.js `>=22.0.0 <23`, npm, standalone output |
 | Database | MySQL via Prisma 6.19.3 (`prisma/schema.prisma`) |
-| API route files | **180** under `src/app/api` |
+| API route files | **180** under `src/app/api` (historical inventory; regenerate for release) |
 | Database models | **101** (verified 2026-11-15 schema baseline) |
 | Migrations | **19** (`prisma/migrations`, baseline `0_init`; verified 2026-11-15) |
-| Admin views | **46** components in `src/components/admin` |
-| Public views | **31** components in `src/components/site` |
-| Shared libraries | **130** TypeScript modules in `src/lib` |
-| Test files | **66** (`tests/*.test.ts`, `node:test`) |
+| Admin views | **46** components in `src/components/admin` (historical inventory; regenerate for release) |
+| Public views | **31** components in `src/components/site` (historical inventory; regenerate for release) |
+| Shared libraries | **130** TypeScript modules in `src/lib` (historical inventory; regenerate for release) |
+| Test files | **66** (`tests/*.test.ts`, `node:test`; historical inventory) |
 | n8n workflow definitions | **26** (`n8n/W01…W26.json`) |
-| Documentation files | **57** under `docs/` |
+| Documentation files | **57** under `docs/` (historical inventory) |
 | Source size | ≈ **91,500 lines** of TS/TSX |
+
+> **Inventory note:** the non-database counts above are a 2026-10-24 snapshot, not release guarantees. The 2026-11-15 engineering audit verified **101 database models/tables and 19 published migrations**. Refresh counts from the current checkout before using them for capacity or release decisions.
 
 ### 1.4 Repository layout
 
