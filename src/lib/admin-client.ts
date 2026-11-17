@@ -1019,6 +1019,17 @@ export interface HealthResponse {
     registries?: { status?: string | null; detail?: string | null } | null
     taskQueue?: { status?: string | null; detail?: string | null } | null
     knowledgeCorpus?: { status?: string | null; detail?: string | null } | null
+    registries?: {
+      status?: string | null
+      detail?: string | null
+      persistedSkills?: number | null
+      persistedExecutableAgents?: number | null
+      persistedDepartments?: number | null
+      catalogueSkills?: number | null
+      catalogueLogicalAgents?: number | null
+      executableAgents?: number | null
+      departments?: number | null
+    } | null
   } | null
 }
 
