@@ -21,92 +21,92 @@ import {
 const ECOSYSTEM_MODULES = [
   {
     id: "crm",
-    name: "TECH360 CRM",
-    status: "LIVE PLATFORM MODULE",
-    tagline: "Lead capture, permanent Client IDs, 20-stage sales pipeline, and omnichannel communication.",
+    name: "Enterprise CRM & Customer Operations",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "A customer record and pipeline shaped around your sales, service and account workflows.",
     capabilities: [
-      "Monotonic TECH-YYYY-NNNNNN Client ID allocation on first contact",
-      "Table & Kanban pipeline views with bulk CSV import and RFC-4180 export",
-      "Unified email, WhatsApp, SMS, and portal communication history",
-      "Scoped proposals, quotations, and milestone conversion tracking",
+      "Lead and customer records connected to projects and service history",
+      "Custom pipeline stages, assignment rules and follow-up workflows",
+      "Role-based access, approvals and auditable activity history",
+      "Reporting tailored to your operational and commercial measures",
     ],
     href: "/services/custom-crm-development",
   },
   {
-    id: "operations",
-    name: "TECH360 Operations",
-    status: "LIVE PLATFORM MODULE",
-    tagline: "Governed document preparation, project assembly, and quality verification across 110 departments.",
+    id: "automation",
+    name: "Business Process Automation",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Reduce repetitive work by connecting the tools and processes your teams already use.",
     capabilities: [
-      "Automated workflow orchestration for document preparation and scope verification",
-      "Per-module quota controls, rate limits, and execution ledger persistence",
-      "RBAC tool allowlists, tenant isolation, and human Super Admin approval gates",
-      "Deterministic execution so CRM and Client Portal operate reliably at all times",
-    ],
-    href: "/services/business-process-automation",
-  },
-  {
-    id: "flow",
-    name: "TECH360 Flow",
-    status: "LIVE PLATFORM MODULE",
-    tagline: "Event-driven workflow automation with triggers, conditions, retries, and approval checkpoints.",
-    capabilities: [
-      "Durable background job queue with bounded exponential backoff",
-      "Gated customer milestone notifications and webhook signature verification",
-      "Step-by-step execution logs, failure diagnostics, and manual operator approval",
-      "Self-hosted n8n and custom webhook integration bridges",
+      "Event-driven workflows, conditions, retries and scheduled tasks",
+      "Human review for sensitive customer, finance and publishing actions",
+      "Webhook and API integrations with clear failure handling",
+      "Execution records and operational reporting",
     ],
     href: "/services/ai-business-automation",
   },
   {
-    id: "client-hub",
-    name: "TECH360 Client Hub",
-    status: "LIVE PLATFORM MODULE",
-    tagline: "Authenticated client workspace for Scope of Work approvals, previews, invoices, and handover.",
+    id: "integration",
+    name: "API & Workflow Integration",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Connect business applications without creating another disconnected data silo.",
     capabilities: [
-      "Strict tenant-isolated login via Client ID + verified email or phone",
-      "Online Scope of Work approval, revision notes, and interactive HTML preview review",
-      "Evidence-only payment proof submission and verified invoice/receipt downloads",
-      "Token-gated source-code repository handover after verified settlement",
+      "REST API and webhook integration design",
+      "Data mapping, validation and duplicate-safe processing",
+      "Secure credential handling and least-privilege access",
+      "Monitoring, retries and integration acceptance testing",
     ],
-    href: "/portal",
+    href: "/services/api-integrations",
+  },
+  {
+    id: "client-portal",
+    name: "Client Portals & Collaboration",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Give customers a secure, clear view of their projects and shared documents.",
+    capabilities: [
+      "Authenticated customer access and role-based permissions",
+      "Milestones, approvals, invoices and project updates",
+      "Secure document upload, review and handover",
+      "Responsive portal experiences across devices",
+    ],
+    href: "/services/client-portals",
   },
   {
     id: "intelligence",
-    name: "TECH360 Intelligence",
-    status: "LIVE PLATFORM MODULE",
-    tagline: "Executive KPI dashboards, funnel telemetry, audit logs, and compliance reporting.",
+    name: "Business Intelligence & Reporting",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Turn operational records into dashboards that support timely decisions.",
     capabilities: [
-      "Real-time pipeline conversion, revenue ledger, and SLA tracking",
-      "Agent token consumption, success rates, and latency diagnostics",
-      "Immutable, PII-redacted security and operational audit trail",
-      "Consent-aware analytics and exportable operational reports",
+      "Executive and team dashboards built around agreed KPIs",
+      "Pipeline, finance and delivery reporting",
+      "Data quality checks and exportable reports",
+      "Access controls for sensitive business information",
     ],
     href: "/services/business-dashboards",
   },
   {
     id: "commerce",
-    name: "TECH360 Commerce",
+    name: "eCommerce & Digital Commerce",
     status: "SCOPED CUSTOM DELIVERY",
-    tagline: "Custom eCommerce storefronts, catalog engines, order workflows, and payment integrations.",
+    tagline: "Build customer-ready storefronts and connected order operations.",
     capabilities: [
-      "Bespoke product catalogs, variants, inventory, and checkout flows",
-      "Multi-currency invoicing and regional payment gateway webhooks",
-      "Customer order tracking portals connected to your CRM record",
-      "Delivered under a written Scope of Work with full source ownership",
+      "Product catalogs, variants, inventory and checkout journeys",
+      "Payment-provider integration scoped to the project",
+      "Order, fulfillment and customer notification workflows",
+      "Sales reporting and post-purchase automation",
     ],
     href: "/services/ecommerce-platforms",
   },
   {
     id: "studio",
-    name: "TECH360 Studio",
+    name: "Web & Product Engineering",
     status: "SCOPED CUSTOM DELIVERY",
-    tagline: "Corporate web engineering, interactive 3D product showcases, and digital brand systems.",
+    tagline: "Design and engineer high-performance digital products around your business goals.",
     capabilities: [
-      "High-performance Next.js, React, and TypeScript web applications",
-      "Interactive 3D visualizations, motion graphics, and responsive design systems",
-      "Technical SEO, structured data, accessibility, and Core Web Vitals optimization",
-      "Interactive HTML preview approval prior to production engineering",
+      "Responsive web applications and enterprise websites",
+      "Design systems, accessible interfaces and interactive previews",
+      "Technical SEO, structured data and performance engineering",
+      "Documented source-code and deployment handover",
     ],
     href: "/services/custom-software-development",
   },
@@ -120,9 +120,9 @@ export default function PlatformView() {
   return (
     <div>
       <PageHero
-        eyebrow="Company-in-a-Box · Build. Automate. Transform. Grow."
-        title="Your Business. One Connected Platform. Complete Control."
-        description="Connect the people, information, and workflows that help your business move forward. We work with you to define a solution around your goals and an agreed scope."
+        eyebrow="Enterprise Software · AI Engineering · Automation · Digital Transformation"
+        title="Connected Business Systems, Designed Around Your Operations"
+        description="TECH360 designs and builds customer-facing platforms, internal business applications and workflow integrations tailored to your requirements, with each engagement defined by written scope and agreed acceptance criteria."
         breadcrumb={[{ label: "Platform" }]}
       >
         <div className="flex flex-wrap gap-3">
@@ -144,9 +144,9 @@ export default function PlatformView() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
             dark
-            eyebrow="Connected Product Ecosystem"
-            title="Unified Product Family Built on Shared Identity, RBAC & Auditability"
-            description="Every module shares authentication, tenant boundaries, relational data, and audit trails. Live platform capabilities and custom-scoped deliveries are clearly distinguished below."
+            eyebrow="Connected Business Capabilities"
+            title="A Connected Technology Stack, Tailored to Your Business"
+            description="Explore the capabilities that can be combined for your operation. Features, integrations and delivery status are confirmed for each project in its written scope."
           />
 
           <div className="mt-10 grid gap-6 lg:grid-cols-12">
