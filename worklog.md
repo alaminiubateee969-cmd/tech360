@@ -1001,3 +1001,11 @@ New checkpoint: /home/user/.tech360-checkpoints/2026-11-18-pre-commit-v2/ (resto
 
 Results: typecheck 0, lint 0, full suite 1902/1902 pass (0 fail, 0 skipped) before the 3 new opt-out tests,
 8 offline CI gates pass, npm audit + --omit=dev 0, build + standalone OK.
+- CI run 44387995496 (b66c931): every step through build passed on real MySQL, with step 32 (production smoke)
+  failing. Root cause, pre-existing and latent: 965a217 removed `checks.database.detail` from public
+  /api/health but left ci.yml:395 and scripts/health-check.sh:51 asserting /MySQL/ in it. Main never reached
+  the smoke step (#376-#379 failed earlier). Fix: prove MySQL from the artifact instead (standalone bundled
+  Prisma client provider must be "mysql"; the SQLite adapter is refused in production), plus the existing UP and
+  dead-port 503 checks. Also assert that public health discloses only `status`. Local smoke against the real
+  standalone server (dead DB) passed all checks that do not need MySQL. The check is proven to catch a
+  SQLite-built bundle.

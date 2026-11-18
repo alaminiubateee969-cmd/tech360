@@ -37,24 +37,36 @@ else
   FAIL=$((FAIL + 1))
 fi
 
-# Health: status, dynamic package version, and a real MySQL connection.
+# Health: status, dynamic package version, a live database query (UP), no
+# public database detail, and (on the app host) a MySQL-built bundle.
 health_status="$(curl -sS --connect-timeout 10 --max-time 30 -o "$TMP_DIR/health.json" -w '%{http_code}' "$BASE/api/health" 2>/dev/null || true)"
 if [[ "$health_status" == 200 ]]; then
-  if node - "$TMP_DIR/health.json" "${EXPECTED_VERSION:-}" <<'NODE'
+  if node - "$TMP_DIR/health.json" "${EXPECTED_VERSION:-}" "$(cd "$(dirname "$0")/.." && pwd)" <<'NODE'
 const fs = require('node:fs');
+const path = require('node:path');
 const health = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const expectedVersion = process.argv[3];
 if (health.status !== 'healthy') throw new Error(`health status is ${health.status}`);
 if (health.app !== 'tech360-platform') throw new Error(`unexpected app ${health.app}`);
 if (expectedVersion && health.version !== expectedVersion) throw new Error(`version ${health.version} != expected ${expectedVersion}`);
 if (health.checks?.database?.status !== 'UP') throw new Error(`database status is ${health.checks?.database?.status}`);
-if (!/MySQL/i.test(health.checks.database.detail ?? '')) throw new Error('health does not identify MySQL');
+// Since 965a217 the public endpoint deliberately reports only database status
+// (no engine/version detail). Treat any extra detail as a disclosure regression.
+const databaseKeys = Object.keys(health.checks.database).sort().join(',');
+if (databaseKeys !== 'status') throw new Error(`public health discloses database details (${databaseKeys})`);
+// On the app host, prove MySQL from the deployed artifact: the standalone
+// server can only use its bundled Prisma client (SQLite is refused in production).
+const bundled = path.join(process.argv[4], '.next/standalone/node_modules/.prisma/client/schema.prisma');
+if (fs.existsSync(bundled)) {
+  const provider = /datasource\s+\w+\s*\{[^}]*?provider\s*=\s*"([^"]+)"/.exec(fs.readFileSync(bundled, 'utf8'))?.[1];
+  if (provider !== 'mysql') throw new Error(`deployed bundle uses a "${provider}" Prisma client, expected "mysql"`);
+}
 NODE
   then
-    printf '  PASS  health/version/MySQL (HTTP 200)\n'
+    printf '  PASS  health/version/database UP (HTTP 200)\n'
     PASS=$((PASS + 1))
   else
-    printf '  FAIL  health JSON did not prove healthy app/version/MySQL\n'
+    printf '  FAIL  health JSON did not prove healthy app/version/database\n'
     FAIL=$((FAIL + 1))
   fi
 else
