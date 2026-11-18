@@ -39,11 +39,17 @@ describe('1 — website chat AI response or honest error', () => {
     assert.match(src, /clientId/, 'must link ChatConversation to Client ID')
     assert.match(src, /getZaiProviderStatus|aiAvailable/, 'must expose AI availability honestly')
     assert.match(src, /ensureChatClient/, 'must create or reuse CRM Client through the consented intake helper')
+    assert.match(src, /if \(!initialMessage\).*MESSAGE_REQUIRED/, 'a chat session cannot report success for an empty initial message')
+    assert.match(src, /chatReplayContactMatches\(conversation\.visitorEmail, email\)/, 'anonymous CHAT-first retries must compare null and blank email consistently')
+    assert.match(src, /await persistInitialMessageAndReply\(conversation, name, email, initialMessage, anonId, requestId\)\s*\n\s*conversation = await db\.chatConversation/, 'session start must not report success when the initial message could not be persisted')
+    assert.doesNotMatch(src, /persistInitialMessageAndReply\([\s\S]{0,180}\.catch\(\(\) => null\)/, 'initial-message persistence errors must remain visible to the caller')
   })
 
   it('ChatWidget removes the misleading instant-AI promise', () => {
     const src = read('src/components/site/ChatWidget.tsx')
     assert.ok(!src.includes('AI agents answer instantly'), 'must NOT contain the misleading promise')
+    assert.doesNotMatch(src, /assistant will answer here right away/, 'must not promise a provider response before provider acceptance')
+    assert.match(src, /If an AI assistant is available/, 'must distinguish persisted chat from optional AI availability')
     assert.match(src, /AI assistant (ready|status|unavailable)|Checking assistant status/, 'must show honest AI status')
     assert.match(src, /Client ID|Reference/, 'must display Client ID when available')
     assert.match(src, /wasAiGenerated|escalated|aiError/, 'must handle genuine AI/provider errors and escalation')

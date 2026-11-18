@@ -18,6 +18,16 @@ export function isValidClientRequestId(value: unknown): value is string {
 }
 
 /**
+ * Exact session-request replays may recover a lost Set-Cookie response. Treat
+ * absent and blank contact addresses as the same value; anonymous CHAT-first
+ * sessions intentionally store `null` while their retry sends an empty string.
+ */
+export function chatReplayContactMatches(storedEmail: string | null | undefined, requestedEmail: string | null | undefined): boolean {
+  const normalize = (value: string | null | undefined) => value?.trim().toLowerCase() ?? ''
+  return normalize(storedEmail) === normalize(requestedEmail)
+}
+
+/**
  * Inbound messages receive a reply on their original channel; website leads use only their chosen method.
  *
  * SMS is a first-class entry channel of the client journey (the pipeline

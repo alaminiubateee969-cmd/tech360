@@ -415,18 +415,25 @@ export default function ChatWidget() {
       if (data.identityReviewRequired && data.notice) {
         setAiError(data.notice)
       }
-      // Session now handles initial message atomically — fetch thread to get AI reply
-      const thread = await fetchThread(null)
-      if (thread) {
-        setConversation(thread.conversation)
-        setMessages(thread.messages)
-        if (thread.latestId) {
-          setSeenId(thread.latestId)
-          writeSeenId(thread.latestId)
-        }
-      }
+      // The session endpoint only returns success after the first message has
+      // been persisted. A subsequent read may still fail transiently (for
+      // example, a database failover), so don't present it as a failed start
+      // or strand the visitor on the now-hidden intake form.
       setInitialMsg('')
       setSubject('')
+      try {
+        const thread = await fetchThread(null)
+        if (thread) {
+          setConversation(thread.conversation)
+          setMessages(thread.messages)
+          if (thread.latestId) {
+            setSeenId(thread.latestId)
+            writeSeenId(thread.latestId)
+          }
+        }
+      } catch {
+        setConnIssue(true)
+      }
       requestAnimationFrame(() => composerRef.current?.focus())
     } catch (error) {
       setAiStatus('unknown')
@@ -587,10 +594,10 @@ export default function ChatWidget() {
             {!showThread && !showClosed && (
               <form onSubmit={startConversation} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
                 <p className="text-sm leading-relaxed text-slate-600">
-                  Welcome to TECH360. Tell us what you need and our assistant will answer here right away —
-                  no account or email required. Add an email or mobile number only if you would like the
-                  first reply (or formal documents) delivered on that channel. Prefer email? Write to
-                  info@bdtech360.com at any time.
+                  Welcome to TECH360. Tell us what you need and your message will be saved in this chat.
+                  If an AI assistant is available, it may help here; otherwise our team can reply in this
+                  thread. No account or email is required. Add contact details only if you want a first
+                  reply on that channel. Prefer email? Write to info@bdtech360.com at any time.
                 </p>
                 <div className="space-y-1">
                   <label htmlFor="chat-name" className="text-xs font-medium text-slate-700">
@@ -637,7 +644,7 @@ export default function ChatWidget() {
                   </div>
                   {preferredContact === 'CHAT' && (
                     <p className="text-[11px] leading-relaxed text-slate-500">
-                      Recommended. Your enquiry is saved with a Client ID immediately and our assistant answers here. Share an email later whenever you want a written proposal copy.
+                      Recommended. Your enquiry is saved with a Client ID immediately. An available assistant or our team can reply here. Share an email later whenever you want a written proposal copy.
                     </p>
                   )}
                   {preferredContact === 'SMS' && (
@@ -797,7 +804,7 @@ export default function ChatWidget() {
 
                 {connIssue && (
                   <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-700">
-                    Connection issue — retrying. Your last message may not have been sent.
+                    Connection issue — retrying. Check whether your last message appears before sending it again.
                   </p>
                 )}
                 {clientId && (

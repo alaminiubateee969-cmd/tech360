@@ -128,7 +128,7 @@ The provider must match the request shape expected by `src/lib/comms.ts`; pastin
 - `SIP_DOMAIN`: your actual SIP/softphone domain; requires a working SIP service/client, not just a hostname string.
 - `PORTAL_OTP_CHANNEL`: `email`, `sms`, or `whatsapp`; preference, not a substitute for the corresponding configured adapter.
 
-Inbound SMS endpoint: `/api/webhooks/sms`. **Security limitation:** current code verifies Twilio signatures when supplied, but does not universally reject unsigned generic inbound messages. No `.env` variable fixes that. Do not expose unrestricted generic SMS ingress; restrict it at a trusted authenticated proxy/relay and harden signature enforcement before production acceptance.
+Inbound SMS endpoint: `/api/webhooks/sms`. Inbound is disabled unless `SMS_INBOUND_PROVIDER` is explicitly set to `TWILIO`, `HTTPSMS`, or `GENERIC`. `TWILIO` requires `TWILIO_AUTH_TOKEN` and a valid `x-twilio-signature`; `HTTPSMS`/`GENERIC` require a distinct `SMS_WEBHOOK_SECRET` of at least 32 characters sent in `x-sms-webhook-secret`. Missing/invalid configuration fails closed with 503/401. Configure the provider callback URL and signing/header behavior exactly as the provider supports, then test a signed inbound message and replay. Do not expose an unsigned generic webhook or treat an idempotency key as authentication.
 
 ## 7. Social channels and automation relays
 

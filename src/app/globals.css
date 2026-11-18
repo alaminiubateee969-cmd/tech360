@@ -263,4 +263,39 @@
   @page {
     margin: 18mm 16mm;
   }
+
+  /* Legal-page PDFs use the supplied full-page letterhead as a real <img>,
+     not a CSS background (which many browsers omit when printing backgrounds
+     are disabled). Preserve its US-Letter proportions and reserve its measured
+     header/footer bands on every page. */
+  @page {
+    size: letter;
+    margin: 39mm 16mm 46mm;
+  }
+
+  .legal-print-document {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .legal-print-document [data-print="pad"] {
+    display: none !important;
+  }
+
+  .legal-print-letterhead-art {
+    display: block !important;
+    position: fixed;
+    z-index: -1;
+    top: -39mm;
+    left: -16mm;
+    width: 216mm;
+    height: 279.4mm;
+    max-width: none;
+    object-fit: contain;
+    pointer-events: none;
+  }
+}
+
+.legal-print-letterhead-art {
+  display: none;
 }

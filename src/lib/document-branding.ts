@@ -46,7 +46,9 @@ export interface DocumentBrandingConfig {
   // Approved assets (paths served from /brand/ — public, versioned)
   headerAsset: string // e.g. /brand/tech360-header-high-res.png
   footerAsset: string // e.g. /brand/tech360-footer-high-res.png
-  letterheadAsset: string // full A4 letterhead fallback
+  letterheadAsset: string // full-page official letterhead template
+  companyProfileCoverAsset: string // owner-approved company profile cover art
+  proposalCoverAsset: string // owner-approved work proposal cover art
   logoAsset: string // TECH360 LLC logo
 
   // Circular seal (ONLY for SOW & Invoice)
@@ -91,6 +93,8 @@ const DEFAULT_BRANDING: DocumentBrandingConfig = {
   headerAsset: '/brand/tech360-header-high-res.png',
   footerAsset: '/brand/tech360-footer-high-res.png',
   letterheadAsset: '/brand/tech360-letterhead-a4.png',
+  companyProfileCoverAsset: '/brand/tech360-company-profile-cover.jpg',
+  proposalCoverAsset: '/brand/tech360-work-proposal-cover.jpg',
   // D-5: owner-supplied logo.jpg (1254x1254) is the authoritative mark.
   logoAsset: '/brand/tech360-logo-owner.jpg',
   // D-4: owner-supplied emblem IS the approved seal (byte-identical to
@@ -147,6 +151,8 @@ function normalizeConfig(raw: unknown): DocumentBrandingConfig {
     headerAsset: typeof r.headerAsset === 'string' && r.headerAsset.length > 0 ? r.headerAsset : base.headerAsset,
     footerAsset: typeof r.footerAsset === 'string' && r.footerAsset.length > 0 ? r.footerAsset : base.footerAsset,
     letterheadAsset: typeof r.letterheadAsset === 'string' && r.letterheadAsset.length > 0 ? r.letterheadAsset : base.letterheadAsset,
+    companyProfileCoverAsset: typeof r.companyProfileCoverAsset === 'string' && /^\/brand\/[A-Za-z0-9._-]+$/.test(r.companyProfileCoverAsset) ? r.companyProfileCoverAsset : base.companyProfileCoverAsset,
+    proposalCoverAsset: typeof r.proposalCoverAsset === 'string' && /^\/brand\/[A-Za-z0-9._-]+$/.test(r.proposalCoverAsset) ? r.proposalCoverAsset : base.proposalCoverAsset,
     logoAsset: typeof r.logoAsset === 'string' && r.logoAsset.length > 0 ? r.logoAsset : base.logoAsset,
     sealAsset: typeof r.sealAsset === 'string' && r.sealAsset.length > 0 ? r.sealAsset : base.sealAsset,
     sealEnabledSOW: typeof r.sealEnabledSOW === 'boolean' ? r.sealEnabledSOW : base.sealEnabledSOW,

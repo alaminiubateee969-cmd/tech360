@@ -112,7 +112,7 @@ The required repository start command is `npm start`; npm runs `prestart` to val
 
 There is no production SSH, VPS, PM2, rsync, scp, Google Cloud Run/Build, or manual server-copy path. The legacy Cloud Run deploy/backup helpers, Cloud Build file, and Dockerfile now fail fast or contain only a retirement notice; `scripts/deploy-hostinger.sh` is also a fail-fast retirement notice.
 
-Hostinger settings and environment requirements are documented in `docs/HOSTINGER_DEPLOYMENT.md`, `docs/HOSTINGER_DEPLOYMENT_MATRIX.md`, and `docs/HOSTINGER_ENVIRONMENT_VARIABLES.md`.
+Hostinger settings and environment requirements are documented in `docs/HOSTINGER_DEPLOYMENT.md`, `docs/HOSTINGER_DEPLOYMENT_MATRIX.md`, and `docs/HOSTINGER_ENVIRONMENT_VARIABLES.md`. For public WebChat setup and troubleshooting, see `docs/WEBCHAT_HOSTINGER_TROUBLESHOOTING.md`; the current repository review is `docs/REPOSITORY_AUDIT_2026-11-17.md`; the 24-phase execution-SOP fit, SMS opt-out policy, industry/security caveats, and the requested per-project directory instructions are in `docs/PROJECT_EXECUTION_SOP_REVIEW_2026-11-17.md`; implementation rationales and trade-offs are indexed in `docs/IMPLEMENTATION_RATIONALE_REGISTER.md`.
 
 ## 6. Payments & governance
 

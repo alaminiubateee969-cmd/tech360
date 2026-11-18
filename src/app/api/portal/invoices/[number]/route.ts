@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
 import { acceptedMethodsPhrase } from '@/lib/features'
 import { DOCUMENT_HTML_HEADERS, renderInvoiceDocumentHtml } from '@/lib/invoice-document'
+import { getDocumentBranding } from '@/lib/document-branding'
 import {
   computeInvoiceSettlement,
   isCustomerVisibleInvoiceStatus,
@@ -79,6 +80,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ numb
 
   if (req.nextUrl.searchParams.get('format') !== 'json') {
     const phrase = await acceptedMethodsPhrase()
+    const branding = await getDocumentBranding()
     const html = renderInvoiceDocumentHtml(
       {
         ...invoice,
@@ -93,6 +95,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ numb
         remainingMinor: settlement.remainingMinor,
       },
       phrase,
+      branding,
     )
     return new Response(html, { status: 200, headers: DOCUMENT_HTML_HEADERS })
   }

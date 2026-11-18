@@ -582,6 +582,9 @@ describe('operating model — verified-only receipts, refund settlement, and han
     })
     assert.ok(receiptHtml.includes('RCT-2026-0001'))
     assert.ok(receiptHtml.includes('OFFICIAL VERIFIED RECEIPT'))
+    assert.ok(receiptHtml.includes('/brand/tech360-header-high-res.png'), 'receipt must use the approved letterhead header by default')
+    assert.ok(receiptHtml.includes('/brand/tech360-footer-high-res.png'), 'receipt must use the approved letterhead footer by default')
+    assert.ok(!receiptHtml.includes('tech360-seal-approved.png'), 'seal is not allowed on receipts')
   })
 
   it('calculates partial settlement accurately and ignores unverified payments', () => {

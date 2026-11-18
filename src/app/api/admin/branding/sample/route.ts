@@ -6,7 +6,7 @@ import { escapeHtml } from '@/lib/comms'
 
 export const dynamic = 'force-dynamic'
 
-const SAMPLES = ['WORK_PROPOSAL', 'SOW', 'INVOICE', 'OFFICIAL_LETTER', 'TERMS', 'PRIVACY', 'REFUND'] as const
+const SAMPLES = ['WORK_PROPOSAL', 'COMPANY_PROFILE', 'COVER_LETTER', 'SOW', 'INVOICE', 'OFFICIAL_LETTER', 'TERMS', 'PRIVACY', 'REFUND'] as const
 
 // GET /api/admin/branding/sample?type=SOW  — generate a sample document HTML using live branding
 // Super Admin only. Used by Settings → Document Branding to generate sample PDFs.
@@ -24,6 +24,9 @@ export async function GET(req: NextRequest) {
 
   let docKind = type.replace(/_/g, ' ')
   let htmlBody = ''
+  let coverPageHtml = ''
+  const coverAsset = type === 'WORK_PROPOSAL' ? branding.proposalCoverAsset : type === 'COMPANY_PROFILE' ? branding.companyProfileCoverAsset : null
+  if (coverAsset) coverPageHtml = `<div class="cover-page"><img src="${escapeHtml(coverAsset)}" alt="${escapeHtml(type.replace(/_/g, ' '))} cover" /></div>`
   let sealHtml = ''
   let metaItems: Array<{ label: string; value: string; brand?: boolean }> = []
 
@@ -42,6 +45,30 @@ export async function GET(req: NextRequest) {
       <h2>Investment</h2><table class="inv-table"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Amount</th></tr></thead><tbody><tr><td>Discovery &amp; Design System</td><td class="num">1</td><td class="num">USD 3,500.00</td><td class="num">USD 3,500.00</td></tr><tr><td>Development &amp; CMS</td><td class="num">1</td><td class="num">USD 6,000.00</td><td class="num">USD 6,000.00</td></tr></tbody></table>
       <div class="note">Approval of this proposal authorizes TECH360 to proceed to detailed Scope of Work and formal approval. No seal on proposals per policy.</div>
       ${padSignatures(escapeHtml(clientName), 'Client acceptance of proposal')}
+    `
+  } else if (type === 'COVER_LETTER') {
+    docKind = 'Cover Letter — Project Proposal Submission'
+    metaItems = [
+      { label: 'Letter Ref', value: 'LET-2026-0016', brand: true },
+      { label: 'Client ID', value: clientId },
+      { label: 'Issued', value: issued },
+    ]
+    htmlBody = `
+      <h2>Dear ${escapeHtml(clientName)} Team</h2>
+      <div class="card"><p>We are pleased to submit the accompanying project proposal for your consideration. It summarizes the proposed objectives, deliverables, schedule, and commercial information based only on the supplied scope.</p><p style="margin-top:10px">Please review the proposal and contact ${escapeHtml(branding.email)} with any questions.</p></div>
+      <p>Respectfully,</p><p><b>TECH360 LLC</b><br/>${escapeHtml(branding.domain)} · ${escapeHtml(branding.email)}</p>
+    `
+  } else if (type === 'COMPANY_PROFILE') {
+    docKind = 'Company Profile — TECH360 LLC'
+    metaItems = [
+      { label: 'Document', value: 'Company Profile', brand: true },
+      { label: 'Issued', value: issued },
+      { label: 'Entity', value: branding.legalName },
+    ]
+    htmlBody = `
+      <h2>About TECH360</h2><div class="card"><p>TECH360 LLC connects businesses with practical technology, cloud, AI, data, and digital delivery solutions.</p></div>
+      <h2>What We Do</h2><div class="card"><p>Our multidisciplinary team supports discovery, solution design, implementation, quality assurance, and handover through a clear, accountable delivery process.</p></div>
+      <h2>Contact</h2><div class="card"><p>${escapeHtml(branding.email)} · ${escapeHtml(branding.domain)}</p></div>
     `
   } else if (type === 'SOW') {
     docKind = 'Scope of Work — Project Preview'
@@ -115,6 +142,8 @@ export async function GET(req: NextRequest) {
   const metaHtml = padMeta(metaItems)
 
   const extraCss = `
+.cover-page{width:100%;height:${branding.pageSize === 'A3' ? '420' : branding.pageSize === 'LETTER' ? '279.4' : '297'}mm;display:flex;align-items:center;justify-content:center;break-after:page;page-break-after:always;overflow:hidden;background:#fff}
+.cover-page img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
 .inv-table{width:100%;border-collapse:collapse;margin-top:18px;font-size:13px}
 .inv-table th{background:#0B1F33;color:#fff;text-align:left;padding:10px 12px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase}
 .inv-table th.num,.inv-table td.num{text-align:right;font-variant-numeric:tabular-nums}
@@ -128,7 +157,7 @@ export async function GET(req: NextRequest) {
 .inv-box h4{margin:0 0 6px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#64748B}
 `
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escapeHtml(docKind)} — ${branding.legalName}</title><style>${css}${extraCss}</style></head><body><main class="sheet">
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${escapeHtml(docKind)} — ${branding.legalName}</title><style>${css}${extraCss}</style></head><body>${coverPageHtml}<main class="sheet">
 ${header}
 ${metaHtml}
 <div class="doc">
