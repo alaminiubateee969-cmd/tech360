@@ -103,7 +103,12 @@
     "EvolutionProposal.patch",
     "EvolutionProposal.evidence",
     "EvolutionProposal.beforeSnapshot",
-    "EvolutionProposal.afterSnapshot"
+    "EvolutionProposal.afterSnapshot",
+    "AutomationEvent.payload",
+    "AutomationRule.actions",
+    "AutomationRuleVersion.snapshot",
+    "AutomationRun.steps",
+    "N8nExecution.requestPayload"
   ],
   "Text": [
     "Session.userAgent",
@@ -252,7 +257,18 @@
     "EvolutionProposal.rollbackNote",
     "EvolutionProposal.riskReasons",
     "EvolutionProposal.decisionNote",
-    "EvolutionProposal.failureReason"
+    "EvolutionProposal.failureReason",
+    "N8nWorkflow.credentialRefs",
+    "ChatConversation.escalationReason",
+    "ChatConversation.aiSummary",
+    "Tenant.settings",
+    "AutomationEvent.error",
+    "AutomationRule.description",
+    "AutomationRule.conditions",
+    "AutomationRun.output",
+    "AutomationRun.error",
+    "N8nExecution.responseBody",
+    "N8nExecution.error"
   ],
   "LongBlob": [
     "FileRecord.content",

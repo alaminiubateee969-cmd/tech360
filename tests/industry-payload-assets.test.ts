@@ -20,10 +20,15 @@ function onDisk(path: string): boolean {
  * fix: every advertised asset must be a self-hosted file that really exists.
  */
 describe('Global Industries Platform — every advertised asset is a committed file', () => {
-  it('ships 20 industries with 81 visual assets that all exist under public/', () => {
+  // 81 originally; PR #81 added three education screens (Recruitment-to-Visa
+  // Pipeline, Student Document Vault, B2B Partner Quota Dashboard) → 84.
+  it('ships 20 industries with 84 visual assets that all exist under public/', () => {
     assert.equal(INDUSTRY_REGISTRY.length, 20)
     let total = 0
     for (const entry of INDUSTRY_REGISTRY) {
+      // Every advertised asset is the hero plus one image per UI screen — no
+      // orphaned or uncounted assets.
+      assert.equal(entry.visualAssets.length, entry.data.uiScreens.length + 1, `${entry.slug}: visual assets must be hero + one per UI screen`)
       for (const asset of entry.visualAssets) {
         total += 1
         assert.ok(asset.path.startsWith('/'), `${entry.slug} asset must be local: ${asset.path}`)
@@ -31,7 +36,7 @@ describe('Global Industries Platform — every advertised asset is a committed f
         assert.ok(onDisk(asset.path), `missing file on disk: public${asset.path} (${entry.slug})`)
       }
     }
-    assert.equal(total, 81)
+    assert.equal(total, 84)
   })
 
   it('resolves the hero image and every UI screen of every payload to a real file', () => {

@@ -131,7 +131,7 @@ export function DocumentBrandingView() {
             <img src={b.headerAsset} alt="Header preview" className="h-14 w-full rounded border object-contain bg-black p-1" onError={e => (e.currentTarget.style.display='none')} />
             <p className="break-all text-xs font-mono text-slate-500">{b.headerAsset}</p>
             <Label htmlFor="upload-header" className="text-xs">Upload / replace approved header</Label>
-            <Input id="upload-header" type="file" accept="image/*" disabled={!!uploading} onChange={e => { const f=e.target.files?.[0]; if(f) upload('header', f)}} />
+            <Input id="upload-header" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!uploading} onChange={e => { const f=e.target.files?.[0]; if(f) upload('header', f)}} />
             {uploading==='header' && <p className="text-xs text-amber-500">Uploading…</p>}
             <div className="flex items-center gap-2">
               <Label className="text-xs w-32">Header spacing (mm)</Label>
@@ -145,7 +145,7 @@ export function DocumentBrandingView() {
             <img src={b.footerAsset} alt="Footer preview" className="h-14 w-full rounded border object-contain bg-black p-1" onError={e => (e.currentTarget.style.display='none')} />
             <p className="break-all text-xs font-mono text-slate-500">{b.footerAsset}</p>
             <Label htmlFor="upload-footer" className="text-xs">Upload / replace approved footer</Label>
-            <Input id="upload-footer" type="file" accept="image/*" disabled={!!uploading} onChange={e => { const f=e.target.files?.[0]; if(f) upload('footer', f)}} />
+            <Input id="upload-footer" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!uploading} onChange={e => { const f=e.target.files?.[0]; if(f) upload('footer', f)}} />
             {uploading==='footer' && <p className="text-xs text-amber-500">Uploading…</p>}
             <div className="flex items-center gap-2">
               <Label className="text-xs w-32">Footer spacing (mm)</Label>
@@ -159,7 +159,7 @@ export function DocumentBrandingView() {
             <img src={b.sealAsset} alt="Seal preview" className="h-20 w-20 rounded-full border object-contain bg-white p-1 mx-auto" onError={e => (e.currentTarget.style.display='none')} />
             <p className="break-all text-xs font-mono text-slate-500 text-center">{b.sealAsset}</p>
             <Label htmlFor="upload-seal" className="text-xs">Upload / replace official seal</Label>
-            <Input id="upload-seal" type="file" accept="image/*" disabled={!!uploading} onChange={e => { const f=e.target.files?.[0]; if(f) upload('seal', f)}} />
+            <Input id="upload-seal" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!uploading} onChange={e => { const f=e.target.files?.[0]; if(f) upload('seal', f)}} />
             {uploading==='seal' && <p className="text-xs text-amber-500">Uploading…</p>}
             <div className="flex items-center justify-between gap-2">
               <Label className="text-xs">Enable SOW seal</Label>

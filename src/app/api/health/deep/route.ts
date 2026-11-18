@@ -2,6 +2,7 @@ import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
 import { db } from '@/lib/db'
+import { collectAiPlatformDiagnostics } from '@/lib/health/ai-diagnostics'
 import { channelStatuses } from '@/lib/comms'
 import { modelServiceStatus, listLocalModels } from '@/lib/model/router'
 import { summariseRegistry } from '@/lib/skills/registry'
@@ -29,15 +30,15 @@ export async function GET(req: NextRequest) {
 
   const checks: Record<string, { status: string; detail: string; [key: string]: unknown }> = {}
 
-  // --- database -------------------------------------------------------
-  let databaseUp = false
-  try {
-    await db.$queryRaw`SELECT 1`
-    databaseUp = true
-    checks.database = { status: 'UP', detail: 'connection and core schema available' }
-  } catch {
-    checks.database = { status: 'DOWN', detail: 'database connection or core schema check failed' }
-  }
+  // --- database, AI provider, agent registry, operations driver ------
+  // Operator-only diagnostics (provider-selection state, agent count, ops
+  // heartbeat) live here, behind SUPER_ADMIN — never on public /api/health.
+  const platform = await collectAiPlatformDiagnostics()
+  const databaseUp = platform.databaseHealthy
+  checks.database = { ...platform.checks.database, detail: platform.checks.database.detail ?? '' }
+  checks.aiProvider = { ...platform.checks.aiProvider, detail: platform.checks.aiProvider.detail ?? '' }
+  checks.aiAgents = { ...platform.checks.aiAgents, detail: platform.checks.aiAgents.detail ?? '' }
+  checks.aiOperations = { ...platform.checks.aiOperations, detail: platform.checks.aiOperations.detail ?? '' }
 
   // --- model service --------------------------------------------------
   const models = modelServiceStatus()
@@ -120,7 +121,7 @@ export async function GET(req: NextRequest) {
   const failing = Object.values(checks).filter((check) => check.status === 'DOWN' || check.status === 'UNREACHABLE')
 
   return Response.json({
-    status: failing.length === 0 ? 'healthy' : 'degraded',
+    status: failing.length === 0 && platform.healthy ? 'healthy' : 'degraded',
     app: 'tech360-platform',
     version: packageJson.version,
     timestamp: new Date().toISOString(),

@@ -8,7 +8,7 @@ export type AdminViewId =
   | 'factory' | 'factoryControl' | 'media' | 'feeds' | 'telephony' | 'prompts' | 'marketingDashboard'
   | 'models' | 'skills' | 'departments' | 'tasks' | 'workflows' | 'integrations' | 'backup' | 'dcc'
   | 'workforce' | 'pipeline' | 'designKit' | 'rea' | 'evolution'
-  | 'appLauncher'
+  | 'appLauncher' | 'automation'
 
 export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN'> = {
   dashboard: 'STAFF',
@@ -36,6 +36,8 @@ export const VIEW_MIN_ROLE: Record<AdminViewId, 'STAFF' | 'MANAGER' | 'ADMIN' | 
   analytics: 'MANAGER',
   logs: 'SUPER_ADMIN',
   n8n: 'SUPER_ADMIN',
+  // Automation rules/runs APIs are ADMIN; activating a rule stays SUPER_ADMIN (server-enforced).
+  automation: 'ADMIN',
   reports: 'MANAGER',
   settings: 'SUPER_ADMIN',
   team: 'SUPER_ADMIN',

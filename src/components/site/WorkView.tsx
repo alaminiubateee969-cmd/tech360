@@ -1,246 +1,184 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowRight } from "lucide-react";
-import { CASE_STUDIES, SERVICES, type CaseStudy } from "@/data/site";
-import {
-  getCaseStudyImage,
-  getServiceImage,
-  serviceImageAlt,
-  serviceImageSrc,
-} from "@/data/service-images";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { SERVICES } from "@/data/site";
+import { WORK_EXAMPLE_NOTICE } from "@/data/work-examples";
+import { getServiceImage, serviceImageAlt, serviceImageSrc } from "@/data/service-images";
+import { PORTFOLIO_INDUSTRIES, portfolioStats, type PortfolioKind } from "@/data/portfolio";
 import { cn } from "@/lib/utils";
 import { PageHero } from "./PageHero";
 import { SectionHeading } from "./SectionHeading";
-import { ImageView } from "./ImageView";
 import { ServiceCard } from "./ServiceCard";
-import { RevealItem, RevealList } from "./Reveal";
 import { CtaBand } from "./CtaBand";
-import { PrimaryLink } from "./buttons";
-import { WorkExamples } from "./WorkExamples";
+import { PortfolioExplorer } from "./PortfolioExplorer";
+import { PortfolioSpotlight } from "./PortfolioSpotlight";
+import { EvidenceLegend } from "./PortfolioMedia";
 
 export type WorkViewVariant = "all" | "projects" | "case-studies";
 
-const HERO_COPY: Record<
-  WorkViewVariant,
-  { eyebrow: string; title: string; description: string }
-> = {
+const HERO_COPY: Record<WorkViewVariant, { eyebrow: string; title: string; description: string }> = {
   all: {
     eyebrow: "Work & Blueprints",
     title: "Representative Systems & Delivery Blueprints",
     description:
-      "Illustrative system scenarios and architectural blueprints across eight industries — showing the operational problem, the system built, and the expected day-to-day outcome. None of these are presented as named customer endorsements.",
+      "Problem-first stories across industries — the operational bottleneck, the system we would build, how it works stage by stage, and how success would be measured. Every visual is labelled with how it was made; none is presented as a named customer endorsement.",
   },
   projects: {
-    eyebrow: "Projects & System Scenarios",
+    eyebrow: "System Scenarios",
     title: "Systems We Design, Build & Hand Over",
     description:
-      "Twelve illustrative system architectures — corporate websites, client portals, CRM consoles, commerce checkouts, and AI-assisted workflows — showing how Tech360 structures real software.",
+      "Twelve system specifications — storefronts, CRMs, portals, ERPs, dashboards and AI-assisted workflows — each with modules, user journey, roles, data model, integrations and a concept motion preview.",
   },
   "case-studies": {
     eyebrow: "Delivery Blueprints",
-    title: "Problem → Architecture → Operational Outcome",
+    title: "Problem → Architecture → Measurable Outcome",
     description:
-      "Eight industry delivery blueprints illustrating how fragmented manual processes are replaced by scoped, auditable software systems.",
+      "Eight industry blueprints showing how fragmented manual processes become scoped, auditable software — with the measurement plan a real engagement would baseline before claiming any result.",
   },
 };
 
-export default function WorkView({
-  variant,
-  subView,
-}: {
-  variant?: WorkViewVariant;
-  subView?: string;
-}) {
-  const resolvedVariant: WorkViewVariant =
-    variant ??
-    (subView === "projects" || subView === "case-studies" ? subView : "all");
-  const industries = useMemo(
-    () => ["All", ...Array.from(new Set(CASE_STUDIES.map((c) => c.industry)))],
-    []
-  );
-  const [filter, setFilter] = useState("All");
-  const [active, setActive] = useState<CaseStudy | null>(null);
+const TABS: { id: WorkViewVariant; label: string; href: string }[] = [
+  { id: "all", label: "Overview", href: "/work" },
+  { id: "projects", label: "System scenarios", href: "/work/projects" },
+  { id: "case-studies", label: "Delivery blueprints", href: "/work/case-studies" },
+];
 
-  const visible = useMemo(
-    () =>
-      filter === "All"
-        ? CASE_STUDIES
-        : CASE_STUDIES.filter((c) => c.industry === filter),
-    [filter]
-  );
+const KIND_FOR_VARIANT: Record<WorkViewVariant, PortfolioKind | "all"> = {
+  all: "all",
+  projects: "system",
+  "case-studies": "blueprint",
+};
 
-  const hero = HERO_COPY[resolvedVariant];
-  const showWorkExamples = resolvedVariant === "all" || resolvedVariant === "projects";
-  const showBlueprints = resolvedVariant === "all" || resolvedVariant === "case-studies";
+export default function WorkView({ variant, subView }: { variant?: WorkViewVariant; subView?: string }) {
+  const resolved: WorkViewVariant =
+    variant ?? (subView === "projects" || subView === "case-studies" ? subView : "all");
+  const hero = HERO_COPY[resolved];
+  const stats = portfolioStats();
+
+  const breadcrumb =
+    resolved === "all"
+      ? [{ label: "Work" }]
+      : [{ label: "Work", href: "/work" }, { label: resolved === "projects" ? "System scenarios" : "Delivery blueprints" }];
 
   return (
     <div>
-      <PageHero
-        eyebrow={hero.eyebrow}
-        title={hero.title}
-        description={hero.description}
-      />
+      <PageHero eyebrow={hero.eyebrow} title={hero.title} description={hero.description} breadcrumb={breadcrumb}>
+        {/* Data-derived counts only — no invented performance numbers. */}
+        <dl className="mt-8 grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: "Documented entries", value: stats.total },
+            { label: "Delivery blueprints", value: stats.blueprints },
+            { label: "Industries modelled", value: stats.industries },
+            { label: "Motion previews", value: stats.videos },
+          ].map((item) => (
+            <div key={item.label} className="rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 backdrop-blur-sm">
+              <dt className="text-[11px] font-semibold uppercase tracking-wider text-white/60">{item.label}</dt>
+              <dd className="mt-1 text-2xl font-bold tabular-nums text-white">{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </PageHero>
 
-      {/* Sub-navigation between Work views */}
-      <div className="border-b border-[#E2E8F0] bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-6 lg:px-8">
+      {/* Sub-navigation */}
+      <div className="sticky top-16 z-30 border-b border-[#E2E8F0] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 print:hidden">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <nav aria-label="Work sections" className="flex flex-wrap gap-2">
-            {(
-              [
-                { id: "all", label: "Overview", href: "/work" },
-                { id: "projects", label: "System Scenarios", href: "/work/projects" },
-                { id: "case-studies", label: "Delivery Blueprints", href: "/work/case-studies" },
-              ] as const
-            ).map((tab) => (
+            {TABS.map((tab) => (
               <a
                 key={tab.id}
                 href={tab.href}
-                aria-current={resolvedVariant === tab.id ? "page" : undefined}
+                aria-current={resolved === tab.id ? "page" : undefined}
                 className={cn(
-                  "rounded-full px-4 py-1.5 text-xs font-semibold transition-colors",
-                  resolvedVariant === tab.id
+                  "inline-flex min-h-10 items-center rounded-full px-4 text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#009FE3]",
+                  resolved === tab.id
                     ? "bg-[#063B8F] text-white"
-                    : "border border-[#E2E8F0] bg-[#F8FAFC] text-[#334155] hover:border-[#009FE3] hover:text-[#063B8F]"
+                    : "border border-[#E2E8F0] bg-[#F8FAFC] text-[#334155] hover:border-[#009FE3] hover:text-[#063B8F]",
                 )}
               >
                 {tab.label}
               </a>
             ))}
           </nav>
-          <p className="text-xs text-[#64748B]">
-            Note: Illustrative engineering scenarios — client-confidential deployments are shared privately on request.
-          </p>
+          <a
+            href="/contact"
+            className="hidden min-h-10 items-center rounded-full bg-[#009FE3] px-4 text-xs font-semibold text-[#04121F] outline-none hover:bg-[#33B5EA] focus-visible:ring-2 focus-visible:ring-[#063B8F] sm:inline-flex"
+          >
+            Start a project
+          </a>
         </div>
       </div>
 
-      {/* 12 System Scenarios */}
-      {showWorkExamples ? <WorkExamples /> : null}
+      {resolved === "all" ? <PortfolioSpotlight /> : null}
 
-      {/* 8 Industry Delivery Blueprints */}
-      {showBlueprints ? (
-        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <SectionHeading
-            eyebrow="Industry Delivery Blueprints"
-            title="How Operational Bottlenecks Turn Into Clean Software"
-            description="Filter by sector and click any blueprint card to inspect the problem, architecture, stack, and operational outcome."
-          />
-
-          <div
-            role="tablist"
-            aria-label="Filter blueprints by industry"
-            className="mt-10 flex flex-wrap justify-center gap-2"
-          >
-            {industries.map((ind) => {
-              const selected = filter === ind;
-              return (
-                <button
-                  key={ind}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  onClick={() => setFilter(ind)}
-                  className={cn(
-                    "min-h-10 rounded-full px-4 py-2 text-xs font-semibold transition-colors",
-                    selected
-                      ? "bg-[#063B8F] text-white"
-                      : "border border-[#E2E8F0] bg-white text-[#526173] hover:border-[#009FE3] hover:text-[#0B1F33]"
-                  )}
-                >
-                  {ind}
-                </button>
-              );
-            })}
+      <section aria-labelledby="explore-heading" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#009FE3]">Explore all work</p>
+            <h2 id="explore-heading" className="mt-2 text-2xl font-bold tracking-tight text-[#0B1F33] sm:text-3xl">
+              Filter by industry, capability or technology
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-[#526173]">
+              Each card opens a dedicated page with the full problem, workflow, media and next steps. Filtered views
+              update the address bar, so you can share exactly what you are looking at.
+            </p>
           </div>
+        </div>
 
-          <RevealList
-            key={filter}
-            className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
-          >
-            {visible.map((c, idx) => {
-              const visual = getCaseStudyImage(c.slug);
-              return (
-                <RevealItem key={c.slug} className="h-full">
-                  <button
-                    type="button"
-                    onClick={() => setActive(c)}
-                    className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/60 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-                  >
-                    <div className="relative w-full overflow-hidden border-b border-[#E2E8F0] bg-[#061528]">
-                      <ImageView
-                        src={visual?.src}
-                        alt={visual?.alt ?? `${c.title} — illustrative delivery blueprint`}
-                        aspect="16/10"
-                        width={1600}
-                        height={1000}
-                        eager={idx < 3 && !showWorkExamples}
-                        sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw"
-                        imgClassName="transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
-                      />
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#040E1C]/60 to-transparent" />
-                      <span className="absolute left-3.5 top-3.5 rounded-full border border-white/20 bg-[#061528]/85 px-3 py-1 text-[11px] font-semibold tracking-wide text-[#9BEBFF] backdrop-blur-sm">
-                        {c.industry}
-                      </span>
-                    </div>
+        <p
+          role="note"
+          className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-950"
+        >
+          <strong>How to read this portfolio:</strong> {WORK_EXAMPLE_NOTICE}
+        </p>
 
-                    <div className="flex flex-1 flex-col p-6">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-[#0079AC]">
-                          Blueprint
-                        </span>
-                        <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-0.5 text-[11px] font-medium text-[#64748B]">
-                          Illustrative
-                        </span>
-                      </div>
-                      <h3 className="mt-2.5 text-lg font-bold text-[#0B1F33] group-hover:text-[#063B8F]">
-                        {c.title}
-                      </h3>
-                      <p className="mt-2.5 flex-1 text-sm leading-relaxed text-[#526173]">
-                        {c.challenge}
-                      </p>
-                      <div className="mt-5 rounded-xl border border-[#18B83A]/25 bg-[#18B83A]/[0.06] px-3.5 py-2.5 text-xs font-semibold text-[#0B1F33]">
-                        Target outcome: {c.outcome}
-                      </div>
-                      <div className="mt-4 flex flex-wrap gap-1.5">
-                        {c.stack.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-md bg-[#F7FAFC] px-2.5 py-1 text-[11px] font-medium text-[#526173]"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="mt-5 inline-flex items-center gap-1.5 border-t border-[#F1F5F9] pt-4 text-xs font-semibold text-[#0079AC]">
-                        Inspect blueprint
-                        <ArrowRight
-                          className="size-3.5 transition-transform group-hover:translate-x-1"
-                          aria-hidden="true"
-                        />
-                      </span>
-                    </div>
-                  </button>
-                </RevealItem>
-              );
-            })}
-          </RevealList>
-        </section>
-      ) : null}
+        <EvidenceLegend className="mt-6" />
 
-      {/* Services behind these blueprints */}
+        <div className="mt-8">
+          <PortfolioExplorer initialKind={KIND_FOR_VARIANT[resolved]} priorityCount={resolved === "all" ? 0 : 3} />
+        </div>
+      </section>
+
+      {/* Browse by industry */}
+      <section aria-labelledby="industries-strip-heading" className="border-t border-[#E2E8F0] bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <h2 id="industries-strip-heading" className="text-sm font-semibold uppercase tracking-[0.18em] text-[#526173]">
+            Browse by industry
+          </h2>
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {PORTFOLIO_INDUSTRIES.map((industry) => (
+              <li key={industry}>
+                <a
+                  href={`${TABS.find((t) => t.id === resolved)?.href ?? "/work"}?industry=${encodeURIComponent(industry)}`}
+                  onClick={(event) => {
+                    // Same page: let the explorer pick the filter up without a navigation.
+                    event.preventDefault();
+                    const url = new URL(window.location.href);
+                    if (window.location.hash.startsWith("#/")) {
+                      const route = window.location.hash.slice(1).split("?")[0];
+                      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}#${route}?industry=${encodeURIComponent(industry)}`);
+                    } else {
+                      url.searchParams.set("industry", industry);
+                      window.history.replaceState(window.history.state, "", url.toString());
+                    }
+                    window.dispatchEvent(new CustomEvent("t360-portfolio-filter", { detail: { industry } }));
+                    document.getElementById("explore-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="inline-flex min-h-10 items-center rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-4 text-xs font-semibold text-[#334155] outline-none hover:border-[#009FE3] hover:text-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+                >
+                  {industry}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* Services behind the work */}
       <section className="border-t border-[#E2E8F0] bg-[#F7FAFC]">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <SectionHeading
             eyebrow="From work to your project"
-            title="Services Behind These Blueprints"
-            description="Every system scenario above combines a small set of core Tech360 engineering services."
+            title="Services Behind This Work"
+            description="Every scenario above combines a small set of core TECH360 engineering services."
           />
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {SERVICES.slice(0, 3).map((s) => {
@@ -266,99 +204,10 @@ export default function WorkView({
         </div>
       </section>
 
-      <Dialog
-        open={Boolean(active)}
-        onOpenChange={(open) => !open && setActive(null)}
-      >
-        <DialogContent className="max-w-xl bg-white text-[#0B1F33]">
-          {active ? (
-            <>
-              <DialogHeader>
-                <span className="w-fit rounded-full bg-[#009FE3]/10 px-3 py-1 text-xs font-semibold text-[#0079AC]">
-                  {active.industry} · Illustrative Blueprint
-                </span>
-                <DialogTitle className="pt-2 text-2xl font-bold text-[#0B1F33]">
-                  {active.title}
-                </DialogTitle>
-                <DialogDescription className="sr-only">
-                  Blueprint summary for {active.title}
-                </DialogDescription>
-              </DialogHeader>
-
-              {getCaseStudyImage(active.slug) ? (
-                <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-[#061528]">
-                  <ImageView
-                    src={getCaseStudyImage(active.slug)?.src}
-                    alt={
-                      getCaseStudyImage(active.slug)?.alt ??
-                      `${active.title} blueprint`
-                    }
-                    aspect="16/10"
-                    width={1600}
-                    height={1000}
-                    eager
-                    sizes="560px"
-                  />
-                </div>
-              ) : null}
-
-              <div className="space-y-4 text-sm">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[#526173]">
-                    Operational Challenge
-                  </p>
-                  <p className="mt-1 leading-relaxed text-[#0B1F33]">
-                    {active.challenge}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[#526173]">
-                    Engineering Approach
-                  </p>
-                  <p className="mt-1 leading-relaxed text-[#0B1F33]">
-                    {active.approach}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-[#18B83A]/30 bg-[#18B83A]/[0.07] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[#18B83A]">
-                    Expected Outcome
-                  </p>
-                  <p className="mt-1 font-semibold text-[#0B1F33]">
-                    {active.outcome}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[#526173]">
-                    Typical Stack
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {active.stack.map((t) => (
-                      <span
-                        key={t}
-                        className="rounded-full border border-[#E2E8F0] bg-[#F7FAFC] px-3 py-1 text-xs font-medium text-[#0B1F33]"
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="pt-2">
-                <PrimaryLink
-                  href="/contact"
-                  onClick={() => setActive(null)}
-                  className="w-full justify-center"
-                >
-                  Scope a Similar System
-                  <ArrowRight className="size-4" aria-hidden="true" />
-                </PrimaryLink>
-              </div>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
-      <CtaBand />
+      <CtaBand
+        title="Don’t see your exact system?"
+        description="Most engagements combine several of these patterns. Send a short brief and we will document the proposed scope, milestones and any preview in writing."
+      />
     </div>
   );
 }

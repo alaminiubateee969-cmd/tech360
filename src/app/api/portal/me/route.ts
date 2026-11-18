@@ -383,6 +383,8 @@ export async function POST(req: NextRequest) {
         where: { id: latestScope.id },
         data: { approvedAt: new Date() },
       })
+      const { emitProposalApproved } = await import('@/lib/automation/domain-events')
+      await emitProposalApproved({ scopeId: latestScope.id, version: latestScope.version, clientRowId: client.id, clientId: client.clientId })
     }
 
     await db.communication.create({

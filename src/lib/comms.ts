@@ -6,6 +6,7 @@ import { classifyOutbound } from '@/lib/governance/outbound'
 import { HOSTINGER_MAIL_ENV, readHostingerMailConfig } from '@/lib/mail/hostinger-config'
 import { createHostingerMailClient, sendHostingerEmail, type HostingerThreadRef } from '@/lib/mail/hostinger-mail'
 import { outboundPlainText } from '@/lib/mail/hostinger-inbound-policy'
+import { readN8nConfig } from '@/lib/n8n/adapter'
 
 // ============================================================
 // TECH360 COMMUNICATIONS — real adapters, honest statuses
@@ -50,7 +51,9 @@ export function channelStatuses() {
     INSTAGRAM: Boolean(process.env.INSTAGRAM_TOKEN),
     LINKEDIN: Boolean(process.env.LINKEDIN_TOKEN),
     X: Boolean(process.env.X_TOKEN),
-    N8N: Boolean(process.env.N8N_WEBHOOK_BASE),
+    // Same rule as the n8n adapter (base URL + outbound and callback secrets of 32+ chars).
+    // "Configured" only — the integrations view shows CONNECTED after a live test.
+    N8N: readN8nConfig().configured,
   }
 }
 
@@ -344,6 +347,20 @@ export async function sendCommunication(entry: {
       message: `${entry.channel} delivery failed for Communication ${comm.id}; recipient and message body omitted from the error log.`,
       clientId: entry.clientId, workflow: entry.workflowId ?? undefined,
     })
+    // Integration-failure trigger. Automation-originated sends are excluded: the
+    // run records (and retries) its own failure, and excluding them prevents a
+    // failure-handling rule from re-triggering itself.
+    if (!entry.workflowId?.startsWith('automation:')) {
+      const { emitAutomationEvent } = await import('@/lib/automation/engine')
+      await emitAutomationEvent({
+        type: 'INTEGRATION_FAILED',
+        source: 'COMMS',
+        subjectType: 'Communication',
+        subjectId: comm.id,
+        payload: { integration: entry.channel, communicationId: comm.id, clientRowId: entry.clientId ?? null, error: (result.error ?? '').slice(0, 300) },
+        dedupeKey: `integration_failed:comm:${comm.id}`,
+      }).catch(() => null)
+    }
   }
 
   return { communicationId: comm.id, result }

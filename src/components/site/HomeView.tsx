@@ -15,11 +15,8 @@ import {
 } from "lucide-react";
 import { CASE_STUDIES, FAQS, INDUSTRIES } from "@/data/site";
 import { industryImage, industryImageAlt } from "@/data/industry-images";
-import {
-  getCaseStudyImage,
-  serviceImageAlt,
-  serviceImageSrc,
-} from "@/data/service-images";
+import { serviceImageAlt, serviceImageSrc } from "@/data/service-images";
+import { getPortfolioEntry } from "@/data/portfolio";
 import { cn } from "@/lib/utils";
 import { Icon } from "./icons";
 import { SectionHeading } from "./SectionHeading";
@@ -723,18 +720,20 @@ function SelectedWork() {
 
       <RevealList className="mt-12 grid gap-6 lg:grid-cols-3">
         {featured.map((study) => {
-          const visual = getCaseStudyImage(study.slug);
+          const entry = getPortfolioEntry("blueprint", study.slug);
+          const visual = entry?.cover;
+          const href = entry?.href ?? "/work/case-studies";
           return (
             <RevealItem key={study.slug} className="h-full">
               <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
                 <a
-                  href="/work/case-studies"
+                  href={href}
                   tabIndex={-1}
                   aria-hidden="true"
                   className="relative block overflow-hidden border-b border-[#E2E8F0] bg-[#061528]"
                 >
                   <ImageView
-                    src={visual?.src}
+                    src={visual?.srcSmall ?? visual?.src}
                     alt={visual?.alt ?? `${study.title} — illustrative delivery blueprint`}
                     aspect="16/10"
                     width={1600}
@@ -754,11 +753,13 @@ function SelectedWork() {
                       Delivery Blueprint
                     </span>
                     <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-0.5 text-[11px] font-medium text-[#64748B]">
-                      Illustrative scenario
+                      Illustrative · concept artwork
                     </span>
                   </div>
                   <h3 className="mt-2.5 text-lg font-bold leading-snug text-[#0B1F33]">
-                    {study.title}
+                    <a href={href} className="rounded-sm outline-none hover:text-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
+                      {study.title}
+                    </a>
                   </h3>
                   <p className="mt-3 text-sm leading-relaxed text-[#475569]">
                     <strong className="font-semibold text-[#0B1F33]">Challenge:</strong>{" "}

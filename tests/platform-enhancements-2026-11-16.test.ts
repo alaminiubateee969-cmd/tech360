@@ -121,7 +121,10 @@ describe('Platform enhancements — multi-provider AI, Agent config, Portal self
 
     const platformViewSrc = read('src/components/site/PlatformView.tsx')
     assert.match(platformViewSrc, /ECOSYSTEM_MODULES/)
-    assert.match(platformViewSrc, /TECH360 Operations/)
+    // Customer-facing capability showcase (commit 3b0d142 replaced the private
+    // "TECH360 Operations" product-family showcase during the privacy audit).
+    assert.match(platformViewSrc, /title="A Connected Technology Stack, Tailored to Your Business"/)
+    assert.match(platformViewSrc, /Enterprise CRM & Customer Operations/)
 
     // Verify neutral operational wording and zero prohibited AI branding phrases in HomeView/PlatformView/PortalView
     for (const file of ['src/components/site/HomeView.tsx', 'src/components/site/PlatformView.tsx', 'src/components/site/PortalView.tsx']) {

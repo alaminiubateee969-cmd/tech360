@@ -434,6 +434,7 @@ async function main() {
   const policyModule = await import('@/lib/ai-workforce-policy')
   const opsLoopModule = await import('@/lib/ops-loop')
   const healthRoute = await import('@/app/api/health/route')
+  const { collectAiPlatformDiagnostics } = await import('@/lib/health/ai-diagnostics')
 
   const { CORE_AGENTS, DEPARTMENTS, AGENT_HANDLER, validateAgentRegistry, CONSTITUTION } = registryModule
   const { AGENT_TOOLS } = policyModule
@@ -1058,48 +1059,64 @@ async function main() {
   globalChecks.push(...instrumentationChecks.map((c) => ({ ...c, check: `instrumentation: ${c.check}` })))
 
   // ============================================================
-  // 11. health endpoint
+  // 11. health — operator diagnostics (served by authenticated
+  //     /api/health/deep) and the deliberately minimal public endpoint
   // ============================================================
   const healthChecks: Check[] = []
   process.env.DATABASE_URL = 'mysql://app:dbpass@db.test.invalid:3306/tech360'
   {
-    const response = await healthRoute.GET()
-    const body = await response.json()
-    await record(healthChecks, '200 healthy: database, registry, provider, operations heartbeat, driver state', () => {
-      assert.equal(response.status, 200, JSON.stringify(body))
-      assert.equal(body.status, 'healthy')
-      const checks = body.checks as Record<string, { status: string; detail?: string }>
+    const diag = await collectAiPlatformDiagnostics()
+    await record(healthChecks, 'healthy: database, registry, provider, operations heartbeat, driver state', () => {
+      assert.equal(diag.healthy, true, JSON.stringify(diag))
+      const checks = diag.checks
       assert.equal(checks.database.status, 'UP')
       assert.match(String(checks.database.detail), /MySQL/)
       assert.equal(checks.aiProvider.status, 'CONFIGURED')
       assert.match(String(checks.aiAgents.detail), /44 agents registered/)
       assert.equal(checks.aiOperations.status, 'DISABLED', 'driver state must be reported: AI_OPS_DRIVER=off')
       assert.match(String(checks.aiOperations.detail), /AI_OPS_DRIVER=off/)
-      return { httpStatus: response.status, uptimeSeconds: body.uptimeSeconds, checks }
+      return { healthy: diag.healthy, checks }
     })
-    await record(healthChecks, 'health response exposes no secret material', () => {
-      const serialized = JSON.stringify(body)
-      for (const needle of [FAKE_API_KEY, 'DATABASE_URL', 'SESSION_SECRET', 'PORTAL_SECRET', 'OPS_SECRET', 'mysql://']) {
-        assert.equal(serialized.includes(needle), false, `health response contains ${needle}`)
+    await record(healthChecks, 'diagnostics expose no secret material', () => {
+      const serialized = JSON.stringify(diag)
+      for (const needle of [FAKE_API_KEY, 'DATABASE_URL', 'SESSION_SECRET', 'PORTAL_SECRET', 'OPS_SECRET', 'mysql://', 'dbpass', 'db.test.invalid']) {
+        assert.equal(serialized.includes(needle), false, `diagnostics contain ${needle}`)
       }
       return { bytesScanned: serialized.length, secretsFound: 0 }
+    })
+    const response = await healthRoute.GET()
+    const body = await response.json()
+    await record(healthChecks, 'public /api/health stays minimal: database only, no provider/agent/heartbeat/secret disclosure', () => {
+      assert.equal(response.status, 200, JSON.stringify(body))
+      assert.equal(body.status, 'healthy')
+      assert.deepEqual(Object.keys(body.checks), ['database'])
+      assert.equal(response.headers.get('cache-control'), 'no-store')
+      const serialized = JSON.stringify(body)
+      for (const needle of [FAKE_API_KEY, 'DATABASE_URL', 'mysql://', 'aiProvider', 'aiAgents', 'aiOperations', 'channels']) {
+        assert.equal(serialized.includes(needle), false, `public health response contains ${needle}`)
+      }
+      return { httpStatus: response.status, checks: Object.keys(body.checks) }
     })
   }
   {
     dbDown = true
     process.env.DATABASE_URL = 'mysql://unreachable.invalid:3306/nope'
+    const downDiag = await collectAiPlatformDiagnostics()
     const down = await healthRoute.GET()
     const downBody = await down.json()
     dbDown = false
     delete process.env.DATABASE_URL
-    await record(healthChecks, 'unhealthy state is reported when the database is unreachable (503 + DOWN)', () => {
+    await record(healthChecks, 'unhealthy state is reported when the database is unreachable (public 503 + DOWN)', () => {
+      assert.equal(downDiag.healthy, false)
+      assert.equal(downDiag.checks.database.status, 'DOWN')
+      assert.equal(downDiag.checks.aiAgents.status, 'UNKNOWN')
+      assert.equal(downDiag.checks.aiOperations.status, 'DISABLED', 'driver state is env-derived and must stay honest even when the DB is down')
+      assert.equal(JSON.stringify(downDiag).includes('unreachable.invalid'), false, 'diagnostics leaked connection details')
       assert.equal(down.status, 503, `expected 503, got ${down.status}`)
       assert.equal(downBody.status, 'unhealthy')
       assert.equal(downBody.checks.database.status, 'DOWN')
-      assert.equal(downBody.checks.aiAgents.status, 'UNKNOWN')
-      assert.equal(downBody.checks.aiOperations.status, 'DISABLED', 'driver state is env-derived and must stay honest even when the DB is down')
-      assert.equal(String(downBody.checks.database.detail).includes('unreachable.invalid'), false, 'health leaked connection details')
-      return { httpStatus: down.status, checks: downBody.checks }
+      assert.equal(JSON.stringify(downBody).includes('unreachable.invalid'), false, 'public health leaked connection details')
+      return { httpStatus: down.status, checks: downDiag.checks }
     })
   }
   {
@@ -1107,20 +1124,17 @@ async function main() {
     const savedNodeEnv = process.env.NODE_ENV
     env.NODE_ENV = 'test'
     delete process.env.ZAI_API_KEY
-    const lenient = await healthRoute.GET()
-    const lenientBody = await lenient.json()
+    const lenient = await collectAiPlatformDiagnostics()
     env.NODE_ENV = 'production'
-    const strict = await healthRoute.GET()
-    const strictBody = await strict.json()
+    const strict = await collectAiPlatformDiagnostics()
     process.env.ZAI_API_KEY = savedKey
     env.NODE_ENV = savedNodeEnv
-    await record(healthChecks, 'unconfigured provider is unhealthy in production (503) and only a warning outside it', () => {
-      assert.equal(lenientBody.checks.aiProvider.status, 'MISCONFIGURED')
-      assert.equal(lenient.status, 200, 'a non-production runtime must not fail health solely on provider configuration')
-      assert.equal(strict.status, 503, `production must report unhealthy without a provider, got ${strict.status}`)
-      assert.equal(strictBody.status, 'unhealthy')
-      assert.equal(strictBody.checks.aiProvider.status, 'MISCONFIGURED')
-      return { nonProduction: { httpStatus: lenient.status, provider: lenientBody.checks.aiProvider.status }, production: { httpStatus: strict.status, provider: strictBody.checks.aiProvider.status } }
+    await record(healthChecks, 'unconfigured provider is unhealthy in production and only a warning outside it', () => {
+      assert.equal(lenient.checks.aiProvider.status, 'MISCONFIGURED')
+      assert.equal(lenient.healthy, true, 'a non-production runtime must not fail health solely on provider configuration')
+      assert.equal(strict.healthy, false, 'production must report unhealthy without a provider')
+      assert.equal(strict.checks.aiProvider.status, 'MISCONFIGURED')
+      return { nonProduction: { healthy: lenient.healthy, provider: lenient.checks.aiProvider.status }, production: { healthy: strict.healthy, provider: strict.checks.aiProvider.status } }
     })
   }
   globalChecks.push(...healthChecks.map((c) => ({ ...c, check: `health: ${c.check}` })))

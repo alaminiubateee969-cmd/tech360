@@ -3,13 +3,17 @@
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleAlert, Info, Sparkles } from "lucide-react";
 
 import { WORK_EXAMPLES } from "@/data/work-examples";
+import { adjacentPortfolio, getPortfolioEntry, relatedPortfolio } from "@/data/portfolio";
+import { MediaGallery, ShareBar } from "./PortfolioMedia";
+import { PortfolioCard } from "./PortfolioCard";
 import {
   FORBIDDEN_CLAIM_PATTERNS,
   PROJECT_DETAIL_NOTICE,
   getProjectDetail,
   relatedProjects,
 } from "@/data/work-details";
-import { getService, getIndustry } from "@/data/site";
+import { getService } from "@/data/site";
+import { portfolioIndustryLink } from "@/lib/portfolio/industry-links";
 import { assessSolution } from "@/data/industries/maturity";
 import { MaturityBadge } from "./maturity-badge";
 
@@ -32,7 +36,7 @@ const SECTION_LINKS: { id: string; label: string }[] = [
   { id: "objectives", label: "Objectives" },
   { id: "overview", label: "Overview" },
   { id: "modules", label: "Modules" },
-  { id: "screens", label: "Screens" },
+  { id: "screens", label: "Media" },
   { id: "journey", label: "Journey" },
   { id: "roles", label: "Roles" },
   { id: "architecture", label: "Architecture" },
@@ -128,7 +132,7 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#009FE3]">404 · Project not found</p>
           <h1 className="mt-4 text-2xl font-bold text-[#0B1F33]">This project scenario does not exist.</h1>
           <p className="mt-3 text-sm text-[#526173]">Browse the published project scenarios instead.</p>
-          <a href="#/work/projects" className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-[#063B8F] px-5 text-sm font-semibold text-white outline-none hover:bg-[#052f72] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
+          <a href="/work/projects" className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-[#063B8F] px-5 text-sm font-semibold text-white outline-none hover:bg-[#052f72] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
             All projects
           </a>
         </div>
@@ -137,8 +141,11 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
   }
 
   const assessment = assessSolution(`work/${slug}`);
-  const industry = detail.industrySlug ? getIndustry(detail.industrySlug) : undefined;
+  const industry = portfolioIndustryLink(detail.industrySlug);
   const related = relatedProjects(slug);
+  const entry = getPortfolioEntry("system", slug);
+  const relatedEntries = entry ? relatedPortfolio(entry, 3) : [];
+  const adjacent = entry ? adjacentPortfolio(entry) : null;
 
   return (
     <div>
@@ -151,12 +158,12 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
           loading="eager"
         />
         <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#0B1F33]/95 via-[#0B1F33]/80 to-[#063B8F]/50" />
-        <div className="relative mx-auto w-full max-w-7xl px-4 py-16 pt-28 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <div className="relative mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <nav aria-label="Breadcrumb" className="mb-6">
             <ol className="flex flex-wrap items-center gap-1.5 text-sm text-white/60">
-              <li><a href="#/" className="outline-none hover:text-white focus-visible:ring-2 focus-visible:ring-white/60">Home</a></li>
-              <li className="flex items-center gap-1.5"><ArrowRight className="size-3.5 opacity-50" aria-hidden="true" /><a href="#/work" className="outline-none hover:text-white focus-visible:ring-2 focus-visible:ring-white/60">Work</a></li>
-              <li className="flex items-center gap-1.5"><ArrowRight className="size-3.5 opacity-50" aria-hidden="true" /><a href="#/work/projects" className="outline-none hover:text-white focus-visible:ring-2 focus-visible:ring-white/60">Projects</a></li>
+              <li><a href="/" className="outline-none hover:text-white focus-visible:ring-2 focus-visible:ring-white/60">Home</a></li>
+              <li className="flex items-center gap-1.5"><ArrowRight className="size-3.5 opacity-50" aria-hidden="true" /><a href="/work" className="outline-none hover:text-white focus-visible:ring-2 focus-visible:ring-white/60">Work</a></li>
+              <li className="flex items-center gap-1.5"><ArrowRight className="size-3.5 opacity-50" aria-hidden="true" /><a href="/work/projects" className="outline-none hover:text-white focus-visible:ring-2 focus-visible:ring-white/60">Projects</a></li>
               <li className="flex items-center gap-1.5"><ArrowRight className="size-3.5 opacity-50" aria-hidden="true" /><span aria-current="page" className="text-white/90">{example.name}</span></li>
             </ol>
           </nav>
@@ -186,6 +193,10 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
               </div>
             ))}
           </dl>
+
+          <div className="mt-8">
+            <ShareBar title={`${example.name} — TECH360 system specification`} path={`/work/projects/${slug}`} />
+          </div>
         </div>
       </section>
 
@@ -201,12 +212,12 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
         {/* Section navigation */}
         <nav aria-label="Project sections" className="lg:sticky lg:top-24 lg:self-start">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A9AAB]">On this page</p>
-          <ul className="mt-3 hidden flex-wrap gap-x-4 gap-y-1 lg:flex lg:flex-col">
+          <ul className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-2 lg:mx-0 lg:flex-col lg:gap-0 lg:overflow-visible lg:px-0 lg:pb-0">
             {SECTION_LINKS.map((link) => (
               <li key={link.id}>
                 <a
                   href={`#${link.id}`}
-                  className="inline-flex min-h-9 items-center rounded text-xs font-medium text-[#526173] outline-none transition-colors hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]"
+                  className="inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full border border-[#E2E8F0] px-3 text-xs font-medium text-[#526173] outline-none transition-colors hover:text-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3] lg:rounded lg:border-0 lg:px-0"
                 >
                   {link.label}
                 </a>
@@ -270,19 +281,23 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
           </Section>
 
           {/* F — Screens */}
-          <Section id="screens" eyebrow="F · Screen gallery" title="No verified product screenshots for this concept">
-            <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
-              <p>
-                This project has not been built, so there are no application screenshots to show. The image on this page
-                is a generated concept visual, not a capture of working software. Presenting it as a product screenshot
-                would misrepresent the system, so this section says so explicitly.
-              </p>
-              <figure className="mt-4 overflow-hidden rounded-xl border border-[#E2E8F0]">
-                <img src={example.image} alt={example.imageAlt} className="w-full" loading="lazy" />
-                <figcaption className="bg-[#F8FBFD] px-4 py-3 text-xs text-[#526173]">
-                  Generated concept visual — not a screenshot of a working application.
-                </figcaption>
-              </figure>
+          <Section id="screens" eyebrow="F · Media gallery" title="Concept motion preview and artwork — no product screenshots">
+            <p>
+              This project has not been built, so there are no application screenshots to show. The media below is a
+              generated concept visual and a silent explainer assembled from it — not a capture of working software.
+              Presenting either as a product screenshot would misrepresent the system, so each item is labelled.
+            </p>
+            <div className="mt-4">
+              {entry ? (
+                <MediaGallery images={entry.gallery} video={entry.video} title={example.name} />
+              ) : (
+                <figure className="overflow-hidden rounded-xl border border-[#E2E8F0]">
+                  <img src={example.image} alt={example.imageAlt} className="w-full" loading="lazy" />
+                  <figcaption className="bg-[#F8FBFD] px-4 py-3 text-xs text-[#526173]">
+                    Generated concept visual — not a screenshot of a working application.
+                  </figcaption>
+                </figure>
+              )}
             </div>
           </Section>
 
@@ -375,7 +390,7 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
             {industry ? (
               <p className="mt-3 text-sm text-[#526173]">
                 Sector blueprint:{" "}
-                <a href={`#/industries/${industry.slug}`} className="font-semibold text-[#063B8F] underline decoration-[#009FE3]/40 underline-offset-2 hover:text-[#009FE3]">
+                <a href={industry.href} className="font-semibold text-[#063B8F] underline decoration-[#009FE3]/40 underline-offset-2 hover:text-[#009FE3]">
                   {industry.title} solutions
                 </a>
               </p>
@@ -387,7 +402,7 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
                 if (!service) return null;
                 return (
                   <li key={serviceSlug}>
-                    <a href={`#/services/${serviceSlug}`} className="inline-flex min-h-9 items-center rounded-lg border border-[#E2E8F0] px-3 text-xs font-medium text-[#063B8F] outline-none hover:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
+                    <a href={`/services/${serviceSlug}`} className="inline-flex min-h-9 items-center rounded-lg border border-[#E2E8F0] px-3 text-xs font-medium text-[#063B8F] outline-none hover:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
                       {service.title}
                     </a>
                   </li>
@@ -401,7 +416,7 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
                 if (!relatedExample) return null;
                 return (
                   <li key={relatedSlug}>
-                    <a href={`#/work/projects/${relatedSlug}`} className="inline-flex min-h-9 items-center rounded-lg bg-[#063B8F]/8 px-3 text-xs font-semibold text-[#063B8F] outline-none hover:bg-[#063B8F]/15 focus-visible:ring-2 focus-visible:ring-[#009FE3]">
+                    <a href={`/work/projects/${relatedSlug}`} className="inline-flex min-h-9 items-center rounded-lg bg-[#063B8F]/8 px-3 text-xs font-semibold text-[#063B8F] outline-none hover:bg-[#063B8F]/15 focus-visible:ring-2 focus-visible:ring-[#009FE3]">
                       {relatedExample.name}
                     </a>
                   </li>
@@ -410,11 +425,11 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
             </ul>
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <a href="#/contact" id="request-quote" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#063B8F] px-5 text-sm font-semibold text-white outline-none hover:bg-[#052f72] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">
+              <a href="/contact" id="request-quote" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#063B8F] px-5 text-sm font-semibold text-white outline-none hover:bg-[#052f72] focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2">
                 Request a similar project
                 <ArrowRight className="size-4" aria-hidden="true" />
               </a>
-              <a href="#/work/projects" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2E8F0] px-5 text-sm font-semibold text-[#063B8F] outline-none hover:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
+              <a href="/work/projects" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2E8F0] px-5 text-sm font-semibold text-[#063B8F] outline-none hover:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
                 <ArrowLeft className="size-4" aria-hidden="true" />
                 All project scenarios
               </a>
@@ -431,6 +446,39 @@ export default function ProjectDetailView({ slug }: { slug: string }) {
           </p>
         </div>
       </div>
+
+      {relatedEntries.length || adjacent ? (
+        <section aria-labelledby="related-work-heading" className="border-t border-[#E2E8F0] bg-[#F7FAFC]">
+          <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+            <h2 id="related-work-heading" className="text-2xl font-bold tracking-tight text-[#0B1F33]">Related work</h2>
+            <ul className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {relatedEntries.map((item) => (
+                <li key={`${item.kind}-${item.slug}`}>
+                  <PortfolioCard entry={item} />
+                </li>
+              ))}
+            </ul>
+            {adjacent ? (
+              <nav aria-label="More system scenarios" className="mt-10 grid gap-4 sm:grid-cols-2">
+                <a href={adjacent.previous.href} className="group flex items-center gap-4 rounded-2xl border border-[#E2E8F0] bg-white p-4 outline-none hover:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
+                  <ArrowLeft className="size-5 shrink-0 text-[#009FE3] transition-transform group-hover:-translate-x-1" aria-hidden="true" />
+                  <span>
+                    <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A9AAB]">Previous system</span>
+                    <span className="mt-0.5 block text-sm font-semibold text-[#0B1F33]">{adjacent.previous.title}</span>
+                  </span>
+                </a>
+                <a href={adjacent.next.href} className="group flex items-center justify-end gap-4 rounded-2xl border border-[#E2E8F0] bg-white p-4 text-right outline-none hover:border-[#009FE3] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
+                  <span>
+                    <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A9AAB]">Next system</span>
+                    <span className="mt-0.5 block text-sm font-semibold text-[#0B1F33]">{adjacent.next.title}</span>
+                  </span>
+                  <ArrowRight className="size-5 shrink-0 text-[#009FE3] transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                </a>
+              </nav>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

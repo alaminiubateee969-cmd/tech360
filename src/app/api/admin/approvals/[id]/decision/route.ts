@@ -19,7 +19,13 @@ export const dynamic = 'force-dynamic'
  * controls, self-approval) inside its own write, so a decision here can never
  * be the thing that changes the agent's behaviour.
  */
-const DEFERRED_APPROVAL_TYPES = new Set(['REFUND', 'PAYMENT_VERIFY', 'REFUND_SETTLE', 'INVOICE_GENERATE', 'MANUAL_COMMUNICATION', 'EVOLUTION_APPLY'])
+/**
+ * `AUTOMATION_RUN` is also only granted here. The automation engine then
+ * re-checks the approval fingerprint against the run's current parameters and
+ * consumes the approval (APPROVED → EXECUTED) inside its own execution, so a
+ * changed rule or subject invalidates the approval instead of running.
+ */
+const DEFERRED_APPROVAL_TYPES = new Set(['AUTOMATION_RUN', 'REFUND', 'PAYMENT_VERIFY', 'REFUND_SETTLE', 'INVOICE_GENERATE', 'MANUAL_COMMUNICATION', 'EVOLUTION_APPLY'])
 
 // Super Admin decision on sensitive actions → REAL execution of the gated action
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -59,6 +65,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (decision === 'REJECTED') {
     await audit({ actor: g.user.email, action: 'APPROVAL_REJECTED', userId: g.user.id, clientId: approval.clientId ?? undefined, entityId: approval.id, details: { type: approval.type, note } })
     return Response.json({ ok: true, result: { status: 'REJECTED' }, message: 'Action rejected. Nothing was executed.' })
+  }
+
+  if (approval.type === 'AUTOMATION_RUN') {
+    await audit({ actor: g.user.email, action: 'APPROVAL_APPROVED_AUTOMATION_RUN', userId: g.user.id, clientId: approval.clientId ?? undefined, entityId: approval.id, details: { type: approval.type, note } })
+    try {
+      const { resumeApprovedAutomationRun } = await import('@/lib/automation/engine')
+      const resumed = await resumeApprovedAutomationRun(approval.id)
+      const executed = resumed.status === 'SUCCEEDED' || resumed.status === 'SUCCEEDED_WITH_ERRORS' || resumed.status === 'WAITING_EXTERNAL'
+      return Response.json({
+        ok: true,
+        result: { status: 'APPROVED', runId: resumed.runId, runStatus: resumed.status },
+        message: resumed.runId
+          ? executed
+            ? `Approved. Automation run ${resumed.runId} resumed and is now ${resumed.status}.`
+            : `Approved. Automation run ${resumed.runId} is ${resumed.status} — see the run history for details.`
+          : 'Approved, but no automation run is waiting on this approval. Nothing was executed.',
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown'
+      await logError({ source: 'API', code: 'AUTOMATION_RESUME_FAILED', message: msg.slice(0, 900) })
+      return Response.json({ ok: false, code: 'AUTOMATION_RESUME_FAILED', error: msg, message: `Approved but the automation run could not resume: ${msg}` }, { status: 500 })
+    }
   }
 
   if (deferred) {

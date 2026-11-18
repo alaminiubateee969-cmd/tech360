@@ -167,7 +167,12 @@ describe('public confidentiality — no Software Factory internals', () => {
 
   it('PlatformView carries the customer-facing headline', () => {
     const src = readFileSync(join(root, 'src/components/site/PlatformView.tsx'), 'utf8')
-    assert.ok(src.includes('Your Business. One Connected Platform. Complete Control.'))
+    // Headline and module names approved in the 2026-11-17 public privacy
+    // audit (commit 3b0d142 replaced the private company-in-a-box showcase).
+    assert.ok(src.includes('title="Connected Business Systems, Designed Around Your Operations"'))
+    for (const retired of ['Your Business. One Connected Platform. Complete Control.', 'TECH360 Operations', 'Unified Product Family Built on Shared Identity']) {
+      assert.ok(!src.includes(retired), `PlatformView must not reintroduce the retired private showcase copy "${retired}"`)
+    }
   })
 
   it('AboutView uses USA-based positioning without Bangladesh mentions', () => {

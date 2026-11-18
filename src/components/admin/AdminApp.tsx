@@ -37,6 +37,7 @@ import {
   Users,
   Wallet,
   Workflow,
+  Zap,
   Mail,
   MessagesSquare,
   PhoneCall,
@@ -89,6 +90,7 @@ import { PromptLibraryView } from './PromptLibraryView'
 import { SeoAuditView } from './SeoAuditView'
 import { MarketingKitView } from './MarketingKitView'
 import { N8nView } from './N8nView'
+import AutomationView from './AutomationView'
 import { OpsView } from './OpsView'
 import { PaymentsView } from './PaymentsView'
 import { ProjectDetailView, ProjectsView } from './ProjectsView'
@@ -133,7 +135,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'clients', label: 'Clients', icon: Building2 },
       { id: 'approvals', label: 'Approvals', icon: ShieldCheck },
       { id: 'communications', label: 'Communications', icon: MessageSquare },
-      { id: 'chat', label: 'Live Chat', icon: MessagesSquare },
+      { id: 'chat', label: 'Inbox', icon: MessagesSquare },
       { id: 'telephony', label: 'Calls & SMS', icon: PhoneCall },
       { id: 'pipeline', label: 'Communication Pipeline', icon: MessagesSquare },
     ],
@@ -202,6 +204,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     section: 'System',
     items: [
       { id: 'logs', label: 'Logs', icon: ScrollText },
+      { id: 'automation', label: 'Automation', icon: Zap },
       { id: 'n8n', label: 'n8n Workflows', icon: Workflow },
       { id: 'reports', label: 'Reports', icon: FileBarChart },
       { id: 'team', label: 'Team', icon: Users },
@@ -234,7 +237,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   clients: 'Clients',
   approvals: 'Approvals',
   communications: 'Communications',
-  chat: 'Live Chat',
+  chat: 'Inbox',
   payments: 'Payments',
   projects: 'Projects',
   reviews: 'Reviews & Referrals',
@@ -263,6 +266,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   analytics: 'Analytics',
   logs: 'Logs',
   n8n: 'n8n Workflows',
+  automation: 'Automation',
   reports: 'Reports',
   settings: 'Settings',
   team: 'Team',
@@ -622,7 +626,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
               ) : view === 'communications' ? (
                 <CommunicationsView />
               ) : view === 'chat' ? (
-                <ConversationsView />
+                <ConversationsView onOpenClient={openClient} />
               ) : view === 'payments' ? (
                 <PaymentsView onOpenClient={openClient} />
               ) : view === 'projects' ? (
@@ -693,6 +697,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <AnalyticsView />
               ) : view === 'logs' ? (
                 <LogsView />
+              ) : view === 'automation' ? (
+                <AutomationView role={userRole} />
               ) : view === 'n8n' ? (
                 <N8nView />
               ) : view === 'reports' ? (

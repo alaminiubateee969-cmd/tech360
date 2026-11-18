@@ -305,6 +305,8 @@ export async function handleCustomerMessage(input: {
         conversationId: input.conversationId,
         sender: escalated ? 'SYSTEM' : 'ADMIN', // SYSTEM for honest fallback/escalation, ADMIN for AI reply (attributed to TECH360)
         body: outboundBody,
+        // AI replies are labelled distinctly from human replies in every UI.
+        aiGenerated: wasAiGenerated && !escalated,
       },
     })
     await db.chatConversation.update({

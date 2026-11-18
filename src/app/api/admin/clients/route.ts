@@ -332,6 +332,10 @@ export async function POST(req: NextRequest) {
       ip: g.ip,
       details: { status: client.status, pipelineStage: client.pipelineStage, source: client.source },
     })
+    // Bulk imports deliberately do not emit LEAD_CREATED: imported contacts did not
+    // start a conversation, so rule-driven outreach to them would bypass consent.
+    const { emitLeadCreated } = await import('@/lib/automation/domain-events')
+    await emitLeadCreated({ clientRowId: client.id, clientId: client.clientId, leadSource: client.source ?? null, channelSource: 'ADMIN', businessType: client.businessType ?? null, createdBy: g.user.email })
 
     return Response.json({
       ok: true,

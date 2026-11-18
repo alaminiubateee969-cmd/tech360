@@ -22,7 +22,11 @@ const calls: Call[] = []
 let stubState: {
   found: Record<string, unknown> | null
   updateManyCount: number
-} = { found: null, updateManyCount: 1 }
+  /** Persisted COMM_STATE row read by loadCommState(); null = no stored state (not opted out). */
+  commState: { content: string } | null
+  /** Simulates an unreadable consent store. */
+  commStateThrows: boolean
+} = { found: null, updateManyCount: 1, commState: null, commStateThrows: false }
 
 class PrismaClientStub {
   communication = {
@@ -51,6 +55,13 @@ class PrismaClientStub {
     deleteMany: async () => {
       calls.push({ method: 'setting.deleteMany', args: 'feature_flags' })
       return { count: 1 }
+    },
+  }
+  aiMemory = {
+    findFirst: async ({ where }: { where: unknown }) => {
+      calls.push({ method: 'aiMemory.findFirst', args: where })
+      if (stubState.commStateThrows) throw new Error('consent store unavailable')
+      return stubState.commState
     },
   }
   notification = {
@@ -83,7 +94,7 @@ mock.timers.enable({ apis: ['Date'], now: NOW })
 
 async function reset(found: Record<string, unknown> | null, updateManyCount = 1) {
   calls.length = 0
-  stubState = { found, updateManyCount }
+  stubState = { found, updateManyCount, commState: null, commStateThrows: false }
   channelEnabled = true
   process.env.SMS_API_URL = 'https://sms.invalid/send'
   process.env.SMS_API_KEY = 'test-key'
@@ -270,5 +281,31 @@ describe('retryCommunicationOutbox — the changed code path', () => {
     assert.equal(outcome.action, 'FAILED')
     assert.equal(outcome.status, 'FAILED')
     assert.ok(updates().at(-1)!.data.nextRetryAt instanceof Date)
+  })
+
+  it('never retries an SMS to a customer who opted out (no provider call)', async () => {
+    const { retryCommunicationOutbox } = await loadComms()
+    await reset({ ...baseRow })
+    stubState.commState = { content: JSON.stringify({ optedOut: true }) }
+    stubProviderFetch('ok')
+    const outcome = await retryCommunicationOutbox('comm_1')
+    assert.equal(outcome.ok, false)
+    assert.equal(outcome.action, 'NOT_RETRYABLE')
+    assert.equal(outcome.status, 'OPTED_OUT')
+    assert.equal(fetchMock!.mock.callCount(), 0, 'an opted-out customer was sent an SMS')
+    assert.equal(updates().at(-1)!.data.status, 'OPTED_OUT')
+    assert.equal(updates().at(-1)!.data.nextRetryAt, null)
+  })
+
+  it('fails closed when the consent state cannot be read (no provider call)', async () => {
+    const { retryCommunicationOutbox } = await loadComms()
+    await reset({ ...baseRow })
+    stubState.commStateThrows = true
+    stubProviderFetch('ok')
+    const outcome = await retryCommunicationOutbox('comm_1')
+    assert.equal(outcome.ok, false)
+    assert.equal(outcome.action, 'SKIPPED')
+    assert.match(outcome.reason, /consent state could not be verified/i)
+    assert.equal(fetchMock!.mock.callCount(), 0, 'sent without verified consent')
   })
 })

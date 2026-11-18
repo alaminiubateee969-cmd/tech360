@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
+import { checkBrandAssetUpload } from '@/lib/brand-asset-upload'
 import { getDocumentBranding, saveDocumentBranding, restoreDefaultBranding, getBrandingHistory, getDefaultBranding, isValidPageSize } from '@/lib/document-branding'
 import { audit } from '@/lib/security'
 
@@ -125,12 +126,14 @@ export async function POST(req: NextRequest) {
     const allowedAssetTypes = ['header', 'footer', 'letterhead', 'seal', 'logo', 'company-profile-cover', 'proposal-cover']
     if (!allowedAssetTypes.includes(assetType)) return Response.json({ error: `assetType must be one of: ${allowedAssetTypes.join(', ')}` }, { status: 400 })
     if (file.size === 0 || file.size > 10 * 1024 * 1024) return Response.json({ error: 'File size must be 1B-10MB' }, { status: 400 })
-    const allowedMime = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml']
-    if (file.type && !allowedMime.includes(file.type.toLowerCase())) return Response.json({ error: `Unsupported type ${file.type}. Allowed: png, jpg, webp, svg` }, { status: 415 })
-    const ext = (file.name.split('.').pop() ?? 'png').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'png'
     const bytes = Buffer.from(await file.arrayBuffer())
-    // Validate not empty and basic magic (optional)
     if (bytes.length < 10) return Response.json({ error: 'File too small or corrupt' }, { status: 400 })
+    // The stored extension comes from the verified content, never from the
+    // client file name or declared type: files under public/brand/ are served
+    // from this origin, so an HTML/SVG payload must never be written there.
+    const checked = checkBrandAssetUpload(bytes, file.type ?? '')
+    if (!checked.ok) return Response.json({ error: checked.error }, { status: checked.status })
+    const ext = checked.kind.ext
     const fs = await import('node:fs/promises')
     const path = await import('node:path')
     const brandDir = path.join(process.cwd(), 'public', 'brand')

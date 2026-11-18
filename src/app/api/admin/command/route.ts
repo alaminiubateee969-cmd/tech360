@@ -402,6 +402,10 @@ ${CAPABILITIES}`
           clientId: createdClient.clientId,
           details: { source: 'COMMAND_CENTER', correlationId },
         })
+        {
+          const { emitLeadCreated } = await import('@/lib/automation/domain-events')
+          await emitLeadCreated({ clientRowId: createdClient.id, clientId: createdClient.clientId, leadSource: 'COMMAND_CENTER', channelSource: 'ADMIN', businessType, createdBy: g.user.email })
+        }
         data = createdClient
         dataKind = 'client_created'
         if (!reply) {

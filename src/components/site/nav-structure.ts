@@ -265,17 +265,17 @@ export const PRIMARY_NAV_GROUPS: PrimaryNavGroup[] = [
           {
             label: "Portfolio",
             href: "/work",
-            description: "Capabilities showcase across web, CRM, portals & automation",
+            description: "Search & filter all work by industry, capability or technology",
           },
           {
-            label: "Projects",
+            label: "System Scenarios",
             href: "/work/projects",
-            description: "12 illustrative system scenarios & architecture breakdowns",
+            description: "12 system specifications with journeys, roles & data models",
           },
           {
-            label: "Case Studies",
+            label: "Delivery Blueprints",
             href: "/work/case-studies",
-            description: "Problem-to-architecture delivery blueprints by sector",
+            description: "8 problem-to-architecture blueprints with motion previews",
           },
         ],
       },

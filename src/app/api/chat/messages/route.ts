@@ -3,6 +3,9 @@ import { db } from '@/lib/db'
 import { sanitizeText, rateLimit, clientIp, apiError, json } from '@/lib/security'
 import { CHAT_SESSION_COOKIE, chatSessionCookieIsValid } from '@/lib/chat-session'
 import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
+import { visitorDelta } from '@/lib/webchat/thread'
+import { markReadByVisitor } from '@/lib/webchat/inbox-service'
+import { VISITOR_VISIBLE_WHERE } from '@/lib/webchat/policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,19 +41,22 @@ export async function GET(req: NextRequest) {
       return apiError('This chat session cannot be verified in this browser.', 401, 'CHAT_SESSION_REQUIRED')
     }
 
-    const [messages, linkedClient] = await Promise.all([
-      db.chatMessage.findMany({
-        where: { conversationId: conversation.id },
-        orderBy: { createdAt: 'asc' },
-        select: { id: true, sender: true, body: true, agentEmail: true, createdAt: true },
-      }),
+    const [delta, linkedClient] = await Promise.all([
+      visitorDelta(conversation.id, after || null),
       conversation.clientId
         ? db.client.findUnique({ where: { id: conversation.clientId }, select: { clientId: true, deletedAt: true } })
         : Promise.resolve(null),
     ])
-    const afterIndex = after ? messages.findIndex((message) => message.id === after) : -1
-    const visible = afterIndex >= 0 ? messages.slice(afterIndex + 1) : messages
-    const latestId = messages.length > 0 ? messages[messages.length - 1].id : null
+    // `read=1` is sent only while the visitor has the thread open and focused.
+    if (url.searchParams.get('read') === '1' && conversation.status === 'OPEN') {
+      await markReadByVisitor(conversation.id).catch(() => 0)
+    }
+    const latest = await db.chatMessage.findFirst({
+      where: { conversationId: conversation.id, ...VISITOR_VISIBLE_WHERE },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { id: true },
+    })
+    const latestId = latest?.id ?? null
     const displayClientId = linkedClient && !linkedClient.deletedAt ? linkedClient.clientId : null
 
     return json({
@@ -60,8 +66,14 @@ export async function GET(req: NextRequest) {
         unreadCount: conversation.unreadCount,
         visitorName: conversation.visitorName,
         clientId: displayClientId,
+        inboxState: delta?.conversation.inboxState ?? conversation.inboxState,
+        humanRequested: delta?.conversation.humanRequested ?? false,
+        closedBy: delta?.conversation.closedBy ?? null,
       },
-      messages: visible,
+      // Internal notes are excluded at query level (VISITOR_VISIBLE_WHERE).
+      messages: delta?.messages ?? [],
+      receipts: delta?.receipts ?? [],
+      typing: delta?.typing ?? { active: false, name: null },
       latestId,
       ai,
     })
