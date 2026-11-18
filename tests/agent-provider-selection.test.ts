@@ -103,7 +103,9 @@ describe('one provider selection contract for execution and diagnostics', () => 
 
   it('wires health, chat, ops and both operator dashboards to the selected provider', () => {
     for (const file of [
-      'src/app/api/health/route.ts',
+      // Operator health diagnostics (served by authenticated /api/health/deep;
+      // the public /api/health is intentionally minimal).
+      'src/lib/health/ai-diagnostics.ts',
       'src/app/api/admin/ops-status/route.ts',
       'src/app/api/admin/agents/route.ts',
       'src/app/api/admin/dashboard/route.ts',

@@ -66,5 +66,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   await db.auditLog.create({ data: { actor: g.user.email, userId: g.user.id, action: 'PROJECT_STATUS_MOVED', entityType: 'Project', entityId: project.id, details: JSON.stringify({ from: cur, to: nxt, via: 'kanban' }) } }).catch(()=>null)
   await db.automationLog.create({ data: { workflow: 'PROJECT_KANBAN_MOVE', trigger: 'KANBAN', correlationId: `project-kanban-${project.id}-${Date.now()}`, input: JSON.stringify({ from: cur, to: nxt }), output: JSON.stringify({ ok: true }), status: 'SUCCESS', steps: JSON.stringify([{ step: 'status_moved', detail: { from: cur, to: nxt }, at: new Date().toISOString() }]), finishedAt: new Date() } }).catch(()=>null)
 
+  {
+    const { emitProjectStatusChanged } = await import('@/lib/automation/domain-events')
+    const owner = await db.project.findUnique({ where: { id: project.id }, select: { clientId: true } }).catch(() => null)
+    await emitProjectStatusChanged({ projectId: project.id, code: updated.code ?? null, from: cur, to: nxt, clientRowId: owner?.clientId ?? null })
+  }
+
   return Response.json({ ok: true, code: updated.code, status: updated.status, previousStatus: cur, message: `Moved ${project.code ?? project.id} from ${cur} to ${nxt}` })
 }

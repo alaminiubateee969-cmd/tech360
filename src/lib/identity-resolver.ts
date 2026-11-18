@@ -76,7 +76,7 @@ export async function resolveOrCreateVerifiedClient(
   const prepared = [...unique.values()]
 
   try {
-    return await db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const matches = await tx.clientIdentity.findMany({ where: identityWhere(prepared), select: { clientId: true, identityType: true, normalizedHash: true } })
       const clientIds = [...new Set(matches.map((identity) => identity.clientId))]
       if (clientIds.length > 1) throw new VerifiedIdentityConflictError()
@@ -108,6 +108,12 @@ export async function resolveOrCreateVerifiedClient(
       }
       return { client, created }
     })
+    if (result.created) {
+      // Fail-safe and deduplicated per client row; never affects identity resolution.
+      const { emitLeadCreated } = await import('@/lib/automation/domain-events')
+      await emitLeadCreated({ clientRowId: result.client.id, clientId: result.client.clientId, leadSource: createData.source, channelSource: prepared[0]?.verificationSource ?? null, businessType: createData.businessType })
+    }
+    return result
   } catch (error) {
     if (!uniqueConflict(error)) throw error
     const matches = await db.clientIdentity.findMany({ where: identityWhere(prepared), select: { clientId: true } })

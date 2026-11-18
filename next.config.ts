@@ -4,6 +4,24 @@ import { resolveBuildIdentity } from "./scripts/build-identity.mjs";
 const CANONICAL_ORIGIN = "https://bdtech360.com";
 const buildIdentity = resolveBuildIdentity();
 
+/**
+ * Portfolio media directories (same list as PORTFOLIO_MEDIA_DIRS in
+ * scripts/media/hash-portfolio-media.mjs). Exported for the cache-policy test.
+ */
+export const PORTFOLIO_MEDIA_SOURCES = [
+  "/videos/work/:file*",
+  "/images/case-studies/covers/:file*",
+  "/images/work/sm/:file*",
+];
+
+/** Private API families served with `Cache-Control: no-store` (see headers()). */
+export const PRIVATE_API_SOURCES = [
+  "/api/admin/:path*",
+  "/api/portal/:path*",
+  "/api/chat/:path*",
+  "/api/auth/:path*",
+] as const;
+
 const nextConfig: NextConfig = {
   output: "standalone",
   // Only public source metadata is embedded. Standalone deployments do not
@@ -98,6 +116,36 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-store, max-age=0" },
         ],
       },
+      // Authenticated and visitor-private APIs (operator data, client portal,
+      // visitor chat transcripts, auth/session) must never be stored by a
+      // browser, proxy or CDN — including their 401/403 responses. Public
+      // APIs (e.g. /api/branding/public, /api/health) keep their own policy.
+      ...PRIVATE_API_SOURCES.map((source) => ({
+        source,
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      })),
+      // Portfolio media caching (docs/VISUAL_ASSET_MANIFEST.md §4.4).
+      // Filenames here are slug-based and REPLACEABLE, so immutable caching is
+      // applied only when the URL carries a content hash (`?v=<12 hex>`, from
+      // src/data/portfolio-media-versions.ts — tests fail if a hash is stale).
+      // Unversioned requests get a short, revalidating policy. Scoped to these
+      // four media directories only: no HTML, API or other asset is affected,
+      // and Next.js still serves byte ranges (206) and the correct MIME types.
+      ...PORTFOLIO_MEDIA_SOURCES.flatMap((source) => [
+        {
+          source,
+          has: [{ type: "query" as const, key: "v", value: "[0-9a-f]{12}" }],
+          headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+        },
+        {
+          source,
+          missing: [{ type: "query" as const, key: "v" }],
+          headers: [{ key: "Cache-Control", value: "public, max-age=3600, stale-while-revalidate=86400" }],
+        },
+      ]),
       // Content negotiation: the same URL serves HTML or Markdown depending on
       // `Accept` (see src/proxy.ts). Shared caches must key on that header, so
       // it is declared here — the framework rewrites `Vary` on its own

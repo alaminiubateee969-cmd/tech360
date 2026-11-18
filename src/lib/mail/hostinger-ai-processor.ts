@@ -256,6 +256,10 @@ export async function processHostingerInboundMessages(options?: {
           data: { clientId: createdClient.id },
         })
         await recordInbound(createdClient.id, createdClient.clientId, cleanBody, 'EMAIL').catch(() => null)
+        {
+          const { emitLeadCreated } = await import('@/lib/automation/domain-events')
+          await emitLeadCreated({ clientRowId: createdClient.id, clientId: createdClient.clientId, leadSource: 'EMAIL', channelSource: 'HOSTINGER_MAIL_API' })
+        }
 
         const welcome = await sendPipelineMessage({
           clientRowId: createdClient.id,

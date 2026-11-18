@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
       name: 'n8n automation bridge',
       category: 'AUTOMATION',
       state: channels.N8N ? 'CONFIGURED' : 'NOT_CONFIGURED',
-      detail: channels.N8N ? 'The n8n webhook base is configured.' : 'N8N_WEBHOOK_BASE is not set.',
+      detail: channels.N8N ? 'The n8n base URL and signing secret are configured. Run a connection test to verify reachability.' : 'N8N_BASE_URL (or N8N_WEBHOOK_BASE) and a signing secret of 32+ characters are not set.',
       adminSwitch: 'n8n',
     },
     {

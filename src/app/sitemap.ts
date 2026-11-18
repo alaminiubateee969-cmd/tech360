@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { INDUSTRIES, LEGAL_DOCS, SERVICES } from '@/data/site'
 import { PROJECT_DETAILS } from '@/data/work-details'
+import { BLUEPRINT_DETAILS } from '@/data/blueprint-details'
 import { listPublishedBlogSlugs } from '@/lib/public-blog'
 import { SITE_URL } from '@/lib/site-contact'
 
@@ -59,6 +60,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     })),
+    ...BLUEPRINT_DETAILS.map((b) => ({
+      url: `${SITE_URL}/work/case-studies/${b.slug}`,
+      lastModified: now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    })),
     ...INDUSTRIES.map((i) => ({
       url: `${SITE_URL}/industries/${i.slug}`,
       lastModified: now,
@@ -71,14 +78,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'yearly' as const,
       priority: 0.4,
     })),
-    // Blog posts are only ever meaningful while the blog switch is ON.
-    ...(blogPosts.length
-      ? blogPosts.map((post) => ({
-          url: `${SITE_URL}/blog/${post.slug}`,
-          lastModified: post.updatedAt,
-          changeFrequency: 'monthly' as const,
-          priority: 0.7,
-        }))
-      : [{ url: `${SITE_URL}/blog`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.5 }]),
+    // Blog posts are only ever meaningful while the blog switch is ON. The
+    // `/blog` index itself is already a STATIC_PATHS entry, so an empty post
+    // list adds nothing (it previously re-added `/blog`, duplicating the URL).
+    ...blogPosts.map((post) => ({
+      url: `${SITE_URL}/blog/${post.slug}`,
+      lastModified: post.updatedAt,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
   ]
 }

@@ -213,6 +213,23 @@ export async function POST(req: NextRequest) {
       // recover the same conversation without duplicating the intake.
       await persistInitialMessageAndReply(conversation, name, email, initialMessage, anonId, requestId)
       conversation = await db.chatConversation.findUnique({ where: { id: conversation.id } }) ?? conversation
+      // Rules triage + automation event for the new conversation (deduped per conversation).
+      try {
+        const { triageConversation } = await import('@/lib/ai-support/assist')
+        const triage = await triageConversation(conversation.id)
+        const { emitAutomationEvent } = await import('@/lib/automation/engine')
+        await emitAutomationEvent({
+          tenantId: conversation.tenantId,
+          type: 'CONVERSATION_CREATED',
+          source: 'WEBCHAT',
+          subjectType: 'ChatConversation',
+          subjectId: conversation.id,
+          payload: { conversationId: conversation.id, clientRowId: conversation.clientId, intent: triage?.intent ?? null, language: triage?.language ?? null, priority: triage?.priority ?? null, preferredContact },
+          dedupeKey: `conv_created:${conversation.id}`,
+        })
+      } catch (hookError) {
+        await logError({ source: 'CHAT_SESSION', code: 'POST_SESSION_HOOK_FAILED', message: hookError instanceof Error ? hookError.message : String(hookError) }).catch(() => null)
+      }
     }
 
     return responseWithCookie({

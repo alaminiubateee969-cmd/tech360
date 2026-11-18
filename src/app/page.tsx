@@ -15,6 +15,7 @@ import IndustriesView from '@/components/site/IndustriesView'
 import IndustryDetailView from '@/components/site/IndustryDetailView'
 import WorkView from '@/components/site/WorkView'
 import ProjectDetailView from '@/components/site/ProjectDetailView'
+import BlueprintDetailView from '@/components/site/BlueprintDetailView'
 import TechnologiesView from '@/components/site/TechnologiesView'
 import ProcessView from '@/components/site/ProcessView'
 import BlogView from '@/components/site/BlogView'
@@ -238,6 +239,10 @@ function PublicView({
       if (param === 'projects' && parts[2]) {
         return <ProjectDetailView slug={parts[2]} />
       }
+      // /work/case-studies/<slug> — dedicated delivery-blueprint page.
+      if (param === 'case-studies' && parts[2]) {
+        return <BlueprintDetailView slug={parts[2]} />
+      }
       if (param && param !== 'projects' && param !== 'case-studies') {
         return <UnknownPublicRoute navigate={navigate} />
       }
@@ -285,9 +290,13 @@ export default function Page({
 }) {
   const [hash, setHash] = useState<string>(initialHash)
   const { consent, decide } = useConsent()
+  /** Last route applied by onHash (used to recognise query-only changes). */
+  const appliedHashRef = useRef<string>(initialHash)
+  /** Set by in-app link clicks / navigate() so their hash change is always a real navigation. */
+  const explicitNavRef = useRef(false)
 
   useEffect(() => {
-    const fallbackHash = `#${initialHash.startsWith('/') ? initialHash : `/${initialHash}`}`
+    let fallbackHash = `#${initialHash.startsWith('/') ? initialHash : `/${initialHash}`}`
     /**
      * Legacy hash-form bookmarks (`#/route`) are permanent: canonicalise them to
      * the real path form (`/route`) once, using replaceState so the back button
@@ -296,9 +305,15 @@ export default function Page({
      */
     const raw = window.location.hash
     if (raw.startsWith('#/') && window.location.pathname === '/' && typeof history !== 'undefined') {
-      const legacyPath = '/' + raw.slice(2).split('?')[0].replace(/^\/+/, '')
-      if (legacyPath !== '/') history.replaceState(history.state, '', legacyPath)
-      else if (raw !== '#/') history.replaceState(history.state, '', '/')
+      const [legacyRoute, legacyQuery] = raw.slice(2).split('?')
+      const legacyPath = '/' + legacyRoute.replace(/^\/+/, '')
+      // Keep the query (e.g. portfolio filters) and render the canonicalised
+      // route — the hash is gone after replaceState, so it becomes the fallback.
+      const canonical = `${legacyPath}${legacyQuery ? `?${legacyQuery}` : ''}`
+      if (legacyPath !== '/') {
+        history.replaceState(history.state, '', canonical)
+        fallbackHash = `#${canonical}`
+      } else if (raw !== '#/') history.replaceState(history.state, '', canonical)
     }
 
     const onHash = () => {
@@ -314,6 +329,15 @@ export default function Page({
         return
       }
       const next = (raw || fallbackHash).replace(/^#/, '') || '/'
+      const explicit = explicitNavRef.current
+      explicitNavRef.current = false
+      const previous = appliedHashRef.current
+      appliedHashRef.current = next
+      // Back/Forward between portfolio filter entries changes only the query
+      // of the same route (`#/work?industry=A` → `#/work`). That is not a page
+      // change: the explorer restores its filters from popstate, so keep the
+      // scroll position and do not re-render the route or log a page_view.
+      if (!explicit && next !== previous && parseHash(next).full === parseHash(previous).full) return
       setHash(next)
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
     }
@@ -345,14 +369,18 @@ export default function Page({
       if (anchor.hasAttribute('download')) return
       // A path we cannot render in-app (e.g. /api/...) must do a real request.
       const [rawPath] = href.split('#')
-      const cleanPath = rawPath.split('?')[0].replace(/\/+$/, '') || '/'
+      const [pathPart, query = ''] = rawPath.split('?')
+      const cleanPath = pathPart.replace(/\/+$/, '') || '/'
       if (cleanPath !== '/' && !resolvePublicRoute(cleanPath.split('/').filter(Boolean))) return
       event.preventDefault()
-      const target = cleanPath === '/' ? '#/' : `#${cleanPath}`
+      // Keep the query: `/work?capability=X` must open the portfolio filtered.
+      const target = `#${cleanPath}${query ? `?${query}` : ''}`
       if (window.location.hash === target) {
-        setHash(cleanPath)
+        appliedHashRef.current = target.slice(1)
+        setHash(target.slice(1))
         window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
       } else {
+        explicitNavRef.current = true
         window.location.hash = target
       }
     }
@@ -414,9 +442,11 @@ export default function Page({
   const navigate = useCallback((h: string) => {
     const target = h.startsWith('#') ? h : `#${h.startsWith('/') ? '' : '/'}${h}`
     if (window.location.hash === target) {
+      appliedHashRef.current = target.replace(/^#/, '')
       setHash(target.replace(/^#/, ''))
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
     } else {
+      explicitNavRef.current = true
       window.location.hash = target
     }
   }, [])

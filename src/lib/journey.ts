@@ -371,6 +371,12 @@ export async function intakeLead(input: {
     if (input.formId) {
       await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSED' } })
     }
+    // Automation event for a genuinely new lead (deduped per client row so retries never fire twice).
+    if (isNewClient) {
+      const { emitLeadCreated } = await import('@/lib/automation/domain-events')
+      const trackingSource = input.tracking && typeof input.tracking === 'object' ? (input.tracking as Record<string, unknown>).source : undefined
+      await emitLeadCreated({ clientRowId: clientRow.id, clientId: clientRow.clientId, leadSource: createData.source ?? null, channelSource: typeof trackingSource === 'string' ? trackingSource : null, businessType: clientRow.businessType ?? null })
+    }
     return { clientId: clientRow.clientId, clientRowId: clientRow.id, logId: log.id, welcome: welcomeResult }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -1335,6 +1341,10 @@ export async function verifyPayment(paymentId: string, actor: GovernanceActor, a
   const receiptNumber = receiptOutcome && receiptOutcome.ok ? receiptOutcome.receipt.receiptNumber : null
 
   await audit({ actor: auditActor, action: alreadyVerified ? 'PAYMENT_VERIFICATION_RECONCILED' : 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null, receiptNumber } })
+  if (!alreadyVerified) {
+    const { emitPaymentVerified } = await import('@/lib/automation/domain-events')
+    await emitPaymentVerified({ paymentId: payment.id, clientRowId: client?.id ?? null, clientId: client?.clientId ?? null, amount: Number(payment.amount), currency: payment.currency, invoiceNumber: payment.invoice?.number ?? null })
+  }
   return { ok: true, idempotent: alreadyVerified, receiptNumber }
 }
 
