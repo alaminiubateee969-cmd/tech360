@@ -23,6 +23,7 @@ import { hasCapability, hasRole } from '@/lib/access-policy'
 
 export type DocumentType =
   | 'WORK_PROPOSAL'
+  | 'COMPANY_PROFILE'
   | 'SOW'
   | 'INVOICE'
   | 'OFFICIAL_LETTER'
@@ -123,6 +124,7 @@ export function canReplaceBranding(user: { role: string } | null): boolean {
 export function defaultPermissionsFor(type: DocumentType): string[] {
   switch (type) {
     case 'WORK_PROPOSAL': return ['SUPER_ADMIN', 'ADMIN', 'SALES', 'PROJECT_MANAGER', 'CLIENT']
+    case 'COMPANY_PROFILE': return ['SUPER_ADMIN', 'ADMIN', 'SALES', 'CLIENT']
     case 'SOW': return ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'CLIENT']
     case 'INVOICE': return ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'CLIENT']
     case 'PAYMENT_RECEIPT': return ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'CLIENT']

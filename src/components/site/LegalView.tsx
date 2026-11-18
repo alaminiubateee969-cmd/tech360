@@ -6,10 +6,11 @@ import { normalizeLegalSlug } from "@/lib/public-route-catalog";
 import { PageHero } from "./PageHero";
 import { Reveal } from "./Reveal";
 import { cn } from "@/lib/utils";
-import { LetterheadHeader, LetterheadFooter } from "@/components/branding/DocumentShell";
+import { LetterheadHeader, LetterheadFooter, useBranding } from "@/components/branding/DocumentShell";
 
 export default function LegalView({ slug }: { slug: string }) {
   const doc = getLegalDoc(normalizeLegalSlug(slug) ?? slug);
+  const branding = useBranding();
 
   return (
     <div>
@@ -79,7 +80,8 @@ export default function LegalView({ slug }: { slug: string }) {
           </nav>
 
           {/* Document body — uses reusable branding engine (LetterheadHeader/Footer), same as SOW/Invoice/Proposal/Letter but NEVER seal */}
-          <article className="min-w-0 lg:col-span-8 xl:col-span-9">
+          <article className="legal-print-document min-w-0 lg:col-span-8 xl:col-span-9">
+            <img className="legal-print-letterhead-art" src={branding.letterheadAsset} alt="" aria-hidden="true" />
             <LetterheadHeader docKind={doc ? `Legal & policies · Effective ${doc.updated}` : "Legal & policies · Policy"} />
             {doc ? (
               <Reveal>

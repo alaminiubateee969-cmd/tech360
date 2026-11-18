@@ -56,6 +56,11 @@ export async function PUT(req: NextRequest) {
     if (s && !s.startsWith('/brand/') && !s.startsWith('/private/') && !s.startsWith('http')) return Response.json({ error: 'footerAsset must be a /brand/ path' }, { status: 400 })
     if (s) patch.footerAsset = s
   }
+  if (body.letterheadAsset !== undefined) {
+    const s = String(body.letterheadAsset).trim().slice(0, 200)
+    if (s && !/^\/brand\/[A-Za-z0-9._-]+$/.test(s)) return Response.json({ error: 'letterheadAsset must be a safe /brand/ asset path' }, { status: 400 })
+    if (s) patch.letterheadAsset = s
+  }
   if (body.sealAsset !== undefined) {
     const s = String(body.sealAsset).trim().slice(0, 200)
     if (s && !s.startsWith('/brand/') && !s.startsWith('/private/') && !s.startsWith('http')) return Response.json({ error: 'sealAsset must be a /brand/ path' }, { status: 400 })
@@ -77,6 +82,14 @@ export async function PUT(req: NextRequest) {
     const v = Number(body.sealSizeMm)
     if (!Number.isFinite(v) || v < 10 || v > 120) return Response.json({ error: 'sealSizeMm 10-120' }, { status: 400 })
     patch.sealSizeMm = v
+  }
+  if (body.companyProfileCoverAsset !== undefined || body.proposalCoverAsset !== undefined) {
+    for (const key of ['companyProfileCoverAsset', 'proposalCoverAsset'] as const) {
+      if (body[key] === undefined) continue
+      const s = String(body[key]).trim().slice(0, 200)
+      if (s && !/^\/brand\/[A-Za-z0-9._-]+$/.test(s)) return Response.json({ error: `${key} must be a safe /brand/ asset path` }, { status: 400 })
+      if (s) patch[key] = s
+    }
   }
   if (body.logoAsset !== undefined) {
     const s = String(body.logoAsset).trim().slice(0, 200)
@@ -109,7 +122,8 @@ export async function POST(req: NextRequest) {
     const file = form.get('file')
     const assetType = String(form.get('assetType') ?? '').toLowerCase()
     if (!(file instanceof File)) return Response.json({ error: 'file is required' }, { status: 400 })
-    if (!['header', 'footer', 'seal', 'logo'].includes(assetType)) return Response.json({ error: 'assetType must be header, footer, seal or logo' }, { status: 400 })
+    const allowedAssetTypes = ['header', 'footer', 'letterhead', 'seal', 'logo', 'company-profile-cover', 'proposal-cover']
+    if (!allowedAssetTypes.includes(assetType)) return Response.json({ error: `assetType must be one of: ${allowedAssetTypes.join(', ')}` }, { status: 400 })
     if (file.size === 0 || file.size > 10 * 1024 * 1024) return Response.json({ error: 'File size must be 1B-10MB' }, { status: 400 })
     const allowedMime = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml']
     if (file.type && !allowedMime.includes(file.type.toLowerCase())) return Response.json({ error: `Unsupported type ${file.type}. Allowed: png, jpg, webp, svg` }, { status: 415 })
@@ -121,15 +135,24 @@ export async function POST(req: NextRequest) {
     const path = await import('node:path')
     const brandDir = path.join(process.cwd(), 'public', 'brand')
     await fs.mkdir(brandDir, { recursive: true })
-    const destName = assetType === 'header' ? `tech360-header-high-res.${ext}` : assetType === 'footer' ? `tech360-footer-high-res.${ext}` : assetType === 'seal' ? `tech360-seal.${ext}` : `tech360-logo-custom.${ext}`
+    const destName = assetType === 'header' ? `tech360-header-high-res.${ext}`
+      : assetType === 'footer' ? `tech360-footer-high-res.${ext}`
+        : assetType === 'letterhead' ? `tech360-letterhead.${ext}`
+          : assetType === 'seal' ? `tech360-seal.${ext}`
+            : assetType === 'logo' ? `tech360-logo-custom.${ext}`
+              : assetType === 'company-profile-cover' ? `tech360-company-profile-cover.${ext}`
+                : `tech360-work-proposal-cover.${ext}`
     const destPath = path.join(brandDir, destName)
     await fs.writeFile(destPath, bytes)
     const publicUrl = `/brand/${destName}`
     const patch: Record<string, string> = {}
     if (assetType === 'header') patch.headerAsset = publicUrl
     if (assetType === 'footer') patch.footerAsset = publicUrl
+    if (assetType === 'letterhead') patch.letterheadAsset = publicUrl
     if (assetType === 'seal') patch.sealAsset = publicUrl
     if (assetType === 'logo') patch.logoAsset = publicUrl
+    if (assetType === 'company-profile-cover') patch.companyProfileCoverAsset = publicUrl
+    if (assetType === 'proposal-cover') patch.proposalCoverAsset = publicUrl
     const updated = await saveDocumentBranding(patch as never, g.user.email)
     await audit({ actor: g.user.email, action: 'DOCUMENT_BRANDING_ASSET_UPLOADED', details: { assetType, publicUrl, size: file.size, version: updated.version }, ip: g.ip })
     return Response.json({ ok: true, branding: updated, assetType, publicUrl })

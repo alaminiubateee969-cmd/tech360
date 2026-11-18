@@ -16,7 +16,7 @@ import { outboundPlainText } from '@/lib/mail/hostinger-inbound-policy'
 
 export type SendResult = {
   ok: boolean
-  status: 'SENT' | 'FAILED' | 'NOT_CONFIGURED' | 'DISABLED_BY_ADMIN' | 'SENT_PLATFORM'
+  status: 'SENT' | 'FAILED' | 'NOT_CONFIGURED' | 'DISABLED_BY_ADMIN' | 'OPTED_OUT' | 'SENT_PLATFORM'
   providerMessageId?: string
   error?: string
 }
@@ -294,6 +294,30 @@ export async function sendCommunication(entry: {
     return { communicationId: comm.id, result: disabled }
   }
 
+  if (entry.channel === 'SMS' && entry.clientId && entry.messageType !== 'OTP') {
+    let optedOut = false
+    try {
+      const { loadCommState } = await import('@/lib/conversation-state')
+      optedOut = (await loadCommState(entry.clientId, entry.clientId)).optedOut
+    } catch {
+      const refused: SendResult = { ok: false, status: 'FAILED', error: 'SMS consent state could not be verified; send refused' }
+      const now = new Date()
+      await db.communication.update({
+        where: { id: comm.id },
+        data: { status: refused.status, error: refused.error, sentAt: null, lastAttemptAt: now, nextRetryAt: new Date(now.getTime() + backoffMs(1)) },
+      })
+      return { communicationId: comm.id, result: refused }
+    }
+    if (optedOut) {
+      const refused: SendResult = { ok: false, status: 'OPTED_OUT', error: 'Customer opted out of SMS; send refused' }
+      await db.communication.update({
+        where: { id: comm.id },
+        data: { status: refused.status, error: refused.error, sentAt: null, lastAttemptAt: new Date(), nextRetryAt: null },
+      })
+      return { communicationId: comm.id, result: refused }
+    }
+  }
+
   const result = await dispatchChannel(entry)
 
   // A first-send failure is recorded as FAILED (not DEAD_LETTER) so operators
@@ -356,6 +380,24 @@ export async function retryCommunicationOutbox(
   }
   if (comm.direction !== 'OUT') {
     return { ok: false, communicationId: comm.id, action: 'SKIPPED', attempts: comm.attempts, reason: 'Only outbound messages can be retried' }
+  }
+
+  if (comm.channel === 'SMS' && comm.clientId && comm.messageType !== 'OTP') {
+    try {
+      const { loadCommState } = await import('@/lib/conversation-state')
+      const communicationState = await loadCommState(comm.clientId, comm.clientId)
+      if (communicationState.optedOut) {
+        const reason = 'Customer opted out of SMS; retry refused'
+        const completedStatuses = new Set(['SENT', 'DELIVERED', 'READ', 'RECEIVED'])
+        const status = completedStatuses.has(comm.status) ? comm.status : 'OPTED_OUT'
+        if (status === 'OPTED_OUT') {
+          await db.communication.update({ where: { id: comm.id }, data: { status, error: reason, nextRetryAt: null } })
+        }
+        return { ok: false, communicationId: comm.id, action: 'NOT_RETRYABLE', attempts: comm.attempts, reason, status }
+      }
+    } catch {
+      return { ok: false, communicationId: comm.id, action: 'SKIPPED', attempts: comm.attempts, reason: 'SMS consent state could not be verified; retry refused' }
+    }
   }
 
   // Consequential messages (amounts, payment, contract, handover, legal) are

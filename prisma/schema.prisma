@@ -448,7 +448,7 @@ model Communication {
   messageType       String   @default("TEXT") // TEXT | TEMPLATE | MEDIA | DOCUMENT | SYSTEM
   templateName      String?
   providerMessageId String?
-  status            String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | RECEIVED | FAILED | NOT_CONFIGURED | DISABLED_BY_ADMIN | DEAD_LETTER
+  status            String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | RECEIVED | FAILED | NOT_CONFIGURED | DISABLED_BY_ADMIN | OPTED_OUT | DEAD_LETTER
   error             String? @db.Text
   // Outbox retry bookkeeping — see src/lib/outbox-retry.ts.
   // attempts counts AUTOMATIC re-dispatches (the original send is 0).

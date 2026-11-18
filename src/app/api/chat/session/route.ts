@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { readJson, sanitizeText, sanitizeEmail, rateLimit, clientIp, apiError, json, logError } from '@/lib/security'
-import { CONTACT_CONSENT_VERSION, hasExplicitContactConsent, isValidClientRequestId } from '@/lib/contact-policy'
+import { CONTACT_CONSENT_VERSION, chatReplayContactMatches, hasExplicitContactConsent, isValidClientRequestId } from '@/lib/contact-policy'
 import { CHAT_SESSION_COOKIE, ChatSessionConfigError, chatSessionCookieIsValid, withChatSessionCookie } from '@/lib/chat-session'
 import { ensureChatClient } from '@/lib/chat-onboarding'
 import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
 
     if (anonId.length < 4) return apiError('Missing visitor identifier.', 400, 'BAD_ANON_ID')
     if (!isValidClientRequestId(requestId)) return apiError('A valid session request id is required.', 400, 'BAD_REQUEST_ID')
+    if (!initialMessage) return apiError('Please enter a message to start the chat.', 400, 'MESSAGE_REQUIRED')
     // Contact details are optional for chat-first visitors. They are required
     // only when the visitor explicitly chooses that channel as the FIRST reply
     // destination, because that channel cannot deliver without an address.
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
       // A request-id replay is a narrow recovery case: the id is a random,
       // one-use client value and the supplied normalized address must still match.
       const isExactReplay = conversation.clientRequestId === requestId || Boolean(priorMessage)
-      if (!isExactReplay || conversation.visitorEmail !== email) {
+      if (!isExactReplay || !chatReplayContactMatches(conversation.visitorEmail, email)) {
         return apiError('This chat session cannot be verified in this browser. Please use the contact form or contact support.', 401, 'CHAT_SESSION_REQUIRED')
       }
     }
@@ -207,7 +208,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (initialMessage) {
-      await persistInitialMessageAndReply(conversation, name, email, initialMessage, anonId, requestId).catch(() => null)
+      // Do not acknowledge a chat start when its first message was not stored.
+      // A 503 keeps the browser's request id and message so the retry can
+      // recover the same conversation without duplicating the intake.
+      await persistInitialMessageAndReply(conversation, name, email, initialMessage, anonId, requestId)
       conversation = await db.chatConversation.findUnique({ where: { id: conversation.id } }) ?? conversation
     }
 

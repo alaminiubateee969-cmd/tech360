@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { DOCUMENT_HTML_HEADERS, renderReceiptDocumentHtml } from '@/lib/invoice-document'
 import { PORTAL_COOKIE, portalGate, verifyPortalToken } from '@/lib/portal'
 import { ensureVerifiedPaymentReceipt } from '@/lib/receipts'
+import { getDocumentBranding } from '@/lib/document-branding'
 import { audit, clientIp, rateLimit, sanitizeText } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
@@ -52,6 +53,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   })
 
   if (req.nextUrl.searchParams.get('format') !== 'json') {
+    const branding = await getDocumentBranding()
     const html = renderReceiptDocumentHtml({
       receiptNumber: res.receipt.receiptNumber,
       amountMinor: res.receipt.amountMinor,
@@ -65,7 +67,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       milestone: res.payment.milestone ?? null,
       client: res.payment.client,
       project: res.payment.project,
-    })
+    }, branding)
     return new Response(html, { status: 200, headers: DOCUMENT_HTML_HEADERS })
   }
 

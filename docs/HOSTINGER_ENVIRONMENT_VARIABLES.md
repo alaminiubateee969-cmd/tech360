@@ -10,14 +10,15 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `NODE_ENV` | Production runtime behavior | Non-secret | Set to `production` | Yes |
 | `APP_PUBLIC_URL` | Public links, sitemap and email links | Non-secret | `https://bdtech360.com` | Yes |
 | `APP_ORIGIN` | Checkout origin | Non-secret | `https://bdtech360.com` | Yes |
-| `SESSION_SECRET` | Fallback signing secret for portal/newsletter tokens | Secret | Generate a unique random value | Yes |
+| `SESSION_SECRET` | Signs portal/newsletter tokens and the public WebChat's HttpOnly session cookie | Secret | Generate a unique random value (at least 32 characters; keep stable across deploys) | Yes |
 | `PORTAL_SECRET` | Client portal token signing | Secret | Generate a unique random value | Yes |
 | `OPS_SECRET` | Authenticates operations endpoints | Secret | Generate a unique random value distinct from the other application secrets | Yes |
+| `AI_PROVIDER` + one complete provider configuration | Enables production AI replies/agent execution (including AI-assisted WebChat); supported providers and credential names are in `.env.example` | Mixed | Owner selects an approved provider and stores its credentials in hPanel; use `AI_PROVIDER=none` only for an intentional no-AI degraded mode | Yes, unless explicitly disabled |
 | `ADMIN_EMAIL` | First-boot Super Admin seed account | Non-secret | Owner-selected account | Yes for first seed |
 | `ADMIN_PASSWORD` | First-boot Super Admin seed account | Secret | Owner-generated password, at least 12 characters; change at first login | Yes for first seed |
-| `ZAI_BASE_URL` | ZAI-compatible chat/function API base URL | Non-secret URL | Provider operator | Yes for production AI |
-| `ZAI_API_KEY` | ZAI provider authentication | Secret | Provider operator | Yes for production AI |
-| `AI_OPS_DRIVER` | In-process production driver switch (`on` or `off`) | Non-secret | Owner policy | Yes; use `on` to run cycles |
+| `ZAI_BASE_URL`, `ZAI_API_KEY` | ZAI-compatible chat/function API base and authentication | URL + secret | Provider operator | Required only when ZAI is the selected provider |
+| `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`/`GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, or `AI_GATEWAY_BASE_URL` + `AGENTOS_GATEWAY_TOKEN` | Alternative supported AI provider credentials | Secret / URL | Provider operator; select and approve one provider | One complete path is required for production AI; use `AI_PROVIDER=none` only for intentional no-AI mode |
+| `AI_OPS_DRIVER` | In-process production driver switch (`on` or `off`) | Non-secret | Owner policy | Optional; blank defaults to on |
 | `AGENT_RUN_TIMEOUT_MS` | Per-agent provider timeout, bounded to 5–300 seconds | Non-secret | Owner policy | Optional |
 | `OPS_INTERVAL_SEC` | In-process AI operations interval, minimum 30 seconds | Non-secret | Owner policy | Optional; defaults to 90 |
 
@@ -36,6 +37,8 @@ This is a configuration manifest, not a secrets file. Values below are intention
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | SMTP email delivery | `SMTP_PASS` secret; others configuration | Mail provider | Optional; required before email sending |
 | `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER` | Generic SMS delivery | `SMS_API_KEY` secret; others configuration | SMS provider | Optional |
 | `HTTPSMS_API_KEY`, `HTTPSMS_BASE_URL`, `HTTPSMS_FROM` | HTTP SMS provider adapter | `HTTPSMS_API_KEY` secret; base URL/sender are configuration | httpsSMS account | Optional |
+| `SMS_INBOUND_PROVIDER`, `SMS_WEBHOOK_SECRET` | Explicit inbound-provider selection and shared-secret authentication for HTTPSMS/GENERIC callbacks | `SMS_WEBHOOK_SECRET` secret (32+ characters) | Owner selects supported provider; provision a distinct random secret and configure matching callback-header behavior | Optional; endpoint returns 503 until provider and required credential are set |
+| `TWILIO_AUTH_TOKEN` | Validates Twilio inbound callback signature; also used by applicable telephony paths | Secret | Twilio account | Required when `SMS_INBOUND_PROVIDER=TWILIO` |
 | `PORTAL_OTP`, `PORTAL_OTP_CHANNEL` | Portal one-time-code behavior and preferred channel | Non-secret | OTP is always required in production; `off` is honored only outside production. Preferred channel: `email`/`whatsapp`/`sms` | Optional |
 | `FACEBOOK_PAGE_TOKEN`, `INSTAGRAM_TOKEN`, `LINKEDIN_TOKEN`, `X_TOKEN` | Social publishing | Secret | Respective provider | Optional |
 | `SOCIAL_WEBHOOK_SECRET` | Social inbound webhook auth | Secret | Owner-generated | Optional; required to enable endpoint |
@@ -48,7 +51,7 @@ The repository also contains dynamic feature metadata for the payment credential
 ## Production safety
 
 - `.env.example` lists variable names with empty values only; it is not a source of production settings.
-- `npm start` runs `scripts/validate-production-env.mjs` before launching the standalone server. It requires a credentialed MySQL URL with a database name, the canonical HTTPS origins, and three distinct random application secrets of at least 32 characters. If either WhatsApp token or app secret is configured, it also requires `IDENTITY_HASH_SECRET`; any supplied identity key is length-checked and must remain stable across deployments. The validator reports variable names only and never prints values; it does not guess or hard-code the Hostinger database endpoint.
+- `npm start` runs `scripts/validate-production-env.mjs` before launching the standalone server. It requires a credentialed MySQL URL with a database name, the canonical HTTPS origins, and three distinct random application secrets of at least 32 characters. `SESSION_SECRET` also signs the public WebChat session cookie and must remain stable across deploys. Startup additionally requires one complete supported AI provider configuration unless `AI_PROVIDER=none` is an intentional policy choice; without a provider, WebChat can save messages for human follow-up but cannot generate AI replies. If either WhatsApp token or app secret is configured, it also requires `IDENTITY_HASH_SECRET`; any supplied identity key is length-checked and must remain stable across deployments. The validator reports variable names only and never prints values; it does not guess or hard-code the Hostinger database endpoint.
 - An authorized operator must confirm `DATABASE_URL` exactly matches the actual Hostinger MySQL panel before any deployment build can apply migrations. The hPanel values, connection, migration state, and backup remain **NOT VERIFIED**.
 - `ADMIN_EMAIL` and `ADMIN_PASSWORD` are required for the one-time production seed; `ADMIN_PASSWORD` is not needed by normal runtime startup and must be removed after seeding/password change.
 - Do not commit a production `.env` file.

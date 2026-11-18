@@ -20,6 +20,8 @@ type Branding = {
   headerAsset: string
   footerAsset: string
   letterheadAsset: string
+  companyProfileCoverAsset: string
+  proposalCoverAsset: string
   logoAsset: string
   sealAsset: string
   sealEnabledSOW: boolean
@@ -41,7 +43,9 @@ type Branding = {
 }
 
 const SAMPLE_TYPES = [
-  { value: 'WORK_PROPOSAL', label: 'Work Proposal (no seal)' },
+  { value: 'WORK_PROPOSAL', label: 'Work Proposal (cover, no seal)' },
+  { value: 'COMPANY_PROFILE', label: 'Company Profile (cover, no seal)' },
+  { value: 'COVER_LETTER', label: 'Cover Letter (letterhead, no seal)' },
   { value: 'SOW', label: 'Scope of Work (with seal)' },
   { value: 'INVOICE', label: 'Invoice (with seal)' },
   { value: 'OFFICIAL_LETTER', label: 'Official Letter (no seal)' },
@@ -71,7 +75,7 @@ export function DocumentBrandingView() {
     } finally { setSaving(false) }
   }
 
-  async function upload(assetType: 'header' | 'footer' | 'seal' | 'logo', file: File) {
+  async function upload(assetType: 'header' | 'footer' | 'letterhead' | 'seal' | 'logo' | 'company-profile-cover' | 'proposal-cover', file: File) {
     setUploading(assetType)
     try {
       const fd = new FormData()
@@ -174,6 +178,40 @@ export function DocumentBrandingView() {
         </Card>
       </div>
 
+      {/* Owner-supplied page and cover art — applied by the document renderer */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><ImageIcon className="size-4 text-[#009FE3]" /> Full-page Letterhead</CardTitle><CardDescription className="text-xs">Permanent page artwork for official document PDFs, including public Terms &amp; Conditions printing</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            <img src={b.letterheadAsset} alt="Full-page letterhead preview" className="max-h-72 w-full rounded border bg-white object-contain" />
+            <p className="break-all text-xs font-mono text-slate-500">{b.letterheadAsset}</p>
+            <Label htmlFor="upload-letterhead" className="text-xs">Replace full-page letterhead</Label>
+            <Input id="upload-letterhead" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!uploading} onChange={e => { const f=e.target.files?.[0]; if(f) upload('letterhead', f)}} />
+            {uploading==='letterhead' && <p className="text-xs text-amber-500">Uploading…</p>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><ImageIcon className="size-4 text-[#009FE3]" /> Company Profile Cover</CardTitle><CardDescription className="text-xs">Exact approved cover art used on Company Profile documents</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            <img src={b.companyProfileCoverAsset} alt="Company Profile cover preview" className="max-h-72 w-full rounded border bg-white object-contain" />
+            <p className="break-all text-xs font-mono text-slate-500">{b.companyProfileCoverAsset}</p>
+            <Label htmlFor="upload-company-profile-cover" className="text-xs">Replace Company Profile cover</Label>
+            <Input id="upload-company-profile-cover" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!uploading} onChange={e => { const f=e.target.files?.[0]; if(f) upload('company-profile-cover', f)}} />
+            {uploading==='company-profile-cover' && <p className="text-xs text-amber-500">Uploading…</p>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><ImageIcon className="size-4 text-[#009FE3]" /> Project Proposal Cover</CardTitle><CardDescription className="text-xs">Exact approved cover art applied automatically to generated Business Proposals</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            <img src={b.proposalCoverAsset} alt="Project Proposal cover preview" className="max-h-72 w-full rounded border bg-white object-contain" />
+            <p className="break-all text-xs font-mono text-slate-500">{b.proposalCoverAsset}</p>
+            <Label htmlFor="upload-proposal-cover" className="text-xs">Replace Project Proposal cover</Label>
+            <Input id="upload-proposal-cover" type="file" accept="image/png,image/jpeg,image/webp" disabled={!!uploading} onChange={e => { const f=e.target.files?.[0]; if(f) upload('proposal-cover', f)}} />
+            {uploading==='proposal-cover' && <p className="text-xs text-amber-500">Uploading…</p>}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Page & brand identity */}
       <Card>
         <CardHeader><CardTitle className="text-sm">Page &amp; Brand Identity</CardTitle><CardDescription className="text-xs">Page size, margins, and legal identity printed on every document</CardDescription></CardHeader>
@@ -216,7 +254,9 @@ export function DocumentBrandingView() {
               <SelectContent>
                 <SelectItem value="SOW">SOW (with seal)</SelectItem>
                 <SelectItem value="INVOICE">Invoice (with seal)</SelectItem>
-                <SelectItem value="PROPOSAL">Proposal (no seal)</SelectItem>
+                <SelectItem value="WORK_PROPOSAL">Proposal cover (no seal)</SelectItem>
+                <SelectItem value="COMPANY_PROFILE">Company Profile cover (no seal)</SelectItem>
+                <SelectItem value="COVER_LETTER">Cover Letter (no seal)</SelectItem>
                 <SelectItem value="LETTER">Official Letter (no seal)</SelectItem>
                 <SelectItem value="LEGAL">Legal Policy (no seal)</SelectItem>
               </SelectContent>
@@ -230,7 +270,7 @@ export function DocumentBrandingView() {
               </a>
             ))}
           </div>
-          <p className="text-xs text-slate-500">Sample docs generated via <code>/api/admin/branding/sample?type=...</code> use the live branding engine. SOW &amp; Invoice show the circular seal (when enabled); proposals, letters, terms/privacy/refund show letterhead without seal. All samples set branding version and are recorded in the document audit index.</p>
+          <p className="text-xs text-slate-500">Sample docs generated via <code>/api/admin/branding/sample?type=...</code> use the live branding engine. Company Profile and proposals use their configured exact cover images; SOW &amp; Invoice show the circular seal when enabled. Cover letters, ordinary letters and legal policies never show the seal. Samples are recorded with the current branding version in the document audit index.</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild><a href="/api/admin/branding/sample?type=INVOICE" target="_blank" rel="noreferrer"><Download className="size-4" /> Sample Invoice (HTML)</a></Button>
             <Button variant="outline" size="sm" asChild><a href="/api/admin/branding/sample?type=SOW" target="_blank" rel="noreferrer"><Download className="size-4" /> Sample SOW</a></Button>

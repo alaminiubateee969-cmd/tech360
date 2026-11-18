@@ -7,6 +7,7 @@ import { toE164 } from '@/lib/phone'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent, resolveVerifiedClientIdentity } from '@/lib/identity-resolver'
 import type { VerifiedIdentityProof } from '@/lib/identity-policy'
 import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
+import { isSmsOptOutKeyword } from '@/lib/sms-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -121,10 +122,20 @@ export async function POST(req: NextRequest) {
           .catch(() => null)
       }
 
-      const { recordInbound } = await import('@/lib/conversation-state')
-      await recordInbound(existing.id, existing.clientId, text, 'SMS').catch(() => null)
+      const { recordInbound, setOptOut } = await import('@/lib/conversation-state')
+      const communicationState = await recordInbound(existing.id, existing.clientId, text, 'SMS').catch(() => null)
 
       await audit({ actor: 'webhook:SMS', action: 'INBOUND_MESSAGE', clientId: existing.clientId, ip })
+      if (isSmsOptOutKeyword(text)) {
+        await setOptOut(existing.id, existing.clientId, true)
+        await audit({ actor: 'webhook:SMS', action: 'SMS_OPT_OUT', clientId: existing.clientId, ip })
+        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: existing.id })
+        return Response.json({ ok: true })
+      }
+      if (communicationState?.optedOut) {
+        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: existing.id })
+        return Response.json({ ok: true })
+      }
 
       // Generate contextual reply via orchestrator (one-question-at-a-time, honest errors)
       try {
@@ -151,7 +162,7 @@ export async function POST(req: NextRequest) {
       // by web chat. The number is stored as contact data only: it is NOT
       // written to ClientIdentity, because a provider signature proves the
       // sender, not ownership. Verified-identity merging is unchanged.
-      const { recordInbound } = await import('@/lib/conversation-state')
+      const { recordInbound, setOptOut } = await import('@/lib/conversation-state')
 
       let linkedClient = await db.client.findFirst({
         where: {
@@ -193,8 +204,18 @@ export async function POST(req: NextRequest) {
         data: { clientId: linkedClient.id },
       }).catch(() => null)
 
-      await recordInbound(linkedClient.id, linkedClient.clientId, text, 'SMS').catch(() => null)
+      const communicationState = await recordInbound(linkedClient.id, linkedClient.clientId, text, 'SMS').catch(() => null)
       await audit({ actor: 'webhook:SMS', action: 'NEW_LEAD_FROM_SMS', clientId: linkedClient.clientId, ip })
+      if (isSmsOptOutKeyword(text)) {
+        await setOptOut(linkedClient.id, linkedClient.clientId, true)
+        await audit({ actor: 'webhook:SMS', action: 'SMS_OPT_OUT', clientId: linkedClient.clientId, ip })
+        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: linkedClient.id })
+        return Response.json({ ok: true })
+      }
+      if (communicationState?.optedOut) {
+        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: linkedClient.id })
+        return Response.json({ ok: true })
+      }
 
       const full = await db.client.findUnique({ where: { id: linkedClient.id } })
       if (full) {

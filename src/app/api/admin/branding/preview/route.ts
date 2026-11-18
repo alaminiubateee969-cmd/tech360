@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
 import { getDocumentBranding, brandingCss, brandingPadHeader, brandingPadFooter, sealHtmlFor } from '@/lib/document-branding'
 import { docDate } from '@/lib/letterhead'
+import { renderOfficialDocumentHtml, type OfficialDocumentKind } from '@/lib/official-document'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,25 @@ export async function GET(req: NextRequest) {
   if (isResponse(g)) return g
   const type = (req.nextUrl.searchParams.get('type') ?? 'SOW').toUpperCase()
   const branding = await getDocumentBranding(true)
+  const officialKind: OfficialDocumentKind | null = type === 'WORK_PROPOSAL' || type === 'PROPOSAL'
+    ? 'BUSINESS_PROPOSAL'
+    : type === 'COMPANY_PROFILE'
+      ? 'COMPANY_PROFILE'
+      : type === 'COVER_LETTER'
+        ? 'COVER_LETTER'
+        : null
+  if (officialKind) {
+    const html = renderOfficialDocumentHtml({
+      kind: officialKind,
+      reference: `PREVIEW-${type}`,
+      issuedAt: new Date(),
+      recipientName: 'Preview Client',
+      recipientBusiness: 'Acme Corporation',
+      subject: `Preview of ${officialKind.replace(/_/g, ' ').toLowerCase()}`,
+      sections: [{ heading: 'Template Preview', paragraphs: ['This preview uses the current Super Admin-managed letterhead and cover assets. Covers are platform-applied and do not affect the document content.'] }],
+    }, branding)
+    return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' } })
+  }
   const css = brandingCss(branding)
   const issued = docDate()
   let docKind = 'Document Preview'
