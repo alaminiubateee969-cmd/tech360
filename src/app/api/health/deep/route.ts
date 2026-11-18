@@ -2,6 +2,7 @@ import { AI_WORKFORCE_MIN_ROLE } from '@/lib/ai-workforce-policy'
 import { NextRequest } from 'next/server'
 import { guard, isResponse } from '@/lib/api-guard'
 import { db } from '@/lib/db'
+import { channelStatuses } from '@/lib/comms'
 import { modelServiceStatus, listLocalModels } from '@/lib/model/router'
 import { summariseRegistry } from '@/lib/skills/registry'
 import { knowledgeCorpusStats } from '@/lib/rag/pipeline'
@@ -123,7 +124,12 @@ export async function GET(req: NextRequest) {
     app: 'tech360-platform',
     version: packageJson.version,
     timestamp: new Date().toISOString(),
+    release: {
+      commit: process.env.TECH360_BUILD_SHA || 'unknown',
+      sourceState: process.env.TECH360_BUILD_SOURCE_STATE || 'unknown',
+    },
     uptimeSeconds: Math.floor(process.uptime()),
+    channels: channelStatuses(),
     checks,
-  })
+  }, { headers: { 'Cache-Control': 'no-store' } })
 }

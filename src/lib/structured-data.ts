@@ -292,7 +292,7 @@ export function pageGraph(pathname: string, meta: { title: string; description: 
   const simple: Record<string, { type: PageNodeType; trail: string }> = {
     '/about': { type: 'AboutPage', trail: 'About TECH360' },
     '/contact': { type: 'ContactPage', trail: 'Contact' },
-    '/platform': { type: 'CollectionPage', trail: 'Company-in-a-Box Platform' },
+    '/platform': { type: 'CollectionPage', trail: 'Enterprise Platforms & Software' },
     '/services': { type: 'CollectionPage', trail: 'Services' },
     '/industries': { type: 'CollectionPage', trail: 'Industries' },
     '/work': { type: 'CollectionPage', trail: 'Work' },

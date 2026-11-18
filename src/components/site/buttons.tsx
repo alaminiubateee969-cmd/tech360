@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Bot, ExternalLink } from "lucide-react";
+import { ArrowRight, MessageCircle, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -115,7 +115,7 @@ export function ChatButton({
         className
       )}
     >
-      <Bot className="size-4" aria-hidden="true" />
+      <MessageCircle className="size-4" aria-hidden="true" />
       {label}
     </button>
   );
@@ -156,7 +156,7 @@ export function OutlineLink({
 }
 
 /** Opens the on-site live support chat (ChatWidget) — the primary contact channel. */
-export function AIAssistantLink({
+export function LiveSupportLink({
   label = "Chat with our team",
   className,
   compact = false,
@@ -179,7 +179,7 @@ export function AIAssistantLink({
         className
       )}
     >
-      <Bot className="size-4" aria-hidden="true" />
+      <MessageCircle className="size-4" aria-hidden="true" />
       {label}
     </button>
   );

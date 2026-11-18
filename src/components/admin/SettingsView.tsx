@@ -446,9 +446,9 @@ function PlatformGovernance() {
 }
 
 export function SettingsView() {
-  const { data, loading, error } = useApi<HealthResponse>('/api/health')
+  const { data, loading, error } = useApi<HealthResponse>('/api/health/deep')
 
-  const dbOk = data?.db === true || data?.db === 'true' || (data?.db ?? '').toString().toUpperCase() === 'OK'
+  const dbOk = String(data?.checks?.database?.status ?? '').toUpperCase() === 'UP'
   const channels = Object.entries(data?.channels ?? {})
 
   return (
@@ -480,17 +480,23 @@ export function SettingsView() {
         <section aria-label="System status" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <KpiCard
             label="Database"
-            value={dbOk ? 'Operational' : (data?.db ?? 'Unknown')}
+            value={dbOk ? 'Operational' : (data?.checks?.database?.status ?? 'Unknown')}
             icon={Database}
             tone={dbOk ? 'green' : 'red'}
-            sub={data?.db ? 'MySQL via Prisma' : 'Status not reported'}
+            sub={dbOk ? 'MySQL via Prisma' : 'Status not reported'}
           />
-          <KpiCard label="AI Agents" value={num(data?.agents)} icon={Server} tone="accent" sub="Registered in the workforce" />
+          <KpiCard
+            label="AI Agents"
+            value={num(data?.checks?.registries?.persistedExecutableAgents)}
+            icon={Server}
+            tone="accent"
+            sub="Persisted in the protected registry"
+          />
           <KpiCard
             label="API Status"
             value={prettify(data?.status ?? '—')}
             icon={CheckCircle2}
-            tone={(data?.status ?? '').toUpperCase() === 'OK' ? 'green' : 'amber'}
+            tone={(data?.status ?? '').toLowerCase() === 'healthy' ? 'green' : 'amber'}
             sub={data?.version ? `Version ${data.version}` : 'Version not reported'}
           />
         </section>
@@ -498,7 +504,7 @@ export function SettingsView() {
 
       <SectionCard
         title="Channel Configuration"
-        description="Exactly as reported by /api/health — channels without credentials report NOT_CONFIGURED and cannot send."
+        description="Protected system diagnostics from /api/health/deep — channel states are visible only to authorized operators."
       >
         {loading ? (
           <div className="flex flex-wrap gap-2">
