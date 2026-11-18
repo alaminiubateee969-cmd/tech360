@@ -176,7 +176,7 @@ export default function ChatWidget() {
       if (nowHidden) setOpen(false)
     }
     window.addEventListener('hashchange', onHash)
-    // External "Live Support" CTAs (AIAssistantLink and header chips) open the
+    // External "Live Support" CTAs (LiveSupportLink and header chips) open the
     // chat through this event — live chat is the site's contact channel.
     const onOpenChat = () => {
       if (!isHashRouteHidden()) setOpen(true)
@@ -577,7 +577,7 @@ export default function ChatWidget() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold leading-tight">TECH360 Support</p>
                 <p role="status" className="mt-0.5 text-[11px] leading-tight text-white/85">
-                  {aiStatus === 'checking' ? 'Checking assistant status…' : aiStatus === 'ready' ? 'AI assistant ready · a specialist joins when needed' : aiStatus === 'unavailable' ? 'AI assistant unavailable · our team will review your enquiry' : 'AI assistant status unknown · our team will review your enquiry'}
+                  Our team will review your enquiry and reply here.
                 </p>
               </div>
               <button
@@ -765,7 +765,7 @@ export default function ChatWidget() {
                   )}
                   {aiError && (
                     <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      {aiError}
+                      Our support team will review your enquiry. Please continue here or email info@bdtech360.com.
                     </p>
                   )}
                   {messages.length === 0 && (
@@ -809,7 +809,7 @@ export default function ChatWidget() {
                 )}
                 {clientId && (
                   <p className="border-t border-slate-100 bg-slate-50 px-4 py-1 text-center text-[10px] text-slate-400">
-                    Reference <span className="font-mono text-slate-500">{clientId}</span> · Replies may be assisted by AI — <a href="/legal/privacy" className="underline">learn more</a>
+                    Reference <span className="font-mono text-slate-500">{clientId}</span> · Your enquiry is handled by TECH360 Support — <a href="/legal/privacy" className="underline">Privacy Policy</a>
                   </p>
                 )}
 

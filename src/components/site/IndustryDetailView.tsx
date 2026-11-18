@@ -7,6 +7,7 @@ import { INDUSTRIES, getIndustry, getService } from "@/data/site";
 import { getIndustryBySlug } from "@/data/industries";
 import { imageFor } from "@/data/images";
 import { industryImage, industryImageAlt } from "@/data/industry-images";
+import { serviceImageSrc, serviceImageAlt } from "@/data/service-images";
 import { PageHero } from "./PageHero";
 import IndustryExperience from "./IndustryExperience"
 import IndustryBlueprint from "./IndustryBlueprint";
@@ -16,7 +17,7 @@ import { ImageView } from "./ImageView";
 import { Icon } from "./icons";
 import { Reveal, RevealList, RevealItem } from "./Reveal";
 import { SectionHeading } from "./SectionHeading";
-import { PrimaryLink, AIAssistantLink } from "./buttons";
+import { PrimaryLink, LiveSupportLink } from "./buttons";
 
 export default function IndustryDetailView({ slug }: { slug: string }) {
   const industry = getIndustry(slug);
@@ -226,8 +227,8 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
                   className="group flex h-full flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 focus-visible:ring-2 focus-visible:ring-[#009FE3]"
                 >
                   <ImageView
-                    src={industryImage(industry.slug) ?? imageFor(industry.imageKey)}
-                    alt={industryImageAlt(industry.title)}
+                    src={serviceImageSrc(service.slug) ?? industryImage(industry.slug) ?? imageFor(industry.imageKey)}
+                    alt={serviceImageAlt(service.slug, service.title)}
                     aspect="16/9"
                     imgClassName="transition-transform duration-500 group-hover:scale-105"
                   />
@@ -275,7 +276,7 @@ export default function IndustryDetailView({ slug }: { slug: string }) {
                   Start Your Project
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </PrimaryLink>
-                <AIAssistantLink />
+                <LiveSupportLink />
               </div>
             </div>
           </Reveal>

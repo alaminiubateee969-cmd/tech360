@@ -32,7 +32,7 @@ const ACTION_COMPONENTS = [
   { name: 'OutlineLink', use: 'Bordered secondary action', minTarget: '44px' },
   { name: 'GhostLink', use: 'Tertiary text action', minTarget: '44px' },
   { name: 'ChatButton', use: 'Opens the on-site live support chat', minTarget: '44px' },
-  { name: 'AIAssistantLink', use: 'Legacy alias for the chat entry point', minTarget: '44px' },
+  { name: 'LiveSupportLink', use: 'Primary live-support entry point', minTarget: '44px' },
   { name: 'CardLinkAffordance', use: 'Non-anchor affordance inside a linked card', minTarget: 'n/a' },
 ] as const
 

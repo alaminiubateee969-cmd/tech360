@@ -55,8 +55,8 @@ const SECTIONS: Record<string, Omit<PublicRouteInfo, 'path'>> = {
     kind: 'section',
   },
   platform: {
-    title: 'Company-in-a-Box Software Platform',
-    description: 'Explore Company-in-a-Box: connected workflows, customer relationships, reporting, portals, and business systems tailored to your needs.',
+    title: 'Enterprise Platforms & Software',
+    description: 'Explore enterprise software capabilities including CRM, client portals, workflow automation, reporting, integrations and digital commerce, scoped to your business requirements.',
     kind: 'section',
   },
   services: {

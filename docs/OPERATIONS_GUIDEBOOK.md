@@ -2,7 +2,7 @@
 
 **Platform:** TECH360 LLC (brand **Tech360**, domain **bdtech360.com**) — website, CRM, client portal,
 AI workforce and delivery automation in one Next.js application.
-**Book version:** 2026-10-24 · **Application version:** 0.2.1 · **Repository:** `alaminiubateee969-cmd/tech360`
+**Book version:** 2026-11-17 · **Application version:** 0.2.1 · **Repository:** `alaminiubateee969-cmd/tech360`
 **Audience:** the platform owner (Super Admin), operations staff, finance, delivery, support, and any engineer
 who has to deploy, run, fix or audit this system.
 
@@ -43,20 +43,23 @@ who has to deploy, run, fix or audit this system.
 
 ## 1. Platform map
 
-### 1.1 One application, four surfaces
+### 1.1 One application, four primary surfaces
 
 There is exactly **one** Next.js application (App Router). Everything is served from the same origin.
 
 | Surface | Address | Auth | What lives there |
 |---|---|---|---|
-| **Public website** | `/` → hash routes (`#/services`, `#/industries`, `#/work`, `#/blog`, `#/process`, `#/about`, `#/careers`, `#/contact`, `#/legal`, `#/faq`) | none | Marketing site, service/industry detail pages, case studies, blog, careers, contact intake, legal policies, AI chat widget |
+| **Public website** | `/` → hash routes (`#/services`, `#/industries`, `#/work`, `#/blog`, `#/process`, `#/about`, `#/careers`, `#/contact`, `#/legal`, `#/faq`) | none | Marketing site, service/industry detail pages, case studies, blog, careers, contact intake, legal policies, Live Support chat widget |
 | **Client portal** | `/#/portal` | Client ID + contact on file + one-time code | Projects, milestones, previews, approvals, documents, invoices, payments, meetings, handover, review/referral |
 | **Super Admin console** | `/#/admin` | Staff login (role-based) + optional TOTP | CRM, pipeline, communications, projects, finance, AI workforce, factory, growth, logs, settings |
 | **Design kit** | `/#/design-kit` | none | Live design system: tokens, buttons, diagrams, infographics, mockups |
 
-> **Public contact channels (owner decision 2026-10-24).** The platform publishes **no WhatsApp
-> number and no chat deep link**. Public enquiries arrive through three routes only: the on-site AI
-> assistant / webchat (no phone number needed), the `#/contact` enquiry form, and email
+
+**Developer access boundary (verified 2026-11-17).** The `DEVELOPER` role currently operates inside the authenticated `/#/admin` console with role-scoped views. There is no standalone `/developer` route or independent Developer Portal today; the live `/developer` URL returns 404. Do not describe this as a completed Developer Portal. A dedicated developer workspace requires a separate scoped product implementation and acceptance test.
+
+> **Public contact channels (owner decision 2026-10-24; wording aligned 2026-11-17).** The platform publishes **no WhatsApp
+> number and no chat deep link**. Public enquiries arrive through three routes only: the on-site Live
+> Support / webchat (no phone number needed), the `#/contact` enquiry form, and email
 > `info@bdtech360.com`. Private CRM messaging over the WhatsApp Cloud API still exists as a business
 > integration — it is never advertised as a public contact route. Enforced by
 > `src/lib/site-contact.ts` and pinned by `tests/tech360-messaging-repair.test.ts`.
@@ -69,8 +72,8 @@ Deep links are real URLs, not only hashes: `/services/<slug>`, `/industries/<slu
 
 | Path | Purpose | Notes |
 |---|---|---|
-| `/api/health` | shallow health | app version, DB status, AI provider status, agent count, ops heartbeat, channel flags |
-| `/api/health/deep` | deep health | adds deeper dependency probes |
+| `/api/health` | public liveness/readiness | app version, release commit/source state, database UP/DOWN only; no provider, agent, heartbeat or channel details |
+| `/api/health/deep` | protected deep health | Super Admin-only dependency probes, provider/model status, registries, queues, knowledge and channel diagnostics |
 | `/api/metrics` | counters for monitoring | consumed by external uptime tooling |
 | `/api/ops/cycle` | runs one autonomous ops cycle | requires `OPS_SECRET` header; throttled to ≥45 s |
 | `/api/ops/scan`, `/api/ops/act`, `/api/ops/heartbeat` | ops loop primitives | same secret model |
@@ -85,16 +88,18 @@ Deep links are real URLs, not only hashes: `/services/<slug>`, `/industries/<slu
 | Framework | Next.js 16 App Router, React 19, TypeScript 5, Tailwind CSS 4, shadcn/ui |
 | Runtime | Node.js `>=22.0.0 <23`, npm, standalone output |
 | Database | MySQL via Prisma 6.19.3 (`prisma/schema.prisma`) |
-| API route files | **180** under `src/app/api` |
-| Database models | **73** |
-| Migrations | **14** (`prisma/migrations`, baseline `0_init`) |
-| Admin views | **46** components in `src/components/admin` |
-| Public views | **31** components in `src/components/site` |
-| Shared libraries | **130** TypeScript modules in `src/lib` |
-| Test files | **66** (`tests/*.test.ts`, `node:test`) |
+| API route files | **180** under `src/app/api` (historical inventory; regenerate for release) |
+| Database models | **101** (verified 2026-11-15 schema baseline) |
+| Migrations | **19** (`prisma/migrations`, baseline `0_init`; verified 2026-11-15) |
+| Admin views | **46** components in `src/components/admin` (historical inventory; regenerate for release) |
+| Public views | **31** components in `src/components/site` (historical inventory; regenerate for release) |
+| Shared libraries | **130** TypeScript modules in `src/lib` (historical inventory; regenerate for release) |
+| Test files | **66** (`tests/*.test.ts`, `node:test`; historical inventory) |
 | n8n workflow definitions | **26** (`n8n/W01…W26.json`) |
-| Documentation files | **57** under `docs/` |
+| Documentation files | **57** under `docs/` (historical inventory) |
 | Source size | ≈ **91,500 lines** of TS/TSX |
+
+> **Inventory note:** the non-database counts above are a 2026-10-24 snapshot, not release guarantees. The 2026-11-15 engineering audit verified **101 database models/tables and 19 published migrations**. Refresh counts from the current checkout before using them for capacity or release decisions.
 
 ### 1.4 Repository layout
 
@@ -1294,3 +1299,69 @@ Governance: `ApprovalRequest`, `AuditLog`, `ErrorLog`, `AutomationLog`, `N8nWork
 
 *End of book. Keep this file in the repository and update it in the same pull request as any behavioral
 change. If a procedure here disagrees with the running system, the system is right and the book is a bug.*
+
+## Appendix A — Image and static-asset recovery
+
+Use this runbook when a hero, service card, industry visual or platform image is missing, broken, or appears stale.
+
+1. **Confirm the source mapping.** Check the exact, case-sensitive image path in `src/data/service-images.ts`, `src/data/industry-images.ts` or the relevant component. The matching file must exist under `public/`; do not guess a filename or hotlink an external image.
+2. **Run the repository asset gate before building.** From the repository root:
+
+   ```bash
+   npm ci
+   npm run check:assets
+   ```
+
+   This runs the industry and service visual verifiers. Stop if any image is missing, duplicated where uniqueness is required, has the wrong dimensions, or lacks valid metadata.
+3. **Build the production artifact.** Run `npm run build`. The build includes `scripts/copy-standalone-assets.mjs`; verify the exact image is present under `.next/standalone/public/images/` before deployment.
+4. **Check the deployed asset URL.** For the exact path from the source mapping:
+
+   ```bash
+   curl -fsSI 'https://bdtech360.com/images/services/<exact-file>.webp'
+   curl -fsSI 'https://bdtech360.com/images/industries/<exact-file>.png'
+   ```
+
+   Require HTTP 200, a matching `Content-Type` (`image/webp` or `image/png`) and a non-zero content length. Replace the example path with the exact mapped filename.
+5. **Inspect browser delivery.** Open DevTools → Network → Img, reload without cache, and check the failed request URL, HTTP status, MIME type and response body. In the console, check the relevant image element's `naturalWidth`; it must be greater than zero. A 200 response with `naturalWidth = 0` can indicate corrupt or mismatched image bytes.
+6. **Correct the cause before cache purging.** Fix path case, missing standalone copy, wrong MIME type or stale deployment first. Only then purge the relevant CDN/browser cache and re-test desktop and mobile. Do not hide broken images with CSS or replace them with unrelated stock visuals.
+7. **Keep visual accessibility.** Every meaningful image needs descriptive English `alt` text and explicit dimensions/aspect ratio to prevent layout shift. Decorative images use empty alt text only when they convey no information.
+
+**Current live check (2026-11-17):** service and industry page image references were inspected, and the homepage, Services and Education page visuals rendered during browser inspection. A complete browser `naturalWidth` sweep of all 41 detail pages is still a separate release-QA item; do not infer that from the repository asset gate alone.
+
+## Appendix B — Dependency security audit and remediation
+
+Use this runbook before every production release and whenever CI reports a vulnerable dependency.
+
+1. **Reproduce the exact lockfile state.** From the reviewed commit, run:
+
+   ```bash
+   node --version
+   npm --version
+   npm ci --no-audit --no-fund
+   npm audit --audit-level=low
+   npm audit --omit=dev --audit-level=low
+   ```
+
+   Keep the lockfile committed and use the Node version declared in `package.json`.
+
+2. **Identify the complete dependency path.** For each reported package:
+
+   ```bash
+   npm ls next eslint-config-next picomatch --all
+   npm explain next
+   npm explain picomatch
+   ```
+
+   Record the direct package, transitive parents, installed version, advisory ID, severity, affected range and patched version (if one exists).
+
+3. **Upgrade framework packages together.** For Next.js, align `next` and `eslint-config-next` on a compatible patched release. At the 2026-11-17 audit, Next.js `16.4.3` was affected by advisories fixed in `16.4.5+`. Regenerate the lockfile with npm, then run `npm ci`, typecheck, lint, tests and production build. Do not hand-edit package-lock integrity hashes.
+
+4. **Do not force a dependency tree.** Do not run `npm audit fix --force` as a shortcut. Review major-version changes, peer dependencies, Prisma compatibility, Next.js build output and standalone runtime before accepting an upgrade.
+
+5. **Handle advisories with no published fix honestly.** At the 2026-11-17 audit, picomatch `4.0.7` was affected by GHSA-fc5q-39xc-vjpf and the advisory did not state a patched version. Do not mark it resolved because npm prints a generic `fix available` hint. Check the upstream advisory and release metadata again. If no fix exists, keep the release blocked or obtain a written, time-limited risk acceptance that records affected dependency paths, exposure analysis, compensating controls, owner and expiry date.
+
+6. **Re-run both audit scopes.** A production-only clean audit does not prove development tooling is clean; a full audit clean result does not prove production deployment. Both commands in step 1 must pass for a fully clean release unless a narrowly scoped, formally approved exception is documented.
+
+7. **Release gate.** Do not merge or deploy while a high/critical dependency finding is unresolved. A failed audit step means later typecheck, test and build steps may not have run; verify their actual CI job status rather than assuming they passed.
+
+**2026-11-17 observed blocker:** Draft PR #80 CI run `44149470204` failed at the dependency audit gate with 12 findings (1 moderate, 11 high). Typecheck, full tests and production build were not reached. See `KNOWN_ISSUES_AND_BLOCKERS.md` B-013 and `docs/TECH360_PUBLIC_PLATFORM_AUDIT_2026-11-17.md`.

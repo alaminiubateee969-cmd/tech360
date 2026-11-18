@@ -1,88 +1,47 @@
 import { db } from '@/lib/db'
-import { getAgentProviderStatus } from '@/lib/agents/provider-selection'
-import { channelStatuses } from '@/lib/comms'
 import packageJson from '../../../../package.json'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Public liveness/readiness summary.
+ *
+ * Keep this endpoint intentionally minimal: it is used by external uptime
+ * monitors and must not disclose provider configuration, channel wiring,
+ * agent counts, internal automation heartbeats, or operational metadata.
+ * Detailed subsystem diagnostics are available only from the authenticated
+ * /api/health/deep endpoint.
+ */
 export async function GET() {
-  const databaseUrl = process.env.DATABASE_URL ?? ''
-  const dbProvider = databaseUrl.startsWith('mysql:')
-    ? 'MySQL'
-    : databaseUrl.startsWith('file:')
-      ? 'SQLite'
-      : 'database'
-  const checks: Record<string, { status: string; detail?: string; provider?: string }> = {}
-  // Safe provider states: CONFIGURED | NOT_CONFIGURED | MISCONFIGURED.
-  const provider = getAgentProviderStatus()
-  const providerRequired = process.env.NODE_ENV === 'production'
   let databaseHealthy = false
 
-  checks.aiProvider = { status: provider.state, detail: provider.detail, provider: provider.provider }
-
   try {
-    // SELECT 1 proves network/credentials; this model query also confirms that
-    // the essential migrated application schema is available without requiring
-    // a seeded user to exist.
     await db.$queryRaw`SELECT 1`
     await db.user.findFirst({ select: { id: true } })
     databaseHealthy = true
-    checks.database = { status: 'UP', detail: `${dbProvider} via Prisma — connected; core schema available` }
   } catch {
-    // Keep connection details and environment/configuration internals out of
-    // the public health response. Operators should use protected platform logs.
-    checks.database = { status: 'DOWN', detail: 'database connection or core schema check failed' }
+    // Do not return connection details, schema names, or configuration.
   }
 
-  if (databaseHealthy) {
-    try {
-      const agents = await db.aiAgent.count()
-      checks.aiAgents = { status: agents > 0 ? 'UP' : 'DEGRADED', detail: `${agents} agents registered` }
-    } catch {
-      checks.aiAgents = { status: 'UNKNOWN' }
-    }
-
-    // Autonomous AI operations service — honest status from heartbeat.
-    try {
-      const hb = await db.setting.findUnique({ where: { key: 'ops.heartbeat' } })
-      if (hb) {
-        const parsed = JSON.parse(hb.value) as { at?: string; cycles?: number }
-        const heartbeatAt = parsed.at ? new Date(parsed.at).getTime() : Number.NaN
-        const ageSec = Number.isFinite(heartbeatAt) ? Math.floor((Date.now() - heartbeatAt) / 1000) : null
-        const intervalSec = Math.max(30, Number(process.env.OPS_INTERVAL_SEC ?? 90) || 90)
-        checks.aiOperations = ageSec !== null && ageSec >= 0 && ageSec < intervalSec * 3
-          ? { status: 'ACTIVE', detail: `autonomous loop cycle #${parsed.cycles ?? '?'} · heartbeat ${ageSec}s ago` }
-          : { status: 'STALE', detail: `last heartbeat ${ageSec ?? '?'}s ago — check mini-services/ai-ops` }
-      } else {
-        checks.aiOperations = { status: 'OFFLINE', detail: 'no heartbeat recorded — start mini-services/ai-ops' }
-      }
-    } catch {
-      checks.aiOperations = { status: 'UNKNOWN' }
-    }
-  } else {
-    // Do not make additional database calls after a critical dependency failed.
-    checks.aiAgents = { status: 'UNKNOWN', detail: 'database unavailable' }
-    checks.aiOperations = { status: 'UNKNOWN', detail: 'database unavailable' }
-  }
-
-  const configuredDriver = process.env.AI_OPS_DRIVER?.trim().toLowerCase()
-  const driverDisabled = configuredDriver === 'off'
-  const driverActive = process.env.NODE_ENV === 'production' && !driverDisabled
-  if (driverDisabled) checks.aiOperations = { status: 'DISABLED', detail: 'AI_OPS_DRIVER=off — in-process AI operations driver is intentionally disabled' }
-  const aiOperationsHealthy = !driverActive || checks.aiOperations?.status === 'ACTIVE'
-  const healthy = databaseHealthy && (!providerRequired || provider.configured) && aiOperationsHealthy
+  const healthy = databaseHealthy
   const result = {
     status: healthy ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
     app: 'tech360-platform',
     version: packageJson.version,
+    // Build identity is retained for release traceability; it is not a
+    // signed attestation. Detailed runtime state remains behind auth.
     release: {
       commit: process.env.TECH360_BUILD_SHA || 'unknown',
       sourceState: process.env.TECH360_BUILD_SOURCE_STATE || 'unknown',
     },
-    checks,
-    channels: channelStatuses(),
-    uptimeSeconds: Math.floor(process.uptime()),
+    checks: {
+      database: { status: databaseHealthy ? 'UP' : 'DOWN' },
+    },
   }
-  return Response.json(result, { status: healthy ? 200 : 503 })
+
+  return Response.json(result, {
+    status: healthy ? 200 : 503,
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }

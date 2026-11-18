@@ -203,8 +203,8 @@ function heroPlatform() {
   ]
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
   ${defs}${pageBg(w, h)}
-  ${text(w / 2, 92, 'Company-in-a-Box platform', { size: 40, weight: 800, fill: C.ink, anchor: 'middle' })}
-  ${text(w / 2, 128, 'Five pillars, one private system you control', { size: 17, fill: C.slate, anchor: 'middle' })}
+  ${text(w / 2, 92, 'Enterprise software capabilities', { size: 40, weight: 800, fill: C.ink, anchor: 'middle' })}
+  ${text(w / 2, 128, 'Connected business capabilities, designed around your workflows', { size: 17, fill: C.slate, anchor: 'middle' })}
 
   ${rect(120, 168, w - 240, 420, { fill: C.white, stroke: C.line, r: 22, sw: 2 })}
   ${text(160, 210, 'PLATFORM LAYERS', { size: 12, weight: 700, fill: '#8AA0B4' })}

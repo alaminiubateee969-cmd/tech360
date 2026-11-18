@@ -138,12 +138,38 @@ describe('API contracts — every protected route is guarded', () => {
     })
   }
 
-  it('the public health route stays unauthenticated and says very little', () => {
+  it('the public health route stays unauthenticated and exposes no internal diagnostics', () => {
     const source = readFileSync(join(API, 'health/route.ts'), 'utf8')
     assert.equal(source.includes('guard('), false, '/api/health must stay public')
-    assert.equal(source.includes('DATABASE_URL'), true)
-    // It must not leak configuration values.
+    assert.match(source, /checks:\s*\{\s*database:/)
+    assert.match(source, /release:\s*\{/)
+    for (const internalField of ['checks.aiProvider', 'checks.aiAgents', 'checks.aiOperations', 'channels:', 'heartbeat:', 'provider:']) {
+      assert.equal(source.includes(internalField), false, `public health must not expose ${internalField}`)
+    }
     assert.equal(/mysql:\/\/[^"']/.test(source), false)
+  })
+
+  it('public website copy does not reveal TECH360 private operating details', () => {
+    const readPublic = (path: string) => readFileSync(join(process.cwd(), path), 'utf8')
+    const chat = readPublic('src/components/site/ChatWidget.tsx')
+    const home = readPublic('src/components/site/HomeView.tsx')
+    const platform = readPublic('src/components/site/PlatformView.tsx')
+    const showcase = readPublic('src/components/site/PremiumSections.tsx')
+    const footer = readPublic('src/components/site/SiteFooter.tsx')
+    const buttons = readPublic('src/components/site/buttons.tsx')
+    const nav = readPublic('src/components/site/nav-structure.ts')
+    const routeCatalog = readPublic('src/lib/public-route-catalog.ts')
+    const agentContent = readPublic('src/lib/agent-content.ts')
+    const llms = readPublic('content/llms.txt')
+
+    assert.doesNotMatch(chat, /AI assistant ready|AI assistant unavailable|AI assistant status|our assistant will answer|our assistant answers|Replies may be assisted by AI/i)
+    assert.doesNotMatch(buttons, /AIAssistantLink|<Bot/)
+    assert.doesNotMatch(home, /44 specialized operational workflows|110 departments|TECH360 Operations|TECH360 Intelligence/)
+    assert.doesNotMatch(platform, /Company-in-a-Box|TECH360 Operations|TECH360 Intelligence|agent token consumption|110 departments/)
+    assert.doesNotMatch(showcase, /The Console Your Team Actually Runs On|admin-dashboard\.png|crm-dashboard\.png/)
+    for (const publicCopy of [footer, nav, routeCatalog, agentContent, llms]) {
+      assert.doesNotMatch(publicCopy, /Company-in-a-Box/i)
+    }
   })
 })
 

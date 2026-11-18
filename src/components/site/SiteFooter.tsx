@@ -16,7 +16,7 @@ const FOOTER_SOLUTIONS = [
   { label: "Enterprise Websites", href: "/services/enterprise-websites" },
   { label: "n8n Workflow Automation", href: "/services/n8n-workflow-automation" },
   { label: "Cloud Deployment (Google Cloud)", href: "/services/cloud-deployment-google-cloud" },
-  { label: "Company-in-a-Box Platform", href: "/platform" },
+  { label: "Enterprise Platforms & Software", href: "/platform" },
 ];
 
 const FOOTER_INDUSTRIES = [

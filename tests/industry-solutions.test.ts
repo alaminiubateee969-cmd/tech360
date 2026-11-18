@@ -53,6 +53,19 @@ describe('industry solution library', () => {
     }
   })
 
+  it('includes education consultancy recruitment-to-visa and B2B partner capabilities', () => {
+    const education = INDUSTRY_REGISTRY.find((entry) => entry.slug === 'education')
+    assert.ok(education, 'education industry entry must exist')
+    assert.ok(education.data.workflows.some((workflow) => workflow.id === 'EDU-WF-07'))
+    assert.ok(education.data.modules.some((module) => module.id === 'EDU-MOD-09'))
+    assert.ok(education.data.modules.some((module) => module.id === 'EDU-MOD-10'))
+    assert.ok(education.data.portals.some((portal) => portal.id === 'portal-edu-applicant'))
+    assert.ok(education.data.portals.some((portal) => portal.id === 'portal-edu-partner'))
+    assert.ok(education.data.dataModel.some((entity) => entity.name === 'Partner Quota'))
+    assert.ok(education.data.roles.some((role) => role.id === 'counsellor'))
+    assert.ok(education.data.roles.some((role) => role.id === 'partner-user'))
+  })
+
   it('keeps the Manufacturing flagship at its pinned workflow and spec counts', () => {
     const flagship = INDUSTRY_REGISTRY.find((entry) => entry.slug === 'manufacturing')
     assert.ok(flagship)
