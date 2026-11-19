@@ -142,6 +142,27 @@ test('production still fails closed without any execution provider', () => {
   assert.match(result.stdout + result.stderr, /AI provider \(configure/)
 })
 
+test('production rejects an explicit unavailable or unknown provider instead of silently using a different one', () => {
+  for (const preferred of ['ai-gateway', 'openrouter', 'openai', 'gemini', 'groq', 'unknown-provider']) {
+    const result = validate({
+      AI_PROVIDER: preferred,
+      AI_GATEWAY_BASE_URL: undefined, AGENTOS_GATEWAY_TOKEN: undefined,
+      OPENROUTER_API_KEY: undefined, OPENAI_API_KEY: undefined, GEMINI_API_KEY: undefined,
+      GOOGLE_GENERATIVE_AI_API_KEY: undefined, GROQ_API_KEY: undefined,
+    })
+    assert.notEqual(result.status, 0, preferred)
+    assert.match(result.stdout + result.stderr, /AI_PROVIDER/)
+    assert.equal((result.stdout + result.stderr).includes(goodEnvironment.ZAI_API_KEY!), false)
+  }
+})
+
+test('production accepts intentional disabled aliases and explicit configured selection', () => {
+  for (const preferred of ['none', 'off', 'disabled', 'zai', 'auto']) {
+    const result = validate({ AI_PROVIDER: preferred })
+    assert.equal(result.status, 0, result.stderr)
+  }
+})
+
 test('production rejects incomplete or unsafe gateway configuration without echoing secrets', () => {
   for (const overrides of [
     { AI_GATEWAY_BASE_URL: 'https://gateway.invalid', AGENTOS_GATEWAY_TOKEN: undefined },

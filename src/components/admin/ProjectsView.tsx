@@ -59,7 +59,7 @@ interface ProjectDetailResponse {
   project: ProjectSummary
   tasks?: TaskRecord[]
   scopes?: ScopeRecord[]
-  payments?: PaymentRecord[]
+  payments?: PaymentRecord[] | null
   previews?: Array<{ id: string; token?: string | null; version?: number | null; status?: string | null; viewCount?: number | null }>
   delivery?: {
     id?: string
@@ -85,6 +85,7 @@ const PROJECT_STATUSES = [
 ] as const
 
 function paymentStatus(p: ProjectSummary): string {
+  if (p.financeRead === false) return 'RESTRICTED'
   const total = num(p.totalAmount)
   const paid = num(p.paidAmount)
   if (total > 0 && paid >= total) return 'PAID'
@@ -106,9 +107,7 @@ export function ProjectsView({ onOpenProject }: { onOpenProject: (id: string) =>
     // optimistic
     setLocalProjects(prev.map((pr) => pr.id === projectId ? { ...pr, status: nextStatus } : pr))
     try {
-      const res = await fetch(`/api/admin/projects/${encodeURIComponent(projectId)}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: nextStatus }) })
-      const json = await res.json().catch(()=> ({}))
-      if (!res.ok) throw new Error(json.error || `Move failed (${res.status})`)
+      await api.moveProjectStatus(projectId, nextStatus)
       // success — refresh to get server truth
       refresh()
     } catch (err) {
@@ -173,8 +172,8 @@ export function ProjectsView({ onOpenProject }: { onOpenProject: (id: string) =>
             { key: 'name', header: 'Project', cell: (p) => <span className="text-slate-300">{p.name}</span> },
             { key: 'plan', header: 'Plan', cell: (p) => <span className="text-slate-400">{p.plan || '—'}</span> },
             { key: 'status', header: 'Status', cell: (p) => <StatusBadge status={p.status} /> },
-            { key: 'total', header: 'Total', cell: (p) => <span className="tabular-nums text-slate-300">{fmtMoney(num(p.totalAmount), p.currency ?? 'USD')}</span> },
-            { key: 'paid', header: 'Paid', cell: (p) => <span className="tabular-nums text-emerald-400">{fmtMoney(num(p.paidAmount), p.currency ?? 'USD')}</span> },
+            { key: 'total', header: 'Total', cell: (p) => <span className="tabular-nums text-slate-300">{p.financeRead === false ? 'Restricted' : fmtMoney(num(p.totalAmount), p.currency ?? 'USD')}</span> },
+            { key: 'paid', header: 'Paid', cell: (p) => <span className="tabular-nums text-emerald-400">{p.financeRead === false ? 'Restricted' : fmtMoney(num(p.paidAmount), p.currency ?? 'USD')}</span> },
             { key: 'paystatus', header: 'Payment', cell: (p) => <StatusBadge status={paymentStatus(p)} /> },
             { key: 'started', header: 'Started', cell: (p) => <span className="text-xs text-slate-500">{fmtDateShort(p.startedAt)}</span> },
           ]}
@@ -207,7 +206,7 @@ function ProjectCard({ project, onOpen }: { project: ProjectSummary; onOpen: (id
         <p className="truncate text-xs font-mono font-semibold text-[#009FE3]">{project.code || project.id.slice(0,8)}</p>
         <p className="truncate text-sm font-semibold text-slate-200">{project.name}</p>
         <p className="truncate text-xs text-slate-500">{project.client ? clientDisplayName(project.client) : '—'} · {project.plan || '—'}</p>
-        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500"><StatusBadge status={project.status} /> {fmtMoney(num(project.paidAmount), project.currency ?? 'USD')}/{fmtMoney(num(project.totalAmount), project.currency ?? 'USD')}</p>
+        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500"><StatusBadge status={project.status} /> {project.financeRead === false ? 'Financials restricted' : `${fmtMoney(num(project.paidAmount), project.currency ?? 'USD')}/${fmtMoney(num(project.totalAmount), project.currency ?? 'USD')}`}</p>
       </button>
     </div>
   )
@@ -417,15 +416,15 @@ export function ProjectDetailView({
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-slate-500">Total</dt>
-              <dd className="font-semibold tabular-nums text-slate-100">{fmtMoney(num(project.totalAmount), project.currency ?? 'USD')}</dd>
+              <dd className="font-semibold tabular-nums text-slate-100">{project.financeRead === false ? 'Restricted' : fmtMoney(num(project.totalAmount), project.currency ?? 'USD')}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-slate-500">Paid</dt>
-              <dd className="font-semibold tabular-nums text-emerald-400">{fmtMoney(num(project.paidAmount), project.currency ?? 'USD')}</dd>
+              <dd className="font-semibold tabular-nums text-emerald-400">{project.financeRead === false ? 'Restricted' : fmtMoney(num(project.paidAmount), project.currency ?? 'USD')}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-slate-500">Outstanding</dt>
-              <dd className="font-semibold tabular-nums text-amber-400">{fmtMoney(Math.max(0, num(project.totalAmount) - num(project.paidAmount)), project.currency ?? 'USD')}</dd>
+              <dd className="font-semibold tabular-nums text-amber-400">{project.financeRead === false ? 'Restricted' : fmtMoney(Math.max(0, num(project.totalAmount) - num(project.paidAmount)), project.currency ?? 'USD')}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-slate-500">Plan</dt>
@@ -487,7 +486,7 @@ export function ProjectDetailView({
         <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-slate-900/80 p-1">
           {[
             ['tasks', `Tasks (${(data?.tasks ?? []).length})`],
-            ['payments', `Payments (${(data?.payments ?? []).length})`],
+            ...(project.financeRead === false ? [] : [['payments', `Payments (${(data?.payments ?? []).length})`]]),
             ['scopes', `Scopes (${(data?.scopes ?? []).length})`],
             ['previews', `Previews (${(data?.previews ?? []).length})`],
             ['handovers', `Handovers (${(data?.handovers ?? []).length})`],
@@ -534,7 +533,7 @@ export function ProjectDetailView({
                 { key: 'status', header: 'Status', cell: (p) => <StatusBadge status={p.status} /> },
                 { key: 'verified', header: 'Verified', cell: (p) => <span className="text-xs text-slate-500">{p.verifiedAt ? fmtDate(p.verifiedAt) : 'Not verified'}</span> },
               ]}
-              rows={data?.payments}
+              rows={data?.payments ?? undefined}
               rowKey={(p) => p.id}
               empty={<EmptyState title="No payments yet" />}
               aria-label="Project payments"

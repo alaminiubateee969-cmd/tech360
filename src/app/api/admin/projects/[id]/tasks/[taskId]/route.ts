@@ -3,12 +3,13 @@ import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText, audit } from '@/lib/security'
 import { canHumanAcceptAgentDraft } from '@/lib/project-task-policy'
+import { appendTaskEvidence, TaskEvidenceLimitError } from '@/lib/project-task-evidence'
 
 export const dynamic = 'force-dynamic'
 
 // Update a project task: status transitions + evidence notes (real DB writes)
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; taskId: string }> }) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: 'MANAGER', capability: 'project.write' })
   if (isResponse(g)) return g
   const { id, taskId } = await params
   const project = await db.project.findFirst({ where: { OR: [{ id: sanitizeText(id, 40) }, { code: sanitizeText(id, 40) }] } })
@@ -37,15 +38,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.completedAt = status === 'DONE' ? new Date() : null
   }
   if (evidence) {
-    const existing = task.evidence ? (JSON.parse(task.evidence) as unknown[]) : []
-    existing.push({ note: evidence, by: g.user.email, at: new Date().toISOString() })
-    data.evidence = JSON.stringify(existing).slice(0, 8000)
+    try {
+      data.evidence = appendTaskEvidence(task.evidence, { note: evidence, by: g.user.email, at: new Date().toISOString() })
+    } catch (error) {
+      if (!(error instanceof TaskEvidenceLimitError)) throw error
+      return Response.json({ error: error.message, code: 'TASK_EVIDENCE_LIMIT_REACHED' }, { status: 413 })
+    }
   }
   if (description) data.description = description
   if (priority && ['LOW', 'MEDIUM', 'HIGH'].includes(priority)) data.priority = priority
   if (Object.keys(data).length === 0) return Response.json({ error: 'Nothing to update' }, { status: 400 })
 
-  const updated = await db.projectTask.update({ where: { id: task.id }, data })
+  // A note/agent transition acknowledged by another request must not be
+  // overwritten by a stale read. The same compare-and-set protects the human
+  // review precondition above; clients receive an honest conflict to refresh.
+  const changed = await db.projectTask.updateMany({
+    where: { id: task.id, projectId: project.id, status: task.status, evidence: task.evidence, agentJobId: task.agentJobId },
+    data,
+  })
+  if (changed.count !== 1) return Response.json({ error: 'Task changed while this update was being prepared. Refresh and try again.', code: 'TASK_STATE_CHANGED' }, { status: 409 })
+  const updated = await db.projectTask.findUniqueOrThrow({ where: { id: task.id } })
   await audit({ actor: g.user.email, action: 'TASK_UPDATED', userId: g.user.id, projectId: project.id, entityId: task.id, details: { status: updated.status } })
   return Response.json({ ok: true, task: updated, message: `Task "${task.title}" → ${updated.status}` })
 }

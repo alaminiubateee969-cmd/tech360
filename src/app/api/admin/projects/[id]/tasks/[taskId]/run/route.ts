@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 /** Queue a project-scoped AI work draft. It never marks a task complete. */
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string; taskId: string }> }) {
-  const auth = await guard(_req, { minRole: 'MANAGER' })
+  const auth = await guard(_req, { minRole: 'MANAGER', capability: 'project.write' })
   if (isResponse(auth)) return auth
   const { id, taskId } = await params
   const projectRef = sanitizeText(id, 40)

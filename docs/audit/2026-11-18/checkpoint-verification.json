@@ -1,0 +1,593 @@
+{
+  "verifiedAt": "2026-11-19T04:33:26.347730Z",
+  "root": "archives/audit-checkpoints/20261118T215124Z",
+  "result": "PASS",
+  "manifestCount": 15,
+  "snapshotHashesVerified": 95,
+  "recordedPreexistingAbsences": 1,
+  "scope": "Verifies preserved snapshot bytes against their stored manifest, not equality of intentionally repaired current sources. Overlapping versions are not unique source files.",
+  "groups": [
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/approval-projection-repairs/baseline.json",
+      "manifestSha256": "d77f6372dd984387a2bf16558e0fc21289913915f0f40ca0930c5172250a9584",
+      "entries": [
+        {
+          "path": "src/app/api/admin/approvals/route.ts",
+          "sha256": "745d6b22e1977512c14b15726b97463b043b47667cbb69bce719b9aeede46ae2",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/ApprovalsView.tsx",
+          "sha256": "ced6d6a61615989e60470f2fdbd77cdb5e5215b11ecb1e999201cfa6fa1a0fca",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/admin-record-views.ts",
+          "sha256": "e2a01ad86b03143d3b51b685cec57f6fa0aaf4bc109ba87ba9ef2773667adb3d",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/admin-client.ts",
+          "sha256": "af03ff553d6f21838630f438c40c66cf49105f8b66de20faff85ad0677ec81dc",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/clients/[id]/route.ts",
+          "sha256": "0e0c5850c251ab1b855dfeee36f0f1175d2750f35a58d59324d84ea9b1183acf",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/audit-crm-boundaries-db.test.ts",
+          "sha256": "e00f32cace83f3b878d715987f8c65f103411727d01912d84f110956607f215e",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/baseline.json",
+      "manifestSha256": "ad58e7eaa8445aca4e01cb1058085b525ba049ebd24592f8bf5ee0eb14ec4b32",
+      "entries": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "sha256": "ef80dcb2fca7e9f913c6eed3c5c328eabb760cbb97abf79659b287a9a4e61cfc",
+          "status": "PASS"
+        },
+        {
+          "path": ".gitignore",
+          "sha256": "74eea04763316e4baff8a3ea81f710717ac705f9501a3308a9fc47d8ef5883bf",
+          "status": "PASS"
+        },
+        {
+          "path": "KNOWN_ISSUES_AND_BLOCKERS.md",
+          "sha256": "ceeab2faf7796187708c11e325c0271db4417cd723e09d057cd0234ab4c22a2e",
+          "status": "PASS"
+        },
+        {
+          "path": "README.md",
+          "sha256": "e48b5420f9e5a738d8cf907e6a3c996009507fae0f06e7fb04ccc1796dab259b",
+          "status": "PASS"
+        },
+        {
+          "path": "bun.lock",
+          "status": "RECORDED_ABSENT",
+          "note": "Pre-existing deletion recorded; no missing checkpoint contents are invented."
+        },
+        {
+          "path": "scripts/build-source-archive.sh",
+          "sha256": "c5f5b36d0cd1e004bf1399f9f39bb09d6db6951e412493849adb8f6a2944d928",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/auth/login/route.ts",
+          "sha256": "d893a9a69719895dc316c6f3f8c2732fffecbbc9ae8c967ede7481c9a1a034cd",
+          "status": "PASS"
+        },
+        {
+          "path": "worklog.md",
+          "sha256": "1608dbcce5b2e9479ccd1e740f3e92b8416e99425e502a131c8569230fde834f",
+          "status": "PASS"
+        },
+        {
+          "path": "docs/ERROR_FIX_VERIFICATION_2026-11-18.md",
+          "sha256": "7b697847abb6d3383b4d92aa40e988e0a7595213c126d88136e00b0b64d09b58",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/database-errors.ts",
+          "sha256": "2eab25ad43d686f6e07655993c565d88750f5cfbd51d640a849338c58bbecb8c",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/auth-login.test.ts",
+          "sha256": "e4dd6f99b0f98d43e25de136b5bef3e6a6976dadceb5309466463a6641a2453a",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/census-tooling-refinements/baseline.json",
+      "manifestSha256": "a64c25a25aefb21263f66006916b6982a01f588c1cbe17a2a829caa1b04e7a98",
+      "entries": [
+        {
+          "path": "scripts/audit-repository.mjs",
+          "sha256": "3c9b0040b432f4eb5fb2683c0b850226b96382e80d3f230f667a73a22d882434",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/console-accessibility-repairs/baseline.json",
+      "manifestSha256": "4796fcff484379dfe5862eb915d66305b55e357e6b346380040b83968b38f4e2",
+      "entries": [
+        {
+          "path": "src/components/admin/DashboardView.tsx",
+          "sha256": "f2aaef16af51f7d590b7579f621501a68516238bab5d728237be6aa02024e476",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/AgentProviderNotice.tsx",
+          "sha256": "0322a0bf26a00860d00196142063fd7aef699dc09665f9e556b4fd0d6b01da7c",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/shared/DataTable.tsx",
+          "sha256": "b53d667dc7909ef9dc884720cce4494fc08765d1affcac82aa5b59482d9747f5",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/dashboard-agent-roster.test.ts",
+          "sha256": "92a9710ee2b9c2d88fdfa99f562512eecc96841caa9bb1e97878549eb94e1b5b",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/ApprovalsView.tsx",
+          "sha256": "8c8a53b3f5d23ccfd027644334fadc6950ac514c38992ff07c6ddc4abf47e3f0",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/crm-boundary-repairs/baseline.json",
+      "manifestSha256": "9b3633961070b264bd7f646f93d8c87e9de77b4cdcf76560d0fe9f9a01dc29ad",
+      "entries": [
+        {
+          "path": "src/app/api/admin/clients/[id]/route.ts",
+          "sha256": "203d8b7de7c0e029fe5f6b6da501ddd6aa449550e62a2755fb8d8c516a8657ea",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/clients/route.ts",
+          "sha256": "fa9ac28d5b6705a225603a38f316ba37ed4a7b409f39db2796bfcb16ca8adfe5",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/clients/[id]/stage/route.ts",
+          "sha256": "8415e5112abf1697133c72dd4dc56e7063f5628cefd0b6170384c3e8847e3b3e",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/projects/route.ts",
+          "sha256": "4ad6c105f184745e0715d599231a8b66355970246c46db7a20b40f8280ad4339",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/projects/[id]/route.ts",
+          "sha256": "d850605e627fecf116a06402b78f88101da793eca742fc350722af5ce896caaf",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/projects/[id]/status/route.ts",
+          "sha256": "2eff8998cc8637c9bdd3bfad5bf904e3ea8948d590be96ea2db179867341d3ee",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/projects/[id]/tasks/[taskId]/route.ts",
+          "sha256": "0aab899e2d2708fdc059ef97ea048428c33591dc044db0d156ef3a58dce3974d",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/ClientDetailView.tsx",
+          "sha256": "cd7a96b921c8bb99af5572ad1c060ede2703a5a676c9e180005d9163cd7253c4",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/ProjectsView.tsx",
+          "sha256": "ebb82187be5d4b5012e65bb2150258cfbc8124ab7f927dfbd1086194ae34dc28",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/admin-client.ts",
+          "sha256": "b1201dea1d841de64febf17c174c1020ad9e53edd507777aced9cdddc801afb3",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/focused-repairs/baseline.json",
+      "manifestSha256": "bf57726110566db2881269d22d59f3fa7b9db0cfb45090ff5847a29af7453ebc",
+      "entries": [
+        {
+          "path": "src/lib/access-policy.ts",
+          "sha256": "e76685941c8a633bc492e327dea1e2112510fdf8a2bf4261cf3f28788b29c8fa",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/agents/provider-selection.ts",
+          "sha256": "d0d58c81a16c38e3a509b8aaa9d80c16a39217918ccb9077cb5bed99ef0acb49",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/agents/engine.ts",
+          "sha256": "4d429a8ac66f7200096dcf07902ace2514ae7c8ed9334a0ef10a48070cfabb38",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/n8n/adapter.ts",
+          "sha256": "28f8a0bade81b638963b22c12bdc45d7f40c163cca9aa6353d5a589111e9b3bd",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/automation/engine.ts",
+          "sha256": "75ee843a5463cf901f0bd83b9adee225fb7ac63d3067bf59f55dc50550f6b75a",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/automation/actions.ts",
+          "sha256": "461de6d30a6fbbe09e95b9264d908be2cf595a97426e48b9cd3242c70a3a50b8",
+          "status": "PASS"
+        },
+        {
+          "path": "scripts/test.mjs",
+          "sha256": "531e52773bae3eab3b65135678e47f833b32ba6a696562fdd68382098d9a9ce4",
+          "status": "PASS"
+        },
+        {
+          "path": "scripts/validate-production-env.mjs",
+          "sha256": "cd39d12ac70e3ce9bc23c01cde3b8a64ee0593407b9194f2cc920e1578e18f02",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/business-policies.test.ts",
+          "sha256": "6eb2d4f432c46ccc7323d35ebb715d9f81adee75f582cc5017bfb28ab3437c2f",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/agent-provider-selection.test.ts",
+          "sha256": "4fe1e43f4a72213189b1bd62a87f7fbab45b2cdb3f44c437a46e1e0d2688a673",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/webchat-crm-automation-db.test.ts",
+          "sha256": "6a7758f82933479019c6dcdb6051fbaad4162be754c5f3ae16d46fa5ee3e6100",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/production-env.test.ts",
+          "sha256": "241e764e7887838792f513d7636d07a40e9091783eba01017268feebcaaaaf21",
+          "status": "PASS"
+        },
+        {
+          "path": ".env.example",
+          "sha256": "a6d969be8974c4e204c1c056ecfbb7432337d1b48e510de484ce22e2a75b9632",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/frontend-contract-repairs/baseline.json",
+      "manifestSha256": "03c5aaf413e93f3d8de75bb0aebf6b4089d55df9acd904b12afcabd2855ceaf1",
+      "entries": [
+        {
+          "path": "src/components/site/HomeView.tsx",
+          "sha256": "0de9d8ad279177576cea41eccb3ed61d299e1fcb99ceede75c0e119b1ecbdba5",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/site/buttons.tsx",
+          "sha256": "221c5b256b8327bc57884e8922b3069ca7ec17e2d00ee12e03afb9d749a76b29",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/page.tsx",
+          "sha256": "0f402c21b149087c337cb1a784c2e34f0fe1f6bc71ecf6740ff9a304f37adc06",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/reviews/route.ts",
+          "sha256": "1a7e8ca64bbb84807ee02497588ac5d5758bacb0f58ecd146afb64ab647ed075",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/inbox-tenant-repairs/baseline.json",
+      "manifestSha256": "ef46cb6c360ffaa76a25f1c1f19198c510ed467970044c8c62ac5ce46a60101e",
+      "entries": [
+        {
+          "path": "src/app/api/admin/conversations/[id]/route.ts",
+          "sha256": "b389c929eea57da720b88e5f8c4e3fb32df2c11660d67d776ef133b101fb1ea8",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/audit-crm-boundaries-db.test.ts",
+          "sha256": "d63f2b6c20b8edcf8aad9684d007d23cd33323f7538b9a3b81b284c3bfa7cdea",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/isolation-lifecycle-console-repairs/baseline.json",
+      "manifestSha256": "97220ebc49298d8a71fd12a69fd8211f2eada4f786de77dd0915144acd2862a9",
+      "entries": [
+        {
+          "path": "src/lib/preview-db.ts",
+          "sha256": "628c98df83609163119040408d3d0826cba6e5dc63798bea8b637b539b621fa3",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/journey/route.ts",
+          "sha256": "0e247dc397d0f7ae11a525777f878c93195f763fe54ac94e1415a50b9cd3c352",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/audit-project-integrity-db.test.ts",
+          "sha256": "6fd17dcba9616075de84f077152ab9b33cfa07141ca53b86d22a59987cd9241f",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/AdminApp.tsx",
+          "sha256": "f0aec3e7476fd7f32d897bd8867b1d1461e7c57effe6a470a8f3198392b32ec1",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/DashboardView.tsx",
+          "sha256": "07af6d02105d24c753312bfa4918663445db8a8f34c36e4397d04403e024c9ca",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/shared/cards.tsx",
+          "sha256": "95bb8a01d05824da7ceec3857715d046e3c3bb9e50bfedf08fd2cb918592081f",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/model-tooling-repairs/baseline.json",
+      "manifestSha256": "0a424d4083b3ae1f6b0ec1f7a15e2a6f65b06f20d221e5ab3b91d04b42b64caa",
+      "entries": [
+        {
+          "path": "scripts/verify-local-models.mjs",
+          "sha256": "5cd6e2c0f26e04eb247c246458d987dc8c75afceaae4a4e38d6b8a5d25e3712b",
+          "status": "PASS"
+        },
+        {
+          "path": "scripts/benchmark-local-models.mjs",
+          "sha256": "56dfce44f7db78007e1b1485a4ccbc695decd19cf05c315a9df6ce477f736232",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/network-chat-model-repairs/baseline.json",
+      "manifestSha256": "ba997aa87c2a79f2a19a8347e00428e2f417b099aee1de1aa269bfe3650c44f6",
+      "entries": [
+        {
+          "path": "src/lib/safe-fetch.ts",
+          "sha256": "fe0d02c1f5537c9c485d990996f03bc11da0ad2c38606ad1a5c5aa8be371d633",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/rea/target-policy.ts",
+          "sha256": "86946bd364bc8fea13b9408a37d8798307a31b1abecb2bfb8e9b7268c6c5f347",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/webchat/thread.ts",
+          "sha256": "136a94a6193c28888bf35b14428b277abb429c5a0caca13a25793d04ffd278f7",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/chat/stream/route.ts",
+          "sha256": "137ad879fc490467204670a2331bb56ca4af171bc877e5f3e27b4820d8d646c0",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/conversations/[id]/stream/route.ts",
+          "sha256": "3e3cb8a2f02fa7700e6c120935e7ef7a67be989cdb1d0cb2cbdbadbf5f3e7d48",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/model/router.ts",
+          "sha256": "e6de06e890ec30d2b2e7b7fc8ad4d06ac53f96980fb730d39ba3cf9c5a520fa2",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/model/providers/ollama.ts",
+          "sha256": "91d52212456a5c1b3707d5557639ea14e155b10f2dd1d1335f2be3beb1dbe4a9",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/model/providers/openai-compatible.ts",
+          "sha256": "cc0a002102c27f03885822f1651da23cac221cf0ff6592e06724ab66f6986654",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/model-service.test.ts",
+          "sha256": "9f8214d2d0475670cc7244a3c364eeeb373ec4cf5dab035580cc0ccf74353b68",
+          "status": "PASS"
+        },
+        {
+          "path": "docs/deployment/DEPLOYMENT_GUIDE.md",
+          "sha256": "0d8cc141b0d0d4aaf90658aae974fc8f79781158e3e29419195ff64ce01f635b",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/report-entrypoints/baseline.json",
+      "manifestSha256": "42cb3ab2f274e70161b5c32e46d2c5513d76c9fe07cfecdc0b6a7c5b5f157eb4",
+      "entries": [
+        {
+          "path": "README.md",
+          "sha256": "e48b5420f9e5a738d8cf907e6a3c996009507fae0f06e7fb04ccc1796dab259b",
+          "status": "PASS"
+        },
+        {
+          "path": "TEST_AND_QA_REPORT.md",
+          "sha256": "6854cd3a8742e989762e90c48dc9c7bc38425b7fa9eed4e6715b9c3f9125b380",
+          "status": "PASS"
+        },
+        {
+          "path": "COVERAGE-AUDIT.md",
+          "sha256": "813f8953aaf654b73bcfc47ac473f959eabe34cd47c48998abd65391838bb146",
+          "status": "PASS"
+        },
+        {
+          "path": "MASTER_PROJECT_AUDIT.md",
+          "sha256": "30d0edf7be3296d29c6e87a2d20f50a2a51b3fdfa55dcd2a20df9f4e6f515f22",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/report-refresh/baseline.json",
+      "manifestSha256": "d14484a15a63f03939c1c86960c5b9b21c5a666d2e50218aed0648c5d2c5f3f8",
+      "entries": [
+        {
+          "path": "KNOWN_ISSUES_AND_BLOCKERS.md",
+          "sha256": "ceeab2faf7796187708c11e325c0271db4417cd723e09d057cd0234ab4c22a2e",
+          "status": "PASS"
+        },
+        {
+          "path": "docs/deployment/DEPLOYMENT_GUIDE.md",
+          "sha256": "a29c8b43ac50b6fdbd8fcda6ce75e92a7381a8d047b6c109158556437086158e",
+          "status": "PASS"
+        },
+        {
+          "path": "docs/audit/2026-11-18/ISSUES_AND_PLAN.md",
+          "sha256": "6556b1d8ad6a82456e9666b48d9df1203ecc2270d0df37dfc1a7668f7f68f20a",
+          "status": "PASS"
+        },
+        {
+          "path": "worklog.md",
+          "sha256": "1608dbcce5b2e9479ccd1e740f3e92b8416e99425e502a131c8569230fde834f",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/workflow-entrypoint-repairs/baseline.json",
+      "manifestSha256": "146720cca03aeb05ff368032d08058b9523290cc46e3287a8c4e385da02da188",
+      "entries": [
+        {
+          "path": "src/app/page.tsx",
+          "sha256": "7e925debc61e682b8af5920ac0c9236409bedb2d92bb06ae5c4279b71f52edc2",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/[...path]/page.tsx",
+          "sha256": "cdc0631a97b58390c81fdc9467d036a686f06fb60518d49dc8f13067b945bdf6",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/agents/jobs.ts",
+          "sha256": "bb5a7253f537c2e9b40e6d817a1324ade92a36fb94512527db16517782113a22",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/projects/[id]/tasks/[taskId]/route.ts",
+          "sha256": "4e0a6efb1aad1f7454cfe648273e46ab03f43075aa86704da547b49be4f853d3",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/projects/[id]/status/route.ts",
+          "sha256": "e404ea2cfa61c102316cb243aa18417bcf052092bfa0d9c78d17bbb0383f66b2",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/clients/[id]/stage/route.ts",
+          "sha256": "cbc2eea2152c8defcde5ab5bb849825b7328a9ebf2f1cfeb88db9d3ef3020c7a",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/LeadsBoard.tsx",
+          "sha256": "4ff115bb7ccb5ef2d5abd6aea91d06091c2fad90956a4179d74c2efd167dd2f2",
+          "status": "PASS"
+        },
+        {
+          "path": "src/components/admin/ProjectsView.tsx",
+          "sha256": "24b597e4d7d0d3b7b89a32b2ea590eb24ee24f544879ac69f5d631e38e8a3f4b",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/portfolio-filter-history.test.ts",
+          "sha256": "6b8e7527af3518b60ef6571b408f064427ce1db6b9495105eb5d94dd842b3f7e",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/pipeline-public-contract.test.ts",
+          "sha256": "da42c650e5b1dbf800acc713d1c33f467c26a8bbfdec94f3383c2bc2d7e7cddf",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/factory-super-admin-boundary.test.ts",
+          "sha256": "07aca920556e040bd4d6644573b7e920638ef6d695fdd5749bdd02ffa5be59e0",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/agent-readiness.test.ts",
+          "sha256": "d287737d0b9ab1ea282fdb04514357ab40d8998f98831987ddf83e53f6209e68",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/public-home-contract.test.ts",
+          "sha256": "485ae50826d23c30cd6af73bf357492dc50da354565d3a690e4f56eb596a025b",
+          "status": "PASS"
+        },
+        {
+          "path": "docs/deployment/DEPLOYMENT_GUIDE.md",
+          "sha256": "a29c8b43ac50b6fdbd8fcda6ce75e92a7381a8d047b6c109158556437086158e",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "manifest": "archives/audit-checkpoints/20261118T215124Z/workflow-lifecycle-repairs/baseline.json",
+      "manifestSha256": "f5b74676652435ec1823746f5d630186385a683b8734971597c2aae30b511675",
+      "entries": [
+        {
+          "path": "src/lib/lifecycle-gates.ts",
+          "sha256": "c1b6de85985b5e9b7ee34ff32f1cc194b49c185ac8d80cd211e9d6b2e02c7eb9",
+          "status": "PASS"
+        },
+        {
+          "path": "src/lib/journey.ts",
+          "sha256": "b98fd094043182e074419da436c82636a587d1f4743fa300242e2a7596745600",
+          "status": "PASS"
+        },
+        {
+          "path": "src/app/api/admin/projects/[id]/tasks/[taskId]/run/route.ts",
+          "sha256": "63a9abc7969929da7b12b4a25fd360ccb82d18f63de0a340b57acb600ae7221f",
+          "status": "PASS"
+        },
+        {
+          "path": "tests/project-task-agent-loop-contract.test.ts",
+          "sha256": "0deb8a82408b946d22244a52f56cc15f32f4b322a0db6de5de1bf3f809de34d3",
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "privateFixturePermissionChecks": [
+    {
+      "path": ".preview/audit-browser-fixture.json",
+      "mode": "0600",
+      "contentsRead": false
+    },
+    {
+      "path": ".preview/audit-browser-approvals.json",
+      "mode": "0600",
+      "contentsRead": false
+    }
+  ]
+}

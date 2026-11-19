@@ -14,20 +14,25 @@ const MESSAGE_SELECT = {
 /** Messages strictly after `afterId` in (createdAt, id) order. Visitor scope excludes notes at query level. */
 export async function messagesAfter(conversationId: string, afterId: string | null, scope: 'VISITOR' | 'OPERATOR'): Promise<StoredChatMessage[]> {
   const visibility = scope === 'VISITOR' ? VISITOR_VISIBLE_WHERE : {}
-  let since: Date | null = null
-  if (afterId) {
-    const anchor = await db.chatMessage.findFirst({ where: { id: afterId, conversationId }, select: { createdAt: true } })
-    since = anchor?.createdAt ?? null
-  }
-  const rows = await db.chatMessage.findMany({
-    where: { conversationId, ...visibility, ...(since ? { createdAt: { gte: since } } : {}) },
+  const anchor = afterId
+    ? await db.chatMessage.findFirst({ where: { id: afterId, conversationId }, select: { id: true, createdAt: true } })
+    : null
+  // Apply BOTH parts of the ordering key before LIMIT, including when a
+  // visitor's anchor is an internal note. Slicing a timestamp-only page in
+  // memory stalls or drops ties as soon as an anchor falls outside that page.
+  return db.chatMessage.findMany({
+    where: {
+      conversationId,
+      ...visibility,
+      ...(anchor ? { OR: [
+        { createdAt: { gt: anchor.createdAt } },
+        { createdAt: anchor.createdAt, id: { gt: anchor.id } },
+      ] } : {}),
+    },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     take: 300,
     select: MESSAGE_SELECT,
   })
-  if (!afterId || !since) return rows
-  const idx = rows.findIndex((r) => r.id === afterId)
-  return idx >= 0 ? rows.slice(idx + 1) : rows.filter((r) => r.createdAt.getTime() > (since as Date).getTime())
 }
 
 /** Visitor delta: visible messages, delivery receipts and live status (agent typing etc.). */
@@ -95,35 +100,53 @@ export async function operatorDelta(conversationId: string, afterId: string | nu
 }
 
 /** Build a Server-Sent Events stream that polls `tick` until the client disconnects or maxMs elapses. */
-export function sseStream(signal: AbortSignal, tick: (send: (event: string, data: unknown) => void) => Promise<boolean>, opts: { intervalMs?: number; maxMs?: number } = {}) {
+export function sseStream(signal: AbortSignal, tick: (send: (event: string, data: unknown, id?: string) => void) => Promise<boolean>, opts: { intervalMs?: number; maxMs?: number } = {}) {
   const intervalMs = opts.intervalMs ?? 1500
   const maxMs = opts.maxMs ?? 55_000
   const encoder = new TextEncoder()
+  let cancel = () => {}
   return new ReadableStream<Uint8Array>({
-    async start(controller) {
+    start(controller) {
       const started = Date.now()
       let closed = false
-      const close = () => { if (!closed) { closed = true; try { controller.close() } catch { /* already closed */ } } }
-      signal.addEventListener('abort', close)
-      const send = (event: string, data: unknown) => {
+      let wake: (() => void) | null = null
+      const close = (cancelled = false) => {
         if (closed) return
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+        closed = true
+        signal.removeEventListener('abort', abort)
+        wake?.()
+        if (!cancelled) controller.close()
+      }
+      const abort = () => close()
+      cancel = () => close(true)
+      signal.addEventListener('abort', abort, { once: true })
+      if (signal.aborted) { close(); return }
+      const send = (event: string, data: unknown, id?: string) => {
+        if (closed) return
+        // EventSource only sends Last-Event-ID when an actual id: field was
+        // delivered. Strip frame delimiters even though message IDs are DB IDs.
+        const cursor = id ? `id: ${id.replace(/[\r\n\0]/g, '')}\n` : ''
+        controller.enqueue(encoder.encode(`${cursor}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
       }
       controller.enqueue(encoder.encode(`retry: 3000\n\n`))
-      while (!closed && Date.now() - started < maxMs) {
-        let keepGoing = true
+      void (async () => {
         try {
-          keepGoing = await tick(send)
+          while (!closed && Date.now() - started < maxMs) {
+            if (!await tick(send) || closed) break
+            await new Promise<void>((resolve) => {
+              const timer = setTimeout(() => { wake = null; resolve() }, intervalMs)
+              wake = () => { clearTimeout(timer); wake = null; resolve() }
+            })
+          }
+          send('reconnect', { afterMs: 0 })
         } catch {
           send('error', { code: 'STREAM_READ_FAILED' })
-          keepGoing = false
+        } finally {
+          close()
         }
-        if (!keepGoing) break
-        await new Promise((r) => setTimeout(r, intervalMs))
-      }
-      send('reconnect', { afterMs: 0 })
-      close()
+      })()
     },
+    cancel() { cancel() },
   })
 }
 

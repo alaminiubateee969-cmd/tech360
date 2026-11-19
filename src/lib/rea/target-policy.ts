@@ -22,6 +22,7 @@
  * to the operator's laptop, and the UI must say so rather than pretend.
  */
 import { isIP } from 'node:net'
+import { classifyNetworkAddress, type AddressClassification } from '@/lib/network-address'
 import { REA_UNSUPPORTED_TARGETS, type ReaTargetKind } from './evidence'
 
 export const REA_LIMITS = {
@@ -64,27 +65,6 @@ export type AdmissionCode =
 const ALLOWED_SCHEMES = new Set(['http:', 'https:'])
 const ALLOWED_PORTS = new Set(['80', '443', ''])
 
-/** IPv4 blocks that must never be fetched from an operator-supplied URL. */
-const PRIVATE_IPV4_PREFIXES = [
-  '10.',
-  '192.168.',
-  '172.16.', '172.17.', '172.18.', '172.19.',
-  '172.20.', '172.21.', '172.22.', '172.23.',
-  '172.24.', '172.25.', '172.26.', '172.27.',
-  '172.28.', '172.29.', '172.30.', '172.31.',
-  '127.',
-  '169.254.',
-  '0.',
-  '100.64.',
-  '198.18.', '198.19.',
-  '198.51.100.',
-  '203.0.113.',
-  '224.', '225.', '226.', '227.', '228.', '229.', '230.', '231.',
-  '232.', '233.', '234.', '235.', '236.', '237.', '238.', '239.',
-  '240.', '241.', '242.', '243.', '244.', '245.', '246.', '247.',
-  '248.', '249.', '250.', '251.', '252.', '253.', '254.', '255.',
-] as const
-
 /** Hostname spellings that resolve to this machine. */
 const LOOPBACK_HOSTNAMES = new Set([
   'localhost',
@@ -115,30 +95,8 @@ function deny(code: AdmissionCode, reason: string): AdmissionVerdict {
  * resolution — a public hostname that resolves to 127.0.0.1 or 169.254.169.254
  * is the classic bypass, and checking only the literal would miss it.
  */
-export function classifyAddress(ip: string): 'PUBLIC' | 'PRIVATE' | 'LOOPBACK' | 'LINK_LOCAL' | 'METADATA' | 'RESERVED' {
-  const value = ip.trim().toLowerCase()
-  const version = isIP(value)
-  if (version === 0) return 'RESERVED'
-
-  if (version === 4) {
-    if (value === '169.254.169.254') return 'METADATA'
-    if (value.startsWith('127.')) return 'LOOPBACK'
-    if (value.startsWith('169.254.')) return 'LINK_LOCAL'
-    if (PRIVATE_IPV4_PREFIXES.some((prefix) => value.startsWith(prefix))) return 'PRIVATE'
-    return 'PUBLIC'
-  }
-
-  // IPv6: expand the compressed forms people actually use to reach localhost.
-  const normalized = value.replace(/^\[|\]$/g, '')
-  if (normalized === '::' || normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') return 'LOOPBACK'
-  if (normalized.startsWith('fe80')) return 'LINK_LOCAL'
-  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return 'PRIVATE'
-  if (normalized.startsWith('ff')) return 'RESERVED'
-  // IPv4-mapped IPv6 (::ffff:127.0.0.1) must be judged as its IPv4 payload.
-  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(normalized)
-  if (mapped) return classifyAddress(mapped[1])
-  if (normalized.startsWith('::ffff:0:')) return 'RESERVED'
-  return 'PUBLIC'
+export function classifyAddress(ip: string): AddressClassification {
+  return classifyNetworkAddress(ip)
 }
 
 export function assertSafeAddress(ip: string): { safe: boolean; code: AdmissionCode | null; reason: string } {

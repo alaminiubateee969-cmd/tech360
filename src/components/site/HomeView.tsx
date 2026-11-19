@@ -18,6 +18,7 @@ import { industryImage, industryImageAlt } from "@/data/industry-images";
 import { serviceImageAlt, serviceImageSrc } from "@/data/service-images";
 import { getPortfolioEntry } from "@/data/portfolio";
 import { cn } from "@/lib/utils";
+import { parsePublicReviews, type PublicReview } from "@/lib/public-review-contract";
 import { Icon } from "./icons";
 import { SectionHeading } from "./SectionHeading";
 import { ImageView } from "./ImageView";
@@ -307,7 +308,7 @@ function Hero() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center motion-reduce:hidden"
       >
-        <source src="/videos/hero.mp4" type="video/mp4" />
+        <source src="/videos/hero-loop.mp4" type="video/mp4" />
       </video>
 
       {/* Readability scrim: darker on the left behind copy, lighter over the visual */}
@@ -848,28 +849,23 @@ function DeliveryJourney() {
 
 /* ---------------- Approved Client Reviews (renders ONLY when real reviews exist) ---------------- */
 
-interface ApprovedReview {
-  id: string;
-  rating: number;
-  headline: string | null;
-  comment: string;
-  authorName: string;
-  companyName: string | null;
-  projectTitle: string | null;
-}
-
 function ClientReviews() {
-  const [reviews, setReviews] = useState<ApprovedReview[]>([]);
+  const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
-    fetch("/api/public/reviews", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { reviews: [] }))
-      .then((d: { reviews?: ApprovedReview[] }) => {
-        if (Array.isArray(d.reviews)) setReviews(d.reviews.slice(0, 6));
+    const controller = new AbortController();
+    fetch("/api/reviews", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Public reviews are unavailable');
+        return parsePublicReviews(await response.json());
       })
-      .catch(() => {});
+      .then((records) => { if (!controller.signal.aborted) setReviews(records.slice(0, 6)); })
+      .catch(() => { if (!controller.signal.aborted) setUnavailable(true); });
+    return () => controller.abort();
   }, []);
 
+  if (unavailable) return <p role="status" className="mx-auto max-w-7xl px-4 py-6 text-sm text-slate-600">Client feedback is temporarily unavailable. Please try again later.</p>;
   if (reviews.length === 0) return null;
 
   return (
@@ -884,7 +880,7 @@ function ClientReviews() {
           <RevealItem key={rev.id} className="h-full">
             <figure className="flex h-full flex-col justify-between rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
               <div>
-                <div
+                {rev.rating !== null ? <div
                   className="flex items-center gap-0.5 text-amber-500"
                   aria-label={`${rev.rating} out of 5 stars`}
                 >
@@ -893,26 +889,21 @@ function ClientReviews() {
                       key={i}
                       className={cn(
                         "size-4",
-                        i < rev.rating
+                        i < (rev.rating ?? 0)
                           ? "fill-amber-400 text-amber-400"
                           : "text-slate-200"
                       )}
                     />
                   ))}
-                </div>
-                {rev.headline ? (
-                  <p className="mt-3 text-base font-bold text-[#0B1F33]">
-                    {rev.headline}
-                  </p>
-                ) : null}
-                <blockquote className="mt-2 text-sm leading-relaxed text-[#475569]">
-                  &ldquo;{rev.comment}&rdquo;
-                </blockquote>
+                </div> : null}
+                {rev.content ? <blockquote className="mt-2 text-sm leading-relaxed text-[#475569]">
+                  &ldquo;{rev.content}&rdquo;
+                </blockquote> : null}
               </div>
               <figcaption className="mt-5 border-t border-[#F1F5F9] pt-3 text-xs">
-                <div className="font-semibold text-[#0B1F33]">{rev.authorName}</div>
+                <div className="font-semibold text-[#0B1F33]">{rev.name}</div>
                 <div className="text-[#64748B]">
-                  {[rev.companyName, rev.projectTitle].filter(Boolean).join(" · ") ||
+                  {[rev.businessName, rev.projectName].filter(Boolean).join(" · ") ||
                     "Verified Tech360 Client"}
                 </div>
               </figcaption>

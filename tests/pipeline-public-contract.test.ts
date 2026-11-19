@@ -154,7 +154,7 @@ describe('the operator pipeline stays private and out of the public website', ()
   })
 
   it('routes the public URL to customer process content without bundling the operator view', () => {
-    const page = read('src/app/page.tsx')
+    const page = read('src/components/site/PublicSiteApp.tsx')
     assert.match(page, /case 'pipeline': return <ProcessView \/>/)
     assert.doesNotMatch(page, /import AgentPipelineView from '@\/components\/site\/AgentPipelineView'/)
     const header = read('src/components/site/SiteHeader.tsx')

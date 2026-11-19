@@ -21,6 +21,8 @@ import type {
   ProviderStatus,
 } from '../types'
 
+import { isEmbeddingBatch, isEmbeddingVector } from '../response-validation'
+
 export const OLLAMA_PROVIDER: ModelProviderKind = 'ollama'
 
 export type OllamaConfig = {
@@ -124,16 +126,17 @@ export async function ollamaChat(
     }
     if (request.topP !== undefined) options.top_p = request.topP
     if (request.stop?.length) options.stop = request.stop
-    if (request.jsonMode) options.format = 'json'
 
     const res = await fetch(`${config.baseUrl}/api/chat`, {
       method: 'POST',
+      redirect: 'error', // an admitted private host must never redirect prompts elsewhere
       headers: headers(config),
       body: JSON.stringify({
         model,
         messages: request.messages,
         stream: false,
-        ...options,
+        options,
+        ...(request.jsonMode ? { format: 'json' } : {}),
       }),
       signal: controller.signal,
     })
@@ -161,19 +164,21 @@ export async function ollamaChat(
       load_duration?: number
     }
     const durationMs = Date.now() - started
-    // Ollama reports load_duration (model load) + total_duration (whole call).
-    // First-token latency is approximated as total_duration - eval time.
-    const totalNs = typeof body.total_duration === 'number' ? body.total_duration : 0
-    const loadNs = typeof body.load_duration === 'number' ? body.load_duration : 0
-    const evalCount = typeof body.eval_count === 'number' ? body.eval_count : 0
-    const evalNs = totalNs > 0 ? Math.max(0, totalNs - loadNs) : 0
-    const firstTokenMs = evalCount > 0 && evalNs > 0 ? Math.round(evalNs / evalCount) : null
+    const content = typeof body?.message?.content === 'string' ? body.message.content : ''
+    if (!content.trim()) {
+      return {
+        ok: false, provider: OLLAMA_PROVIDER, model, content: '', firstTokenMs: null, durationMs,
+        tokensUsed: null, finishReason: null, error: 'ollama returned no usable chat content', errorCode: 'INVALID_PROVIDER_RESPONSE',
+      }
+    }
     return {
       ok: true,
       provider: OLLAMA_PROVIDER,
       model,
-      content: typeof body.message?.content === 'string' ? body.message.content : '',
-      firstTokenMs,
+      content,
+      // This non-streaming request cannot measure time to first token.
+      // Average generation time per token is a different metric.
+      firstTokenMs: null,
       durationMs,
       tokensUsed:
         typeof body.eval_count === 'number'
@@ -211,32 +216,46 @@ export async function ollamaEmbed(
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), config.timeoutMs)
   try {
-    const res = await fetch(`${config.baseUrl}/api/embeddings`, {
-      method: 'POST',
-      headers: headers(config),
-      body: JSON.stringify({ model, prompt: request.input }),
-      signal: controller.signal,
-    })
-    if (!res.ok) {
+    const inputs = typeof request.input === 'string' ? [request.input] : request.input
+    const vectors: number[][] = []
+    // Keep the legacy /api/embeddings contract: it accepts ONE prompt, not an
+    // array. Use one bounded request per input instead of silently returning
+    // one vector for an entire batch. All requests share the same deadline.
+    for (const prompt of inputs) {
+      const res = await fetch(`${config.baseUrl}/api/embeddings`, {
+        method: 'POST',
+        redirect: 'error',
+        headers: headers(config),
+        body: JSON.stringify({ model, prompt }),
+        signal: controller.signal,
+      })
+      if (!res.ok) {
+        return {
+          ok: false, provider: OLLAMA_PROVIDER, model, vectors: [], dimensions: null,
+          durationMs: Date.now() - started, error: `ollama embedding upstream returned HTTP ${res.status}`, errorCode: 'PROVIDER_ERROR',
+        }
+      }
+      const body = (await res.json()) as { embedding?: unknown } | null
+      if (!isEmbeddingVector(body?.embedding)) {
+        return {
+          ok: false, provider: OLLAMA_PROVIDER, model, vectors: [], dimensions: null,
+          durationMs: Date.now() - started, error: 'ollama returned an invalid embedding vector', errorCode: 'INVALID_PROVIDER_RESPONSE',
+        }
+      }
+      vectors.push(body.embedding)
+    }
+    if (!isEmbeddingBatch(vectors, inputs.length)) {
       return {
-        ok: false,
-        provider: OLLAMA_PROVIDER,
-        model,
-        vectors: [],
-        dimensions: null,
-        durationMs: Date.now() - started,
-        error: `ollama embedding upstream returned HTTP ${res.status}`,
-        errorCode: 'PROVIDER_ERROR',
+        ok: false, provider: OLLAMA_PROVIDER, model, vectors: [], dimensions: null,
+        durationMs: Date.now() - started, error: 'ollama returned an incomplete or inconsistent embedding batch', errorCode: 'INVALID_PROVIDER_RESPONSE',
       }
     }
-    const body = (await res.json()) as { embedding?: number[] }
-    const vector = Array.isArray(body.embedding) ? body.embedding : []
     return {
       ok: true,
       provider: OLLAMA_PROVIDER,
       model,
-      vectors: vector.length ? [vector] : [],
-      dimensions: vector.length || null,
+      vectors,
+      dimensions: vectors[0].length,
       durationMs: Date.now() - started,
       error: null,
       errorCode: null,
@@ -265,7 +284,7 @@ export async function ollamaListModels(
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 10_000)
   try {
-    const res = await fetch(`${config.baseUrl}/api/tags`, { headers: headers(config), signal: controller.signal })
+    const res = await fetch(`${config.baseUrl}/api/tags`, { headers: headers(config), signal: controller.signal, redirect: 'error' })
     if (!res.ok) return { ok: false, models: [], error: `ollama tags returned HTTP ${res.status}` }
     const body = (await res.json()) as {
       models?: Array<{ name?: string; size?: number; details?: { family?: string } }>

@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 describe('project task AI draft human loop wiring', () => {
   it('queues a project-scoped draft only after final scope approval and labels it as not complete', () => {
     const route = read('src/app/api/admin/projects/[id]/tasks/[taskId]/run/route.ts')
-    assert.match(route, /guard\(_req, \{ minRole: 'MANAGER' \}\)/)
+    assert.match(route, /guard\(_req, \{ minRole: 'MANAGER', capability: 'project.write' \}\)/)
     assert.match(route, /status: 'FINAL'/)
     assert.match(route, /projectTaskId: task\.id/)
     assert.match(route, /workflow: 'PROJECT_TASK_EXECUTION'/)

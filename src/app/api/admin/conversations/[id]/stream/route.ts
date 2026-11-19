@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const conversation = await getConversationForTenant(sanitizeText(id, 40), tenantOf(g.user as typeof g.user & { tenantId?: string }))
   if (!conversation) return Response.json({ error: 'Conversation not found', code: 'NOT_FOUND' }, { status: 404 })
   const url = new URL(req.url)
-  let lastId: string | null = sanitizeText(url.searchParams.get('after') ?? req.headers.get('last-event-id') ?? '', 40) || null
+  let lastId: string | null = sanitizeText(req.headers.get('last-event-id') ?? url.searchParams.get('after') ?? '', 40) || null
   let lastStatus = ''
   let lastTyping = false
   let lastReceipts = ''

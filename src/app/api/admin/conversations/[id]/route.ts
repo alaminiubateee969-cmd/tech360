@@ -25,7 +25,7 @@ type Ctx = { params: Promise<{ id: string }> }
 type GuardUser = { id: string; email: string; role: string; tenantId?: string }
 
 /** CRM profile + activity timeline for the linked customer (follows merge pointers). */
-async function crmProfile(clientRowId: string | null) {
+async function crmProfile(clientRowId: string | null, tenantId: string) {
   if (!clientRowId) return null
   let client = await db.client.findUnique({ where: { id: clientRowId }, include: { lead: true } })
   if (client?.mergedIntoId) {
@@ -47,7 +47,9 @@ async function crmProfile(clientRowId: string | null) {
       select: { id: true, action: true, actor: true, createdAt: true },
     }),
     db.chatConversation.findMany({
-      where: { clientId: client.id },
+      // Linking the same CRM client never grants access to another tenant's
+      // thread IDs, subjects or operator workflow state.
+      where: { clientId: client.id, tenantId },
       orderBy: { lastMessageAt: 'desc' },
       take: 10,
       select: { id: true, status: true, inboxState: true, lastMessageAt: true, subject: true },
@@ -105,7 +107,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   }
   await markReadByTeam(conversationId).catch(() => 0)
 
-  const profile = await crmProfile(conversation.clientId)
+  const profile = await crmProfile(conversation.clientId, tenantId)
 
   return Response.json({
     conversation: {

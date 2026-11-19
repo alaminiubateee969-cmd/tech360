@@ -296,7 +296,7 @@ describe('portfolio filters — browser history', () => {
 describe('portfolio filters — component and router wiring', async () => {
   const { readFileSync } = await import('node:fs')
   const explorer = readFileSync(new URL('../src/components/site/PortfolioExplorer.tsx', import.meta.url), 'utf8')
-  const page = readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8')
+  const page = readFileSync(new URL('../src/components/site/PublicSiteApp.tsx', import.meta.url), 'utf8')
 
   it('explorer uses the controller: push for discrete changes, typing for search', () => {
     assert.match(explorer, /createExplorerHistory\(/)

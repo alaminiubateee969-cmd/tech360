@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Eye, GripVertical, Mail, Phone, Building2, Clock, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { fmtDateShort } from '@/lib/admin-client'
+import { api, fmtDateShort } from '@/lib/admin-client'
 import { StatusBadge } from './shared/StatusBadge'
 import { Button } from '@/components/ui/button'
 
@@ -172,13 +172,7 @@ export function LeadsBoard({
     if (movingId) return
     setMovingId(activeId)
     try {
-      const res = await fetch(`/api/admin/clients/${encodeURIComponent(activeId)}/stage`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pipelineStage: targetStage }),
-      })
-      const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string; pipelineStage?: string }
-      if (!res.ok) throw new Error(data.error || data.message || `Move failed (${res.status})`)
+      const data = await api.moveClientStage(activeId, targetStage)
       toast.success(data.message || `Moved to ${pretty(targetStage)}`)
       onMoved()
     } catch (err) {

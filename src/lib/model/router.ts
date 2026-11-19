@@ -3,8 +3,9 @@
 // ============================================================
 // Chooses which private model backend serves a request.
 //
-// ORDER (configurable through AI_PROVIDER_ORDER, default local-first):
-//   ollama  → openai-compatible → zai (existing remote provider)
+// ORDER (configurable through AI_PROVIDER_ORDER, default local-only):
+//   ollama → openai-compatible
+// Remote zai execution requires explicitly including zai in the chain.
 //
 // The router NEVER falls back to a public provider silently: the fallback
 // chain is explicit, and the response records which provider answered.
@@ -42,12 +43,13 @@ export type ProviderOrder = ModelProviderKind[]
 export function resolveProviderOrder(env: NodeJS.ProcessEnv = process.env): ProviderOrder {
   const raw = (env.AI_PROVIDER_ORDER ?? '').trim()
   const allowed: ModelProviderKind[] = ['ollama', 'openai-compatible', 'zai']
-  if (!raw) return ['ollama', 'openai-compatible', 'zai']
-  const parsed = raw
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter((s): s is ModelProviderKind => (allowed as string[]).includes(s))
-  return parsed.length ? parsed : ['ollama', 'openai-compatible', 'zai']
+  if (!raw) return ['ollama', 'openai-compatible']
+  const parsed = raw.split(',').map((s) => s.trim().toLowerCase())
+  // A misspelled explicit chain must fail closed, never authorize a remote
+  // provider through a default. Merely configuring a ZAI key is not consent
+  // to export private model-gateway requests to it.
+  if (parsed.some((s) => !(allowed as string[]).includes(s))) return []
+  return [...new Set(parsed)] as ModelProviderKind[]
 }
 
 export type ResolvedProvider = {

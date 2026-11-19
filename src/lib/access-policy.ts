@@ -156,8 +156,11 @@ export function isReadOnlyRole(user: { role: string } | null | undefined): boole
 }
 
 export function hasRole(user: { role: string } | null | undefined, minimumRole: string): boolean {
-  if (!user) return false
-  return (ROLE_RANK[user.role] ?? 0) >= (ROLE_RANK[minimumRole] ?? 0)
+  // An invalid policy must deny access, not become a zero-rank requirement.
+  // Validate both sides before indexing the shared hierarchy (including keys
+  // inherited from Object.prototype).
+  if (!user || !isValidRole(user.role) || !isValidRole(minimumRole)) return false
+  return ROLE_RANK[user.role] >= ROLE_RANK[minimumRole]
 }
 
 export function hasCapability(user: { role: string } | null | undefined, capability: Capability): boolean {

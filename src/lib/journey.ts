@@ -7,11 +7,11 @@ import { newCorrelationId, logError, audit, sanitizeText } from '@/lib/security'
 import { PIPELINE_STAGES, COMPANY } from '@/lib/constants'
 import { PAD_CSS, padHeader, padMeta, padFooter, padSignatures, docDate } from '@/lib/letterhead'
 import { getDefaultBranding, brandingCss, brandingPadHeader, brandingPadFooter, sealHtmlFor } from '@/lib/document-branding'
-import { evaluateDeliveryAcceptance, evaluateProjectClosure } from '@/lib/lifecycle-policy'
+import { evaluateDeliveryAcceptance } from '@/lib/lifecycle-policy'
 import { hasExplicitContactConsent, selectWelcomeChannel } from '@/lib/contact-policy'
 import { hasAcceptedPreviewDelivery } from '@/lib/preview-policy'
 import { PREVIEW_CLIENT_SCRIPT } from '@/lib/preview-client-script'
-import { requireApprovedScope, requirePreviewBeforePayment } from '@/lib/lifecycle-gates'
+import { requireApprovedScope, requirePreviewBeforePayment, projectClosureEvidence } from '@/lib/lifecycle-gates'
 import { sourcePaymentEvidence } from '@/lib/source-payment'
 import { createHandoverManifest, parseHandoverManifest, verifyHandoverArtifacts } from '@/lib/handover-artifacts'
 import { normalizeIdentity, resolveOrCreateVerifiedClient, type VerifiedIdentityProof } from '@/lib/identity-resolver'
@@ -92,7 +92,8 @@ async function setStage(clientId: string, stage: string, note: string) {
       to: stage,
       note,
     }).catch(() => null)
-    await db.automationLog.updateMany({ where: { clientId, status: 'RUNNING' }, data: { status: 'SUCCESS' } }).catch(() => null)
+    // A CRM stage change is not evidence that every concurrent workflow for
+    // this client succeeded. Each workflow finishes its own log by ID.
   }
 }
 
@@ -1823,33 +1824,7 @@ export async function requestReviewAndReferral(clientRowId: string) {
 }
 
 export async function closeProject(projectId: string, actor: string) {
-  const project = await db.project.findUnique({
-    where: { id: projectId },
-    include: { client: true, payments: true, tasks: true, deliveries: true, handovers: true },
-  })
-  if (!project) throw new Error('Project not found')
-  const paid = project.payments.filter((payment) => payment.status === 'PAID').reduce((total, payment) => total + payment.amount, 0)
-  const delivery = project.deliveries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
-  const handover = project.handovers
-    .filter((row) => row.type === 'SOURCE_CODE')
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
-  let deliveryAnswers: { received: boolean; working: boolean } | null = null
-  try {
-    const parsed = JSON.parse(delivery?.confirmationAnswers ?? 'null') as Record<string, unknown> | null
-    if (parsed && typeof parsed.received === 'boolean' && typeof parsed.working === 'boolean') {
-      deliveryAnswers = { received: parsed.received, working: parsed.working }
-    }
-  } catch {
-    deliveryAnswers = null
-  }
-  const closure = evaluateProjectClosure({
-    totalAmount: project.totalAmount,
-    paidAmount: paid,
-    taskStatuses: project.tasks.map((task) => task.status),
-    deliveryStatus: delivery?.status,
-    deliveryAnswers,
-    handoverStatus: handover?.status,
-  })
+  const { project, paid, closure } = await projectClosureEvidence(projectId)
   if (!closure.allowed) {
     const reasons = {
       PAYMENT_INCOMPLETE: 'full payment not verified',

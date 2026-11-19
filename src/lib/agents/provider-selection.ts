@@ -39,7 +39,7 @@ export interface AgentProviderCatalogEntry {
 
 type Environment = Record<string, string | undefined>
 
-function normalizePreferredProvider(raw: string | undefined): AgentProviderKind | null {
+function normalizePreferredProvider(raw: string | undefined): AgentProviderKind | 'invalid' | null {
   const v = (raw ?? '').trim().toLowerCase()
   if (!v || v === 'auto') return null
   if (v === 'none' || v === 'off' || v === 'disabled') return 'none'
@@ -49,7 +49,7 @@ function normalizePreferredProvider(raw: string | undefined): AgentProviderKind 
   if (v === 'gemini' || v === 'google' || v === 'google-gemini') return 'gemini'
   if (v === 'groq') return 'groq'
   if (v === 'zai') return 'zai'
-  return null
+  return 'invalid'
 }
 
 function isProviderConfigured(kind: Exclude<AgentProviderKind, 'none'>, env: Environment): boolean {
@@ -79,15 +79,23 @@ const PRIORITY_ORDER: Array<Exclude<AgentProviderKind, 'none'>> = [
 ]
 
 /**
- * The execution priority used by runAgent AND its diagnostics.
+ * The execution policy used by runAgent AND its diagnostics.
+ * An explicit global choice (including disabled/invalid/missing configuration)
+ * cannot be overridden by a persisted agent model or another configured key.
+ * Only automatic mode permits per-agent prefixes and priority selection.
  * Configuration is not a provider health check: only a real execution proves
  * that the upstream accepts a request. Never include endpoint values or keys.
  */
-export function resolveAgentProvider(env: Environment = process.env): AgentProviderKind {
+export function resolveAgentProvider(env: Environment = process.env, agentModel?: string): AgentProviderKind {
   const preferred = normalizePreferredProvider(env.AI_PROVIDER)
-  if (preferred === 'none') return 'none'
-  if (preferred && isProviderConfigured(preferred, env)) return preferred
+  if (preferred === 'none' || preferred === 'invalid') return 'none'
+  if (preferred) return isProviderConfigured(preferred, env) ? preferred : 'none'
 
+  const prefix = agentModel?.trim().match(/^(openai|gemini|groq|openrouter|ai-gateway|zai):(.+)$/i)
+  if (prefix) {
+    const kind = prefix[1].toLowerCase() as Exclude<AgentProviderKind, 'none'>
+    return isProviderConfigured(kind, env) ? kind : 'none'
+  }
   for (const kind of PRIORITY_ORDER) {
     if (isProviderConfigured(kind, env)) return kind
   }
@@ -95,7 +103,26 @@ export function resolveAgentProvider(env: Environment = process.env): AgentProvi
 }
 
 export function getAgentProviderStatus(env: Environment = process.env): AgentProviderStatus {
+  const preferred = normalizePreferredProvider(env.AI_PROVIDER)
+  if (preferred === 'none') {
+    return {
+      provider: 'none', state: 'NOT_CONFIGURED', configured: false,
+      detail: 'AI execution is explicitly disabled by AI_PROVIDER; no provider requests will be sent.',
+    }
+  }
+  if (preferred === 'invalid') {
+    return {
+      provider: 'none', state: 'MISCONFIGURED', configured: false,
+      detail: 'AI_PROVIDER is not supported. Select ai-gateway, openrouter, openai, gemini, groq, zai, auto, or none; no provider requests will be sent.',
+    }
+  }
   const provider = resolveAgentProvider(env)
+  if (preferred && provider === 'none') {
+    return {
+      provider, state: 'MISCONFIGURED', configured: false,
+      detail: 'The provider selected by AI_PROVIDER has missing or invalid required configuration; automatic fallback is disabled.',
+    }
+  }
   if (provider === 'ai-gateway') {
     return {
       provider,
@@ -137,9 +164,9 @@ export function getAgentProviderStatus(env: Environment = process.env): AgentPro
     }
   }
   const zai = getZaiProviderStatus(env)
-  if (zai.configured) {
+  if (provider === 'zai') {
     return {
-      provider: 'zai',
+      provider,
       state: 'CONFIGURED',
       configured: true,
       detail: 'ZAI configuration is present; upstream availability requires a successful execution.',

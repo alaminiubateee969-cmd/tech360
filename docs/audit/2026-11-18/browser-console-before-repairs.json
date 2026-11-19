@@ -1,0 +1,79 @@
+{
+  "generatedAt": "2026-11-19T03:35:59.015Z",
+  "mode": "compiled native-SQLite synthetic console; animation and button transitions settled",
+  "violations": [
+    {
+      "id": "color-contrast",
+      "nodes": [
+        {
+          "target": [
+            ".bg-primary"
+          ],
+          "html": "<button data-slot=\"button\" class=\"inline-flex items-ce...\" aria-label=\"Create invoice draft\" style=\"background: rgb(0, 1...\">",
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #ffffff, background color: #009fe3, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": [
+            ".leading-relaxed.text-slate-500.mt-1"
+          ],
+          "html": "<p class=\"mt-1 text-[11px] leading-relaxed text-slate-500\">A Super Admin must configure the provider in the server environment and restart the app. Signing in as Admin or Super Admin does not supply AI credentials.</p>",
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.41 (foreground color: #62748e, background color: #232017, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": [
+            ".bg-background"
+          ],
+          "html": "<button data-slot=\"button\" class=\"inline-flex items-ce...\">",
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #0b1f33, background color: #182031, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": [
+            "th:nth-child(1)"
+          ],
+          "html": "<th data-slot=\"table-head\" class=\"text-left align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] h-9 bg-[#0d1526] px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500\">Client ID</th>",
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": [
+            "th:nth-child(2)"
+          ],
+          "html": "<th data-slot=\"table-head\" class=\"text-left align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] h-9 bg-[#0d1526] px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500\">Name</th>",
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": [
+            "th:nth-child(3)"
+          ],
+          "html": "<th data-slot=\"table-head\" class=\"text-left align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] h-9 bg-[#0d1526] px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500\">Business</th>",
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": [
+            "th:nth-child(4)"
+          ],
+          "html": "<th data-slot=\"table-head\" class=\"text-left align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] h-9 bg-[#0d1526] px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500\">Stage</th>",
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": [
+            "th:nth-child(5)"
+          ],
+          "html": "<th data-slot=\"table-head\" class=\"text-left align-middle whitespace-nowrap [&amp;:has([role=checkbox])]:pr-0 [&amp;&gt;[role=checkbox]]:translate-y-[2px] h-9 bg-[#0d1526] px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500\">Created</th>",
+          "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ]
+    },
+    {
+      "id": "scrollable-region-focusable",
+      "nodes": [
+        {
+          "target": [
+            ".max-h-72"
+          ],
+          "html": "<ul class=\"max-h-72 divide-y di...\" aria-label=\"Recent activity\">",
+          "failureSummary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+        }
+      ]
+    }
+  ]
+}

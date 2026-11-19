@@ -1,6 +1,6 @@
 # Test and QA Report
 
-> **Latest verification: 2026-11-15.** See [the final project check](docs/FINAL_PROJECT_CHECK_2026-11-15.md): 1,694 local tests, lint/typecheck, optimized build, dependency/schema/asset checks and 49/49 preview Factory HTTP checks pass. Real production deployment and provider acceptance remain unverified. The dated report below is historical, not the current test result.
+> **Latest working-tree verification — audit label 2026-11-18:** see the [current A–K audit](docs/audit/2026-11-18/REPOSITORY_AUDIT.md) and [machine-readable results](docs/audit/2026-11-18/validation-results.json). On `arena/3aa75515-tech360`, **2,100 tests / 418 suites pass**, with fresh lint, production-MySQL-client typecheck, schema checks, a migration-free production build and **97 HTTP checks**. The final compiled-app browser run has **13 functional passes**, five passing accessibility surfaces and **one failing surface with two widget accessibility rules**. It used synthetic SQLite fixtures, not a live MySQL/Hostinger deployment. The full semantic audit, real-provider/restore/load acceptance and the separately restricted widget repair remain open; there is no release approval. The November 15 and October results below are historical, not current-source acceptance.
 
 - **Audit date:** 2026-10-03
 - **GitHub `main`:** `9f11195809c30ff21b7f61779373b63bd15513f9`

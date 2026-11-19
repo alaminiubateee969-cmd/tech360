@@ -3,11 +3,34 @@ import { db } from '@/lib/db'
 import { verifyPassword, createSession, makeCsrfToken } from '@/lib/auth'
 import { verifyTotp } from '@/lib/totp'
 import { SESSION_COOKIE, CSRF_COOKIE, SESSION_TTL_HOURS } from '@/lib/constants'
-import { rateLimit, clientIp, readJson, audit, logError, sanitizeText, sanitizeEmail } from '@/lib/security'
+import { rateLimit, clientIp, readJson, audit, logError, sanitizeEmail } from '@/lib/security'
+import { isDatabaseUnavailable } from '@/lib/database-errors'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
+  try {
+    return await signIn(req)
+  } catch (error) {
+    const unavailable = isDatabaseUnavailable(error)
+    const code = unavailable ? 'DATABASE_UNAVAILABLE' : 'LOGIN_FAILED'
+    // Error messages can contain connection URLs or submitted credentials.
+    // Log only a fixed diagnostic code, and do not call the DB-backed logger
+    // while the dependency that stores its logs may itself be unavailable.
+    console.error(`[auth/login] ${code}`)
+    return Response.json({
+      error: unavailable
+        ? 'Sign-in is temporarily unavailable. Please try again shortly.'
+        : 'Unable to sign in. Please try again later.',
+      code,
+    }, {
+      status: unavailable ? 503 : 500,
+      headers: { 'Cache-Control': 'no-store', ...(unavailable ? { 'Retry-After': '30' } : {}) },
+    })
+  }
+}
+
+async function signIn(req: NextRequest) {
   const ip = clientIp(req)
   const rl = rateLimit(`login:${ip}`, 10, 5 * 60_000)
   if (!rl.ok) {
@@ -42,7 +65,16 @@ export async function POST(req: NextRequest) {
   }
 
   // ---- TOTP second factor (only when enrolled) ----
-  if (user.twoFactorEnabled && user.twoFactorSecret) {
+  if (user.twoFactorEnabled) {
+    // A damaged/incomplete enrollment must not silently turn MFA into a
+    // password-only login. An operator must repair the enrollment first.
+    if (!user.twoFactorSecret) {
+      console.error('[auth/login] TOTP_UNAVAILABLE')
+      return Response.json({
+        error: 'Two-factor verification is unavailable. Please contact support.',
+        code: 'TOTP_UNAVAILABLE',
+      }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+    }
     const code = typeof body.totp === 'string' ? body.totp.trim() : ''
     if (!code) {
       // Password correct but second factor missing — ask for it WITHOUT creating a session.

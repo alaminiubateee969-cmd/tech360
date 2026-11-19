@@ -58,10 +58,10 @@ if (aiOpsDriver && !["on", "off"].includes(aiOpsDriver)) {
   errors.push("AI_OPS_DRIVER (must be on or off)");
 }
 
-// The execution engine supports three provider paths. Require at least one
-// complete path, rather than requiring ZAI when the operator chose a gateway
-// or OpenRouter. Keep each configured ZAI endpoint subject to the same safety
-// validation as before. Never print provider credentials or endpoint values.
+// Require the explicitly selected provider, or at least one complete path in
+// automatic mode. Never silently substitute another (possibly billable)
+// provider for an invalid or incompletely configured explicit choice. Keep
+// configured endpoint safety checks; never print credentials or values.
 const hasZai = Boolean(process.env.ZAI_BASE_URL?.trim() && process.env.ZAI_API_KEY?.trim());
 const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY?.trim());
 const hasOpenAi = Boolean(process.env.OPENAI_API_KEY?.trim());
@@ -85,6 +85,19 @@ if (gatewayBaseUrl) {
 }
 if (gatewayBaseUrl && !gatewayToken) errors.push("AGENTOS_GATEWAY_TOKEN (required with AI_GATEWAY_BASE_URL)");
 if (gatewayToken && !gatewayBaseUrl) errors.push("AI_GATEWAY_BASE_URL (required with AGENTOS_GATEWAY_TOKEN)");
+const preferredAi = (process.env.AI_PROVIDER ?? "").trim().toLowerCase();
+const providerConfigurations = new Map([
+  ["ai-gateway", hasGateway], ["gateway", hasGateway], ["aigateway", hasGateway],
+  ["openrouter", hasOpenRouter], ["openai", hasOpenAi], ["gemini", hasGemini],
+  ["google", hasGemini], ["google-gemini", hasGemini], ["groq", hasGroq], ["zai", hasZai],
+]);
+if (preferredAi && preferredAi !== "auto" && !explicitAiDisabled) {
+  if (!providerConfigurations.has(preferredAi)) {
+    errors.push("AI_PROVIDER (must select ai-gateway, openrouter, openai, gemini, groq, zai, auto, or none)");
+  } else if (!providerConfigurations.get(preferredAi)) {
+    errors.push("AI_PROVIDER (selected provider requires its complete configuration; automatic fallback is disabled)");
+  }
+}
 if (!hasZai && !hasOpenRouter && !hasOpenAi && !hasGemini && !hasGroq && !hasGateway && !explicitAiDisabled) {
   errors.push("AI provider (configure OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN, OPENROUTER_API_KEY, ZAI_BASE_URL + ZAI_API_KEY, or AI_PROVIDER=none)");
 }

@@ -66,7 +66,7 @@ describe('dashboard roster: what it exposes', () => {
   })
 
   it('the "Open AI Workforce" action is available to both operator roles', () => {
-    assert.match(view, /canOperate \? <Button size="sm" variant="outline" onClick=\{\(\) => onNavigate\('agents'\)\}>/)
+    assert.match(view, /canOperate \? <Button size="sm" variant="outline"(?: className="[^"]+")? onClick=\{\(\) => onNavigate\('agents'\)\}>/)
     assert.match(view, /canOperate=\{canSeeRoster\}/)
   })
 })

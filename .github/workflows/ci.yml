@@ -480,8 +480,28 @@ jobs:
             echo "::error::health endpoint did not return HTTP 503 for an unavailable MySQL dependency"
             exit 1
           fi
+          login_down_status="$(curl -sS -D /tmp/tech360-login-down.headers -o /tmp/tech360-login-down.json -w '%{http_code}' \
+            -X POST -H 'content-type: application/json' \
+            --data '{"email":"missing@example.invalid","password":"invalid-password"}' \
+            "http://127.0.0.1:$DOWN_PORT/api/auth/login")"
+          if [ "$login_down_status" != 503 ]; then
+            echo "::error::login must return a controlled HTTP 503 when MySQL is unavailable (got $login_down_status)"
+            exit 1
+          fi
           node - <<'NODE'
           const fs = require('node:fs');
+          const login = JSON.parse(fs.readFileSync('/tmp/tech360-login-down.json', 'utf8'));
+          const loginHeaders = fs.readFileSync('/tmp/tech360-login-down.headers', 'utf8');
+          if (login.code !== 'DATABASE_UNAVAILABLE' || typeof login.error !== 'string' || login.ok) {
+            throw new Error('database outage login response does not follow the fail-closed contract');
+          }
+          if (!/^retry-after:\s*30\r?$/mi.test(loginHeaders) || /^set-cookie:/mi.test(loginHeaders)) {
+            throw new Error('database outage login must advise retry without issuing a session');
+          }
+          if (/mysql:\/\/|DATABASE_URL|password|SESSION_SECRET|PORTAL_SECRET|OPS_SECRET/i.test(JSON.stringify(login))) {
+            throw new Error('database outage login response exposes configuration or credential material');
+          }
+          console.log('database failure login correctly returned a retryable 503 without issuing cookies or exposing secrets');
           const health = JSON.parse(fs.readFileSync('/tmp/tech360-health-down.json', 'utf8'));
           if (health.status !== 'unhealthy') throw new Error(`expected unhealthy health status, got ${health.status}`);
           if (health.checks?.database?.status !== 'DOWN') throw new Error(`expected database DOWN, got ${health.checks?.database?.status}`);

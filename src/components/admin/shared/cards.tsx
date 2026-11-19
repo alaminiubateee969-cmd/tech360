@@ -28,7 +28,7 @@ export function EmptyState({
         </div>
       ) : null}
       <p className="text-sm font-medium text-slate-300">{title}</p>
-      {description ? <p className="max-w-md text-xs leading-relaxed text-slate-500">{description}</p> : null}
+      {description ? <p className="max-w-md text-xs leading-relaxed text-slate-400">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   )
@@ -59,7 +59,7 @@ export function KpiCard({
   return (
     <div className={cn(CARD, 'flex min-w-0 flex-col p-4')}>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
         {Icon ? (
           <div className={cn('flex size-8 shrink-0 items-center justify-center rounded-md', toneCls[tone])}>
             <Icon className="size-4" aria-hidden="true" />
@@ -110,7 +110,7 @@ export function SectionCard({
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
           <div className="min-w-0">
             {title ? <h2 className="text-sm font-semibold text-slate-200">{title}</h2> : null}
-            {description ? <p className="mt-0.5 text-xs text-slate-500">{description}</p> : null}
+            {description ? <p className="mt-0.5 text-xs text-slate-400">{description}</p> : null}
           </div>
           {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
         </header>
@@ -133,7 +133,7 @@ export function PageHeader({
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
         <h1 className="text-lg font-bold text-slate-100">{title}</h1>
-        {description ? <p className="mt-1 max-w-2xl text-sm text-slate-500">{description}</p> : null}
+        {description ? <p className="mt-1 max-w-2xl text-sm text-slate-400">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>

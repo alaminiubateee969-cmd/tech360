@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText, audit } from '@/lib/security'
 import { PIPELINE_STAGES } from '@/lib/constants'
+import { hasRole, isSuperAdmin } from '@/lib/access-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ function stageIndex(s: string): number {
  *   handles concurrent updates via optimistic check on current stage.
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'STAFF', capability: 'crm.write' })
   if (isResponse(g)) return g
 
   const { id } = await params
@@ -47,20 +48,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   // Forward one step allowed for STAFF; larger forward / backward requires MANAGER+, arbitrary requires SUPER_ADMIN
-  const isForwardOne = nxtIdx === curIdx + 1
-  const isForward = nxtIdx > curIdx
-  const isBackward = nxtIdx < curIdx
-  const rank: Record<string, number> = { STAFF: 1, MANAGER: 2, ADMIN: 3, SUPER_ADMIN: 4 }
-  const roleRank = rank[g.user.role ?? 'STAFF'] ?? 1
+  const isForwardOne = curIdx >= 0 && nxtIdx === curIdx + 1
+  const isForward = curIdx >= 0 && nxtIdx > curIdx
+  const isBackward = curIdx >= 0 && nxtIdx < curIdx
+  const manager = hasRole(g.user, 'MANAGER')
 
   if (isForwardOne) {
-    // allowed for all STAFF+
-  } else if (isForward && nxtIdx <= curIdx + 3 && roleRank >= 2) {
-    // MANAGER can skip up to 3 forward (correction)
-  } else if (isBackward && roleRank >= 2) {
-    // MANAGER can move backward (reopen)
-  } else if (roleRank >= 4) {
-    // SUPER_ADMIN arbitrary
+    // capability-authorized staff can move forward one known stage
+  } else if (isForward && nxtIdx <= curIdx + 3 && manager) {
+    // MANAGER / PROJECT_MANAGER can skip up to 3 forward (correction)
+  } else if (isBackward && manager) {
+    // MANAGER / PROJECT_MANAGER can move backward (reopen)
+  } else if (isSuperAdmin(g.user)) {
+    // SUPER_ADMIN can also correct an unrecognized legacy stage
   } else {
     return Response.json({ error: `Stage transition from ${curStage} to ${nextStage} requires higher role. STAFF may move forward one stage at a time.` }, { status: 403 })
   }

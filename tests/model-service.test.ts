@@ -550,8 +550,8 @@ describe('model service status reporting', () => {
     assert.equal(status.state, 'UNAVAILABLE')
   })
 
-  it('defaults to local providers first', () => {
+  it('defaults to local providers only; remote fallback requires an explicit chain', () => {
     delete process.env.AI_PROVIDER_ORDER
-    assert.deepEqual(M.resolveProviderOrder({}), ['ollama', 'openai-compatible', 'zai'])
+    assert.deepEqual(M.resolveProviderOrder({}), ['ollama', 'openai-compatible'])
   })
 })

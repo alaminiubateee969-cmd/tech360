@@ -292,7 +292,7 @@ describe('5 — crawlable company, contact and legal navigation', () => {
   })
 
   it('keeps the skip link as the only in-page fragment in the shell', () => {
-    assert.match(read('src/app/page.tsx'), /href="#main-content"/)
+    assert.match(read('src/components/site/PublicSiteApp.tsx'), /href="#main-content"/)
   })
 
   /**

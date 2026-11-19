@@ -1,0 +1,965 @@
+{
+  "generatedAt": "2026-11-19T03:34:23.125Z",
+  "mode": "Chromium; compiled production app (source-MySQL build); runtime switched to a native SQLite client against the existing isolated fixture; synthetic fixtures; preview adapter unset; AI/external credentials absent; cross-origin browser requests blocked",
+  "limits": [
+    "Not MySQL runtime acceptance",
+    "Not Hostinger or multi-process/load acceptance",
+    "Axe automation is not a full manual accessibility audit",
+    "Role endpoint probes are HTTP via Playwright; console UI tested only for the named fixtures",
+    "Public asset browser sweep is the explicitly listed sample, not every possible dynamic route"
+  ],
+  "checks": [
+    {
+      "name": "desktop homepage has a visible H1, no horizontal overflow and a real hero video",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 3523,
+      "evidence": {
+        "h1": "Engineering Technology. Empowering Business.",
+        "heroStatus": 206,
+        "reviewsStatus": 200
+      }
+    },
+    {
+      "name": "anonymous admin login renders real labelled fields in a fresh browser context",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 5107,
+      "evidence": {
+        "canonicalPath": "/admin",
+        "labelledInputs": true
+      }
+    },
+    {
+      "name": "synthetic Super Admin signs in through the real browser form and gets an HttpOnly session",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 1915,
+      "evidence": {
+        "httpOnlySession": true
+      }
+    },
+    {
+      "name": "mobile chat starts without contact-channel export and persists a second message through reload",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 8985,
+      "evidence": {
+        "persistedAfterReload": true,
+        "ai": {
+          "available": false,
+          "detail": "AI execution is explicitly disabled by AI_PROVIDER; no provider requests will be sent."
+        }
+      }
+    },
+    {
+      "name": "visitor uploads/downloads a real text attachment; an unsigned browser cannot read it",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 179,
+      "evidence": {
+        "bytes": 59,
+        "ownStatus": 200,
+        "unsignedStatus": 401
+      }
+    },
+    {
+      "name": "admin reply reaches the live visitor once; replay is idempotent and an internal note stays private",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 2318,
+      "evidence": {
+        "liveReply": true,
+        "idempotentReplay": true,
+        "internalNoteHiddenAfterReload": true
+      }
+    },
+    {
+      "name": "real client portal route renders its own labelled sign-in fields, not homepage text",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 2766,
+      "evidence": {
+        "clientIdInput": true,
+        "contactInput": true
+      }
+    },
+    {
+      "name": "STAFF authenticated HTTP probes enforce private workforce and financial projections",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 241,
+      "evidence": {
+        "memory": 403,
+        "finance": 403,
+        "clientDetail": 200,
+        "projectDetail": 403
+      }
+    },
+    {
+      "name": "PROJECT_MANAGER authenticated HTTP probes enforce private workforce and financial projections",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 126,
+      "evidence": {
+        "memory": 403,
+        "finance": 403,
+        "clientDetail": 200,
+        "projectDetail": 200
+      }
+    },
+    {
+      "name": "DEVELOPER authenticated HTTP probes enforce private workforce and financial projections",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 109,
+      "evidence": {
+        "memory": 403,
+        "finance": 403,
+        "clientDetail": 403,
+        "projectDetail": 403
+      }
+    },
+    {
+      "name": "SALES authenticated HTTP probes enforce private workforce and financial projections",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 148,
+      "evidence": {
+        "memory": 403,
+        "finance": 403,
+        "clientDetail": 200,
+        "projectDetail": 403
+      }
+    },
+    {
+      "name": "listed public sitemap sample renders and all local images finish loading",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 14343,
+      "evidence": {
+        "sitemapPaths": 83,
+        "browserSamplePaths": [
+          "/",
+          "/services/premium-business-websites",
+          "/services/enterprise-websites",
+          "/services/ecommerce-platforms",
+          "/services/custom-crm-development",
+          "/services/whatsapp-ai-sales-crm",
+          "/services/client-portals",
+          "/contact",
+          "/legal/privacy"
+        ]
+      }
+    },
+    {
+      "name": "axe WCAG 2.1 AA automated check: desktop homepage including consent banner",
+      "kind": "accessibility",
+      "status": "PASS",
+      "evidence": {
+        "violations": 0,
+        "passes": 27,
+        "incompleteRules": 4
+      }
+    },
+    {
+      "name": "axe WCAG 2.1 AA automated check: anonymous admin login",
+      "kind": "accessibility",
+      "status": "PASS",
+      "evidence": {
+        "violations": 0,
+        "passes": 24,
+        "incompleteRules": 1
+      }
+    },
+    {
+      "name": "axe WCAG 2.1 AA automated check: synthetic Super Admin console dashboard (settled animation and data)",
+      "kind": "accessibility",
+      "status": "FAIL",
+      "evidence": {
+        "violations": 2,
+        "passes": 28,
+        "incompleteRules": 2
+      }
+    },
+    {
+      "name": "axe WCAG 2.1 AA automated check: mobile active chat after reload",
+      "kind": "accessibility",
+      "status": "FAIL",
+      "evidence": {
+        "violations": 2,
+        "passes": 27,
+        "incompleteRules": 3
+      }
+    },
+    {
+      "name": "axe WCAG 2.1 AA automated check: anonymous client portal sign-in",
+      "kind": "accessibility",
+      "status": "PASS",
+      "evidence": {
+        "violations": 0,
+        "passes": 28,
+        "incompleteRules": 3
+      }
+    }
+  ],
+  "a11y": [
+    {
+      "surface": "desktop homepage including consent banner",
+      "violations": [],
+      "passes": 27,
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "nodes": 1
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "nodes": 5
+        },
+        {
+          "id": "color-contrast",
+          "nodes": 41
+        },
+        {
+          "id": "link-in-text-block",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "surface": "anonymous admin login",
+      "violations": [],
+      "passes": 24,
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "nodes": 30
+        }
+      ]
+    },
+    {
+      "surface": "synthetic Super Admin console dashboard (settled animation and data)",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".bg-primary"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #ffffff, background color: #009fe3, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-transparent"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.79 (foreground color: #6b7481, background color: #101725, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".leading-relaxed.text-slate-500.mt-1"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.41 (foreground color: #62748e, background color: #232017, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-background"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.02 (foreground color: #0b1f33, background color: #182031, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "th:nth-child(1)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "th:nth-child(2)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "th:nth-child(3)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "th:nth-child(4)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "th:nth-child(5)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "description": "Ensure elements that have scrollable content are accessible by keyboard",
+          "nodes": [
+            {
+              "target": [
+                ".max-h-72"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+            }
+          ]
+        }
+      ],
+      "passes": 28,
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "nodes": 1
+        },
+        {
+          "id": "color-contrast",
+          "nodes": 73
+        }
+      ]
+    },
+    {
+      "surface": "mobile active chat after reload",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".items-end.flex-col.flex:nth-child(4) > .px-1.text-\\[10px\\].gap-1"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.45 (foreground color: #8495ad, background color: #e4e7ea, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".items-end.flex-col.flex:nth-child(4) > .px-1.text-\\[10px\\].gap-1 > .gap-0\\.5.items-center"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.45 (foreground color: #8495ad, background color: #e4e7ea, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".italic.text-slate-500.text-center:nth-child(5)"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.31 (foreground color: #5a6c85, background color: #e4e7ea, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".text-slate-500.font-mono"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.31 (foreground color: #5a6c85, background color: #e4e7ea, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".border-slate-100 > .underline[href$=\"privacy\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.44 (foreground color: #8495ac, background color: #e4e6e9, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".px-1.mt-1.justify-between > .text-\\[10px\\].text-slate-400"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.55 (foreground color: #8495ad, background color: #eaebed, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        },
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "description": "Ensure elements that have scrollable content are accessible by keyboard",
+          "nodes": [
+            {
+              "target": [
+                ".space-y-3"
+              ],
+              "summary": "Fix any of the following:\n  Element should have focusable content\n  Element should be focusable"
+            }
+          ]
+        }
+      ],
+      "passes": 27,
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "nodes": 1
+        },
+        {
+          "id": "color-contrast",
+          "nodes": 47
+        },
+        {
+          "id": "link-in-text-block",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "surface": "anonymous client portal sign-in",
+      "violations": [],
+      "passes": 28,
+      "incomplete": [
+        {
+          "id": "aria-valid-attr-value",
+          "nodes": 5
+        },
+        {
+          "id": "color-contrast",
+          "nodes": 1
+        },
+        {
+          "id": "link-in-text-block",
+          "nodes": 1
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "assets": [
+    {
+      "path": "/",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/images/services/custom-software-development.webp",
+          "loaded": true,
+          "alt": "Custom Software Development illustration showing interlocking modular application blocks, tailored workflow gears, and multi-role operational screens"
+        },
+        {
+          "src": "/images/services/ecommerce-platforms.webp",
+          "loaded": true,
+          "alt": "eCommerce Platforms illustration featuring product showcase cards, streamlined digital payment checkout, inventory cubes, and order fulfillment routing"
+        },
+        {
+          "src": "/images/services/custom-crm-development.webp",
+          "loaded": true,
+          "alt": "Custom CRM Development illustration showing a central Client ID profile linked along a chronological timeline to messages, files, invoices, and pipeline stages"
+        },
+        {
+          "src": "/images/services/ai-business-automation.webp",
+          "loaded": true,
+          "alt": "AI Business Automation workflow illustration showing structured document triage, optical classification lanes, task routing, and human-verified checkmarks"
+        },
+        {
+          "src": "/images/services/ai-agent-systems.webp",
+          "loaded": true,
+          "alt": "AI Agent Systems command center illustration showing coordinated digital assistants, enterprise system connections, and a human approval checkpoint gate"
+        },
+        {
+          "src": "/images/services/ai-business-automation.webp",
+          "loaded": true,
+          "alt": "AI Business Automation workflow illustration showing structured document triage, optical classification lanes, task routing, and human-verified checkmarks"
+        },
+        {
+          "src": "/images/services/whatsapp-ai-sales-crm.webp",
+          "loaded": true,
+          "alt": "Conversational messaging sales CRM illustration connecting mobile chat threads to a shared team inbox, multi-stage sales pipeline kanban, and engagement analytics"
+        },
+        {
+          "src": "/images/services/ecommerce-platforms.webp",
+          "loaded": true,
+          "alt": "eCommerce Platforms illustration featuring product showcase cards, streamlined digital payment checkout, inventory cubes, and order fulfillment routing"
+        },
+        {
+          "src": "/images/services/client-portals.webp",
+          "loaded": true,
+          "alt": "Client Portals illustration showing key-shield authentication, milestone progress tracking, organized document folders, invoices, and client approval badges"
+        },
+        {
+          "src": "/images/services/business-dashboards.webp",
+          "loaded": true,
+          "alt": "Business Dashboards illustration displaying unified multi-source data streams, executive area trends, radial KPI gauges, and comparative performance bars"
+        },
+        {
+          "src": "/images/services/custom-software-development.webp",
+          "loaded": true,
+          "alt": "Custom Software Development illustration showing interlocking modular application blocks, tailored workflow gears, and multi-role operational screens"
+        },
+        {
+          "src": "/images/services/database-systems.webp",
+          "loaded": true,
+          "alt": "Database Systems illustration showing normalized relational data cylinders, foreign-key schema tables, an emerald integrity padlock shield, and an off-site backup vault"
+        },
+        {
+          "src": "/images/platform/platform-client-portal.webp",
+          "loaded": true,
+          "alt": "Tech360 Client Portal workspace illustration showing milestone progress, scope approval, invoice receipts, and source-package handover"
+        },
+        {
+          "src": "/images/platform/platform-crm-operations.webp",
+          "loaded": true,
+          "alt": "CRM and Business Operations workspace illustration showing Intake, Scoped, In Build, and Delivered stages under one Client ID"
+        },
+        {
+          "src": "/images/platform/platform-automation-workflows.webp",
+          "loaded": true,
+          "alt": "Automation Workflows orchestration illustration connecting event queues, sync nodes, human approval gates, and audit notifications"
+        },
+        {
+          "src": "/images/platform/platform-marketing-operations.webp",
+          "loaded": true,
+          "alt": "Marketing Operations studio illustration showing an editorial campaign calendar paired with a human review and publish approval gate"
+        },
+        {
+          "src": "/images/platform/platform-analytics-reporting.webp",
+          "loaded": true,
+          "alt": "Analytics and Reporting console illustration showing funnel conversion trend lines, radial completion ring, and scheduled KPI bars"
+        },
+        {
+          "src": "/images/platform/platform-developer-tooling.webp",
+          "loaded": true,
+          "alt": "Platform and Developer Tooling illustration showing modular application scaffolds, staged environment releases, and SHA-256 verified source handover"
+        },
+        {
+          "src": "/images/platform/platform-client-portal.webp",
+          "loaded": true,
+          "alt": "Illustrative client portal experience showing project milestones and shared documents"
+        },
+        {
+          "src": "/images/platform/platform-crm-operations.webp",
+          "loaded": true,
+          "alt": "Illustrative CRM and business operations workflow interface"
+        },
+        {
+          "src": "/images/industries/ecommerce-hero.png",
+          "loaded": true,
+          "alt": "eCommerce operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/education-hero.png",
+          "loaded": true,
+          "alt": "Education operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/schools-training-hero.png",
+          "loaded": true,
+          "alt": "Schools & Training operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/healthcare-hero.png",
+          "loaded": true,
+          "alt": "Healthcare operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/hospitals-clinics-hero.png",
+          "loaded": true,
+          "alt": "Hospitals & Clinics operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/real-estate-hero.png",
+          "loaded": true,
+          "alt": "Real Estate operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/restaurants-food-hero.png",
+          "loaded": true,
+          "alt": "Restaurants & Food operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/agencies-hero.png",
+          "loaded": true,
+          "alt": "Agencies operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/case-studies/covers/fashion-retail-store-launch-800.webp",
+          "loaded": true,
+          "alt": "Concept artwork: a boutique owner packing a parcel in a clothing stockroom while a tablet shows an abstract order dashboard."
+        },
+        {
+          "src": "/images/case-studies/covers/clinic-appointment-automation-800.webp",
+          "loaded": true,
+          "alt": "Concept artwork: a clinic receptionist confirming an appointment on screen while a patient holds a phone with a reminder message."
+        },
+        {
+          "src": "/images/case-studies/covers/school-enquiry-pipeline-800.webp",
+          "loaded": true,
+          "alt": "Concept artwork: an admissions counsellor reviewing an enquiry pipeline on a laptop with a parent and a student."
+        },
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        }
+      ]
+    },
+    {
+      "path": "/services/premium-business-websites",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/images/services/premium-business-websites.webp",
+          "loaded": true,
+          "alt": "Illustrative flagship corporate website across desktop and mobile viewports engineered with a custom design system, structured SEO metadata, and fast Core Web Vitals"
+        },
+        {
+          "src": "/images/industries/agencies-hero.png",
+          "loaded": true,
+          "alt": "Agencies operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/professional-services-hero.png",
+          "loaded": true,
+          "alt": "Professional Services operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/local-businesses-hero.png",
+          "loaded": true,
+          "alt": "Local Businesses operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/legal-services-hero.png",
+          "loaded": true,
+          "alt": "Legal Services operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/services/enterprise-websites.webp",
+          "loaded": true,
+          "alt": "Enterprise Websites architecture diagram showing multi-region locales, role-based departmental authoring, a staging QA approval gate, and global production observability"
+        },
+        {
+          "src": "/images/services/ecommerce-platforms.webp",
+          "loaded": true,
+          "alt": "eCommerce Platforms illustration featuring product showcase cards, streamlined digital payment checkout, inventory cubes, and order fulfillment routing"
+        },
+        {
+          "src": "/images/services/custom-crm-development.webp",
+          "loaded": true,
+          "alt": "Custom CRM Development illustration showing a central Client ID profile linked along a chronological timeline to messages, files, invoices, and pipeline stages"
+        },
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        }
+      ]
+    },
+    {
+      "path": "/services/enterprise-websites",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/images/services/enterprise-websites.webp",
+          "loaded": true,
+          "alt": "Illustrative enterprise web publishing platform governing multi-region content across authoring, staging approval gates, shared design tokens, and production monitoring"
+        },
+        {
+          "src": "/images/industries/manufacturing-hero.png",
+          "loaded": true,
+          "alt": "Manufacturing operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/finance-hero.png",
+          "loaded": true,
+          "alt": "Finance operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/logistics-hero.png",
+          "loaded": true,
+          "alt": "Logistics operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/services/ecommerce-platforms.webp",
+          "loaded": true,
+          "alt": "eCommerce Platforms illustration featuring product showcase cards, streamlined digital payment checkout, inventory cubes, and order fulfillment routing"
+        },
+        {
+          "src": "/images/services/custom-crm-development.webp",
+          "loaded": true,
+          "alt": "Custom CRM Development illustration showing a central Client ID profile linked along a chronological timeline to messages, files, invoices, and pipeline stages"
+        },
+        {
+          "src": "/images/services/whatsapp-ai-sales-crm.webp",
+          "loaded": true,
+          "alt": "Conversational messaging sales CRM illustration connecting mobile chat threads to a shared team inbox, multi-stage sales pipeline kanban, and engagement analytics"
+        },
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        }
+      ]
+    },
+    {
+      "path": "/services/ecommerce-platforms",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/images/services/ecommerce-platforms.webp",
+          "loaded": true,
+          "alt": "Illustrative conversion-engineered online storefront connecting product catalogue cards to multi-method checkout verification, stock tracking, and parcel dispatch"
+        },
+        {
+          "src": "/images/industries/ecommerce-hero.png",
+          "loaded": true,
+          "alt": "eCommerce operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/retail-hero.png",
+          "loaded": true,
+          "alt": "Retail operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/restaurants-food-hero.png",
+          "loaded": true,
+          "alt": "Restaurants & Food operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/services/custom-crm-development.webp",
+          "loaded": true,
+          "alt": "Custom CRM Development illustration showing a central Client ID profile linked along a chronological timeline to messages, files, invoices, and pipeline stages"
+        },
+        {
+          "src": "/images/services/whatsapp-ai-sales-crm.webp",
+          "loaded": true,
+          "alt": "Conversational messaging sales CRM illustration connecting mobile chat threads to a shared team inbox, multi-stage sales pipeline kanban, and engagement analytics"
+        },
+        {
+          "src": "/images/services/client-portals.webp",
+          "loaded": true,
+          "alt": "Client Portals illustration showing key-shield authentication, milestone progress tracking, organized document folders, invoices, and client approval badges"
+        },
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        }
+      ]
+    },
+    {
+      "path": "/services/custom-crm-development",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/images/services/custom-crm-development.webp",
+          "loaded": true,
+          "alt": "Illustrative custom CRM workspace connecting a single Client ID record across communications, documents, approvals, and Contact-to-Won pipeline columns"
+        },
+        {
+          "src": "/images/industries/agencies-hero.png",
+          "loaded": true,
+          "alt": "Agencies operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/real-estate-hero.png",
+          "loaded": true,
+          "alt": "Real Estate operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/professional-services-hero.png",
+          "loaded": true,
+          "alt": "Professional Services operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/services/whatsapp-ai-sales-crm.webp",
+          "loaded": true,
+          "alt": "Conversational messaging sales CRM illustration connecting mobile chat threads to a shared team inbox, multi-stage sales pipeline kanban, and engagement analytics"
+        },
+        {
+          "src": "/images/services/client-portals.webp",
+          "loaded": true,
+          "alt": "Client Portals illustration showing key-shield authentication, milestone progress tracking, organized document folders, invoices, and client approval badges"
+        },
+        {
+          "src": "/images/services/business-dashboards.webp",
+          "loaded": true,
+          "alt": "Business Dashboards illustration displaying unified multi-source data streams, executive area trends, radial KPI gauges, and comparative performance bars"
+        },
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        }
+      ]
+    },
+    {
+      "path": "/services/whatsapp-ai-sales-crm",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/images/services/whatsapp-ai-sales-crm.webp",
+          "loaded": true,
+          "alt": "Illustrative messaging-first sales CRM workspace pairing mobile customer conversations with a shared desktop team inbox, qualification stages, and pipeline analytics"
+        },
+        {
+          "src": "/images/industries/ecommerce-hero.png",
+          "loaded": true,
+          "alt": "eCommerce operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/real-estate-hero.png",
+          "loaded": true,
+          "alt": "Real Estate operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/restaurants-food-hero.png",
+          "loaded": true,
+          "alt": "Restaurants & Food operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/services/client-portals.webp",
+          "loaded": true,
+          "alt": "Client Portals illustration showing key-shield authentication, milestone progress tracking, organized document folders, invoices, and client approval badges"
+        },
+        {
+          "src": "/images/services/business-dashboards.webp",
+          "loaded": true,
+          "alt": "Business Dashboards illustration displaying unified multi-source data streams, executive area trends, radial KPI gauges, and comparative performance bars"
+        },
+        {
+          "src": "/images/services/whatsapp-automation.webp",
+          "loaded": true,
+          "alt": "Conversational messaging automation illustration connecting mobile chat sequences to appointment scheduling, parcel dispatch updates, receipts, and human operator handoff"
+        },
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        }
+      ]
+    },
+    {
+      "path": "/services/client-portals",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/images/services/client-portals.webp",
+          "loaded": true,
+          "alt": "Illustrative authenticated client self-service portal displaying a security key-shield, project milestone track, controlled document vault, and approval records"
+        },
+        {
+          "src": "/images/industries/professional-services-hero.png",
+          "loaded": true,
+          "alt": "Professional Services operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/legal-services-hero.png",
+          "loaded": true,
+          "alt": "Legal Services operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/industries/schools-training-hero.png",
+          "loaded": true,
+          "alt": "Schools & Training operating-system architecture diagram — illustrative, not a client system"
+        },
+        {
+          "src": "/images/services/business-dashboards.webp",
+          "loaded": true,
+          "alt": "Business Dashboards illustration displaying unified multi-source data streams, executive area trends, radial KPI gauges, and comparative performance bars"
+        },
+        {
+          "src": "/images/services/whatsapp-automation.webp",
+          "loaded": true,
+          "alt": "Conversational messaging automation illustration connecting mobile chat sequences to appointment scheduling, parcel dispatch updates, receipts, and human operator handoff"
+        },
+        {
+          "src": "/images/services/whatsapp-cloud-api-integration.webp",
+          "loaded": true,
+          "alt": "Official Cloud API Integration diagram showing verified message templates, a TLS-secured HMAC webhook gateway, and real-time delivery receipt telemetry"
+        },
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        }
+      ]
+    },
+    {
+      "path": "/contact",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        }
+      ]
+    },
+    {
+      "path": "/legal/privacy",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/brand/tech360-letterhead-a4.png",
+          "loaded": true,
+          "alt": ""
+        },
+        {
+          "src": "/brand/tech360-logo-owner.jpg",
+          "loaded": true,
+          "alt": ""
+        },
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        }
+      ]
+    }
+  ],
+  "blockedExternalOrigins": [],
+  "failedLocalRequests": [],
+  "browser": "153.0.8010.0",
+  "chat": {
+    "conversationId": "cmwmzy3o9000anz43pil6gxvv",
+    "ai": {
+      "available": false,
+      "detail": "AI execution is explicitly disabled by AI_PROVIDER; no provider requests will be sent."
+    },
+    "persistedAfterReload": true
+  },
+  "counts": {
+    "passed": 15,
+    "failed": 2,
+    "blockedEnvironment": 0,
+    "blockedDependency": 0,
+    "a11yViolations": 4,
+    "pageErrors": 0,
+    "assetSamplePaths": 9
+  }
+}

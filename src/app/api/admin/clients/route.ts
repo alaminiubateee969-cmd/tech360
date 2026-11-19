@@ -8,7 +8,7 @@ import { nextClientId } from '@/lib/ids'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'STAFF', capability: 'crm.read' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const query = sanitizeText(url.searchParams.get('query') ?? '', 100)
@@ -61,7 +61,7 @@ const UNGATED_BULK_STAGES = new Set([
 const inFlightClientKeys = new Set<string>()
 
 export async function POST(req: NextRequest) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'STAFF', capability: 'crm.write' })
   if (isResponse(g)) return g
 
   const body = await readJson(req)

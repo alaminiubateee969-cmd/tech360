@@ -1,0 +1,148 @@
+{
+  "generatedAt": "2026-11-18T22:40:44.038Z",
+  "mode": "development, isolated SQLite, synthetic fixtures, external browser requests blocked",
+  "checks": [
+    {
+      "name": "desktop homepage renders a visible H1 and responsive content without horizontal overflow",
+      "status": "PASS",
+      "ms": 35555,
+      "evidence": {
+        "h1": "Engineering Technology. Empowering Business."
+      }
+    },
+    {
+      "name": "anonymous admin login renders labelled email/password fields",
+      "status": "FAIL",
+      "ms": 30013,
+      "detail": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#login-email') to be visible\n"
+    },
+    {
+      "name": "real fixture admin can sign in through browser form and see the console",
+      "status": "FAIL",
+      "ms": 29999,
+      "detail": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('#login-email')\n"
+    },
+    {
+      "name": "mobile homepage and chat can be reached by labelled controls",
+      "status": "FAIL",
+      "ms": 34765,
+      "detail": "browserContext.close: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /tmp/chromium --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,HttpsUpgrades,HttpsFirstBalancedModeAutoEnable,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Avoi"
+    },
+    {
+      "name": "portal route renders without exposing admin credentials",
+      "status": "FAIL",
+      "ms": 1,
+      "detail": "browser.newContext: Target page, context or browser has been closed"
+    },
+    {
+      "name": "STAFF real fixture session respects private workforce and finance endpoint guards",
+      "status": "FAIL",
+      "ms": 2,
+      "detail": "browser.newContext: Target page, context or browser has been closed"
+    },
+    {
+      "name": "PROJECT_MANAGER real fixture session respects private workforce and finance endpoint guards",
+      "status": "FAIL",
+      "ms": 0,
+      "detail": "browser.newContext: Target page, context or browser has been closed"
+    },
+    {
+      "name": "DEVELOPER real fixture session respects private workforce and finance endpoint guards",
+      "status": "FAIL",
+      "ms": 1,
+      "detail": "browser.newContext: Target page, context or browser has been closed"
+    },
+    {
+      "name": "SALES real fixture session respects private workforce and finance endpoint guards",
+      "status": "FAIL",
+      "ms": 1,
+      "detail": "browser.newContext: Target page, context or browser has been closed"
+    },
+    {
+      "name": "public sitemap routes render with loaded local images (desktop sample)",
+      "status": "FAIL",
+      "ms": 1,
+      "detail": "apiRequestContext.get: Target page, context or browser has been closed"
+    }
+  ],
+  "findings": [],
+  "pageErrors": [],
+  "a11y": [
+    {
+      "surface": "desktop homepage",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".lg\\:py-24.py-20.max-w-7xl > .lg\\:justify-between.lg\\:items-end.lg\\:flex-row > .group\\/link.rounded-sm[href$=\"services\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.83 (foreground color: #009fe3, background color: #f7fafc, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".py-16.sm\\:py-20.max-w-7xl > .lg\\:justify-between.lg\\:items-end.lg\\:flex-row > .group\\/link.rounded-sm[href$=\"services\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #009fe3, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".group\\/link.rounded-sm[href$=\"process\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.83 (foreground color: #009fe3, background color: #f7fafc, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".group\\/link.rounded-sm[href$=\"faq\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #009fe3, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-\\[\\#18B83A\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.63 (foreground color: #ffffff, background color: #18b83a, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".hover\\:bg-\\[\\#063B8F\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #ffffff, background color: #009fe3, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "passes": 27,
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "nodes": 1
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "nodes": 5
+        },
+        {
+          "id": "color-contrast",
+          "nodes": 41
+        },
+        {
+          "id": "link-in-text-block",
+          "nodes": 1
+        }
+      ]
+    }
+  ],
+  "assets": [],
+  "browser": "153.0.8010.0",
+  "counts": {
+    "passed": 1,
+    "failed": 9,
+    "findings": 0,
+    "a11yViolations": 1,
+    "pageErrors": 0
+  }
+}

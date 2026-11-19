@@ -1,5 +1,6 @@
 import { featureEnabled } from "@/lib/features"
 import { db } from '@/lib/db'
+import type { PublicReview } from '@/lib/public-review-contract'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,8 +42,8 @@ export async function GET() {
       serviceType: r.project?.plan ?? null,
       rating: r.rating,
       content: r.content,
-      date: r.moderatedAt ?? r.createdAt,
-    })),
+      date: (r.moderatedAt ?? r.createdAt).toISOString(),
+    } satisfies PublicReview)),
     count: reviews.length,
     honest: true,
   })
