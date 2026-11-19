@@ -5,6 +5,7 @@ import { audit, clientIp, sanitizeText } from '@/lib/security'
 import { SURFACE_SPECS, assertNotSelfApproval, type EvolutionPatch } from '@/lib/evolution/policy'
 import { refreshGenerationSummary } from '@/lib/evolution/observations'
 import { previewSurface } from '@/lib/evolution/surfaces'
+import { POST as decide } from '@/app/api/admin/approvals/[id]/decision/route'
 
 export const dynamic = 'force-dynamic'
 
@@ -133,7 +134,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Delegate to the existing decision route. Forwarding the original headers
   // keeps the session and CSRF checks authoritative there rather than
   // duplicated here.
-  const { POST: decide } = await import('@/app/api/admin/approvals/[id]/decision/route')
   const forwarded = new NextRequest(req.url, {
     method: 'POST',
     headers: req.headers,
@@ -144,24 +144,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Mirror the human decision onto the proposal row so the lineage reads
   // correctly without joining the approvals table.
   const payload = await result.clone().json().catch(() => ({})) as Record<string, unknown>
-  if (decision === 'REJECTED' || payload?.ok) {
-    await db.evolutionProposal.updateMany({
-      where: { id: proposal.id, status: 'PENDING' },
-      data: {
-        status: decision === 'REJECTED' ? 'REJECTED' : 'APPROVED',
-        decidedBy: g.user.email,
-        decisionNote: sanitizeText(body.note ?? '', 2000) || null,
-        updatedAt: new Date(),
-      },
-    })
-    if (decision === 'REJECTED') {
-      const generation = (await db.evolutionProposal.findUnique({ where: { id: proposal.id }, select: { generation: true } }))!.generation
-      await db.evolutionGeneration
-        .update({ where: { generation }, data: { rejected: { increment: 1 } } })
-        .catch(() => null)
-      // Keep the stored summary consistent with the counters it sits beside.
-      await refreshGenerationSummary(generation)
-    }
+  // A refusal (CSRF, expired/claimed approval, role policy, etc.) is not a
+  // decision. Never mirror it or return a success-shaped next step.
+  if (!result.ok || payload?.ok !== true) {
+    return Response.json({ ...payload, proposalId: proposal.id }, { status: result.status })
+  }
+
+  const mirrored = await db.evolutionProposal.updateMany({
+    where: { id: proposal.id, status: 'PENDING' },
+    data: {
+      status: decision === 'REJECTED' ? 'REJECTED' : 'APPROVED',
+      decidedBy: g.user.email,
+      decisionNote: sanitizeText(body.note ?? '', 2000) || null,
+      updatedAt: new Date(),
+    },
+  })
+  if (decision === 'REJECTED' && mirrored.count === 1) {
+    const generation = (await db.evolutionProposal.findUnique({ where: { id: proposal.id }, select: { generation: true } }))!.generation
+    await db.evolutionGeneration
+      .update({ where: { generation }, data: { rejected: { increment: 1 } } })
+      .catch(() => null)
+    // Keep the stored summary consistent with the counters it sits beside.
+    await refreshGenerationSummary(generation)
   }
 
   return Response.json({

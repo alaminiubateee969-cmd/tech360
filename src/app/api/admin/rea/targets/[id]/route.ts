@@ -89,7 +89,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     recorded: true,
     observation,
     note: 'Recorded as an Evolution Loop observation. It changes nothing by itself — it becomes a proposal only when the loop next runs, and a proposal changes nothing until a different human approves it.',
-    nextStep: 'POST /api/admin/evolution/proposals to turn pending observations into reviewable proposals.',
+    nextStep: 'A SUPER_ADMIN can POST /api/admin/evolution to turn pending observations into reviewable proposals.',
   }, { status: 201 })
 }
 

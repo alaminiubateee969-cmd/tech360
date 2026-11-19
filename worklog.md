@@ -848,3 +848,15 @@ Task: Recover failed-merge work and missing requested files without discarding f
 - Added docs/FAILED_RUN_RECOVERY_2026-11-14.md, complete machine-readable ledger, read-only check:recovery command and six regression tests. No missing application feature was found; did not reintroduce obsolete deployments or conflicting prototype configuration.
 - Validation: clean npm ci; lint; typecheck with generated MySQL client; all 1,683 tests passed (0 failed/skipped/cancelled, disposable SQLite adapter); recovery check; conflict/assets/schema parity/drift/19 migration immutability checks; production next build --webpack; standalone asset copy verification.
 - No production database/provider/deployment changes. Full npm run build (which includes migrate deploy) was not run; existing production acceptance blockers remain open. See report for scope and exact evidence.
+
+---
+Task ID: rea-evolution-continuation-2026-11-14
+Task: Continue REA Studio teardown + approval-gated self-evolution on the new active branch.
+
+- Confirmed existing Admin navigation, teardown/correction/reconstruction routes, proposal UI and approval/apply/rollback services; extended them rather than creating duplicates.
+- Fixed evolution decision delegation: an unsuccessful shared decision (including HTTP 403/409) no longer mirrors rejection or advertises approval/rejection success. Requires both HTTP success and explicit ok:true.
+- Rejection generation counters/summary refresh occur only when the pending proposal actually transitions (updateMany count=1).
+- Fixed REA correction nextStep pointing at nonexistent /api/admin/evolution/proposals; now directs a SUPER_ADMIN to POST /api/admin/evolution.
+- Added 10 HTTP-handler regression tests for refused decisions, explicit success, rejection replay, self-approval/self-rejection and the correction-to-cycle link. Shared decision handler is imported statically so the same dependency can be isolated in route tests; execution still delegates to the platform's existing guarded endpoint with original headers.
+- Added docs/REA_STUDIO_AND_EVOLUTION.md: navigation, no-network HTML snippet example, correction/cycle/review/apply/rollback steps and explicit static-capture/configuration-only boundaries.
+- Verification: npm ci; full suite 1693/1693 pass (0 fail/skipped/cancelled, disposable SQLite adapter); targeted REA/evolution 177/177; lint/typecheck/conflict/assets checks and git diff --check passed. No production database, provider or deployment changes; live browser/MySQL/production acceptance not claimed by local checks.
