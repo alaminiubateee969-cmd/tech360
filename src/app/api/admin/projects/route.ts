@@ -2,11 +2,13 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { sanitizeText } from '@/lib/security'
+import { hasCapability } from '@/lib/access-policy'
+import { projectRecordView } from '@/lib/admin-record-views'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const g = await guard(req, { minRole: 'MANAGER' })
+  const g = await guard(req, { minRole: 'MANAGER', capability: 'project.read' })
   if (isResponse(g)) return g
   const url = new URL(req.url)
   const status = sanitizeText(url.searchParams.get('status') ?? '', 30).toUpperCase()
@@ -21,5 +23,6 @@ export async function GET(req: NextRequest) {
     orderBy: { updatedAt: 'desc' }, take: 200,
     include: { client: { select: { clientId: true, name: true, businessName: true, pipelineStage: true } }, _count: { select: { tasks: true } } },
   })
-  return Response.json({ projects })
+  const financeRead = hasCapability(g.user, 'finance.read')
+  return Response.json({ projects: projects.map((project) => projectRecordView(project, financeRead)) })
 }

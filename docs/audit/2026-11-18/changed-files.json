@@ -1,0 +1,892 @@
+{
+  "branch": "arena/3aa75515-tech360",
+  "head": "d8c68f4f8ea983bc64559c51ed9045a726a6cb85",
+  "scope": "Exact git working-tree changes, including this audit directory. Ignored checkpoints/dependencies/build/ZIP/fixtures are not Git changes. No self-recursive artifact hashes are claimed here.",
+  "totalPaths": 109,
+  "counts": {
+    "modified": 70,
+    "deleted": 1,
+    "new": 38
+  },
+  "byLayer": {
+    "Operational/build tooling": 11,
+    "Reports/documentation": 22,
+    "Application": 52,
+    "Tests": 24
+  },
+  "stagedPaths": 0,
+  "files": [
+    {
+      "path": ".env.example",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": false,
+      "rationale": "Document fail-closed explicit AI-provider choices and explicit remote-model opt-in; blank example secrets stay blank."
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": true,
+      "rationale": "Strengthen real dead-MySQL login smoke: safe retryable 503, Retry-After, no cookies or credential echo; no disabled gate."
+    },
+    {
+      "path": ".gitignore",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": true,
+      "rationale": "Keep npm as the sole root lock contract; ignore root Bun locks without changing optional sidecars."
+    },
+    {
+      "path": "COVERAGE-AUDIT.md",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Label historical reference/parity mapping as distinct from current test coverage and acceptance."
+    },
+    {
+      "path": "KNOWN_ISSUES_AND_BLOCKERS.md",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": true,
+      "rationale": "Replace superseded source/CI claims with latest measured results, unresolved code/widget work and honest owner gates."
+    },
+    {
+      "path": "MASTER_PROJECT_AUDIT.md",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Keep historical snapshot; add current-source audit entrypoint."
+    },
+    {
+      "path": "README.md",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": true,
+      "rationale": "Clarify npm setup and point to current measured audit, open work and build migration hazards."
+    },
+    {
+      "path": "TEST_AND_QA_REPORT.md",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Update current QA notice with latest tests/build/browser scope and unrepaired findings; retain historical body."
+    },
+    {
+      "path": "bun.lock",
+      "gitStatus": " D",
+      "change": "deleted",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": true,
+      "rationale": "Retain pre-existing removal of stale competing root Bun resolutions; package-lock.json is unchanged."
+    },
+    {
+      "path": "docs/ERROR_FIX_VERIFICATION_2026-11-18.md",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": true,
+      "rationale": "Preserve initial auth/MFA/lockfile repair evidence and local-vs-production limits."
+    },
+    {
+      "path": "docs/audit/2026-11-18/CHANGED_FILES.md",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Human-readable exact changed-file index and rationale; self-listed without recursive content hashes."
+    },
+    {
+      "path": "docs/audit/2026-11-18/ISSUES_AND_PLAN.md",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Replace candidate-only plan with actual red/green repair register and unrepaired source/external follow-up."
+    },
+    {
+      "path": "docs/audit/2026-11-18/REPOSITORY_AUDIT.md",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "A\u2013K measured scope, repairs, module/browser coverage, open gates, deliverables and single honest readiness verdict."
+    },
+    {
+      "path": "docs/audit/2026-11-18/browser-console-before-repairs.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Retain settled pre-repair console accessibility diagnostic as historical evidence."
+    },
+    {
+      "path": "docs/audit/2026-11-18/browser-fifth-attempt.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Preserve an earlier browser attempt verbatim with actual failures/environment limits; not current acceptance."
+    },
+    {
+      "path": "docs/audit/2026-11-18/browser-first-attempt.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Preserve an earlier browser attempt verbatim with actual failures/environment limits; not current acceptance."
+    },
+    {
+      "path": "docs/audit/2026-11-18/browser-fourth-attempt.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Preserve an earlier browser attempt verbatim with actual failures/environment limits; not current acceptance."
+    },
+    {
+      "path": "docs/audit/2026-11-18/browser-second-attempt.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Preserve an earlier browser attempt verbatim with actual failures/environment limits; not current acceptance."
+    },
+    {
+      "path": "docs/audit/2026-11-18/browser-third-attempt.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Preserve an earlier browser attempt verbatim with actual failures/environment limits; not current acceptance."
+    },
+    {
+      "path": "docs/audit/2026-11-18/browser-verification.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Final executed compiled-app browser result: 18 pass/1 fail, widget rule details, assets and explicit limits."
+    },
+    {
+      "path": "docs/audit/2026-11-18/changed-files.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Machine-readable exact current changed paths/status/rationale; excludes ignored local artifacts."
+    },
+    {
+      "path": "docs/audit/2026-11-18/checkpoint-verification.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Verify 95 preserved snapshot hashes across 15 manifests and recorded pre-existing absence; private fixture permission check only."
+    },
+    {
+      "path": "docs/audit/2026-11-18/repository-inventory.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Generated per-file hashes/AST/calls/imports/consumers/roles/API/test references; structural evidence only."
+    },
+    {
+      "path": "docs/audit/2026-11-18/validation-results.json",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Exact executed modes/results/log digests plus blocked/not-run gates; no additive coverage fiction."
+    },
+    {
+      "path": "docs/deployment/DEPLOYMENT_GUIDE.md",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": false,
+      "rationale": "Replace unverified authorization/model/RSS/alias/API claims with source-backed owner-controlled procedure and migration/test safety."
+    },
+    {
+      "path": "scripts/audit-repository.mjs",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": false,
+      "rationale": "Read-only whole-selected-tree SHA/AST/import/consumer/API/role/DB/security/test-reference inventory; no semantic pass inference."
+    },
+    {
+      "path": "scripts/benchmark-local-models.mjs",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": false,
+      "rationale": "Private-only read-only benchmark, streamed first-content timing and honest heuristic/quality/RSS limits."
+    },
+    {
+      "path": "scripts/build-source-archive.sh",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": true,
+      "rationale": "Use npm-only root inputs and actual npm-start preflight guidance; keep local data/secrets/build/archive exclusions."
+    },
+    {
+      "path": "scripts/lib/model-evidence.mjs",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": false,
+      "rationale": "Shared private model endpoint/timeout/auth argument boundary for read-only evidence tools."
+    },
+    {
+      "path": "scripts/test.mjs",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": false,
+      "rationale": "Refuse production/remote/non-disposable/mixed/routing-override datasources before DB-mutating child setup."
+    },
+    {
+      "path": "scripts/validate-production-env.mjs",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": false,
+      "rationale": "Reject unavailable/invalid explicit provider rather than accepting another configured paid-provider path."
+    },
+    {
+      "path": "scripts/verify-local-models.mjs",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Operational/build tooling",
+      "preexistingCheckpointPath": false,
+      "rationale": "Verify actual manifests/blobs/digests/byte lengths read-only; reject unsupported apply/promotion claims."
+    },
+    {
+      "path": "src/app/[...path]/page.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Consume reusable PublicSiteApp instead of importing a framework page component."
+    },
+    {
+      "path": "src/app/api/admin/approvals/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Capability + DB allowlist/field projection with explicit full/status-only visibility metadata."
+    },
+    {
+      "path": "src/app/api/admin/clients/[id]/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Role-aware composite relation selects/projections and timeline privacy; restricted fields are not fake zeroes."
+    },
+    {
+      "path": "src/app/api/admin/clients/[id]/stage/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Canonical correction role/capability checks; unknown legacy stage cannot act as predecessor of NEW."
+    },
+    {
+      "path": "src/app/api/admin/clients/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Require CRM read/write capabilities in addition to numeric minimum role."
+    },
+    {
+      "path": "src/app/api/admin/conversations/[id]/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Scope linked CRM conversation siblings by authenticated tenant, not shared client alone."
+    },
+    {
+      "path": "src/app/api/admin/conversations/[id]/stream/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Prefer real Last-Event-ID cursor over stale initial query cursor on reconnect."
+    },
+    {
+      "path": "src/app/api/admin/journey/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Authorize each action before reads/services and bind supplied closure project to supplied client."
+    },
+    {
+      "path": "src/app/api/admin/projects/[id]/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Project read capability; exclude private workforce job details and finance relations without permission."
+    },
+    {
+      "path": "src/app/api/admin/projects/[id]/status/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Canonical capability/role checks and serializable evidence-gated COMPLETED compare-and-set/closedAt."
+    },
+    {
+      "path": "src/app/api/admin/projects/[id]/tasks/[taskId]/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Whole-entry evidence/legacy handling, byte-limit 413 without mutation, capability and state/evidence CAS conflict."
+    },
+    {
+      "path": "src/app/api/admin/projects/[id]/tasks/[taskId]/run/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Require project.write before queuing a project-task AI draft."
+    },
+    {
+      "path": "src/app/api/admin/projects/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Project read capability and finance-aware list projection."
+    },
+    {
+      "path": "src/app/api/auth/login/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": true,
+      "rationale": "Safe availability/unexpected error boundary and fail-closed missing-secret MFA; no session on errors."
+    },
+    {
+      "path": "src/app/api/chat/stream/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Emit actual SSE id field so EventSource can resume visitor message cursors."
+    },
+    {
+      "path": "src/app/api/reviews/route.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Typed public review contract and explicit ISO date serialization."
+    },
+    {
+      "path": "src/app/page.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Keep a valid framework-only page wrapper; move reusable router/client shell intact to PublicSiteApp."
+    },
+    {
+      "path": "src/components/admin/AdminApp.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Readable muted shell labels on the measured dark background."
+    },
+    {
+      "path": "src/components/admin/AgentProviderNotice.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Readable provider-status guidance on dark console."
+    },
+    {
+      "path": "src/components/admin/ApprovalsView.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Label status-only access, hide restricted details/decisions, request ALL history explicitly, repair measured contrast."
+    },
+    {
+      "path": "src/components/admin/ClientDetailView.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Hide restricted finance tabs, distinguish withheld workforce data, and avoid fake financial zeroes."
+    },
+    {
+      "path": "src/components/admin/DashboardView.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Repair measured dashboard contrast/inherited button text and name/focus keyboard-scrollable activity."
+    },
+    {
+      "path": "src/components/admin/LeadsBoard.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Use shared CSRF-aware client-stage helper; retain optimistic UI rollback/errors."
+    },
+    {
+      "path": "src/components/admin/ProjectsView.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Use CSRF-aware status helper and explicit restricted finance states/null-safe payment rows."
+    },
+    {
+      "path": "src/components/admin/shared/DataTable.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Readable dark table headings and honest empty text."
+    },
+    {
+      "path": "src/components/admin/shared/cards.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Readable KPI/header/description/empty-state muted labels."
+    },
+    {
+      "path": "src/components/site/HomeView.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Use real hero asset and validated nullable reviews; honest empty/unavailable/abort behavior; readable controls."
+    },
+    {
+      "path": "src/components/site/PublicSiteApp.tsx",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Preserve original public router/portal/admin/consent shell after extraction; darken two measured public consent control colors."
+    },
+    {
+      "path": "src/components/site/buttons.tsx",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Darken public primary/WhatsApp button colors for measured text contrast without changing actions."
+    },
+    {
+      "path": "src/lib/access-policy.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Validate both canonical roles before numeric comparison, including prototype-key rejection."
+    },
+    {
+      "path": "src/lib/admin-client.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Reflect restricted/null DTOs and provide CSRF-aware board mutation helpers."
+    },
+    {
+      "path": "src/lib/admin-record-views.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Shared project-finance redaction and fail-closed approval type/filter/select/status-only projection."
+    },
+    {
+      "path": "src/lib/agents/engine.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Respect centralized global provider policy over saved agent model prefixes."
+    },
+    {
+      "path": "src/lib/agents/jobs.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Never truncate/overwrite acknowledged task evidence; preserve terminal job draft and durably audit capacity/CAS sync issues."
+    },
+    {
+      "path": "src/lib/agents/provider-selection.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Central explicit/global/disabled/auto provider policy and truthful diagnostics; no implicit fallback from explicit choice."
+    },
+    {
+      "path": "src/lib/automation/actions.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Handle durable n8n SUCCEEDED/RUNNING outcomes without false failure or lost wait."
+    },
+    {
+      "path": "src/lib/automation/engine.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Reconcile early terminal callbacks after waiting persistence; atomically compensate attempts with conditional resume."
+    },
+    {
+      "path": "src/lib/database-errors.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Application",
+      "preexistingCheckpointPath": true,
+      "rationale": "Classify Prisma availability by safe codes/shape without parsing or exposing raw messages."
+    },
+    {
+      "path": "src/lib/journey.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Use common closure evidence; stop claiming every unrelated RUNNING client workflow succeeded on stage changes."
+    },
+    {
+      "path": "src/lib/lifecycle-gates.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Shared persisted verified-payment/refund/task/latest-delivery/source closure evidence for board and journey."
+    },
+    {
+      "path": "src/lib/model/providers/ollama.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Correct nested generation options, no prompt redirects, reject empty/invalid responses, per-input finite embeddings, no fictional first-token metric."
+    },
+    {
+      "path": "src/lib/model/providers/openai-compatible.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Reject redirect/empty chat/incomplete or inconsistent non-finite embedding success."
+    },
+    {
+      "path": "src/lib/model/response-validation.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Shared finite nonempty vector and consistent batch validation."
+    },
+    {
+      "path": "src/lib/model/router.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Default private chain is local-only; remote requires explicit opt-in; invalid explicit chain denies."
+    },
+    {
+      "path": "src/lib/n8n/adapter.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Transactional monotonic callback/ACK reconciliation, preserved durable terminal outcome, idempotent retry/resume."
+    },
+    {
+      "path": "src/lib/network-address.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Shared binary subnet classifier for protected IPv4 and normalized/mapped/expanded IPv6 boundaries."
+    },
+    {
+      "path": "src/lib/preview-db.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Refuse conflicting non-file primary datasource before adapter loading; redact invalid preview URL errors."
+    },
+    {
+      "path": "src/lib/project-task-evidence.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Bound whole serialized task evidence at 60,000 UTF-8 bytes; preserve malformed legacy raw content."
+    },
+    {
+      "path": "src/lib/public-review-contract.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Validate public review nullable fields, ratings and dates without fabricating reviews."
+    },
+    {
+      "path": "src/lib/rea/target-policy.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Apply the same protected-address classification to REA target admission."
+    },
+    {
+      "path": "src/lib/safe-fetch.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Use shared protected-address admission instead of incomplete text-prefix classification."
+    },
+    {
+      "path": "src/lib/webchat/thread.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Application",
+      "preexistingCheckpointPath": false,
+      "rationale": "Order/paginate deltas by (createdAt,id) before LIMIT; real SSE cursor framing and cancellation cleanup."
+    },
+    {
+      "path": "tests/admin-accessibility-contract.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Supplement executed axe/keyboard evidence with dark-console contrast/activity focus contracts."
+    },
+    {
+      "path": "tests/admin-board-requests.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Exercise CSRF-aware client/project board request wiring and errors."
+    },
+    {
+      "path": "tests/agent-provider-selection.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Explicit/invalid/disabled provider matrix with synthetic configured-key and secret-free diagnostics assertions."
+    },
+    {
+      "path": "tests/agent-readiness.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Preserve skip-link contract after reusable shell extraction; no assertion removed."
+    },
+    {
+      "path": "tests/audit-chat-pagination-db.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Real disposable 650-row chat history with ties, visibility, cursor, stream framing and cancellation regressions."
+    },
+    {
+      "path": "tests/audit-crm-boundaries-db.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Real sessions/guards/DB role projections, approval allowlists/field privacy, tenant-sibling leak regression."
+    },
+    {
+      "path": "tests/audit-external-execution-db.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Intercepted outbound requests and injected callbacks around real DB writes; monotonicity/resume and global provider policy."
+    },
+    {
+      "path": "tests/audit-network-boundaries.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Protected/normalized IP and fetch/target admission regressions; no real private-network exploit."
+    },
+    {
+      "path": "tests/audit-private-model.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Synthetic/intercepted or local server provider protocol, redirect, output/embedding/timing/private-order regressions."
+    },
+    {
+      "path": "tests/audit-project-integrity-db.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "19 real disposable-DB task evidence/concurrency/gating/role/client-binding/refund/closure cases; no inference or send."
+    },
+    {
+      "path": "tests/auth-login.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": true,
+      "rationale": "34 outage, fail-closed MFA, session, rate-limit, lockout and safe-error regressions."
+    },
+    {
+      "path": "tests/business-policies.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Known/unknown/prototype role fail-closed regression matrix."
+    },
+    {
+      "path": "tests/dashboard-agent-roster.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Keep operator/authorization assertion while allowing repaired button styling."
+    },
+    {
+      "path": "tests/factory-super-admin-boundary.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Preserve public pipeline confidentiality assertions after shell extraction."
+    },
+    {
+      "path": "tests/model-evidence-scripts.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Read-only private-endpoint/manifest/blob/streaming metric tooling regressions without a real model host."
+    },
+    {
+      "path": "tests/model-service.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Update expected local-only private default; explicit remote path covered by new regression."
+    },
+    {
+      "path": "tests/pipeline-public-contract.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Preserve operator-pipeline confidentiality assertions against extracted public shell."
+    },
+    {
+      "path": "tests/portfolio-filter-history.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Keep navigation/history wiring assertions against extracted public shell."
+    },
+    {
+      "path": "tests/preview-db-isolation.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "8 configuration-only conflict/protocol/production/redaction probes; no adapter/files/DB opened."
+    },
+    {
+      "path": "tests/production-env.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Reject invalid/unavailable explicit provider while retaining configured/auto/intentional-off acceptance."
+    },
+    {
+      "path": "tests/project-task-agent-loop-contract.test.ts",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Assert the strengthened project.write guard without dropping approval/task-loop checks."
+    },
+    {
+      "path": "tests/public-home-contract.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Hero/review/control/public-shell contract regressions."
+    },
+    {
+      "path": "tests/public-review-contract.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "11 nullable/malformed/rating/date public-review parser cases."
+    },
+    {
+      "path": "tests/test-runner-safety.test.ts",
+      "gitStatus": "??",
+      "change": "new",
+      "layer": "Tests",
+      "preexistingCheckpointPath": false,
+      "rationale": "Intercept the actual child-process boundary and verify disposable URL acceptance/production/remote override rejection."
+    },
+    {
+      "path": "worklog.md",
+      "gitStatus": " M",
+      "change": "modified",
+      "layer": "Reports/documentation",
+      "preexistingCheckpointPath": true,
+      "rationale": "Preserve old rounds, add historical-evidence notice and append the actual repairs, latest results, restrictions and open gates."
+    }
+  ]
+}

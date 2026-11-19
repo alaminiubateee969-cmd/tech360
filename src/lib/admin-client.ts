@@ -552,6 +552,8 @@ export interface RefundCaseRecord {
   payment?: { id?: string; amount?: number; transactionId?: string | null } | null
 }
 export interface ProjectSummary {
+  /** False means financial values were intentionally redacted, not zero/unpaid. */
+  financeRead?: boolean
   id: string
   code?: string | null
   name: string
@@ -655,6 +657,7 @@ export interface ClientVerifiedIdentityRecord {
   verifiedAt: string
 }
 export interface ClientDetailResponse {
+  access?: { financeRead: boolean; privateWorkforceRead: boolean }
   client: ClientRecord
   agentJobs?: ClientAgentJobRecord[] | null
   verifiedIdentities?: ClientVerifiedIdentityRecord[] | null
@@ -662,12 +665,12 @@ export interface ClientDetailResponse {
   communications?: CommunicationRecord[]
   scopes?: ScopeRecord[]
   previews?: PreviewRecord[]
-  payments?: PaymentRecord[]
-  invoices?: InvoiceRecord[]
+  payments?: PaymentRecord[] | null
+  invoices?: InvoiceRecord[] | null
   projects?: ProjectSummary[]
   meetings?: MeetingRecord[]
-  memories?: MemoryRecord[]
-  automationLogs?: AutomationLogRecord[]
+  memories?: MemoryRecord[] | null
+  automationLogs?: AutomationLogRecord[] | null
   timeline?: TimelineEvent[]
   documents?: DocumentRecord[]
 }
@@ -702,6 +705,7 @@ export interface JourneyActionInput {
 
 export interface ApprovalItem {
   id: string
+  detailsRestricted?: boolean
   type?: string | null
   title: string
   description?: string | null
@@ -714,7 +718,7 @@ export interface ApprovalItem {
   payload?: string | null
   result?: string | null
 }
-export interface ApprovalsResponse { approvals: ApprovalItem[] }
+export interface ApprovalsResponse { access?: { detailsRead: boolean; visibility: 'ALL' | 'PERMITTED_STATUS_ONLY' }; approvals: ApprovalItem[] }
 export interface ApprovalDecisionResponse {
   ok?: boolean
   result?: unknown
@@ -1132,6 +1136,14 @@ export const api = {
     fetchJson<{ ok?: boolean; message?: string }>('/api/admin/payments/verify', {
       method: 'POST',
       body: { paymentId },
+    }),
+  moveClientStage: (id: string, pipelineStage: string) =>
+    fetchJson<{ ok?: boolean; message?: string; pipelineStage?: string }>(`/api/admin/clients/${encodeURIComponent(id)}/stage`, {
+      method: 'PATCH', body: { pipelineStage },
+    }),
+  moveProjectStatus: (id: string, status: string) =>
+    fetchJson<{ ok?: boolean; message?: string; status?: string }>(`/api/admin/projects/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH', body: { status },
     }),
   closeProject: (id: string) =>
     fetchJson<{ ok?: boolean; message?: string }>(`/api/admin/projects/${encodeURIComponent(id)}/close`, {

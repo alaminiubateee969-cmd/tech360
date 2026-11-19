@@ -25,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 
 function payloadView(item: ApprovalItem) {
+  if (item.detailsRestricted) return <p className="text-xs text-slate-400">Request status is visible. Approval content and execution details are restricted to Super Admin.</p>
   if (!item.payload) return null
   const parsed = parseMaybeJson(item.payload)
   if (parsed && typeof parsed === 'object') return <JsonView value={parsed} maxHeightClass="max-h-56" />
@@ -34,7 +35,7 @@ function payloadView(item: ApprovalItem) {
 
 export function ApprovalsView() {
   const [tab, setTab] = useState('pending')
-  const url = tab === 'pending' ? '/api/admin/approvals?status=PENDING' : '/api/admin/approvals'
+  const url = tab === 'pending' ? '/api/admin/approvals?status=PENDING' : '/api/admin/approvals?status=ALL'
   const { data, loading, error, refresh } = useApi<ApprovalsResponse>(url)
   const approvals = data?.approvals ?? []
 
@@ -86,6 +87,7 @@ export function ApprovalsView() {
         }
       />
 
+      {data?.access?.visibility === 'PERMITTED_STATUS_ONLY' ? <p role="status" className="mb-3 text-sm text-slate-400">Showing permitted operational request statuses only, not the complete governance queue. Private approval content and decisions require Super Admin.</p> : null}
       <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-3" aria-label="Approval swimlane">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400"><ShieldCheck className="size-3.5 text-[#009FE3]" /> Approval swimlane — Request → Triage → Decision → Execution → Audit (every gate is audit-logged)</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-5">
@@ -98,12 +100,12 @@ export function ApprovalsView() {
           ].map((step, i) => (
             <div key={step.label} className="relative rounded-lg border border-slate-800 bg-slate-950/40 p-2.5">
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-300"><step.icon className="size-3.5 text-[#009FE3]" /> {step.label}</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{step.desc}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-400">{step.desc}</p>
               {i < 4 ? <ArrowRight className="absolute -right-2 top-1/2 hidden size-3 -translate-y-1/2 rounded-full border border-slate-700 bg-slate-900 p-0.5 text-[#009FE3] sm:block" aria-hidden="true" /> : null}
             </div>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-slate-600">Buffer Collaborate parity: approval workflow on the same calendar/queue that holds the content — here the queue is the governance list below.</p>
+        <p className="mt-2 text-[11px] text-slate-400">Buffer Collaborate parity: approval workflow on the same calendar/queue that holds the content — here the queue is the governance list below.</p>
       </section>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -145,7 +147,7 @@ export function ApprovalsView() {
             <DialogTitle className="text-slate-100">
               {decide?.decision === 'APPROVED' ? 'Approve' : 'Reject'}: {decide?.item.title}
             </DialogTitle>
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className="text-slate-400">
               {decide?.decision === 'APPROVED'
                 ? 'Approving executes the gated action immediately and records the outcome.'
                 : 'Rejecting blocks the action and notifies the requesting agent.'}
@@ -173,7 +175,7 @@ export function ApprovalsView() {
               disabled={busy}
               variant={decide?.decision === 'APPROVED' ? 'default' : 'destructive'}
               className={decide?.decision === 'APPROVED' ? 'font-semibold' : undefined}
-              style={decide?.decision === 'APPROVED' ? { background: '#18B83A' } : undefined}
+              style={decide?.decision === 'APPROVED' ? { background: '#087337' } : undefined}
             >
               {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
               {decide?.decision === 'APPROVED' ? 'Approve & Execute' : 'Reject'}
@@ -243,7 +245,7 @@ function ApprovalList({
             <header className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-800 px-4 py-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-100">{a.title}</p>
-                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
                   <span className="rounded bg-slate-800/70 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-slate-400">{a.type}</span>
                   <span>Client: {clientDisplayName(a.client)}</span>
                   {a.agentCode ? <span>Agent: <span className="font-mono">{a.agentCode}</span></span> : null}
@@ -275,7 +277,7 @@ function ApprovalList({
                 </div>
               ) : null}
             </div>
-            {isPending ? (
+            {isPending && !a.detailsRestricted ? (
               <footer className="flex justify-end gap-2 border-t border-slate-800 px-4 py-3">
                 <Button
                   variant="outline"
@@ -289,7 +291,7 @@ function ApprovalList({
                   size="sm"
                   onClick={() => onDecide(a, 'APPROVED')}
                   className="text-xs font-semibold"
-                  style={{ background: '#18B83A' }}
+                  style={{ background: '#087337' }}
                 >
                   <ThumbsUp className="size-3.5" aria-hidden="true" /> Approve
                 </Button>

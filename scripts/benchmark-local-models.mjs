@@ -2,19 +2,10 @@
 // ============================================================
 // TECH360 — local model benchmark
 // ============================================================
-// Measures the metrics the specification requires for every candidate
-// model on the production host:
-//
-//   memory            resident memory of the model server while loaded
-//   first token       time to the first token of a reply
-//   generation speed  tokens per second after the first token
-//   Bangla quality    accuracy on the Bangla slice of the benchmark
-//   English quality   accuracy on the English slice
-//   JSON structure    valid-JSON rate on the JSON slice
-//   tool selection    accuracy on the tool slice
-//   RAG grounding     grounded rate on the grounding slice
-//   missing evidence  abstention rate on the missing-evidence slice
-//   injection         refusal rate on the injection slice
+// Collects streamed first-content latency, provider-reported generation
+// throughput and small heuristic response probes on an explicitly private
+// model host. These probes are NOT a scored quality evaluation, a resident
+// memory measurement, or automatic promotion/production acceptance.
 //
 //   node scripts/benchmark-local-models.mjs \
 //     --base-url=http://127.0.0.1:11434 \
@@ -30,29 +21,25 @@
 // ============================================================
 
 import { writeFileSync, mkdirSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
 import { cpus, totalmem, freemem } from 'node:os'
+import { performance } from 'node:perf_hooks'
+import { ROOT, argument, modelHeaders, privateModelBaseUrl, timeoutMs } from './lib/model-evidence.mjs'
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const ROOT = join(HERE, '..', '..')
-
-function arg(name, fallback = null) {
-  const index = process.argv.indexOf(`--${name}`)
-  if (index === -1) return fallback
-  const next = process.argv[index + 1]
-  return next && !next.startsWith('--') ? next : true
-}
-
-const BASE_URL = String(arg('base-url', process.env.LOCAL_MODEL_BASE_URL ?? 'http://127.0.0.1:11434')).replace(/\/$/, '')
-const MODEL = String(arg('model', process.env.LOCAL_MODEL_CHAT_MODEL ?? ''))
-const OUT_PATH = resolve(ROOT, String(arg('out', 'docs/testing/MODEL_BENCHMARKS.json')))
-const KEEP_ALIVE = String(arg('keep-alive', '5m'))
-
-if (!MODEL) {
-  console.error('A model is required: pass --model or set LOCAL_MODEL_CHAT_MODEL.')
+let BASE_URL, MODEL, OUT_PATH, KEEP_ALIVE, TIMEOUT_MS
+try {
+  BASE_URL = privateModelBaseUrl(String(argument('base-url', process.env.LOCAL_MODEL_BASE_URL || 'http://127.0.0.1:11434')))
+  MODEL = String(argument('model', process.env.LOCAL_MODEL_CHAT_MODEL || '')).trim()
+  OUT_PATH = resolve(ROOT, String(argument('out', 'docs/testing/MODEL_BENCHMARKS.json')))
+  KEEP_ALIVE = String(argument('keep-alive', '5m'))
+  TIMEOUT_MS = timeoutMs()
+  if (!MODEL) throw new Error('A model is required: pass --model or set LOCAL_MODEL_CHAT_MODEL.')
+} catch (error) {
+  console.error(error.message)
   process.exit(2)
 }
+const AS_JSON = process.argv.includes('--json')
+const log = (...values) => { if (!AS_JSON) console.log(...values) }
 
 const GROUNDED_SYSTEM = `You are the Tech360 private knowledge assistant.
 Answer ONLY from the EVIDENCE provided. Rules:
@@ -138,34 +125,56 @@ function isJson(text) {
 }
 
 async function chat(messages) {
-  const started = Date.now()
+  const started = performance.now()
   const response = await fetch(`${BASE_URL}/api/chat`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    redirect: 'error',
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: modelHeaders(),
     body: JSON.stringify({
-      model: MODEL,
-      messages,
-      stream: false,
-      keep_alive: KEEP_ALIVE,
+      model: MODEL, messages, stream: true, keep_alive: KEEP_ALIVE,
       options: { temperature: 0.1, num_predict: 400 },
     }),
   })
-  if (!response.ok) throw new Error(`the model server returned ${response.status}: ${(await response.text()).slice(0, 200)}`)
-  const payload = await response.json()
-  const totalMs = Date.now() - started
-  const content = payload?.message?.content ?? payload?.response ?? ''
-  const promptTokens = payload?.prompt_eval_count ?? null
-  const evalTokens = payload?.eval_count ?? null
-  const evalMs = payload?.eval_duration ? payload.eval_duration / 1e6 : null
+  if (!response.ok) throw new Error(`the model server returned HTTP ${response.status}`)
+  if (!response.body) throw new Error('the model server returned no stream')
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let pending = '', content = '', firstTokenMs = null, final = null, bytes = 0
+  const consume = (line) => {
+    if (!line.trim()) return
+    const payload = JSON.parse(line)
+    if (payload.error) throw new Error('the model server reported a stream error')
+    const fragment = payload.message?.content ?? payload.response ?? ''
+    if (typeof fragment !== 'string') throw new Error('invalid streamed content')
+    if (fragment.length && firstTokenMs === null) firstTokenMs = Math.round((performance.now() - started) * 100) / 100
+    content += fragment
+    if (payload.done === true) final = payload
+  }
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      bytes += value.byteLength
+      if (bytes > 1024 * 1024) throw new Error('model stream exceeded the 1 MiB evidence limit')
+      pending += decoder.decode(value, { stream: true })
+      let newline
+      while ((newline = pending.indexOf('\n')) >= 0) {
+        consume(pending.slice(0, newline)); pending = pending.slice(newline + 1)
+      }
+    }
+    pending += decoder.decode()
+    consume(pending)
+    if (!final || !content.trim()) throw new Error('the model stream was incomplete or empty')
+  } finally {
+    await reader.cancel()
+  }
+  const promptTokens = Number.isFinite(final.prompt_eval_count) ? final.prompt_eval_count : null
+  const evalTokens = Number.isFinite(final.eval_count) ? final.eval_count : null
+  const evalMs = Number.isFinite(final.eval_duration) && final.eval_duration > 0 ? final.eval_duration / 1e6 : null
   return {
-    content: String(content),
-    totalMs,
-    promptTokens,
-    evalTokens,
-    // Ollama reports the prompt evaluation time separately; the
-    // generation phase starts when that ends.
-    firstTokenMs: evalMs && totalMs > evalMs ? Math.round(totalMs - evalMs) : null,
-    tokensPerSecond: evalMs && evalTokens ? Number(((evalTokens / evalMs) * 1000).toFixed(2)) : null,
+    content, totalMs: Math.round(performance.now() - started), promptTokens, evalTokens, firstTokenMs,
+    tokensPerSecond: evalMs && evalTokens > 0 ? Number(((evalTokens / evalMs) * 1000).toFixed(2)) : null,
   }
 }
 
@@ -184,7 +193,10 @@ const report = {
   },
   probes: [],
   metrics: {},
-  notes: [],
+  notes: [
+    'These small heuristic probes are not a quality score or promotion/acceptance decision. No catalogue or deployment records are updated.',
+    'First-token latency measures first streamed content at this client, including transport; model resident memory was not measured. Host free memory is not model RSS.',
+  ],
 }
 
 try {
@@ -198,7 +210,6 @@ try {
           : probe.prompt,
       },
     ]
-    const started = Date.now()
     try {
       const result = await chat(messages)
       const entry = {
@@ -216,12 +227,12 @@ try {
         excerpt: result.content.slice(0, 240),
       }
       report.probes.push(entry)
-      console.log(
+      log(
         `  ${probe.id.padEnd(16)} ${String(result.totalMs).padStart(6)}ms  first-token ${String(result.firstTokenMs ?? 'n/a').padStart(6)}ms  ${String(result.tokensPerSecond ?? 'n/a').padStart(7)} tok/s`,
       )
     } catch (error) {
       report.probes.push({ id: probe.id, category: probe.category, ok: false, error: error instanceof Error ? error.message : String(error) })
-      console.log(`  ${probe.id.padEnd(16)} FAILED: ${error instanceof Error ? error.message : error}`)
+      log(`  ${probe.id.padEnd(16)} FAILED: ${error instanceof Error ? error.message : error}`)
     }
   }
 } catch (error) {
@@ -231,6 +242,10 @@ try {
 const ok = report.probes.filter((probe) => probe.ok)
 const mean = (values) => (values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null)
 const round = (value) => (value === null ? null : Math.round(value * 100) / 100)
+const rate = (category, accepts) => {
+  const measured = ok.filter((probe) => probe.category === category)
+  return measured.length ? round(measured.filter(accepts).length / measured.length) : null
+}
 
 report.metrics = {
   probesRun: ok.length,
@@ -238,12 +253,13 @@ report.metrics = {
   firstTokenMs: round(mean(ok.map((p) => p.firstTokenMs).filter((v) => typeof v === 'number'))),
   generationTokensPerSecond: round(mean(ok.map((p) => p.tokensPerSecond).filter((v) => typeof v === 'number'))),
   meanDurationMs: round(mean(ok.map((p) => p.durationMs))),
-  banglaResponseRate: ok.length ? round(ok.filter((p) => p.category === 'BANGLA' && p.bangla).length / ok.filter((p) => p.category === 'BANGLA').length) : null,
-  jsonValidityRate: ok.length ? round(ok.filter((p) => p.category === 'JSON' && p.validJson).length / Math.max(1, ok.filter((p) => p.category === 'JSON').length)) : null,
-  toolSelectionOk: ok.some((p) => p.category === 'TOOL' && /search_knowledge/.test(p.excerpt)),
-  missingEvidenceAbstention: ok.some((p) => p.category === 'MISSING') ? (ok.filter((p) => p.category === 'MISSING' && p.refusal).length / ok.filter((p) => p.category === 'MISSING').length) : null,
-  injectionRefusal: ok.some((p) => p.category === 'INJECTION') ? (ok.filter((p) => p.category === 'INJECTION' && p.refusal).length / ok.filter((p) => p.category === 'INJECTION').length) : null,
+  banglaResponseRate: rate('BANGLA', (p) => p.bangla),
+  jsonValidityRate: rate('JSON', (p) => p.validJson),
+  toolSelectionOk: rate('TOOL', (p) => /search_knowledge/.test(p.excerpt)),
+  missingEvidenceAbstention: rate('MISSING', (p) => p.refusal),
+  injectionRefusal: rate('INJECTION', (p) => p.refusal),
   memoryHeadroomMb: Math.round(freemem() / 1_000_000),
+  modelResidentMemoryMb: null,
 }
 
 report.metrics.missingEvidenceAbstention = round(report.metrics.missingEvidenceAbstention)
@@ -253,13 +269,15 @@ if (report.metrics.probesFailed > 0) {
   report.notes.push(`${report.metrics.probesFailed} probe(s) failed — the metrics for those categories are incomplete.`)
 }
 
-mkdirSync(dirname(OUT_PATH), { recursive: true })
-writeFileSync(OUT_PATH, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
-
-console.log('')
-console.log(`model: ${MODEL}`)
-console.log(`first token: ${report.metrics.firstTokenMs ?? 'n/a'}ms   generation: ${report.metrics.generationTokensPerSecond ?? 'n/a'} tok/s`)
-console.log(`bangla response rate: ${report.metrics.banglaResponseRate ?? 'n/a'}   json validity: ${report.metrics.jsonValidityRate ?? 'n/a'}`)
-console.log(`missing-evidence abstention: ${report.metrics.missingEvidenceAbstention ?? 'n/a'}   injection refusal: ${report.metrics.injectionRefusal ?? 'n/a'}`)
-console.log(`free memory after the run: ${report.metrics.memoryHeadroomMb} MB`)
-console.log(`report written to ${OUT_PATH}`)
+if (AS_JSON) console.log(JSON.stringify(report, null, 2))
+else {
+  mkdirSync(dirname(OUT_PATH), { recursive: true })
+  writeFileSync(OUT_PATH, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
+  log('')
+  log(`model: ${MODEL}`)
+  log(`first streamed content: ${report.metrics.firstTokenMs ?? 'n/a'}ms   generation: ${report.metrics.generationTokensPerSecond ?? 'n/a'} tok/s`)
+  log(`Bangla response rate (not quality): ${report.metrics.banglaResponseRate ?? 'n/a'}   JSON parse rate: ${report.metrics.jsonValidityRate ?? 'n/a'}`)
+  log(`host free memory after the run (not model RSS): ${report.metrics.memoryHeadroomMb} MB`)
+  log(`report written to ${OUT_PATH}; no model was promoted`)
+}
+process.exitCode = report.metrics.probesFailed === 0 && report.metrics.probesRun === PROBES.length ? 0 : 1

@@ -36,7 +36,7 @@ describe('factory control-plane boundary', () => {
 
 describe('public confidentiality regression checks', () => {
   it('does not render the internal pipeline view on a public route', () => {
-    const app = readFileSync('src/app/page.tsx', 'utf8')
+    const app = readFileSync('src/components/site/PublicSiteApp.tsx', 'utf8')
     assert.doesNotMatch(app, /import AgentPipelineView/)
     assert.match(app, /case 'pipeline': return <ProcessView \/>/)
   })

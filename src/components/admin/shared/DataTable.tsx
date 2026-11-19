@@ -67,7 +67,7 @@ export function DataTable<T>({
               <TableHead
                 key={c.key}
                 className={cn(
-                  'h-9 bg-[#0d1526] px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500',
+                  'h-9 bg-[#0d1526] px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400',
                   c.thClassName,
                 )}
               >
@@ -118,7 +118,7 @@ export function DataTable<T>({
           {showEmpty && (
             <TableRow className="border-slate-800/60">
               <TableCell colSpan={columns.length} className="px-3 py-10 text-center">
-                {empty ?? <span className="text-sm text-slate-600">No records yet.</span>}
+                {empty ?? <span className="text-sm text-slate-400">No records yet.</span>}
               </TableCell>
             </TableRow>
           )}

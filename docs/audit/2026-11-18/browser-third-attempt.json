@@ -1,0 +1,325 @@
+{
+  "generatedAt": "2026-11-19T03:20:57.017Z",
+  "mode": "Chromium; development server; isolated SQLite via the Prisma libSQL adapter; synthetic fixtures; AI/external integrations disabled; cross-origin browser requests blocked",
+  "limits": [
+    "Not MySQL runtime acceptance",
+    "Not Hostinger or multi-process/load acceptance",
+    "Axe automation is not a full manual accessibility audit",
+    "Role endpoint probes are HTTP via Playwright; console UI tested only for the named fixtures",
+    "Public asset browser sweep is the explicitly listed sample, not every possible dynamic route"
+  ],
+  "checks": [
+    {
+      "name": "desktop homepage has a visible H1, no horizontal overflow and a real hero video",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 27844,
+      "evidence": {
+        "h1": "Engineering Technology. Empowering Business.",
+        "heroStatus": 206,
+        "reviewsStatus": 200
+      }
+    },
+    {
+      "name": "anonymous admin login renders real labelled fields in a fresh browser context",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 13903,
+      "evidence": {
+        "canonicalPath": "/admin",
+        "labelledInputs": true
+      }
+    },
+    {
+      "name": "synthetic Super Admin signs in through the real browser form and gets an HttpOnly session",
+      "kind": "functional",
+      "status": "PASS",
+      "ms": 3879,
+      "evidence": {
+        "httpOnlySession": true
+      }
+    },
+    {
+      "name": "mobile chat starts without contact-channel export and persists a second message through reload",
+      "kind": "functional",
+      "status": "FAIL",
+      "ms": 133094,
+      "detail": "locator.click: Timeout 120000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Chat with TECH360', exact: true })\n"
+    },
+    {
+      "name": "visitor uploads/downloads a real text attachment; an unsigned browser cannot read it",
+      "kind": "functional",
+      "status": "FAIL",
+      "ms": 11,
+      "detail": "The expression evaluated to a falsy value:\n\n  assert.ok(conversationId && mobilePage)\n"
+    },
+    {
+      "name": "admin reply reaches the live visitor once; replay is idempotent and an internal note stays private",
+      "kind": "functional",
+      "status": "FAIL",
+      "ms": 0,
+      "detail": "The expression evaluated to a falsy value:\n\n  assert.ok(mobilePage && conversationId)\n"
+    },
+    {
+      "name": "real client portal route renders its own labelled sign-in fields, not homepage text",
+      "kind": "functional",
+      "status": "BLOCKED_ENVIRONMENT",
+      "ms": 116,
+      "detail": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/portal\nCall log:\n  - navigating to \"http://127.0.0.1:3000/portal\", waiting until \"load\"\n"
+    },
+    {
+      "name": "STAFF authenticated HTTP probes enforce private workforce and financial projections",
+      "kind": "functional",
+      "status": "FAIL",
+      "ms": 2347,
+      "detail": "apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:3000\nCall log:\n  - → POST http://127.0.0.1:3000/api/auth/login\n    - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36\n    - accept: */*\n    - accept-encoding: gzip,deflate,br\n    - content-type: application/json\n    - content-length: 91\n"
+    },
+    {
+      "name": "PROJECT_MANAGER authenticated HTTP probes enforce private workforce and financial projections",
+      "kind": "functional",
+      "status": "FAIL",
+      "ms": 13,
+      "detail": "apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:3000\nCall log:\n  - → POST http://127.0.0.1:3000/api/auth/login\n    - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36\n    - accept: */*\n    - accept-encoding: gzip,deflate,br\n    - content-type: application/json\n    - content-length: 101\n"
+    },
+    {
+      "name": "DEVELOPER authenticated HTTP probes enforce private workforce and financial projections",
+      "kind": "functional",
+      "status": "FAIL",
+      "ms": 12,
+      "detail": "apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:3000\nCall log:\n  - → POST http://127.0.0.1:3000/api/auth/login\n    - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36\n    - accept: */*\n    - accept-encoding: gzip,deflate,br\n    - content-type: application/json\n    - content-length: 95\n"
+    },
+    {
+      "name": "SALES authenticated HTTP probes enforce private workforce and financial projections",
+      "kind": "functional",
+      "status": "FAIL",
+      "ms": 9,
+      "detail": "apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:3000\nCall log:\n  - → POST http://127.0.0.1:3000/api/auth/login\n    - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36\n    - accept: */*\n    - accept-encoding: gzip,deflate,br\n    - content-type: application/json\n    - content-length: 91\n"
+    },
+    {
+      "name": "listed public sitemap sample renders and all local images finish loading",
+      "kind": "functional",
+      "status": "FAIL",
+      "ms": 87,
+      "detail": "apiRequestContext.get: connect ECONNREFUSED 127.0.0.1:3000\nCall log:\n  - → GET http://127.0.0.1:3000/sitemap.xml\n    - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36\n    - accept: */*\n    - accept-encoding: gzip,deflate,br\n"
+    },
+    {
+      "name": "axe WCAG 2.1 AA automated check: desktop homepage including consent banner",
+      "kind": "accessibility",
+      "status": "PASS",
+      "evidence": {
+        "violations": 0,
+        "passes": 27,
+        "incompleteRules": 4
+      }
+    },
+    {
+      "name": "axe WCAG 2.1 AA automated check: anonymous admin login",
+      "kind": "accessibility",
+      "status": "PASS",
+      "evidence": {
+        "violations": 0,
+        "passes": 24,
+        "incompleteRules": 1
+      }
+    },
+    {
+      "name": "axe WCAG 2.1 AA automated check: synthetic Super Admin console dashboard",
+      "kind": "accessibility",
+      "status": "FAIL",
+      "evidence": {
+        "violations": 1,
+        "passes": 28,
+        "incompleteRules": 2
+      }
+    }
+  ],
+  "a11y": [
+    {
+      "surface": "desktop homepage including consent banner",
+      "violations": [],
+      "passes": 27,
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "nodes": 1
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "nodes": 5
+        },
+        {
+          "id": "color-contrast",
+          "nodes": 41
+        },
+        {
+          "id": "link-in-text-block",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "surface": "anonymous admin login",
+      "violations": [],
+      "passes": 24,
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "nodes": 30
+        }
+      ]
+    },
+    {
+      "surface": "synthetic Super Admin console dashboard",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".leading-tight.min-w-0 > .text-\\[10px\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div:nth-child(1) > .mb-1\\.5.tracking-widest.text-\\[10px\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div:nth-child(2) > .mb-1\\.5.tracking-widest.text-\\[10px\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div:nth-child(3) > .mb-1\\.5.tracking-widest.text-\\[10px\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div:nth-child(4) > .mb-1\\.5.tracking-widest.text-\\[10px\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "div:nth-child(5) > .mb-1\\.5.tracking-widest.text-\\[10px\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".text-\\[11px\\].truncate"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                "aside > .border-t.py-3.px-4 > .text-\\[10px\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.82 (foreground color: #62748e, background color: #0d1526, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".text-sm.text-slate-200.truncate"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.4 (foreground color: #767d8a, background color: #0d1526, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".mt-1"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.84 (foreground color: #364256, background color: #0b1220, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".flex-col.p-4.bg-slate-900\\/60:nth-child(1) > .justify-between.gap-2.items-start > .text-\\[11px\\].tracking-wider.uppercase"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.82 (foreground color: #364256, background color: #0c1323, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".flex-col.p-4.bg-slate-900\\/60:nth-child(2) > .justify-between.gap-2.items-start > .text-\\[11px\\].tracking-wider.uppercase"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.82 (foreground color: #364256, background color: #0c1323, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".flex-col.p-4.bg-slate-900\\/60:nth-child(3) > .justify-between.gap-2.items-start > .text-\\[11px\\].tracking-wider.uppercase"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.82 (foreground color: #364256, background color: #0c1323, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".flex-col.p-4.bg-slate-900\\/60:nth-child(4) > .justify-between.gap-2.items-start > .text-\\[11px\\].tracking-wider.uppercase"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.82 (foreground color: #364256, background color: #0c1323, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".flex-col.p-4.bg-slate-900\\/60:nth-child(5) > .justify-between.gap-2.items-start > .text-\\[11px\\].tracking-wider.uppercase"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.82 (foreground color: #364256, background color: #0c1323, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".flex-col.p-4.bg-slate-900\\/60:nth-child(6) > .justify-between.gap-2.items-start > .text-\\[11px\\].tracking-wider.uppercase"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 1.82 (foreground color: #364256, background color: #0c1323, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "passes": 28,
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "nodes": 1
+        },
+        {
+          "id": "color-contrast",
+          "nodes": 43
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "assets": [],
+  "blockedExternalOrigins": [],
+  "failedLocalRequests": [
+    {
+      "path": "/_next/static/chunks/app/page.js",
+      "error": "net::ERR_INCOMPLETE_CHUNKED_ENCODING"
+    },
+    {
+      "path": "/_next/static/chunks/main-app.js",
+      "error": "net::ERR_INCOMPLETE_CHUNKED_ENCODING"
+    },
+    {
+      "path": "/api/admin/ops-status",
+      "error": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "path": "/admin",
+      "error": "net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "path": "/portal",
+      "error": "net::ERR_CONNECTION_REFUSED"
+    }
+  ],
+  "browser": "153.0.8010.0",
+  "counts": {
+    "passed": 5,
+    "failed": 9,
+    "blockedEnvironment": 1,
+    "a11yViolations": 1,
+    "pageErrors": 0,
+    "assetSamplePaths": 0
+  }
+}

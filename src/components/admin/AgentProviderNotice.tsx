@@ -28,7 +28,7 @@ export function AgentProviderNotice({ status, compact = false }: {
       </p>
       <p className="mt-1 text-xs leading-relaxed text-slate-400">{status.detail}</p>
       {!compact ? (
-        <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+        <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
           {status.configured
             ? 'Run a read-only agent task to verify inference. Provider errors and quota limits are saved in the execution ledger.'
             : 'A Super Admin must configure the provider in the server environment and restart the app. Signing in as Admin or Super Admin does not supply AI credentials.'}

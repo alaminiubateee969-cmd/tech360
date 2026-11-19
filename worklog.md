@@ -1,5 +1,7 @@
 # TECH360 Platform — Build Worklog
 
+> **Current evidence:** [repository audit, 2026-11-18](docs/audit/2026-11-18/REPOSITORY_AUDIT.md) and [issue register](docs/audit/2026-11-18/ISSUES_AND_PLAN.md). The older round entries below are preserved history, not current release approval. Their SQLite-only/hash-only architecture, package-manager, deployment and default/demo-account notes are not the current production contract. Current source uses MySQL and npm; no historical/default credentials establish authorized access. Local tests/browser evidence do not certify production, providers, restore or load.
+
 Project: Tech360 LLC enterprise platform (bdtech360.com)
 Stack: Next.js 16 (App Router, single `/` route SPA), TypeScript, Tailwind 4 + shadcn/ui, Prisma + SQLite, z-ai-web-dev-sdk (backend only)
 
@@ -1009,3 +1011,92 @@ Results: typecheck 0, lint 0, full suite 1902/1902 pass (0 fail, 0 skipped) befo
   dead-port 503 checks. Also assert that public health discloses only `status`. Local smoke against the real
   standalone server (dead DB) passed all checks that do not need MySQL. The check is proven to catch a
   SQLite-built bundle.
+
+---
+Task ID: remaining-error-repair-2026-11-18
+Agent: Arena agent
+Branch: arena/3aa75515-tech360; base d8c68f4 (PR #82 merge)
+
+- Reconfirmed main full MySQL CI 44400326147 and baseline 44400326179 passed; the owner's old failed
+  commits are already integrated. No branches were re-merged, switched, pushed or deleted.
+- Reproduced unhandled staff-login database failures. Added safe availability classification and retryable
+  HTTP 503 responses without cookies, raw exception text or another DB-backed logging attempt. Other
+  failures remain safe JSON HTTP 500. CI's real dead-MySQL smoke now checks this contract.
+- Reproduced a fail-open MFA edge case: enabled MFA with a null/empty secret issued a password-only
+  session. It now refuses access with TOTP_UNAVAILABLE; valid MFA, lockouts and rate limits are preserved.
+- Removed the stale root bun.lock and ignored root Bun locks; npm's unchanged package-lock.json remains
+  authoritative. Optional Bun sidecars are unchanged. Updated archive inputs and startup instructions.
+- Corrected superseded dependency/CI claims in KNOWN_ISSUES_AND_BLOCKERS.md without closing external
+  production blockers. Detailed evidence: docs/ERROR_FIX_VERIFICATION_2026-11-18.md.
+
+Results: 1,939/1,939 tests passed, 0 failures/skips/cancellations (disposable SQLite adapter); 34 new login
+regressions; lint and MySQL-client typecheck passed; both npm audits report 0 vulnerabilities. All 20
+published migrations remain intact; static schema map/drift and asset/conflict gates pass. Production
+compilation + standalone asset verification passed. Actual npm-start smoke passed 97 HTTP checks, including
+83/83 public sitemap routes and an unreachable real MySQL connection returning safe login HTTP 503.
+Both workflow YAML files parse; all 41 shell steps pass bash -n. Source archive generation/integrity passed.
+
+Limits: no local MySQL server/Docker or live deployment/provider acceptance. Native Prisma engines used the
+previously documented GitHub mirror, with compressed/decompressed SHA-256 verification, inside ignored
+node_modules only. New edits still require publication and real-MySQL branch CI before merge. No production
+database, provider credentials, repository protection/settings or deployment was changed.
+
+---
+Task ID: repository-wide-safe-hardening-2026-11-18
+Agent: Arena agent
+Branch: arena/3aa75515-tech360; unchanged base/HEAD d8c68f4f8ea983bc64559c51ed9045a726a6cb85
+
+Preservation and scope:
+- Preserved the initial 8 tracked changes and 3 untracked/deleted paths plus incremental pre-edit
+  snapshots in ignored archives/audit-checkpoints/20261118T215124Z; original historical files remain
+  available. The structural inventory reads all non-ignored working files outside its own output
+  directory, rather than claiming an exhaustive manual semantic or device audit.
+- No staging, commit, push, PR, branch switch, merge, deployment, external message, paid-provider call,
+  production DB operation or secret change occurred. ChatWidget is unchanged under its separate-plan
+  restriction. Synthetic local credential fixtures stay private and were not printed/reseeded.
+
+Repair groups (details, reproduced pre-fix cases and limitations in the audit issue register):
+- Fail-closed known-role checks; explicit agent-provider selection/global disabled policy; private-model
+  routing local-only unless remote use is explicit; model response/embedding/redirect validation and
+  honest read-only checksum/latency/benchmark tooling.
+- n8n outbound/callback ordering, terminal-state reconciliation and durable automation resume/retry
+  accounting; offline/disposable-MySQL test-runner guard and conflicting preview datasource refusal.
+- CRM/project finance and private-workforce projections, approval allowlists/redaction/status-only
+  history, authenticated-tenant conversation siblings and affected console DTO/null/restricted states.
+- CSRF-aware board mutations, canonical correction roles, task capability/CAS, whole-entry UTF-8 task
+  evidence and legacy retention; persisted verified-payment/refund/task/delivery/source closure gates;
+  journey action capabilities/client binding; preservation of unrelated RUNNING workflow logs.
+- Public review contract/nullable parsing and unavailable/empty states, existing hero video, public
+  control contrast; extracted reusable public shell without dropping router/consent behavior.
+- Settled compiled-browser evidence guided console contrast fixes and keyboard-accessible activity;
+  dashboard and Project Manager approvals history now have zero measured automated axe violations.
+- Source-backed deployment guidance distinguishes actual commands and migration side effects from
+  authorization; historical QA/reference/worklog claims are labelled, not recycled as current proof.
+
+Latest executed results:
+- 2,100 tests / 418 suites passed; 0 fail/cancel/skip/todo. Fresh ESLint and MySQL-client TypeScript pass.
+- Production MySQL client regenerated/restored after SQLite tests; Prisma validation and schema/static
+  drift/20-migration immutability checks pass. No schema/lockfile or published migration was modified.
+- Direct migration-free webpack build, framework typecheck, 97 pages and standalone asset checks pass.
+  MySQL-bundled standalone passed 97 HTTP checks, including all 83 sitemap routes and real closed-port
+  login failure: safe 503, Retry-After, no-store and no cookies. Successful MySQL CRUD was not tested.
+- Final compiled-app browser with existing synthetic native-SQLite fixture: 13 functional PASS plus
+  5 accessibility-surface PASS / 1 FAIL (18 PASS / 1 FAIL overall); 0 page errors, failed same-origin
+  requests or environment/dependency blockers; 9 rendered image-route samples. Remaining mobile
+  widget contrast and scroll-focus findings remain open. Browser exit 1 is retained, not hidden.
+- Fresh full/production npm audits: 0 vulnerabilities. npm ls exits 0 with one existing extraneous
+  @emnapi/runtime warning also seen in the earlier clean install; tree is not called warning-free.
+- Disposable database-build and retired-deployment regressions pass. Python build check exits 1 for
+  missing uv; container smoke needs absent Docker. Real MySQL seed safety/concurrency is not run.
+
+Remaining work, not certified:
+- Whole-JSON journey/retry step logs, lifecycle fault/atomicity/concurrency, activation evidence,
+  owner-approved historical-import/correction policy and broader ownership/tenant coverage.
+- Widget-specific plan approval before accessibility edits; manual accessibility/devices and broader
+  reconnect/load acceptance beyond the passing named fixtures.
+- Approved exact-source MySQL CI, installed model weights/inference/quality/RSS, real providers/n8n,
+  Hostinger, isolated restore/load/alerts and owner release acceptance. No production-readiness claim.
+
+Current operational state: no audit app server remains running; source and generated root/standalone
+Prisma clients target MySQL. Final census, checkpoint/diff review and source-snapshot evidence are
+recorded in docs/audit/2026-11-18/ rather than being represented by old round pass counts.

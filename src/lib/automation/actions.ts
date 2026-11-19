@@ -213,7 +213,8 @@ export async function executeAction(action: RuleAction, ctx: ActionContext): Pro
           automationRunId: ctx.runId,
           requestedBy: `automation:${ctx.ruleKey}`,
         })
-        if (exec.status === 'ACCEPTED') return { status: 'WAITING', detail: `n8n accepted execution ${exec.correlationId}; waiting for its callback`, output: { correlationId: exec.correlationId } }
+        if (exec.status === 'SUCCEEDED') return ok(`n8n reported success for ${exec.correlationId}`, { correlationId: exec.correlationId })
+        if (exec.status === 'ACCEPTED' || exec.status === 'RUNNING') return { status: 'WAITING', detail: `n8n accepted execution ${exec.correlationId}; waiting for its terminal callback`, output: { correlationId: exec.correlationId } }
         if (exec.status === 'NOT_CONFIGURED' || exec.status === 'DISABLED') return fail(exec.error ?? exec.status)
         return fail(exec.error ?? 'n8n request failed', true)
       } catch (error) {

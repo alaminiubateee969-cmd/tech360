@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText } from '@/lib/security'
+import { hasRole, isSuperAdmin } from '@/lib/access-policy'
+import { projectClosureEvidence } from '@/lib/lifecycle-gates'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +14,7 @@ function stageIndex(s: string): number {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(req, { minRole: 'STAFF' })
+  const g = await guard(req, { minRole: 'STAFF', capability: 'project.write' })
   if (isResponse(g)) return g
 
   const { id } = await params
@@ -33,28 +35,41 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const curIdx = stageIndex(cur)
   const nxtIdx = stageIndex(nxt)
-  const rank: Record<string, number> = { STAFF: 1, MANAGER: 2, ADMIN: 3, SUPER_ADMIN: 4 }
-  const roleRank = rank[g.user.role ?? 'STAFF'] ?? 1
+  const manager = hasRole(g.user, 'MANAGER')
 
-  const isForwardOne = curIdx >=0 && nxtIdx === curIdx + 1
-  const isForward = nxtIdx > curIdx
-  const isBackward = nxtIdx < curIdx
+  const isForwardOne = curIdx >= 0 && nxtIdx === curIdx + 1
+  const isForward = curIdx >= 0 && nxtIdx > curIdx
+  const isBackward = curIdx >= 0 && nxtIdx < curIdx
 
   if (isForwardOne) {
-    // allowed for all STAFF+
-  } else if (isForward && nxtIdx <= curIdx + 2 && roleRank >= 2) {
-    // MANAGER can skip 2 forward
-  } else if (isBackward && roleRank >= 2) {
-    // MANAGER can move backward
-  } else if (roleRank >= 4) {
-    // SUPER_ADMIN arbitrary
+    // capability-authorized project writers can move forward one known stage
+  } else if (isForward && nxtIdx <= curIdx + 2 && manager) {
+    // MANAGER / PROJECT_MANAGER can skip 2 forward
+  } else if (isBackward && manager) {
+    // MANAGER / PROJECT_MANAGER can move backward
+  } else if (isSuperAdmin(g.user)) {
+    // SUPER_ADMIN can also correct an unrecognized legacy status
   } else {
     return Response.json({ error: `Status transition from ${cur} to ${nxt} requires higher role. STAFF may move forward one stage at a time.` }, { status: 403 })
   }
 
-  // Atomic compare-and-set: avoid the read-then-write race when two board
-  // clients move this project at the same time.
-  const transition = await db.project.updateMany({ where: { id: project.id, status: project.status }, data: { status: nxt } })
+  // Status boards cannot bypass the same persisted evidence required by the
+  // journey close action. Validate within the transaction that performs the
+  // compare-and-set; cached project totals are not payment evidence.
+  const transition = await db.$transaction(async (tx) => {
+    if (nxt === 'COMPLETED') {
+      const { closure } = await projectClosureEvidence(project.id, tx)
+      if (!closure.allowed) return { count: 0, blocked: closure.code }
+    }
+    const changed = await tx.project.updateMany({
+      where: { id: project.id, status: project.status },
+      data: { status: nxt, ...(nxt === 'COMPLETED' ? { closedAt: new Date() } : {}) },
+    })
+    return { count: changed.count, blocked: null }
+  }, { isolationLevel: 'Serializable' })
+  if (transition.blocked) {
+    return Response.json({ error: 'Project completion requires verified full payment, completed tasks, client delivery acceptance and confirmed source handover.', code: transition.blocked }, { status: 409 })
+  }
   if (transition.count !== 1) {
     const fresh = await db.project.findUnique({ where: { id: project.id }, select: { status: true } })
     if (!fresh) return Response.json({ error: 'Project not found' }, { status: 404 })

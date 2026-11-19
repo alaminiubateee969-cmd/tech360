@@ -33,6 +33,37 @@ describe('one provider selection contract for execution and diagnostics', () => 
     assert.equal(resolveAgentProvider({ ...all, AI_PROVIDER: 'none' }), 'none')
   })
 
+  it('never silently substitutes another provider for an explicit missing or invalid selection', () => {
+    for (const preferred of ['ai-gateway', 'openrouter', 'gemini', 'groq', 'zai', 'typo-provider']) {
+      const env = { ...openai, AI_PROVIDER: preferred }
+      assert.equal(resolveAgentProvider(env), 'none', preferred)
+      const status = getAgentProviderStatus(env)
+      assert.equal(status.provider, 'none', preferred)
+      assert.equal(status.configured, false, preferred)
+      assert.equal(status.state, 'MISCONFIGURED', preferred)
+      assert.match(status.detail, /AI_PROVIDER/)
+      assert.equal(JSON.stringify(status).includes(openai.OPENAI_API_KEY), false)
+    }
+    assert.equal(resolveAgentProvider({ ...zai, AI_PROVIDER: 'openai' }), 'none')
+    assert.equal(resolveAgentProvider({ ...zai, AI_PROVIDER: ' auto ' }), 'zai', 'automatic mode remains supported')
+  })
+
+  it('reports all intentional disable aliases consistently even when other keys are configured', () => {
+    for (const disabled of ['none', 'off', 'disabled', ' OFF ']) {
+      const env = { ...gateway, ...openai, ...zai, AI_PROVIDER: disabled }
+      assert.equal(resolveAgentProvider(env), 'none')
+      const status = getAgentProviderStatus(env)
+      assert.equal(status.provider, 'none')
+      assert.equal(status.configured, false)
+      assert.equal(status.state, 'NOT_CONFIGURED')
+      assert.match(status.detail, /explicitly disabled/i)
+      assert.ok(listAgentProviders(env).every((entry) => !entry.active))
+      for (const value of [gateway.AGENTOS_GATEWAY_TOKEN, openai.OPENAI_API_KEY, zai.ZAI_API_KEY]) {
+        assert.equal(JSON.stringify(status).includes(value), false)
+      }
+    }
+  })
+
   it('lists all 6 supported external provider entries with active state', () => {
     const list = listAgentProviders({ ...openai, ...groq })
     assert.equal(list.length, 6)

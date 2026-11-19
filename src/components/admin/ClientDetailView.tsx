@@ -703,13 +703,13 @@ export function ClientDetailView({
             ['timeline', 'Timeline'],
             ['comms', `Communications (${(data?.communications ?? []).length})`],
             ['scope', `Scope (${(data?.scopes ?? []).length})`],
-            ['payments', `Payments (${(data?.payments ?? []).length})`],
+            ...(data?.access?.financeRead === false ? [] : [['payments', `Payments (${(data?.payments ?? []).length})`]]),
             ['projects', `Projects (${projects.length})`],
             ['approvals', `Approvals (${clientApprovals.length})`],
             ['documents', `Documents (${(data?.documents ?? []).length})`],
             ['meetings', `Meetings (${(data?.meetings ?? []).length})`],
-            ['memory', `Memory (${(data?.memories ?? []).length})`],
-            ['automation', `Automation (${(data?.automationLogs ?? []).length})`],
+            ...(Array.isArray(data?.memories) ? [['memory', `Memory (${data.memories.length})`]] : []),
+            ...(Array.isArray(data?.automationLogs) ? [['automation', `Automation (${data.automationLogs.length})`]] : []),
             ...(Array.isArray(data?.agentJobs) ? [['agentJobs', `Agent Jobs (${data.agentJobs.length})`]] : []),
             ...(Array.isArray(data?.verifiedIdentities) ? [['identities', `Verified identities (${data.verifiedIdentities.length})`]] : []),
             ['research', 'AI Research'],
@@ -795,7 +795,7 @@ export function ClientDetailView({
             <SectionCard title="Payments" description="Recorded payments — verify to activate projects and settle milestones" className="xl:col-span-2" contentClassName="p-0">
               <DataTable
                 columns={paymentColumns}
-                rows={data?.payments}
+                rows={data?.payments ?? undefined}
                 rowKey={(p) => p.id}
                 empty={<EmptyState title="No payments yet" description="Payments appear here after the first record." />}
                 aria-label="Client payments"
@@ -850,8 +850,8 @@ export function ClientDetailView({
                 { key: 'name', header: 'Name', cell: (p) => <span className="font-medium text-slate-200">{p.name}</span> },
                 { key: 'plan', header: 'Plan', cell: (p) => <span className="text-slate-400">{p.plan || '—'}</span> },
                 { key: 'status', header: 'Status', cell: (p) => <StatusBadge status={p.status} /> },
-                { key: 'total', header: 'Total', cell: (p) => <span className="tabular-nums text-slate-300">{fmtMoney(num(p.totalAmount), p.currency ?? 'USD')}</span> },
-                { key: 'paid', header: 'Paid', cell: (p) => <span className="tabular-nums text-emerald-400">{fmtMoney(num(p.paidAmount), p.currency ?? 'USD')}</span> },
+                { key: 'total', header: 'Total', cell: (p) => <span className="tabular-nums text-slate-300">{p.financeRead === false ? 'Restricted' : fmtMoney(num(p.totalAmount), p.currency ?? 'USD')}</span> },
+                { key: 'paid', header: 'Paid', cell: (p) => <span className="tabular-nums text-emerald-400">{p.financeRead === false ? 'Restricted' : fmtMoney(num(p.paidAmount), p.currency ?? 'USD')}</span> },
                 { key: 'started', header: 'Started', cell: (p) => <span className="text-xs text-slate-500">{fmtDateShort(p.startedAt)}</span> },
               ]}
               rows={projects}
@@ -942,7 +942,7 @@ export function ClientDetailView({
                 { key: 'corr', header: 'Correlation ID', cell: (l) => <span className="font-mono text-[11px] text-slate-600">{l.correlationId || '—'}</span> },
                 { key: 'when', header: 'Started', cell: (l) => <span className="text-xs text-slate-500">{fmtDate(l.startedAt ?? l.createdAt)}</span> },
               ]}
-              rows={data?.automationLogs}
+              rows={data?.automationLogs ?? undefined}
               rowKey={(l) => l.id}
               empty={<EmptyState title="No automation runs yet" description="Workflow executions for this client will appear here." />}
               aria-label="Automation logs"

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import PublicSitePage from '../page'
+import PublicSitePage from '@/components/site/PublicSiteApp'
 import type { BlogPost } from '@/components/site/BlogPostView'
 import { industryImage } from '@/data/industry-images'
 import { getServiceImage } from '@/data/service-images'

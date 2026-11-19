@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       if (!delta) { send('gone', {}); return false }
       if (delta.messages.length) {
         lastId = delta.messages[delta.messages.length - 1].id
-        send('messages', { messages: delta.messages, lastId })
+        send('messages', { messages: delta.messages, lastId }, lastId)
       }
       const status = JSON.stringify(delta.conversation)
       if (status !== lastStatus) { lastStatus = status; send('status', delta.conversation) }

@@ -392,7 +392,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
       <div className="flex min-h-screen w-full items-center justify-center" style={{ background: '#0B1220' }} role="status" aria-live="polite">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-8 animate-spin text-[#009FE3]" aria-hidden="true" />
-          <p className="text-sm text-slate-500">Verifying session…</p>
+          <p className="text-sm text-slate-400">Verifying session…</p>
         </div>
       </div>
     )
@@ -419,7 +419,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
     <nav aria-label="Admin navigation" className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
       {visibleNav.map((group) => (
         <div key={group.section}>
-          <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">{group.section}</p>
+          <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{group.section}</p>
           <ul className="space-y-0.5">
             {group.items.map((item) => {
               const Icon = item.icon
@@ -468,7 +468,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
       <img src="/brand/tech360-logo-original.jpg" alt="Tech360 LLC logo" className="h-9 w-auto rounded-md" width={36} height={36} />
       <div className="min-w-0 leading-tight">
         <p className="truncate text-[13px] font-bold text-slate-100">Command Center</p>
-        <p className="text-[10px] text-slate-500">Super Admin Console</p>
+        <p className="text-[10px] text-slate-400">Super Admin Console</p>
       </div>
     </div>
   )
@@ -480,8 +480,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
         {brandHeader}
         {navContent}
         <div className="border-t border-slate-800 px-4 py-3">
-          <p className="truncate text-[11px] text-slate-500">{me.email}</p>
-          <p className="text-[10px] text-slate-500">{me.role ?? 'ADMIN'} · bdtech360.com</p>
+          <p className="truncate text-[11px] text-slate-400">{me.email}</p>
+          <p className="text-[10px] text-slate-400">{me.role ?? 'ADMIN'} · bdtech360.com</p>
         </div>
       </aside>
 
@@ -493,8 +493,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
             {brandHeader}
             {navContent}
             <div className="border-t border-slate-800 px-4 py-3">
-              <p className="truncate text-[11px] text-slate-500">{me.email}</p>
-              <p className="text-[10px] text-slate-500">{me.role ?? 'ADMIN'} · bdtech360.com</p>
+              <p className="truncate text-[11px] text-slate-400">{me.email}</p>
+              <p className="text-[10px] text-slate-400">{me.role ?? 'ADMIN'} · bdtech360.com</p>
             </div>
           </div>
         </SheetContent>
@@ -566,7 +566,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
               <DropdownMenuContent align="end" className="w-56 border-slate-800 bg-slate-900 text-slate-300">
                 <DropdownMenuLabel className="font-normal">
                   <p className="text-[13px] text-slate-200">{me.name ?? 'Administrator'}</p>
-                  <p className="truncate text-[11px] text-slate-500">{me.email}</p>
+                  <p className="truncate text-[11px] text-slate-400">{me.email}</p>
                   <p className="mt-0.5 text-[10px] uppercase tracking-wider text-slate-600">{me.role ?? 'ADMIN'}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-slate-800" />
@@ -715,7 +715,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
         </main>
 
         <footer className="border-t border-slate-800/60 px-4 py-3">
-          <p className="text-center text-[10px] text-slate-500">
+          <p className="text-center text-[10px] text-slate-400">
             TECH360 LLC · Super Admin Command Center · authorized personnel only · all actions are audited
           </p>
         </footer>

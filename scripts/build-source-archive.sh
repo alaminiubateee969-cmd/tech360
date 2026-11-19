@@ -31,8 +31,9 @@ cat > "$TMP_DIR/ARCHIVE-README.md" <<'EOF'
 This is a source snapshot, not a deployment mechanism. The documented
 Hostinger target is a Node.js Web App using the Next.js `next` preset, Node.js
 22.x, npm, build script `build` (`npm run build`), and output `.next`.
-Hostinger's preset starts its bundled standalone server; repository `npm run
-start` is for CI/manual smoke tests only. Verify the actual hPanel/runtime
+The required startup command is `npm start`, which runs the production
+configuration preflight before starting the standalone server. Whether hPanel
+invokes that npm lifecycle is NOT VERIFIED. Confirm the actual hPanel/runtime
 configuration and review production database migration/backup prerequisites.
 
 The archive contains source, the MySQL Prisma schema/migrations, npm lockfile,
@@ -47,7 +48,7 @@ zip -r -q "$ZIP_TMP" \
   scripts .github \
   package.json package-lock.json prisma.config.ts tsconfig.json next.config.ts \
   eslint.config.mjs tailwind.config.ts postcss.config.mjs components.json Caddyfile \
-  bun.lock .gitignore README.md OFFICIAL-DOCUMENTS.md COVERAGE-AUDIT.md \
+  .gitignore README.md OFFICIAL-DOCUMENTS.md COVERAGE-AUDIT.md \
   DEPLOYMENT.md SECURITY.md PAYMENT.md MASTER_PROJECT_AUDIT.md REQUIREMENTS_REGISTER.md \
   TEST_AND_QA_REPORT.md KNOWN_ISSUES_AND_BLOCKERS.md worklog.md \
   -x ".env" ".env.*" "*/.env" "*/.env.*" \

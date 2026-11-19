@@ -292,7 +292,27 @@ export async function executeAutomationRun(runId: string): Promise<string> {
     steps.push({ index, type: action.type, status: outcome.status, detail: outcome.detail.slice(0, 1000), attempt, at: new Date().toISOString(), ...(outcome.output ? { output: outcome.output } : {}) })
 
     if (outcome.status === 'WAITING') {
-      return finish('WAITING_EXTERNAL')
+      await finish('WAITING_EXTERNAL')
+      // A callback may finish after the action read ACCEPTED but before this
+      // waiting step was persisted. It could not resume RUNNING then, so now
+      // reconcile the durable execution. Later callbacks use the same atomic
+      // resume path; neither ordering loses a terminal result or sends twice.
+      const correlationId = outcome.output?.correlationId
+      if (action.type === 'N8N_EXECUTE' && typeof correlationId === 'string') {
+        const external = await db.n8nExecution.findFirst({
+          where: { correlationId, automationRunId: run.id, tenantId: run.tenantId },
+          select: { status: true, error: true },
+        })
+        if (external?.status === 'SUCCEEDED' || external?.status === 'FAILED') {
+          return resumeRunAfterExternal(run.id, {
+            correlationId,
+            ok: external.status === 'SUCCEEDED',
+            detail: external.status === 'SUCCEEDED' ? 'n8n reported success' : (external.error || 'n8n reported a failure'),
+          })
+        }
+      }
+      const current = await db.automationRun.findUniqueOrThrow({ where: { id: run.id }, select: { status: true } })
+      return current.status
     }
     if (outcome.status === 'FAILED') {
       if (action.onFailure === 'CONTINUE') continue
@@ -330,11 +350,14 @@ export async function resumeRunAfterExternal(runId: string, input: { correlation
   if (!waiting) return run.status
   steps.push({ index: waiting.index, type: waiting.type, status: input.ok ? 'SUCCEEDED' : 'FAILED', detail: input.detail.slice(0, 1000), attempt: waiting.attempt, at: new Date().toISOString(), output: { correlationId: input.correlationId } })
   if (input.ok) {
-    const moved = await db.automationRun.updateMany({ where: { id: run.id, status: 'WAITING_EXTERNAL' }, data: { status: 'PENDING', steps: JSON.stringify(steps) } })
+    // The attempt was already counted before the external wait. Compensate in
+    // the SAME conditional write as the state move, before any worker can claim
+    // PENDING; a separate update could corrupt a concurrently resumed attempt.
+    const moved = await db.automationRun.updateMany({
+      where: { id: run.id, status: 'WAITING_EXTERNAL' },
+      data: { status: 'PENDING', steps: JSON.stringify(steps), attempts: Math.max(0, run.attempts - 1) },
+    })
     if (moved.count === 0) return 'CONFLICT'
-    // attempts were already counted for this attempt; executeAutomationRun increments again,
-    // so compensate to keep the retry budget honest.
-    await db.automationRun.update({ where: { id: run.id }, data: { attempts: Math.max(0, run.attempts - 1) } })
     return executeAutomationRun(run.id)
   }
   const exhausted = run.attempts >= run.maxAttempts

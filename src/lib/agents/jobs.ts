@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { Prisma } from '@prisma/client'
 import { statusAfterAgentJob } from '@/lib/project-task-policy'
+import { appendTaskEvidence, TaskEvidenceLimitError, TASK_EVIDENCE_MAX_BYTES } from '@/lib/project-task-evidence'
 
 import { db } from '@/lib/db'
 import { newCorrelationId } from '@/lib/security'
@@ -127,18 +128,32 @@ async function syncProjectTaskForJob(
     select: { id: true, evidence: true },
   })
   if (!task) return
-  let evidence: unknown[] = []
+  let evidence: string | undefined
   try {
-    const parsed: unknown = JSON.parse(task.evidence ?? '[]')
-    if (Array.isArray(parsed)) evidence = parsed
-  } catch {
-    evidence = []
+    evidence = appendTaskEvidence(task.evidence, { type: 'AGENT_DRAFT', jobId: job.id, jobStatus, notedAt: now.toISOString(), note: jobStatus === 'COMPLETED' ? 'Agent draft is ready for human review; not marked complete.' : `Agent draft job ${jobStatus.toLowerCase()}.` })
+  } catch (error) {
+    if (!(error instanceof TaskEvidenceLimitError)) throw error
+    // The completed job/output already exists durably. Do not repeat a model
+    // call or destroy older notes just because the task's TEXT field is full.
+    // Keep the job link and REVIEW state; persist the capacity warning in the
+    // same transaction, without pretending the task note was appended.
+    await tx.auditLog.create({ data: {
+      actor: 'system:agent-job-worker', action: 'TASK_EVIDENCE_LIMIT_REACHED',
+      entityType: 'ProjectTask', entityId: task.id, projectId: job.projectId,
+      details: JSON.stringify({ jobId: job.id, jobStatus, maxBytes: TASK_EVIDENCE_MAX_BYTES, priorEvidencePreserved: true, noteAppended: false }),
+    } })
   }
-  evidence.push({ type: 'AGENT_DRAFT', jobId: job.id, jobStatus, notedAt: now.toISOString(), note: jobStatus === 'COMPLETED' ? 'Agent draft is ready for human review; not marked complete.' : `Agent draft job ${jobStatus.toLowerCase()}.` })
-  await tx.projectTask.updateMany({
-    where: { id: task.id, projectId: job.projectId, status: 'IN_PROGRESS' },
-    data: { agentJobId: job.id, status: taskStatus, completedAt: null, evidence: JSON.stringify(evidence).slice(0, 8000) },
+  const changed = await tx.projectTask.updateMany({
+    where: { id: task.id, projectId: job.projectId, status: 'IN_PROGRESS', evidence: task.evidence },
+    data: { agentJobId: job.id, status: taskStatus, completedAt: null, evidence },
   })
+  if (changed.count !== 1) {
+    await tx.auditLog.create({ data: {
+      actor: 'system:agent-job-worker', action: 'PROJECT_TASK_SYNC_CONFLICT',
+      entityType: 'ProjectTask', entityId: task.id, projectId: job.projectId,
+      details: JSON.stringify({ jobId: job.id, jobStatus, priorEvidencePreserved: true, manualReviewRequired: true }),
+    } })
+  }
 }
 
 function prismaCode(error: unknown): string | null {

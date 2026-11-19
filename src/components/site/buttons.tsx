@@ -174,7 +174,7 @@ export function LiveSupportLink({
       aria-label="Open the Tech360 live support chat"
       className={cn(
         BASE,
-        "bg-[#18B83A] text-white shadow-[0_1px_2px_rgba(6,59,143,0.2)] hover:bg-[#16A433] hover:shadow-[0_4px_14px_rgba(24,184,58,0.35)]",
+        "bg-[#087337] text-white shadow-[0_1px_2px_rgba(6,59,143,0.2)] hover:bg-[#06602D] hover:shadow-[0_4px_14px_rgba(8,115,55,0.35)]",
         compact ? "min-h-9 px-3.5 py-1.5 text-xs" : "",
         className
       )}
@@ -238,7 +238,7 @@ export function LinkArrow({
       rel={external ? "noopener noreferrer" : undefined}
       className={cn(
         "group/link inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#009FE3] focus-visible:ring-offset-2 rounded-sm",
-        dark ? "text-[#7FD4FF] hover:text-white" : "text-[#009FE3] hover:text-[#063B8F]",
+        dark ? "text-[#7FD4FF] hover:text-white" : "text-[#0052A5] hover:text-[#063B8F]",
         className
       )}
     >

@@ -63,8 +63,12 @@ ai-gateway.env
 # QA tooling artifacts
 tool-results/
 
-# NOTE: package-lock.json IS committed. The application and top-level CI use npm
-# for reproducible installs. bun.lock is retained for existing Bun-only tools.
+# The root application and CI use npm; package-lock.json is the sole root
+# lockfile. Do not reintroduce a competing lockfile that deployment tooling can
+# mistake for the application's package manager. Optional Bun sidecars manage
+# their own dependencies inside mini-services/, independently of the root.
+/bun.lock
+/bun.lockb
 
 # --- Secrets / private data (never commit or serve) ---
 # Local/legacy SQLite artifacts may contain sensitive test data; never use them

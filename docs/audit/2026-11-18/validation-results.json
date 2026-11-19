@@ -1,0 +1,434 @@
+{
+  "generatedAt": "2026-11-19T04:37:01.771629Z",
+  "branch": "arena/3aa75515-tech360",
+  "head": "d8c68f4f8ea983bc64559c51ed9045a726a6cb85",
+  "node": "v22.22.3",
+  "npm": "10.9.8",
+  "scope": "Local working-tree evidence; no production/readiness certification; distinct checks are overlapping, not additive test counts. Logs are temporary local evidence; source browser JSON is retained.",
+  "checks": [
+    {
+      "id": "standard-tests",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "env -u DATABASE_URL -u PREVIEW_SQLITE_URL NODE_ENV=test npm test",
+      "environment": "Fresh disposable SQLite test DB; synthetic fixture data, not production/MySQL runtime",
+      "metrics": {
+        "tests": 2100,
+        "suites": 418,
+        "pass": 2100,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "durationMs": 86331.339364,
+      "log": {
+        "path": "/tmp/tech360-audit-full-final.log",
+        "sha256": "e7eff232f77a1a8156a5dc9456f1ff51220dc887d14f0ec15e4113b483a0a40c",
+        "bytes": 2423386
+      }
+    },
+    {
+      "id": "lint",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "npm run lint",
+      "log": {
+        "path": "/tmp/tech360-audit-lint-final.log",
+        "sha256": "e4a0bbbe683f699df3b133553dc2942bbdd286b2c383cdc164296ed128dc6c14",
+        "bytes": 52
+      }
+    },
+    {
+      "id": "mysql-client-generation",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "node scripts/prisma.mjs generate --schema prisma/schema.prisma",
+      "environment": "Clean child environment, source MySQL schema, pinned local native engines and closed dummy loopback test datasource; no DB operation",
+      "log": {
+        "path": "/tmp/tech360-audit-client-restore-final.log",
+        "sha256": "0a84075401e0d3c4a0cdb28d01448e5d3b83d3dd94297d4f50ac7e8739003915",
+        "bytes": 932
+      }
+    },
+    {
+      "id": "mysql-prisma-validate",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "prisma validate --schema prisma/schema.prisma",
+      "log": {
+        "path": "/tmp/tech360-audit-prisma-validate-final.log",
+        "sha256": "cc0e6164208a94dc9cd0832e91e84ca6b4e33439dabd6a05368cce40930f853a",
+        "bytes": 204
+      }
+    },
+    {
+      "id": "mysql-client-typecheck",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "npm run typecheck",
+      "environment": "After root generated Prisma client restored to MySQL",
+      "log": {
+        "path": "/tmp/tech360-audit-typecheck-final.log",
+        "sha256": "a02bfa95bfa0b738b86acdc6808533a429a0d370467b48fef9e89ab41cfb199e",
+        "bytes": 61
+      }
+    },
+    {
+      "id": "published-migrations",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "npm run migrations:check",
+      "log": {
+        "path": "/tmp/tech360-audit-migrations-check-final.log",
+        "sha256": "1bfb3720179614c1d8d4d486396be9571306ed2a61db2be6814eb2fb7fbf8352",
+        "bytes": 210
+      }
+    },
+    {
+      "id": "mysql-schema-map",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "npm run schema:check",
+      "log": {
+        "path": "/tmp/tech360-audit-schema-check-final.log",
+        "sha256": "47ebe4d5733b2d4d4ab9e733482ad8ce49b99fdfd45fc70f2d94d6a9fb861d7f",
+        "bytes": 167
+      }
+    },
+    {
+      "id": "static-schema-drift",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "npm run schema:drift",
+      "log": {
+        "path": "/tmp/tech360-audit-schema-drift-final.log",
+        "sha256": "5f186a86e6e64df5c3151e19714845a98a01c1bfbf5729b309a6497b6ed3b277",
+        "bytes": 161
+      }
+    },
+    {
+      "id": "asset-references",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "npm run check:assets",
+      "log": {
+        "path": "/tmp/tech360-audit-check-assets-final.log",
+        "sha256": "a99c02268c037490c18f483d45a5fc64de18da6787c97a8062b48d0bf7e7d4e3",
+        "bytes": 453
+      }
+    },
+    {
+      "id": "tracked-conflict-markers",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "npm run check:conflicts",
+      "log": {
+        "path": "/tmp/tech360-audit-check-conflicts-final.log",
+        "sha256": "0dbc51ac7d04211a4e3f8291973fc9c2b302dfc8bed56eb930c1644e6ca775d3",
+        "bytes": 152
+      }
+    },
+    {
+      "id": "database-build-script",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "bash tests/database-runtime-build.sh",
+      "log": {
+        "path": "/tmp/tech360-audit-database-build-final.log",
+        "sha256": "46a22e45462fbdfd9c470d8bf79b09dcd65b35f515b315a9023a622cdf7df747",
+        "bytes": 797
+      }
+    },
+    {
+      "id": "retired-deployment-paths",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "node tests/retired-deployment-paths.mjs",
+      "log": {
+        "path": "/tmp/tech360-audit-retired-deployment-final.log",
+        "sha256": "92ca2659d55195ee233e4b0ebc02219ae72dd0b851acf784c5606c05a77ecfc0",
+        "bytes": 97
+      }
+    },
+    {
+      "id": "ci-static-syntax",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "js-yaml parse plus bash -n on embedded run blocks (28 CI + 13 baseline)",
+      "log": {
+        "path": "/tmp/tech360-audit-workflow-syntax-final.log",
+        "sha256": "1e3ef9641676013d7e337aebe05b92d14e105d7955903967987215a9549a3062",
+        "bytes": 225
+      }
+    },
+    {
+      "id": "dependency-audit-all",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "npm audit --json",
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "log": {
+        "path": "/tmp/tech360-audit-dependencies-all-final.json",
+        "sha256": "d3760f426abea98556546b9cd2a0caccbe79cc519cdb3a393a753ed7275e4990",
+        "bytes": 366
+      }
+    },
+    {
+      "id": "dependency-audit-production",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "npm audit --omit=dev --json",
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "log": {
+        "path": "/tmp/tech360-audit-dependencies-production-final.json",
+        "sha256": "d3760f426abea98556546b9cd2a0caccbe79cc519cdb3a393a753ed7275e4990",
+        "bytes": 366
+      }
+    },
+    {
+      "id": "dependency-tree",
+      "status": "PASS_WITH_WARNING",
+      "exitCode": 0,
+      "command": "npm ls --all --json",
+      "warnings": [
+        "extraneous @emnapi/runtime@1.11.3; also observed in the earlier isolated ordinary clean npm ci"
+      ],
+      "problemCount": 1,
+      "log": {
+        "path": "/tmp/tech360-audit-dependency-tree-final.json",
+        "sha256": "0f4724d3e0968880570b43c113525f84b5ecdc67eace8b998dd2839ab056b9e0",
+        "bytes": 366443
+      }
+    },
+    {
+      "id": "production-build",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "Safe local wrapper: MySQL client generate; next build --webpack; copy-standalone-assets.mjs",
+      "generatedPages": 97,
+      "environment": "Clean child environment; deliberately unreachable dummy MySQL loopback port; no migration/reconcile/push/seed commands",
+      "limitations": [
+        "Expected dead-test-database static lookup warnings retained",
+        "Not successful MySQL CRUD or dynamic-content completeness"
+      ],
+      "log": {
+        "path": "/tmp/tech360-audit-build-final-console.log",
+        "sha256": "a74c6d2814e8dfaded77b218583e78013417b16f5b81c364f0b8d75341e2dbe9",
+        "bytes": 11590
+      }
+    },
+    {
+      "id": "standalone-http",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "env-isolated node /tmp/tech360-runtime-verify.mjs",
+      "checks": 97,
+      "sitemapPaths": 83,
+      "environment": "Actual MySQL-bundled standalone, dummy unreachable MySQL; safe controlled login 503, protected APIs, minimal/deep health and asset/canonical redirect checks",
+      "log": {
+        "path": "/tmp/tech360-audit-runtime-final-console.log",
+        "sha256": "349dfd5171253c3e3d0961c666eb00d5bab35989c0a9e87c39b3cf6eb4f2addd",
+        "bytes": 324
+      }
+    },
+    {
+      "id": "compiled-browser",
+      "status": "FAIL",
+      "exitCode": 1,
+      "command": "LD_LIBRARY_PATH=<ignored browser runtime libs> node archives/audit-checkpoints/20261118T215124Z/browser-tools/audit-browser-v3.mjs",
+      "environment": "Chromium; compiled production app (source-MySQL build); runtime switched to a native SQLite client against the existing isolated fixture; synthetic fixtures; preview adapter unset; AI/external credentials absent; cross-origin browser requests blocked",
+      "counts": {
+        "passed": 18,
+        "failed": 1,
+        "blockedEnvironment": 0,
+        "blockedDependency": 0,
+        "a11yViolations": 2,
+        "pageErrors": 0,
+        "assetSamplePaths": 9
+      },
+      "functionalPass": 13,
+      "accessibilitySurfacePass": 5,
+      "accessibilitySurfaceFail": 1,
+      "remainingRuleIds": [
+        "color-contrast",
+        "scrollable-region-focusable"
+      ],
+      "pageErrors": 0,
+      "failedSameOriginRequests": 0,
+      "publicImageSampleRoutes": 9,
+      "report": "docs/audit/2026-11-18/browser-verification.json",
+      "reportSha256": "c091951d15bb741f5871775fba27f4548fc69e8d6410f123c258c65e0c64d2ee",
+      "log": {
+        "path": "/tmp/tech360-audit-browser-final.log",
+        "sha256": "f58c2e6989e95a2ddf6450259e44b56f5a64af8c91eb247bc57cd173369415cd",
+        "bytes": 1895
+      }
+    },
+    {
+      "id": "python-build-smoke",
+      "status": "BLOCKED_TOOLING",
+      "exitCode": 1,
+      "command": "bash tests/python-runtime-build.sh",
+      "reason": "uv executable absent; not claimed as an application failure or a pass",
+      "log": {
+        "path": "/tmp/tech360-audit-python-build-final.log",
+        "sha256": "7d18a84d7d7cccbc043c1ef9d17211b8a4b9e63867fb7258c02a326d0512f00a",
+        "bytes": 58
+      }
+    },
+    {
+      "id": "python-container-smoke",
+      "status": "NOT_RUN",
+      "reason": "Docker unavailable; optional Python container/runtime acceptance not established"
+    },
+    {
+      "id": "current-source-mysql-ci-seed-concurrency",
+      "status": "NOT_RUN",
+      "reason": "No local mysqld/Docker; unpublished current tree has not run exact-source remote MySQL CI. Seed safety requires CI=true and a disposable loopback schema; no guard was bypassed."
+    },
+    {
+      "id": "real-model-provider-n8n-production-recovery-load",
+      "status": "NOT_VERIFIED",
+      "reason": "No authorized live service/model/Hostinger/restore/load acceptance was executed"
+    },
+    {
+      "id": "source-archive",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "bash scripts/build-source-archive.sh; independent ZIP CRC/member-source equality/exclusion/current-file checks; public-root guard refusal",
+      "regularFiles": 1460,
+      "entries": 1934,
+      "archivePath": "archives/tech360-platform-full-source.zip",
+      "archiveMetadata": "archives/archive-meta.json (external to ZIP to avoid a recursive archive hash)",
+      "scope": "Source snapshot only, not a production artifact/owner backup/release authorization. Historical-document sensitive-content review still required before sharing.",
+      "log": {
+        "path": "/tmp/tech360-audit-source-archive-final.log",
+        "sha256": "d1efab8eecc30c173cf2ea103f919b3954791c8c6c23ae1ebfa487af9f286964",
+        "bytes": 122
+      },
+      "verificationLog": {
+        "path": "/tmp/tech360-audit-source-archive-check-final.log",
+        "sha256": "7b941ceae07d48f24d5a70b18f11269f7fdb07389751cb002460dfce4e2ade87",
+        "bytes": 303
+      }
+    },
+    {
+      "id": "final-census",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "node scripts/audit-repository.mjs plus independent per-file SHA/count/branch/index assertions",
+      "filesRead": 1808,
+      "apiRouteFiles": 279,
+      "httpMethods": 359,
+      "canonicalRoles": 12,
+      "unresolvedActiveLocalImports": 0,
+      "activeSyntaxErrors": 0,
+      "reportSha256": "837b1b76756f8df85cf5f2589d7ffa05cd46db0ee46970a4a4583ecaffd01b1c",
+      "log": {
+        "path": "/tmp/tech360-audit-census-final.log",
+        "sha256": "afc5033746082112ff1c60dac3bdf65a9db8f950b4944cf727ea57d24aad1078",
+        "bytes": 2018
+      },
+      "prePublicationReportSha256": "2f9149f5934b0d355ff83b3fff558651e4e44564feea4fc3e0b296bba075aaf1",
+      "publicationNote": "Original executed census remains the validation basis; one Markdown-only metadata row was refreshed without re-running AST analysis."
+    },
+    {
+      "id": "checkpoint-preservation",
+      "status": "PASS",
+      "snapshotHashes": 95,
+      "manifests": 15,
+      "preexistingAbsencesRecorded": 1,
+      "report": "docs/audit/2026-11-18/checkpoint-verification.json",
+      "reportSha256": "981901047c3fdcd29bd2f2a742bc2a449096319637a442d77095c5dea31b07f0",
+      "scope": "Overlapping pre-edit snapshot versions, not 95 unique changed paths; fixture modes checked without reading contents"
+    },
+    {
+      "id": "current-report-local-links",
+      "status": "PASS",
+      "exitCode": 0,
+      "checkedTargets": 25,
+      "documents": 4,
+      "scope": "Local file destinations only; no remote-link/fragment/manual acceptance claim",
+      "log": {
+        "path": "/tmp/tech360-audit-report-links-final.log",
+        "sha256": "d7394f7bcba70f6182158c3768fdda6068a5574da25deb23e032e3942c40bd6b",
+        "bytes": 192
+      }
+    },
+    {
+      "id": "final-diff-safety",
+      "status": "PASS",
+      "exitCode": 0,
+      "command": "git diff --check; unchanged branch/HEAD/lockfile/schema/migrations/ChatWidget; empty staging; exact 109-path change index",
+      "changedPaths": 109,
+      "changeBreakdown": {
+        "modified": 70,
+        "deleted": 1,
+        "new": 38
+      },
+      "log": {
+        "path": "/tmp/tech360-audit-diff-check-final.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    }
+  ],
+  "safety": {
+    "stagedFiles": 0,
+    "committedOrPushed": false,
+    "deployed": false,
+    "migrationsPushSeedExecuted": false,
+    "externalMessagesOrPaidProvidersExecuted": false,
+    "sourceAndRootGeneratedAndStandaloneProviders": "mysql",
+    "chatWidgetChanged": false,
+    "unchangedToHead": [
+      "package.json",
+      "package-lock.json",
+      "prisma",
+      "src/components/site/ChatWidget.tsx"
+    ],
+    "auditAppServerRunning": false
+  },
+  "historicalBaseCi": {
+    "sha": "d8c68f4f8ea983bc64559c51ed9045a726a6cb85",
+    "fullRun": 44400326147,
+    "baselineRun": 44400326179,
+    "appliesToCurrentUncommittedEdits": false
+  },
+  "harnessLimitations": [
+    "Early dev/Chromium attempts were incomplete after kernel-confirmed worker OOM; reports retained",
+    "Transient contrast and consent-hydration timing false positives were resolved in the harness, not counted as app repairs",
+    "The first fresh workflow-syntax harness chose absent yaml; rerun with installed js-yaml parsed both workflows and checked all 41 shell steps successfully",
+    "No instrumented line/branch/mutation or every-button/device coverage percentage measured"
+  ],
+  "publicationPreparation": {
+    "preparedAt": "2026-11-19T06:02:25.058122Z",
+    "authorization": "User requested a pull request from arena/3aa75515-tech360, permitting commit and branch push; no merge or deployment requested.",
+    "changesSinceValidation": [
+      {
+        "path": "docs/ERROR_FIX_VERIFICATION_2026-11-18.md",
+        "priorSha256": "7b697847abb6d3383b4d92aa40e988e0a7595213c126d88136e00b0b64d09b58",
+        "sha256": "7e552115132bcc217eff0b1ad88afe1de34c4e7007ad39b04d76bf397ebae4a8",
+        "reason": "Replace trailing Markdown hard-break whitespace with a blank line; no code changes."
+      }
+    ],
+    "checkpointScope": "Audit no-staging/no-publication statements, ledger git statuses, temporary log digests and source archive refer to the earlier pre-publication checkpoint.",
+    "testsRerun": false,
+    "reason": "No application, tests, dependencies or schema changed since the recorded passing validation. Restored sandbox lacks node_modules; prior results are retained, not represented as freshly rerun."
+  }
+}

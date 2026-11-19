@@ -207,6 +207,12 @@ export async function requestN8nExecution(input: {
   let httpStatus: number | null = null
   let responseBody = ''
   while (attempts < maxAttempts) {
+    if (attempts > 0) {
+      const observed = await db.n8nExecution.findUniqueOrThrow({ where: { id: execution.id }, select: { callbackReceivedAt: true } })
+      // A verified callback proves receipt even if the HTTP acknowledgement was
+      // lost. Do not trigger the workflow again after that durable evidence.
+      if (observed.callbackReceivedAt) break
+    }
     attempts += 1
     const timestamp = String(Date.now())
     try {
@@ -234,22 +240,34 @@ export async function requestN8nExecution(input: {
     }
   }
   const accepted = !lastError
-  const updated = await db.n8nExecution.update({
-    where: { id: execution.id },
-    data: {
-      status: accepted ? 'ACCEPTED' : 'FAILED',
-      attempts,
-      httpStatus,
-      responseBody: responseBody || null,
-      error: accepted ? null : lastError,
-      finishedAt: accepted ? null : new Date(),
-    },
+  return db.$transaction(async (tx) => {
+    // The callback may have arrived before fetch returned. Only REQUESTED can
+    // become ACCEPTED/transport-FAILED; callback states and output are monotonic.
+    // Both paths lock/update this execution before its workflow summary, so a
+    // late HTTP acknowledgement cannot overwrite a terminal callback summary.
+    const moved = await tx.n8nExecution.updateMany({
+      where: { id: execution.id, status: 'REQUESTED' },
+      data: {
+        status: accepted ? 'ACCEPTED' : 'FAILED',
+        attempts,
+        httpStatus,
+        responseBody: responseBody || null,
+        error: accepted ? null : lastError,
+        finishedAt: accepted ? null : new Date(),
+      },
+    })
+    if (moved.count > 0) {
+      await tx.n8nWorkflow.updateMany({
+        where: { id: workflow.id, tenantId },
+        data: { lastRunAt: execution.createdAt, lastRunStatus: accepted ? 'ACCEPTED' : 'FAILED', status: accepted ? 'RUNNING' : 'ERROR' },
+      })
+    } else {
+      // Preserve callback output/error/timestamps while retaining real outbound
+      // attempt and HTTP metadata for troubleshooting.
+      await tx.n8nExecution.update({ where: { id: execution.id }, data: { attempts, httpStatus } })
+    }
+    return tx.n8nExecution.findUniqueOrThrow({ where: { id: execution.id } })
   })
-  await db.n8nWorkflow.update({
-    where: { id: workflow.id },
-    data: { lastRunAt: new Date(), lastRunStatus: accepted ? 'ACCEPTED' : 'FAILED', status: accepted ? 'RUNNING' : 'ERROR' },
-  }).catch(() => null)
-  return updated
 }
 
 const TERMINAL = new Set(['SUCCEEDED', 'FAILED', 'NOT_CONFIGURED', 'DISABLED'])
@@ -265,45 +283,53 @@ export async function handleN8nCallback(input: {
   if (!['RUNNING', 'SUCCEEDED', 'FAILED'].includes(status)) return { ok: false, code: 'BAD_STATUS' }
   const execution = await db.n8nExecution.findUnique({ where: { correlationId: input.correlationId } })
   if (!execution) return { ok: false, code: 'UNKNOWN_CORRELATION' }
-  if (TERMINAL.has(execution.status)) return { ok: true, duplicate: true, execution }
-  const terminal = status !== 'RUNNING'
-  // Conditional update: only one concurrent callback can move it to a terminal state.
-  const claimed = await db.n8nExecution.updateMany({
-    where: { id: execution.id, status: { notIn: [...TERMINAL] } },
-    data: {
-      status,
-      callbackReceivedAt: new Date(),
-      responseBody: input.output !== undefined ? JSON.stringify(input.output).slice(0, 4000) : execution.responseBody,
-      error: status === 'FAILED' ? (input.error || 'n8n reported a failure').slice(0, 2000) : null,
-      finishedAt: terminal ? new Date() : null,
-    },
+  const { fresh, duplicate } = await db.$transaction(async (tx) => {
+    // Conditional update: only one callback can settle a terminal outcome.
+    // Keep its workflow summary in the same transaction as the execution.
+    const claimed = await tx.n8nExecution.updateMany({
+      where: { id: execution.id, status: { notIn: [...TERMINAL] } },
+      data: {
+        status,
+        callbackReceivedAt: new Date(),
+        responseBody: input.output !== undefined ? JSON.stringify(input.output).slice(0, 4000) : execution.responseBody,
+        error: status === 'FAILED' ? (input.error || 'n8n reported a failure').slice(0, 2000) : null,
+        finishedAt: status !== 'RUNNING' ? new Date() : null,
+      },
+    })
+    const fresh = await tx.n8nExecution.findUniqueOrThrow({ where: { id: execution.id } })
+    if (claimed.count > 0) {
+      await tx.n8nWorkflow.updateMany({
+        where: { code: execution.workflowCode, tenantId: execution.tenantId },
+        data: { lastRunAt: execution.createdAt, lastRunStatus: status, status: status === 'FAILED' ? 'ERROR' : status === 'SUCCEEDED' ? 'IMPORTED' : 'RUNNING' },
+      })
+    }
+    return { fresh, duplicate: claimed.count === 0 }
   })
-  const fresh = await db.n8nExecution.findUniqueOrThrow({ where: { id: execution.id } })
-  if (claimed.count === 0) return { ok: true, duplicate: true, execution: fresh }
-  await db.n8nWorkflow.updateMany({
-    where: { code: execution.workflowCode, tenantId: execution.tenantId },
-    data: { lastRunStatus: status, status: status === 'FAILED' ? 'ERROR' : status === 'SUCCEEDED' ? 'IMPORTED' : 'RUNNING' },
-  }).catch(() => null)
-  if (terminal && execution.automationRunId) {
+  const terminal = fresh.status === 'SUCCEEDED' || fresh.status === 'FAILED'
+  if (terminal && fresh.automationRunId) {
     const { resumeRunAfterExternal } = await import('@/lib/automation/engine')
-    await resumeRunAfterExternal(execution.automationRunId, {
-      correlationId: execution.correlationId,
-      ok: status === 'SUCCEEDED',
-      detail: status === 'SUCCEEDED' ? 'n8n reported success' : (input.error || 'n8n reported a failure'),
-    }).catch(() => null)
+    // Repeat the idempotent resume on duplicate callbacks: a previous delivery
+    // may have persisted the terminal execution but lost the resume DB write.
+    // Use the durable original outcome, never a contrary duplicate's payload.
+    // Let failures propagate so n8n can retry instead of acknowledging lost work.
+    await resumeRunAfterExternal(fresh.automationRunId, {
+      correlationId: fresh.correlationId,
+      ok: fresh.status === 'SUCCEEDED',
+      detail: fresh.status === 'SUCCEEDED' ? 'n8n reported success' : (fresh.error || 'n8n reported a failure'),
+    })
   }
   // Run-owned executions report failure through the run itself (no self-retriggering loop).
-  if (status === 'FAILED' && !execution.automationRunId) {
+  if (fresh.status === 'FAILED' && !fresh.automationRunId) {
     const { emitAutomationEvent } = await import('@/lib/automation/engine')
     await emitAutomationEvent({
-      tenantId: execution.tenantId,
+      tenantId: fresh.tenantId,
       type: 'INTEGRATION_FAILED',
       source: 'N8N',
       subjectType: 'N8nExecution',
-      subjectId: execution.id,
-      payload: { integration: 'N8N', workflowCode: execution.workflowCode, error: (input.error || '').slice(0, 300) },
-      dedupeKey: `integration_failed:n8n:${execution.id}`,
-    }).catch(() => null)
+      subjectId: fresh.id,
+      payload: { integration: 'N8N', workflowCode: fresh.workflowCode, error: (fresh.error || '').slice(0, 300) },
+      dedupeKey: `integration_failed:n8n:${fresh.id}`,
+    })
   }
-  return { ok: true, duplicate: false, execution: fresh }
+  return { ok: true, duplicate, execution: fresh }
 }

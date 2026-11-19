@@ -183,7 +183,7 @@ function AiOpsCard({ loading }: { loading: boolean }) {
                 {loading ? '…' : failed ? 'FEED ERROR' : (ops?.status ?? 'OFFLINE')}
               </span>
             </p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">
               {ops
                 ? `Cycle #${ops.cycles ?? '—'} · heartbeat ${fmtAge(ops.heartbeatAgeSec)} · beats every ${Math.round(ops.intervalSec / 60) || 1} min`
                 : 'Detect → Understand → Decide → Execute → Verify → Log → Learn'}
@@ -201,7 +201,7 @@ function AiOpsCard({ loading }: { loading: boolean }) {
             { label: 'Success', value: successRate != null ? `${successRate}%` : '—', icon: CheckCircle2 },
           ].map((s) => (
             <div key={s.label} className="rounded-lg border border-slate-800/80 bg-slate-900/60 px-3 py-2">
-              <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-slate-500">
+              <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
                 <s.icon className="size-3" aria-hidden="true" /> {s.label}
               </p>
               <p className="mt-0.5 text-lg font-bold tabular-nums leading-tight text-slate-100">{s.value}</p>
@@ -211,7 +211,7 @@ function AiOpsCard({ loading }: { loading: boolean }) {
 
         {/* last cycle actions — evidence of real work */}
         <div className="min-w-0 lg:max-w-[280px]">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Last cycle executed</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Last cycle executed</p>
           {actions.length > 0 ? (
             <ul className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Actions performed in the last AI operations cycle">
               {actions.slice(0, 6).map((a, i) => (
@@ -221,7 +221,7 @@ function AiOpsCard({ loading }: { loading: boolean }) {
               ))}
             </ul>
           ) : (
-            <p className="mt-1.5 text-[11.5px] text-slate-600">
+            <p className="mt-1.5 text-[11.5px] text-slate-400">
               {ops ? 'No actions needed — the loop scans continuously.' : 'Waiting for the first cycle…'}
             </p>
           )}
@@ -310,7 +310,7 @@ function AgentRosterCard({ data, loading, canOperate, onNavigate }: {
     <SectionCard
       title="AI Workforce roster"
       description={data ? `${data.active} active of ${data.total} registered AI agents. Identity and status only.` : 'Every registered AI agent'}
-      actions={canOperate ? <Button size="sm" variant="outline" onClick={() => onNavigate('agents')}>Open AI Workforce</Button> : undefined}
+      actions={canOperate ? <Button size="sm" variant="outline" className="border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white" onClick={() => onNavigate('agents')}>Open AI Workforce</Button> : undefined}
     >
       {loading && !data ? (
         <Skeleton className="h-40 w-full" />
@@ -318,16 +318,16 @@ function AgentRosterCard({ data, loading, canOperate, onNavigate }: {
         <div className={`max-h-[420px] space-y-4 overflow-y-auto pr-1 ${SCROLL_THIN}`} aria-label="All registered AI agents">
           {[...groups.entries()].map(([dept, rows]) => (
             <div key={dept}>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{dept} · {rows.length}</p>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{dept} · {rows.length}</p>
               <ul className="divide-y divide-slate-800/70 rounded-lg border border-slate-800/70">
                 {rows.map((a) => (
                   <li key={a.code} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[12px]">
-                    <span className="font-mono text-[10.5px] text-slate-500">{a.code}</span>
+                    <span className="font-mono text-[10.5px] text-slate-400">{a.code}</span>
                     <span className="font-medium text-slate-100">{a.name}</span>
                     <span className="min-w-0 flex-1 truncate text-slate-400">{a.title ?? '—'}</span>
-                    <span className="text-[10px] text-slate-500">L{a.level}</span>
+                    <span className="text-[10px] text-slate-400">L{a.level}</span>
                     {a.requiresApproval ? <span className="text-[10px] text-amber-400">approval</span> : null}
-                    <span className="text-[10px] tabular-nums text-slate-500">{a.executions} runs</span>
+                    <span className="text-[10px] tabular-nums text-slate-400">{a.executions} runs</span>
                     <span className={`rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${statusTone(a.status)}`}>{a.status}</span>
                   </li>
                 ))}
@@ -365,7 +365,7 @@ export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { ro
     { key: 'name', header: 'Name', cell: (r) => <span className="font-medium text-slate-200">{r.name}</span> },
     { key: 'business', header: 'Business', cell: (r) => <span className="text-slate-400">{r.businessName || '—'}</span> },
     { key: 'stage', header: 'Stage', cell: (r) => <StatusBadge status={r.pipelineStage} /> },
-    { key: 'created', header: 'Created', cell: (r) => <span className="text-xs text-slate-500">{fmtDate(r.createdAt)}</span> },
+    { key: 'created', header: 'Created', cell: (r) => <span className="text-xs text-slate-400">{fmtDate(r.createdAt)}</span> },
   ]
 
   return (
@@ -376,7 +376,7 @@ export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { ro
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {data?.financialDataAvailable ? (
-              <Button onClick={() => onNavigate('payments')} className="gap-2 font-semibold" style={{ background: '#009FE3' }} aria-label="Create invoice draft">
+              <Button onClick={() => onNavigate('payments')} className="gap-2 bg-[#0052A5] font-semibold text-white hover:bg-[#063B8F]" aria-label="Create invoice draft">
                 <FileText className="size-4" aria-hidden="true" /> Create Invoice / ইনভয়েস তৈরি করুন
               </Button>
             ) : null}
@@ -445,7 +445,7 @@ export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { ro
         <nav aria-label="Platform modules" className="space-y-4">
           {MODULE_DIRECTORY.map((group) => ({ ...group, items: group.items.filter((m) => canAccessAdminView(role, m.id)) })).filter((group) => group.items.length > 0).map((group) => (
             <div key={group.section}>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{group.section}</p>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{group.section}</p>
               <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                 {group.items.map((m) => (
                   <li key={m.id}>
@@ -458,7 +458,7 @@ export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { ro
                       <m.icon className="mt-0.5 size-4 shrink-0 text-[#009FE3]" aria-hidden="true" />
                       <span className="min-w-0">
                         <span className="block truncate text-xs font-semibold text-slate-200">{m.label}</span>
-                        <span className="block truncate text-[10.5px] text-slate-500">{m.blurb}</span>
+                        <span className="block truncate text-[10.5px] text-slate-400">{m.blurb}</span>
                       </span>
                     </button>
                   </li>
@@ -547,7 +547,7 @@ export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { ro
             ) : activity.length === 0 ? (
               <EmptyState title="No activity yet" description="Platform events will appear here as the system runs." />
             ) : (
-              <ul className={`max-h-72 divide-y divide-slate-800 overflow-auto ${SCROLL_THIN}`} aria-label="Recent activity">
+              <ul className={`max-h-72 divide-y divide-slate-800 overflow-auto rounded-b-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 ${SCROLL_THIN}`} aria-label="Recent activity" tabIndex={0}>
                 {activity.map((a, i) => (
                   <li key={i} className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-slate-800/30">
                     <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-slate-800/70 text-slate-400">
@@ -555,7 +555,7 @@ export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { ro
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="break-words text-[13px] leading-snug text-slate-300">{a.text || a.type || 'Event'}</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="mt-0.5 text-[11px] text-slate-400">
                         {a.type ? prettify(a.type) : ''}
                         {a.actor ? ` · ${a.actor}` : ''} · {fmtDate(a.at)}
                       </p>
@@ -586,7 +586,7 @@ export function DashboardView({ role = 'STAFF', onOpenClient, onNavigate }: { ro
         />
       </SectionCard>
 
-      <p className="pb-2 text-center text-[11px] text-slate-500" aria-hidden="true">
+      <p className="pb-2 text-center text-[11px] text-slate-400" aria-hidden="true">
         Data source: /api/admin/dashboard · refreshed manually and on view switch
       </p>
     </div>

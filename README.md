@@ -21,8 +21,14 @@ The official **company letterhead** (owner-provided pad + logo) drives every doc
 
 Read **[`docs/OPERATIONS_GUIDEBOOK.md`](docs/OPERATIONS_GUIDEBOOK.md)** — the complete operating manual:
 deployment, daily/weekly/monthly checklists, website, CRM, delivery, finance, portal, AI workforce,
-governance, data, troubleshooting and incident runbooks. The latest code audit is
-**[`docs/FULL_PROJECT_CODE_AUDIT_2026-10-24.md`](docs/FULL_PROJECT_CODE_AUDIT_2026-10-24.md)**.
+governance, data, troubleshooting and incident runbooks. The latest measured working-tree audit is
+**[`docs/audit/2026-11-18/REPOSITORY_AUDIT.md`](docs/audit/2026-11-18/REPOSITORY_AUDIT.md)**,
+with its [issue register](docs/audit/2026-11-18/ISSUES_AND_PLAN.md) and
+[changed-file list](docs/audit/2026-11-18/CHANGED_FILES.md). It records 2,100 passing local tests,
+not production certification: mobile ChatWidget accessibility and code/integration acceptance
+remain open. The October audit and older worklog rounds are historical evidence.
+See the [owner-controlled deployment guide](docs/deployment/DEPLOYMENT_GUIDE.md) before running
+any build or test command near a live database; `npm run build` includes migration operations.
 
 ### Review the whole product without a MySQL server
 
@@ -50,7 +56,9 @@ repair and its evidence.
 
 ## 1. Local setup
 
-The application uses **Node.js 22.x, npm, and MySQL**. Use a disposable/development MySQL database here—never point local commands at production.
+The application uses **Node.js 22.x, npm, and MySQL**. `package-lock.json` is the only root lockfile; install root dependencies with `npm ci`, not Bun. The obsolete root Bun lockfile was removed because it pinned different, outdated dependencies and could cause deployment package-manager misdetection. Optional Bun sidecars remain isolated under `mini-services/` and use their own package manifests.
+
+Use a disposable/development MySQL database here—never point local commands at production.
 
 ```bash
 npm ci --no-audit --no-fund

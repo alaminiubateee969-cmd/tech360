@@ -1,0 +1,251 @@
+{
+  "generatedAt": "2026-11-18T22:55:30.081Z",
+  "mode": "development, isolated SQLite, synthetic fixtures, external browser requests blocked",
+  "checks": [
+    {
+      "name": "desktop homepage renders a visible H1 and responsive content without horizontal overflow",
+      "status": "PASS",
+      "ms": 5554,
+      "evidence": {
+        "h1": "Engineering Technology. Empowering Business."
+      }
+    },
+    {
+      "name": "anonymous admin login renders labelled email/password fields",
+      "status": "FAIL",
+      "ms": 68383,
+      "detail": "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator('#login-email') to be visible\n"
+    },
+    {
+      "name": "real fixture admin can sign in through browser form and see the console",
+      "status": "FAIL",
+      "ms": 60002,
+      "detail": "locator.fill: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator('#login-email')\n"
+    },
+    {
+      "name": "mobile homepage and chat can be reached by labelled controls",
+      "status": "FAIL",
+      "ms": 77356,
+      "detail": "locator.click: Timeout 60000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Chat with TECH360', exact: true })\n    - locator resolved to <button type=\"button\" aria-expanded=\"false\" aria-label=\"Chat with TECH360\" class=\"fixed bottom-5 right-5 z-50 flex size-14 items-center justify-center rounded-full text-white shadow-xl shadow-[#063B8F]/30 transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#009FE3]/40 print:hidden\">…</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - "
+    },
+    {
+      "name": "portal route renders without exposing admin credentials",
+      "status": "PASS",
+      "ms": 4874
+    },
+    {
+      "name": "STAFF real fixture session respects private workforce and finance endpoint guards",
+      "status": "PASS",
+      "ms": 5079,
+      "evidence": {
+        "privateMemoryEndpoint": 403,
+        "financeEndpoint": 403,
+        "clientDetail": 200
+      }
+    },
+    {
+      "name": "PROJECT_MANAGER real fixture session respects private workforce and finance endpoint guards",
+      "status": "PASS",
+      "ms": 356,
+      "evidence": {
+        "privateMemoryEndpoint": 403,
+        "financeEndpoint": 403,
+        "clientDetail": 200
+      }
+    },
+    {
+      "name": "DEVELOPER real fixture session respects private workforce and finance endpoint guards",
+      "status": "PASS",
+      "ms": 133,
+      "evidence": {
+        "privateMemoryEndpoint": 403,
+        "financeEndpoint": 403,
+        "clientDetail": 403
+      }
+    },
+    {
+      "name": "SALES real fixture session respects private workforce and finance endpoint guards",
+      "status": "PASS",
+      "ms": 148,
+      "evidence": {
+        "privateMemoryEndpoint": 403,
+        "financeEndpoint": 403,
+        "clientDetail": 200
+      }
+    },
+    {
+      "name": "public sitemap routes render with loaded local images (desktop sample)",
+      "status": "FAIL",
+      "ms": 11625,
+      "detail": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/services/premium-business-websites\nCall log:\n  - navigating to \"http://127.0.0.1:3000/services/premium-business-websites\", waiting until \"load\"\n"
+    }
+  ],
+  "findings": [],
+  "pageErrors": [],
+  "a11y": [
+    {
+      "surface": "desktop homepage",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".lg\\:py-24.py-20.max-w-7xl > .lg\\:justify-between.lg\\:items-end.lg\\:flex-row > .group\\/link.rounded-sm[href$=\"services\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.83 (foreground color: #009fe3, background color: #f7fafc, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".py-16.sm\\:py-20.max-w-7xl > .lg\\:justify-between.lg\\:items-end.lg\\:flex-row > .group\\/link.rounded-sm[href$=\"services\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #009fe3, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".group\\/link.rounded-sm[href$=\"process\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.83 (foreground color: #009fe3, background color: #f7fafc, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".group\\/link.rounded-sm[href$=\"faq\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #009fe3, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-\\[\\#18B83A\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.63 (foreground color: #ffffff, background color: #18b83a, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".hover\\:bg-\\[\\#063B8F\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #ffffff, background color: #009fe3, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "passes": 27,
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "nodes": 1
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "nodes": 5
+        },
+        {
+          "id": "color-contrast",
+          "nodes": 41
+        },
+        {
+          "id": "link-in-text-block",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "surface": "anonymous client portal",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "nodes": [
+            {
+              "target": [
+                ".lg\\:py-24.py-20.max-w-7xl > .lg\\:justify-between.lg\\:items-end.lg\\:flex-row > .group\\/link.rounded-sm[href$=\"services\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.83 (foreground color: #009fe3, background color: #f7fafc, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".py-16.sm\\:py-20.max-w-7xl > .lg\\:justify-between.lg\\:items-end.lg\\:flex-row > .group\\/link.rounded-sm[href$=\"services\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #009fe3, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".group\\/link.rounded-sm[href$=\"process\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.83 (foreground color: #009fe3, background color: #f7fafc, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".group\\/link.rounded-sm[href$=\"faq\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #009fe3, background color: #ffffff, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".bg-\\[\\#18B83A\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.63 (foreground color: #ffffff, background color: #18b83a, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "target": [
+                ".hover\\:bg-\\[\\#063B8F\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.97 (foreground color: #ffffff, background color: #009fe3, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "passes": 27,
+      "incomplete": [
+        {
+          "id": "aria-prohibited-attr",
+          "nodes": 1
+        },
+        {
+          "id": "aria-valid-attr-value",
+          "nodes": 5
+        },
+        {
+          "id": "color-contrast",
+          "nodes": 41
+        },
+        {
+          "id": "link-in-text-block",
+          "nodes": 1
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "path": "/",
+      "images": [
+        {
+          "src": "/_next/image",
+          "loaded": true,
+          "alt": "TECH360"
+        },
+        {
+          "src": "/images/services/custom-software-development.webp",
+          "loaded": true,
+          "alt": "Custom Software Development illustration showing interlocking modular application blocks, tailored workflow gears, and multi-role operational screens"
+        },
+        {
+          "src": "/images/services/ecommerce-platforms.webp",
+          "loaded": true,
+          "alt": "eCommerce Platforms illustration featuring product showcase cards, streamlined digital payment checkout, inventory cubes, and order fulfillment routing"
+        }
+      ]
+    }
+  ],
+  "browser": "153.0.8010.0",
+  "counts": {
+    "passed": 6,
+    "failed": 4,
+    "findings": 0,
+    "a11yViolations": 2,
+    "pageErrors": 0
+  }
+}

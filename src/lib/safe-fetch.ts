@@ -1,5 +1,6 @@
 import { lookup } from 'dns/promises'
 import { isIP } from 'net'
+import { classifyNetworkAddress } from '@/lib/network-address'
 
 // ============================================================
 // SSRF-safe fetch for admin tools that load a URL the admin typed
@@ -11,27 +12,7 @@ import { isIP } from 'net'
 // ============================================================
 
 export function isPrivateIp(ip: string): boolean {
-  const v = isIP(ip)
-  if (v === 4) {
-    const [a, b, c] = ip.split('.').map(Number)
-    return (
-      a === 0 || a === 10 || a === 127 || a >= 224 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 192 && b === 0 && c === 0) ||
-      (a === 198 && (b === 18 || b === 19))
-    )
-  }
-  if (v === 6) {
-    const l = ip.toLowerCase()
-    if (l === '::' || l === '::1') return true
-    const mapped = l.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
-    if (mapped) return isPrivateIp(mapped[1])
-    return /^f[cd]/.test(l) || /^fe[89ab]/.test(l) || l.startsWith('ff')
-  }
-  return true // not an IP at all → refuse
+  return classifyNetworkAddress(ip) !== 'PUBLIC'
 }
 
 export class UnsafeUrlError extends Error {}

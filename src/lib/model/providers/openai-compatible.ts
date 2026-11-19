@@ -19,6 +19,7 @@ import type {
   ProviderStatus,
 } from '../types'
 import { isPrivateUpstream } from './ollama'
+import { isEmbeddingBatch } from '../response-validation'
 
 export type OpenAiCompatibleConfig = {
   baseUrl: string
@@ -105,6 +106,7 @@ export async function openAiCompatibleChat(
   try {
     const res = await fetch(`${config.baseUrl}/chat/completions`, {
       method: 'POST',
+      redirect: 'error',
       headers: headers(config),
       body: JSON.stringify({
         model,
@@ -136,8 +138,15 @@ export async function openAiCompatibleChat(
       choices?: Array<{ message?: { content?: string }; finish_reason?: string }>
       usage?: { total_tokens?: number }
     }
-    const choice = body.choices?.[0]
-    const content = choice?.message?.content ?? ''
+    const choice = body?.choices?.[0]
+    const content = typeof choice?.message?.content === 'string' ? choice.message.content : ''
+    if (!content.trim()) {
+      return {
+        ok: false, provider: 'openai-compatible', model, content: '', firstTokenMs: null,
+        durationMs: Date.now() - started, tokensUsed: null, finishReason: null,
+        error: 'local OpenAI-compatible provider returned no usable chat content', errorCode: 'INVALID_PROVIDER_RESPONSE',
+      }
+    }
     return {
       ok: true,
       provider: 'openai-compatible',
@@ -193,6 +202,7 @@ export async function openAiCompatibleEmbed(
   try {
     const res = await fetch(`${config.baseUrl}/embeddings`, {
       method: 'POST',
+      redirect: 'error',
       headers: headers(config),
       body: JSON.stringify({ model, input: request.input }),
       signal: controller.signal,
@@ -209,10 +219,15 @@ export async function openAiCompatibleEmbed(
         errorCode: 'PROVIDER_ERROR',
       }
     }
-    const body = (await res.json()) as { data?: Array<{ embedding?: number[] }> }
-    const vectors = (body.data ?? [])
-      .map((d) => d.embedding)
-      .filter((v): v is number[] => Array.isArray(v))
+    const body = (await res.json()) as { data?: Array<{ embedding?: unknown }> } | null
+    const vectors: unknown = Array.isArray(body?.data) ? body.data.map((d) => d?.embedding) : null
+    const expectedCount = typeof request.input === 'string' ? 1 : request.input.length
+    if (!isEmbeddingBatch(vectors, expectedCount)) {
+      return {
+        ok: false, provider: 'openai-compatible', model, vectors: [], dimensions: null,
+        durationMs: Date.now() - started, error: 'local OpenAI-compatible provider returned invalid or incomplete embeddings', errorCode: 'INVALID_PROVIDER_RESPONSE',
+      }
+    }
     return {
       ok: true,
       provider: 'openai-compatible',

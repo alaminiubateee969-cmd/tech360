@@ -18,9 +18,9 @@
  * -------------------------------------------------------------------
  * 1. Refused in production. A production process that sees this variable
  *    throws on the first query instead of quietly using a local SQLite file.
- * 2. Refused when `DATABASE_URL` is a real (non-file) MySQL URL only if the
- *    preview variable is explicitly set — an accidental leftover variable in
- *    a MySQL environment fails loudly.
+ * 2. Refused when `DATABASE_URL` is a non-file datasource and the preview
+ *    variable is explicitly set — an accidental leftover preview variable in
+ *    a MySQL environment fails loudly before resolving optional packages.
  * 3. Opt-in only: with `PREVIEW_SQLITE_URL` unset this module returns
  *    `undefined` and the client is constructed exactly as in production.
  * 4. The adapter packages are optional. They are resolved lazily so the
@@ -35,7 +35,14 @@ export const PREVIEW_ENV_VAR = 'PREVIEW_SQLITE_URL'
 
 export function previewDatabaseUrl(): string | null {
   const url = process.env[PREVIEW_ENV_VAR]?.trim()
-  return url ? url : null
+  if (!url) return null
+  const primary = process.env.DATABASE_URL?.trim()
+  if (primary && !primary.startsWith('file:')) {
+    // Do not silently replace the real datasource with an unrelated preview.
+    // Connection strings can contain credentials; report names, never values.
+    throw new Error(`${PREVIEW_ENV_VAR} conflicts with DATABASE_URL. Unset preview mode or explicitly select a throwaway file: DATABASE_URL.`)
+  }
+  return url
 }
 
 /**
@@ -53,7 +60,7 @@ export function attachPreviewAdapter(): PrismaClientOptions | undefined {
     )
   }
   if (!url.startsWith('file:') && !url.startsWith('libsql:')) {
-    throw new Error(`${PREVIEW_ENV_VAR} must be a file: (SQLite) or libsql: URL. Refusing: ${url}`)
+    throw new Error(`${PREVIEW_ENV_VAR} must be a file: (SQLite) or libsql: URL. The configured URL is not printed because it may contain credentials.`)
   }
 
   // Resolved through `createRequire` on purpose: the adapter is an optional

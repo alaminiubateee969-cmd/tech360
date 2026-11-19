@@ -22,6 +22,15 @@ describe('authentication and RBAC policy', () => {
     assert.equal(hasRole(user('ADMIN'), 'SUPER_ADMIN'), false)
   })
 
+  it('fails closed for undeclared user roles and minimum roles, including inherited object keys', () => {
+    for (const unknown of ['', 'INVALID_ROLE', 'admin', 'toString', 'constructor', '__proto__']) {
+      assert.equal(hasRole(user('STAFF'), unknown), false, `unknown minimum ${unknown}`)
+      assert.equal(hasRole(user('SUPER_ADMIN'), unknown), false, `super admin cannot satisfy an invalid policy ${unknown}`)
+      assert.equal(hasRole(user(unknown), 'STAFF'), false, `unknown user role ${unknown}`)
+      assert.equal(hasRole(user(unknown), unknown), false, `two invalid roles ${unknown}`)
+    }
+  })
+
   it('restricts dashboard financial aggregates to Manager and higher', () => {
     assert.equal(canViewFinancialDashboard(null), false)
     assert.equal(canViewFinancialDashboard(user('STAFF')), false)

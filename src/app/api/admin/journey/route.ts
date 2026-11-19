@@ -1,7 +1,7 @@
 import { parseScopeDecision, parsePreviewDecision } from '@/lib/pipeline/decision-policy'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { hasCapability } from '@/lib/access-policy'
+import { hasCapability, type Capability } from '@/lib/access-policy'
 import { guard, isResponse } from '@/lib/api-guard'
 import { assertGatewayUsable, featureEnabled } from '@/lib/features'
 import { readJson, sanitizeText, audit } from '@/lib/security'
@@ -14,6 +14,28 @@ import {
 
 export const dynamic = 'force-dynamic'
 
+// Rank alone is not permission: FINANCE is manager-ranked but cannot mutate
+// project/scope/CRM workflows. Check the capabilities of the requested action
+// before reading a client or entering a service that can write or send.
+const ACTION_CAPABILITIES: Record<string, readonly Capability[]> = {
+  DETECT_BUSINESS: ['crm.write'],
+  RECOMMEND_PLAN: ['crm.write'],
+  ASK_SCOPE_QUESTIONS: ['scope.write', 'comms.send'],
+  SUBMIT_SCOPE: ['scope.write'],
+  CLIENT_SCOPE_DECISION: ['scope.write'],
+  GENERATE_PREVIEW: ['preview.manage', 'comms.send'],
+  REQUEST_PAYMENT: ['finance.invoice.write'],
+  PREVIEW_DECISION: ['preview.manage'],
+  RECORD_PAYMENT: ['finance.payment.record'],
+  VERIFY_PAYMENT: ['finance.payment.verify'],
+  START_PROJECT: ['project.write'],
+  PREPARE_HANDOVER: ['delivery.prepare'],
+  RELEASE_HANDOVER: ['handover.release'],
+  CLOSE_PROJECT: ['project.write'],
+  REQUEST_REVIEW: ['crm.write', 'comms.send'],
+  REQUEST_REFERRAL: ['crm.write', 'comms.send'],
+}
+
 // Manual journey advancement from the admin console — same real engine as automation
 export async function POST(req: NextRequest) {
   const g = await guard(req, { minRole: 'MANAGER' })
@@ -23,6 +45,13 @@ export async function POST(req: NextRequest) {
   const clientRef = sanitizeText(raw.clientId, 40)
   const action = sanitizeText(raw.action, 40).toUpperCase()
   const payload = (raw.payload ?? {}) as Record<string, unknown>
+  if (!Object.hasOwn(ACTION_CAPABILITIES, action)) {
+    return Response.json({ error: `Unknown action: ${action}` }, { status: 400 })
+  }
+  const missing = ACTION_CAPABILITIES[action].filter((capability) => !hasCapability(g.user, capability))
+  if (missing.length) {
+    return Response.json({ error: `Forbidden — requires ${missing.join(', ')} capability.` }, { status: 403 })
+  }
 
   const client = await db.client.findFirst({ where: { OR: [{ id: clientRef }, { clientId: clientRef }] } })
   if (!client) return Response.json({ error: 'Client not found' }, { status: 404 })
@@ -175,9 +204,13 @@ export async function POST(req: NextRequest) {
         return Response.json({ error: 'Handover release must be executed through the pending Super Admin approval request.' }, { status: 403 })
       }
       case 'CLOSE_PROJECT': {
-        const projectId = sanitizeText(payload.projectId, 40) || (await db.project.findFirst({ where: { clientId: client.id }, orderBy: { createdAt: 'desc' } }))?.id
-        if (!projectId) return Response.json({ error: 'No project found' }, { status: 400 })
-        const r13 = await closeProject(projectId, g.user.email)
+        const requestedId = sanitizeText(payload.projectId, 40)
+        const project = await db.project.findFirst({
+          where: { clientId: client.id, ...(requestedId ? { id: requestedId } : {}) },
+          orderBy: { createdAt: 'desc' }, select: { id: true },
+        })
+        if (!project) return Response.json({ error: 'Project not found for this client.' }, { status: 404 })
+        const r13 = await closeProject(project.id, g.user.email)
         result = r13 as unknown as Record<string, unknown>
         message = 'Project closed and completed.'
         break
