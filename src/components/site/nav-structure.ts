@@ -2,7 +2,7 @@
  * Reconstructed Enterprise Public Navigation & Footer IA for TECH360.
  *
  * Primary Navigation (strictly 5 top-level groups):
- *   1. Solutions  (4 pillars covering all 21 services + Company-in-a-Box Platform)
+ *   1. Solutions  (4 pillars covering all 21 services + Enterprise Platforms & Software)
  *   2. Industries (5 sector groups covering all 20 industries + quick search)
  *   3. Work       (Portfolio, Projects / System Scenarios, Case Studies / Blueprints)
  *   4. Resources  (Blog, FAQ, Technologies, Delivery Process)
@@ -240,7 +240,7 @@ export const PRIMARY_NAV_GROUPS: PrimaryNavGroup[] = [
     summary: "21 custom software, CRM, AI, web, and cloud capabilities — scoped in writing and built for full client ownership.",
     columns: SOLUTIONS_MEGA_COLUMNS,
     footerLink: { label: "View all 21 solutions", href: "/services" },
-    secondaryFooterLink: { label: "Company-in-a-Box Platform", href: "/platform" },
+    secondaryFooterLink: { label: "Enterprise Platforms & Software", href: "/platform" },
   },
   {
     key: "industries",
@@ -265,17 +265,17 @@ export const PRIMARY_NAV_GROUPS: PrimaryNavGroup[] = [
           {
             label: "Portfolio",
             href: "/work",
-            description: "Capabilities showcase across web, CRM, portals & automation",
+            description: "Search & filter all work by industry, capability or technology",
           },
           {
-            label: "Projects",
+            label: "System Scenarios",
             href: "/work/projects",
-            description: "12 illustrative system scenarios & architecture breakdowns",
+            description: "12 system specifications with journeys, roles & data models",
           },
           {
-            label: "Case Studies",
+            label: "Delivery Blueprints",
             href: "/work/case-studies",
-            description: "Problem-to-architecture delivery blueprints by sector",
+            description: "8 problem-to-architecture blueprints with motion previews",
           },
         ],
       },

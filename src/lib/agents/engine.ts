@@ -1,6 +1,16 @@
-import { completeWithFreeModels, type ChatMessage } from './model-provider'
-import { gatewayComplete } from '@/lib/ai-gateway/client'
-import { resolveAgentProvider } from '@/lib/agents/provider-selection'
+import {
+  completeWithFreeModels,
+  completeWithOpenAi,
+  completeWithGemini,
+  completeWithGroq,
+  openAiConfigured,
+  geminiConfigured,
+  groqConfigured,
+  openRouterConfigured,
+  type ChatMessage,
+} from './model-provider'
+import { gatewayComplete, gatewayConfigured } from '@/lib/ai-gateway/client'
+import { resolveAgentProvider, type AgentProviderKind } from '@/lib/agents/provider-selection'
 import { db } from '@/lib/db'
 import { createZaiClient, ZaiProviderError } from '@/lib/ai-provider'
 import { withTimeout, resolveAgentTimeoutMs, isTransientRunError, MAX_RETRY_ATTEMPTS, RunTimeoutError } from '@/lib/agents/resilience'
@@ -236,7 +246,21 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
     }
   }
 
-  if (run.clientId && !agentMayAccessClient({ permissions: agent.permissions }, run.actingForClientId ?? null, run.clientId)) {
+  // Tenant scope. A run that names a client IS acting for that client — the
+  // caller is trusted server code and supplies the subject of the run. Callers
+  // that need to act for a *different* client must pass actingForClientId
+  // explicitly (see the durable job worker); the policy then denies the run
+  // unless the agent holds `read:all`.
+  //
+  // Regression fixed here: this check previously used only the optional
+  // actingForClientId, so every client-scoped run that did not pass it — the
+  // website chat orchestrator, business detection, plan recommendation, scope
+  // draft/review, meetings, payment requests and ops follow-ups — was denied
+  // with CROSS_CLIENT_DENIED. The agents were ACTIVE and correctly configured,
+  // but no customer-facing AI turn could ever reach a provider, so webchat
+  // always returned the honest "AI is unavailable" fallback.
+  const actingForClientId = run.actingForClientId ?? run.clientId ?? null
+  if (run.clientId && !agentMayAccessClient({ permissions: agent.permissions }, actingForClientId, run.clientId)) {
     await logError({ source: 'AGENT', code: 'CROSS_CLIENT_DENIED', message: `Agent ${agentCode} attempted to act on a client it is not scoped to`, correlationId, workflow: run.workflow })
     await db.auditLog.create({
       data: {
@@ -283,22 +307,53 @@ export async function runAgent(agentCode: string, run: AgentRunInput): Promise<A
   try {
     for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt += 1) {
       try {
-        const selectedProvider = resolveAgentProvider()
+        const rawModel = agent.model?.trim() || 'default'
+        let selectedProvider: AgentProviderKind = resolveAgentProvider()
+        const prefixMatch = rawModel.match(/^(openai|gemini|groq|openrouter|ai-gateway|zai):(.+)$/i)
+        if (prefixMatch) {
+          const requestedKind = prefixMatch[1].toLowerCase() as AgentProviderKind
+          if (
+            (requestedKind === 'openai' && openAiConfigured()) ||
+            (requestedKind === 'gemini' && geminiConfigured()) ||
+            (requestedKind === 'groq' && groqConfigured()) ||
+            (requestedKind === 'openrouter' && openRouterConfigured()) ||
+            (requestedKind === 'ai-gateway' && gatewayConfigured())
+          ) {
+            selectedProvider = requestedKind
+          }
+        }
         if (selectedProvider === 'none') {
           // Fail fast with an actionable message instead of falling through
           // to the ZAI client (which would throw a less clear error).
           throw new ZaiProviderError(
             'PROVIDER_NOT_CONFIGURED',
-            'No AI execution provider configured. Set AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN, OPENROUTER_API_KEY, or ZAI_BASE_URL + ZAI_API_KEY on the server.',
+            'No AI execution provider configured. Set OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY, AI_GATEWAY_BASE_URL + AGENTOS_GATEWAY_TOKEN, or ZAI_BASE_URL + ZAI_API_KEY on the server.',
           )
         } else if (selectedProvider === 'ai-gateway') {
           const result = await withTimeout((signal) => gatewayComplete(messages as ChatMessage[], process.env, signal), timeoutMs)
           output = result.output
           provider = result.provider
+          tokensUsed = Math.ceil((messages.reduce((s, m) => s + m.content.length, 0) + output.length) / 4)
         } else if (selectedProvider === 'openrouter') {
           const result = await withTimeout((signal) => completeWithFreeModels(messages as ChatMessage[], process.env, signal), timeoutMs)
           output = result.output
           provider = result.model
+          tokensUsed = result.tokensUsed ?? Math.ceil((messages.reduce((s, m) => s + m.content.length, 0) + output.length) / 4)
+        } else if (selectedProvider === 'openai') {
+          const result = await withTimeout((signal) => completeWithOpenAi(messages as ChatMessage[], process.env, signal, rawModel), timeoutMs)
+          output = result.output
+          provider = result.model
+          tokensUsed = result.tokensUsed
+        } else if (selectedProvider === 'gemini') {
+          const result = await withTimeout((signal) => completeWithGemini(messages as ChatMessage[], process.env, signal, rawModel), timeoutMs)
+          output = result.output
+          provider = result.model
+          tokensUsed = result.tokensUsed
+        } else if (selectedProvider === 'groq') {
+          const result = await withTimeout((signal) => completeWithGroq(messages as ChatMessage[], process.env, signal, rawModel), timeoutMs)
+          output = result.output
+          provider = result.model
+          tokensUsed = result.tokensUsed
         } else {
           const client = createZaiClient()
           const completion = await withTimeout(

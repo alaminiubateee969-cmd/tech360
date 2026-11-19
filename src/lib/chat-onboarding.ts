@@ -5,7 +5,7 @@ import { audit } from '@/lib/security'
 import { sanitizeEmail } from '@/lib/security'
 import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
 
-/** Extract first email address from free-text; used for the email-gated Client ID flow. */
+/** Extract the first email address from free text (unverified contact data only). */
 export function extractEmail(text: string): string | null {
   const m = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
   if (!m) return null
@@ -13,15 +13,27 @@ export function extractEmail(text: string): string | null {
   return sanitizeEmail(candidate) ? candidate.trim() : null
 }
 
-/** Canonical first-contact prompt — the webchat agent's first SMS asks for email before issuing Client ID. */
+/**
+ * Optional contact-detail invitation. A Client ID no longer depends on email,
+ * so this is never used as a gate; it is kept for flows that explicitly want
+ * to ask for an address before sending a document.
+ */
 export const EMAIL_GATE_PROMPT =
-  'Thanks for reaching out to TECH360. To create your Client ID and keep your project securely on file, please share your email address. Once we have your email, your Client ID will be generated automatically and we will continue on your preferred channel.'
+  'Thanks for reaching out to TECH360. To keep formal documents (proposal, scope of work, invoices) securely on file, please share the best email address for service updates. Your Client ID is already created and this conversation is saved.'
 
 export type ChatOnboardingResult = {
   clientRowId: string | null
   displayClientId: string | null
   identityReviewRequired: boolean
+  /**
+   * Kept for API compatibility. Anonymous web chat no longer gates the
+   * conversation on an email address: a prospect Client ID is issued at
+   * first contact (see ensureChatClient) and the assistant asks for contact
+   * details naturally during the conversation.
+   */
   emailRequired?: boolean
+  /** True when a usable (still unverified) email is on file for follow-up. */
+  contactEmailOnFile?: boolean
   emailDeliveryStatus: string | null
   contactDeliveryStatus: { channel: string; status: string; ok: boolean } | null
 }
@@ -56,44 +68,35 @@ export async function ensureChatClient(input: {
   firstMessage: string
   contactConsentAt: Date
 }): Promise<ChatOnboardingResult> {
-  // Gate: no Client ID is issued until we have a valid email address.
-  // The webchat agent's first SMS asks for email; after the visitor replies with email we auto-create the Client.
-  let effectiveEmail = input.email?.trim() ?? null
-  if (!effectiveEmail || !sanitizeEmail(effectiveEmail)) {
-    const extracted = input.firstMessage ? extractEmail(input.firstMessage) : null
-    if (extracted) effectiveEmail = extracted
+
+  // ---------------------------------------------------------------------
+  // Root cause fixed here (anonymous web chat was dead on arrival):
+  // this function used to REFUSE to issue a Client ID until the visitor had
+  // typed an email address. Every caller then skipped the AI orchestrator
+  // because the conversation had no clientId, so a first-time visitor got a
+  // static "please share your email" reply and never a real answer -- on a
+  // site that advertises live support chat. The chat/session route also
+  // required email or phone before the first message could be sent.
+  //
+  // New behaviour (safe by default):
+  // 1. A consented first contact always creates (or reuses) a prospect CRM
+  //    record with a permanent Client ID, whether or not contact details were
+  //    supplied. Prospect creation is idempotent per chat conversation through
+  //    the deterministic form id, so retries cannot create duplicates.
+  // 2. A typed email remains UNVERIFIED contact data. It is stored on the
+  //    client only when no other live CRM row already owns that address.
+  // 3. When another CRM row owns the address, no data is linked or exposed:
+  //    the prospect is created WITHOUT the address and an identity-review
+  //    notification is raised for an admin merge.
+  // 4. Verified-identity matching (ClientIdentity) is unchanged and is still
+  //    the only path that merges a channel into an existing customer.
+  // ---------------------------------------------------------------------
+  let effectiveEmail = sanitizeEmail(input.email?.trim() ?? '') ?? null
+  if (!effectiveEmail && input.firstMessage) {
+    const extracted = extractEmail(input.firstMessage)
+    if (extracted) effectiveEmail = sanitizeEmail(extracted) ?? null
   }
   const cleanFirstMessage = redactSensitiveCrmData(input.firstMessage).text
-  if (!effectiveEmail || !sanitizeEmail(effectiveEmail)) {
-    // Keep a pending FormSubmission so a later message with email can be claimed atomically via the same formId,
-    // but do NOT create a Client yet.
-    const formId = formIdForConversation(input.conversationId)
-    const pendingDetails = `Website chat (awaiting email): ${cleanFirstMessage.slice(0, 1500)}`
-    await db.formSubmission.upsert({
-      where: { id: formId },
-      create: {
-        id: formId,
-        form: 'CHAT',
-        name: input.name || 'Website Visitor',
-        email: input.email,
-        phone: input.phone,
-        details: pendingDetails,
-        preferredContact: input.preferredContact || 'Email',
-        contactConsentAt: input.contactConsentAt,
-        consentVersion: CONTACT_CONSENT_VERSION,
-        tracking: JSON.stringify({ source: 'WEB_CHAT', consentVersion: CONTACT_CONSENT_VERSION, pendingEmail: true }),
-        status: 'NEW',
-      },
-      update: {
-        name: input.name || 'Website Visitor',
-        ...(input.phone ? { phone: input.phone } : {}),
-        details: pendingDetails,
-      },
-    }).catch(() => null)
-    return { clientRowId: null, displayClientId: null, identityReviewRequired: false, emailRequired: true, emailDeliveryStatus: null, contactDeliveryStatus: null }
-  }
-  // Normalize to extracted/clean email when it came from free-text.
-  input.email = sanitizeEmail(effectiveEmail) ?? effectiveEmail
 
   const priorConversation = await db.chatConversation.findFirst({
     where: {
@@ -111,12 +114,30 @@ export async function ensureChatClient(input: {
       select: { id: true, clientId: true, deletedAt: true },
     })
     if (client && !client.deletedAt) {
-      return { clientRowId: client.id, displayClientId: client.clientId, identityReviewRequired: false, emailDeliveryStatus: null, contactDeliveryStatus: null }
+      return {
+        clientRowId: client.id,
+        displayClientId: client.clientId,
+        identityReviewRequired: false,
+        contactEmailOnFile: false,
+        emailDeliveryStatus: null,
+        contactDeliveryStatus: null,
+      }
     }
   }
 
   const formId = formIdForConversation(input.conversationId)
   const details = `Website chat: ${cleanFirstMessage.slice(0, 1500)}`
+
+  // An address that already belongs to another live CRM row is not proof of
+  // ownership. Do not copy it onto the new prospect and do not link the rows.
+  const existingEmailOwner = effectiveEmail
+    ? await db.client.findFirst({
+        where: { email: effectiveEmail, deletedAt: null },
+        select: { id: true },
+      })
+    : null
+  const identityReviewRequired = Boolean(existingEmailOwner)
+  const clientEmail = identityReviewRequired ? null : effectiveEmail
 
   // The stable form id lets intakeLead atomically claim this onboarding attempt
   // and recover its existing Client ID after a retry without creating another.
@@ -126,30 +147,28 @@ export async function ensureChatClient(input: {
       id: formId,
       form: 'CHAT',
       name: input.name || 'Website Visitor',
-      email: input.email,
+      email: effectiveEmail ?? input.email,
       phone: input.phone,
       details,
-      preferredContact: input.preferredContact || 'Email',
+      preferredContact: input.preferredContact || 'CHAT',
       contactConsentAt: input.contactConsentAt,
       consentVersion: CONTACT_CONSENT_VERSION,
-      tracking: JSON.stringify({ source: 'WEB_CHAT', consentVersion: CONTACT_CONSENT_VERSION }),
+      tracking: JSON.stringify({
+        source: 'WEB_CHAT',
+        consentVersion: CONTACT_CONSENT_VERSION,
+        identityReviewRequired,
+      }),
       status: 'NEW',
     },
     update: {
       name: input.name || 'Website Visitor',
-      email: input.email,
+      email: effectiveEmail ?? input.email,
       ...(input.phone ? { phone: input.phone } : {}),
       details,
     },
-  })
+  }).catch(() => null)
 
-  const existingEmailOwner = input.email
-    ? await db.client.findFirst({
-        where: { email: input.email, deletedAt: null },
-        select: { id: true },
-      })
-    : null
-  if (existingEmailOwner) {
+  if (identityReviewRequired) {
     const reviewTransition = await db.formSubmission.updateMany({
       where: { id: formId, status: { not: 'PENDING_REVIEW' } },
       data: {
@@ -167,34 +186,41 @@ export async function ensureChatClient(input: {
         db.notification.create({
           data: {
             type: 'IDENTITY_REVIEW',
-            title: 'Web chat requires identity review',
-            body: `Conversation ${input.conversationId} is saved without a Client link; verify ownership before linking.`,
+            title: 'Web chat prospect needs identity review',
+            body: `Conversation ${input.conversationId} supplied an email already on file for another client. A separate prospect was created so the conversation could continue; verify ownership before linking or merging.`,
             severity: 'WARNING',
           },
         }).catch(() => null),
       ])
     }
-    return { clientRowId: null, displayClientId: null, identityReviewRequired: true, emailDeliveryStatus: null, contactDeliveryStatus: null }
   }
 
   try {
     const result = await intakeLead({
       source: 'WEBSITE',
       name: input.name || 'Website Visitor',
-      email: input.email || undefined,
+      email: clientEmail || undefined,
       phone: input.phone || undefined,
-      preferredContact: input.preferredContact || 'Email',
+      preferredContact: input.preferredContact || 'CHAT',
       contactConsent: true,
       message: details,
-      tracking: { source: 'WEB_CHAT', consentVersion: CONTACT_CONSENT_VERSION },
+      tracking: {
+        source: 'WEB_CHAT',
+        consentVersion: CONTACT_CONSENT_VERSION,
+        identityReviewRequired,
+      },
       formId,
     })
     return {
       clientRowId: result.clientRowId,
       displayClientId: result.clientId,
-      identityReviewRequired: false,
+      identityReviewRequired,
+      contactEmailOnFile: Boolean(clientEmail),
       emailDeliveryStatus: result.welcome?.deliveries.find((delivery) => delivery.channel === 'EMAIL')?.status ?? null,
-      contactDeliveryStatus: result.welcome?.deliveries.find((delivery) => delivery.channel.toLowerCase() === (input.preferredContact || 'Email').toLowerCase()) ?? null,
+      contactDeliveryStatus:
+        result.welcome?.deliveries.find(
+          (delivery) => delivery.channel.toLowerCase() === (input.preferredContact || '').toLowerCase(),
+        ) ?? null,
     }
   } catch (error) {
     // Recover a Client already attached to this form if a later pipeline step
@@ -209,7 +235,14 @@ export async function ensureChatClient(input: {
         select: { id: true, clientId: true, deletedAt: true },
       }).catch(() => null)
       if (client && !client.deletedAt) {
-        return { clientRowId: client.id, displayClientId: client.clientId, identityReviewRequired: false, emailDeliveryStatus: null, contactDeliveryStatus: null }
+        return {
+          clientRowId: client.id,
+          displayClientId: client.clientId,
+          identityReviewRequired,
+          contactEmailOnFile: Boolean(clientEmail),
+          emailDeliveryStatus: null,
+          contactDeliveryStatus: null,
+        }
       }
     }
 
@@ -227,10 +260,24 @@ export async function ensureChatClient(input: {
           select: { id: true, clientId: true, deletedAt: true },
         }).catch(() => null)
         if (client && !client.deletedAt) {
-          return { clientRowId: client.id, displayClientId: client.clientId, identityReviewRequired: false, emailDeliveryStatus: null, contactDeliveryStatus: null }
+          return {
+            clientRowId: client.id,
+            displayClientId: client.clientId,
+            identityReviewRequired,
+            contactEmailOnFile: Boolean(clientEmail),
+            emailDeliveryStatus: null,
+            contactDeliveryStatus: null,
+          }
         }
       }
     }
-    return { clientRowId: null, displayClientId: null, identityReviewRequired: false, emailDeliveryStatus: null, contactDeliveryStatus: null }
+    return {
+      clientRowId: null,
+      displayClientId: null,
+      identityReviewRequired: false,
+      contactEmailOnFile: false,
+      emailDeliveryStatus: null,
+      contactDeliveryStatus: null,
+    }
   }
 }

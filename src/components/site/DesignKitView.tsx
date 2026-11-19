@@ -8,7 +8,7 @@ import { BarChart3, Calendar, Layers, MessageCircle, Palette, Ruler, Search, Typ
 
 import { LeadFunnel, PortalSignInSequence, ProjectSwimlane } from './diagram-kit'
 import {
-  AIAssistantLink,
+  LiveSupportLink,
   ButtonGroup,
   CardLinkAffordance,
   GhostLink,
@@ -195,7 +195,7 @@ export default function DesignKitView() {
             <ButtonGroup>
               <PrimaryLink href="/contact">Book a consultation</PrimaryLink>
               <OutlineLink href="/legal/privacy">Privacy policy</OutlineLink>
-              <AIAssistantLink compact />
+              <LiveSupportLink compact />
             </ButtonGroup>
           </Showcase>
           <Showcase label="Embedded and progressive affordances" note="Card-level links and inline “learn more” arrows.">

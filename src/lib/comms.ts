@@ -4,8 +4,9 @@ import { toE164 } from '@/lib/phone'
 import { DEAD_LETTER, backoffMs, decideRetry, scheduleAfterFailure } from '@/lib/outbox-retry'
 import { classifyOutbound } from '@/lib/governance/outbound'
 import { HOSTINGER_MAIL_ENV, readHostingerMailConfig } from '@/lib/mail/hostinger-config'
-import { createHostingerMailClient, sendHostingerEmail } from '@/lib/mail/hostinger-mail'
+import { createHostingerMailClient, sendHostingerEmail, type HostingerThreadRef } from '@/lib/mail/hostinger-mail'
 import { outboundPlainText } from '@/lib/mail/hostinger-inbound-policy'
+import { readN8nConfig } from '@/lib/n8n/adapter'
 
 // ============================================================
 // TECH360 COMMUNICATIONS — real adapters, honest statuses
@@ -16,7 +17,7 @@ import { outboundPlainText } from '@/lib/mail/hostinger-inbound-policy'
 
 export type SendResult = {
   ok: boolean
-  status: 'SENT' | 'FAILED' | 'NOT_CONFIGURED' | 'DISABLED_BY_ADMIN' | 'SENT_PLATFORM'
+  status: 'SENT' | 'FAILED' | 'NOT_CONFIGURED' | 'DISABLED_BY_ADMIN' | 'OPTED_OUT' | 'SENT_PLATFORM'
   providerMessageId?: string
   error?: string
 }
@@ -50,7 +51,9 @@ export function channelStatuses() {
     INSTAGRAM: Boolean(process.env.INSTAGRAM_TOKEN),
     LINKEDIN: Boolean(process.env.LINKEDIN_TOKEN),
     X: Boolean(process.env.X_TOKEN),
-    N8N: Boolean(process.env.N8N_WEBHOOK_BASE),
+    // Same rule as the n8n adapter (base URL + outbound and callback secrets of 32+ chars).
+    // "Configured" only — the integrations view shows CONNECTED after a live test.
+    N8N: readN8nConfig().configured,
   }
 }
 
@@ -120,7 +123,12 @@ export function isHostingerMailSelected(): boolean {
  * The result is PROVIDER ACCEPTANCE (HTTP 204). Hostinger returns no message
  * id and no delivery confirmation, so this function never reports delivery.
  */
-async function sendEmailViaHostinger(to: string, subject: string, bodyHtml: string): Promise<SendResult> {
+async function sendEmailViaHostinger(
+  to: string,
+  subject: string,
+  bodyHtml: string,
+  thread?: HostingerThreadRef,
+): Promise<SendResult> {
   const status = readHostingerMailConfig()
   if (status.state !== 'CONFIGURED') {
     const reason = status.state === 'INVALID'
@@ -131,7 +139,7 @@ async function sendEmailViaHostinger(to: string, subject: string, bodyHtml: stri
   const html = wrapEmailHtml(subject, bodyHtml)
   const text = `${subject}\n\n${outboundPlainText(bodyHtml)}\n\n${COMPANY.email}`
   const result = await sendHostingerEmail(
-    { to, subject, html, text },
+    { to, subject, html, text, ...(thread ? { inReplyTo: thread } : {}) },
     { client: createHostingerMailClient(status.config), displayName: 'Tech360' },
   )
   return {
@@ -202,7 +210,14 @@ async function sendSms(to: string, body: string): Promise<SendResult> {
 // path calls it directly so a retry updates the ORIGINAL row instead of
 // inserting a duplicate.
 // ------------------------------------------------------------
-export async function dispatchChannel(entry: { channel: string; to?: string; subject?: string; body: string }): Promise<SendResult> {
+export async function dispatchChannel(entry: {
+  channel: string
+  to?: string
+  subject?: string
+  body: string
+  /** Reply into an existing mailbox thread (provider UID + folder). */
+  thread?: HostingerThreadRef
+}): Promise<SendResult> {
   switch (entry.channel) {
     case 'WHATSAPP':
       return sendWhatsApp(entry.to ?? '', entry.body)
@@ -211,7 +226,7 @@ export async function dispatchChannel(entry: { channel: string; to?: string; sub
       // HOSTINGER_MAIL_ENABLED=true selects the Hostinger Mail API exclusively.
       // An enabled but invalid configuration refuses the send; it never falls
       // back silently to SMTP.
-      if (isHostingerMailSelected()) return sendEmailViaHostinger(entry.to ?? '', subject, entry.body)
+      if (isHostingerMailSelected()) return sendEmailViaHostinger(entry.to ?? '', subject, entry.body, entry.thread)
       return sendEmail(entry.to ?? '', subject, wrapEmailHtml(subject, entry.body))
     }
     case 'SMS':
@@ -249,6 +264,8 @@ export async function sendCommunication(entry: {
   storedBody?: string
   /** Extra JSON stored on the Communication row (e.g. the plain-text copy of an HTML email body). */
   metadata?: string
+  /** Reply into an existing mailbox thread so the customer sees one conversation. */
+  thread?: HostingerThreadRef
 }): Promise<{ communicationId: string; result: SendResult }> {
   const { redactSensitiveCrmData } = await import('@/lib/sensitive-redaction')
   const safeStoredBody = redactSensitiveCrmData(entry.storedBody ?? entry.body).text.slice(0, 20000)
@@ -280,6 +297,30 @@ export async function sendCommunication(entry: {
     return { communicationId: comm.id, result: disabled }
   }
 
+  if (entry.channel === 'SMS' && entry.clientId && entry.messageType !== 'OTP') {
+    let optedOut = false
+    try {
+      const { loadCommState } = await import('@/lib/conversation-state')
+      optedOut = (await loadCommState(entry.clientId, entry.clientId)).optedOut
+    } catch {
+      const refused: SendResult = { ok: false, status: 'FAILED', error: 'SMS consent state could not be verified; send refused' }
+      const now = new Date()
+      await db.communication.update({
+        where: { id: comm.id },
+        data: { status: refused.status, error: refused.error, sentAt: null, lastAttemptAt: now, nextRetryAt: new Date(now.getTime() + backoffMs(1)) },
+      })
+      return { communicationId: comm.id, result: refused }
+    }
+    if (optedOut) {
+      const refused: SendResult = { ok: false, status: 'OPTED_OUT', error: 'Customer opted out of SMS; send refused' }
+      await db.communication.update({
+        where: { id: comm.id },
+        data: { status: refused.status, error: refused.error, sentAt: null, lastAttemptAt: new Date(), nextRetryAt: null },
+      })
+      return { communicationId: comm.id, result: refused }
+    }
+  }
+
   const result = await dispatchChannel(entry)
 
   // A first-send failure is recorded as FAILED (not DEAD_LETTER) so operators
@@ -306,6 +347,20 @@ export async function sendCommunication(entry: {
       message: `${entry.channel} delivery failed for Communication ${comm.id}; recipient and message body omitted from the error log.`,
       clientId: entry.clientId, workflow: entry.workflowId ?? undefined,
     })
+    // Integration-failure trigger. Automation-originated sends are excluded: the
+    // run records (and retries) its own failure, and excluding them prevents a
+    // failure-handling rule from re-triggering itself.
+    if (!entry.workflowId?.startsWith('automation:')) {
+      const { emitAutomationEvent } = await import('@/lib/automation/engine')
+      await emitAutomationEvent({
+        type: 'INTEGRATION_FAILED',
+        source: 'COMMS',
+        subjectType: 'Communication',
+        subjectId: comm.id,
+        payload: { integration: entry.channel, communicationId: comm.id, clientRowId: entry.clientId ?? null, error: (result.error ?? '').slice(0, 300) },
+        dedupeKey: `integration_failed:comm:${comm.id}`,
+      }).catch(() => null)
+    }
   }
 
   return { communicationId: comm.id, result }
@@ -342,6 +397,24 @@ export async function retryCommunicationOutbox(
   }
   if (comm.direction !== 'OUT') {
     return { ok: false, communicationId: comm.id, action: 'SKIPPED', attempts: comm.attempts, reason: 'Only outbound messages can be retried' }
+  }
+
+  if (comm.channel === 'SMS' && comm.clientId && comm.messageType !== 'OTP') {
+    try {
+      const { loadCommState } = await import('@/lib/conversation-state')
+      const communicationState = await loadCommState(comm.clientId, comm.clientId)
+      if (communicationState.optedOut) {
+        const reason = 'Customer opted out of SMS; retry refused'
+        const completedStatuses = new Set(['SENT', 'DELIVERED', 'READ', 'RECEIVED'])
+        const status = completedStatuses.has(comm.status) ? comm.status : 'OPTED_OUT'
+        if (status === 'OPTED_OUT') {
+          await db.communication.update({ where: { id: comm.id }, data: { status, error: reason, nextRetryAt: null } })
+        }
+        return { ok: false, communicationId: comm.id, action: 'NOT_RETRYABLE', attempts: comm.attempts, reason, status }
+      }
+    } catch {
+      return { ok: false, communicationId: comm.id, action: 'SKIPPED', attempts: comm.attempts, reason: 'SMS consent state could not be verified; retry refused' }
+    }
   }
 
   // Consequential messages (amounts, payment, contract, handover, legal) are
@@ -526,7 +599,22 @@ export function wrapEmailHtml(subject: string, bodyHtml: string): string {
   </td></tr></table></body></html>`
 }
 
-export function escapeHtml(s: string): string {
+/**
+ * HTML-escape any value. Structured values (a 21-section SOW can hold objects
+ * or arrays inside an item) previously crashed with "s.replace is not a
+ * function", which broke HTML preview generation for real scopes.
+ */
+export function escapeHtml(value: unknown): string {
+  let s: string
+  if (typeof value === 'string') s = value
+  else if (value === null || value === undefined) s = ''
+  else if (typeof value === 'number' || typeof value === 'boolean') s = String(value)
+  else if (Array.isArray(value)) s = value.map((item) => escapeHtml(item)).join(', ')
+  else if (typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    const preferred = record.name ?? record.title ?? record.label ?? record.description ?? record.detail
+    s = preferred !== undefined ? escapeHtml(preferred) : JSON.stringify(record)
+  } else s = String(value)
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c))
 }
 

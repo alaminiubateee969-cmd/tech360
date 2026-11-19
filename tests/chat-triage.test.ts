@@ -39,7 +39,12 @@ describe('chat triage signal', () => {
   for (const writer of WRITERS.slice(1)) {
     it(`${writer} keeps lastSender in sync for admin + system writes`, () => {
       const src = read(writer)
-      const adminReply = src.split("sender: 'ADMIN'")[1]?.slice(0, 800) ?? ''
+      // The human reply is persisted by the inbox service (idempotent per
+      // requestId); the route must delegate to it rather than write directly.
+      assert.match(src, /operatorReply\(\{ conversation, body, requestId, actor/, 'admin reply must go through operatorReply')
+      const service = read('src/lib/webchat/inbox-service.ts')
+      const replyFn = service.split('export async function operatorReply')[1] ?? ''
+      const adminReply = replyFn.split("sender: 'ADMIN'")[1]?.slice(0, 800) ?? ''
       assert.match(adminReply, /lastSender:\s*'ADMIN'/, 'admin reply must set lastSender ADMIN')
       const systemNotes = src.match(/lastSender:\s*'SYSTEM'/g) ?? []
       assert.ok(systemNotes.length >= 2, 'close + reopen system notes must both set lastSender SYSTEM')

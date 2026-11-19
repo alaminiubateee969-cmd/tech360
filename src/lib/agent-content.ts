@@ -83,8 +83,8 @@ const SECTION_TITLES: Record<string, { title: string; summary: string }> = {
     summary: 'TECH360 LLC builds custom websites, CRM systems, client portals, eCommerce platforms, and business workflow automation for organizations worldwide.',
   },
   platform: {
-    title: 'Company-in-a-Box Software Platform',
-    summary: 'Connected business workflows, customer relationships, reporting, portals, and integrations tailored to an agreed scope.',
+    title: 'Enterprise Platforms & Software',
+    summary: 'Enterprise CRM, client portals, workflow automation, reporting, integrations and digital commerce tailored to an agreed scope.',
   },
   services: {
     title: 'Solutions & Engineering Services',
@@ -129,7 +129,7 @@ export function renderMarkdownForPath(pathname: string): string | null {
   }
 
   if (a === 'platform' && !b) {
-    return `# Company-in-a-Box\n\nA connected approach to customer relationships, team workflows, reporting, portals, and documents. Integrations, support, security, data ownership, and handover are defined in the agreed scope of work.${CONTACT_FOOTER}`
+    return `# Enterprise Platforms & Software\n\nTECH360 designs customer relationship systems, team workflows, reporting, client portals and document experiences around each organisation's requirements. Integrations, support, security, data ownership and handover are defined in the agreed scope of work.${CONTACT_FOOTER}`
   }
 
   if (a === 'services' && !b) {

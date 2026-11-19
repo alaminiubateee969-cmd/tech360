@@ -536,9 +536,9 @@ function ArchitecturePanel({ entry }: { entry: IndustryRegistryEntry }) {
     <div className="space-y-10">
       <div>
         <SectionIntro
-          eyebrow="Six-plane blueprint"
+          eyebrow="Solution architecture layers"
           title="Architecture the specification assumes"
-          description="Planes are the platform contract every industry system is assembled from. They describe the intended structure — they are not a claim that this particular system is running."
+          description="These layers describe the intended architecture for a customer solution. This is a design specification, not a claim that a live system has already been deployed."
         />
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {factory.planes.map((plane) => (

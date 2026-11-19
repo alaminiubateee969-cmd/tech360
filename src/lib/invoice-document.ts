@@ -318,7 +318,7 @@ export function renderInvoiceEmailBodyHtml(
 
 export function renderReceiptDocumentHtml(rec: RenderableReceipt, brandingOverride?: DocumentBrandingConfig | null): string {
   const docTitle = `Official Payment Receipt · ${escapeHtml(rec.receiptNumber)}`
-  const branding = brandingOverride === undefined ? null : getBrandingForInvoice(brandingOverride)
+  const branding = brandingOverride === null ? null : getBrandingForInvoice(brandingOverride)
   const useBranding = branding !== null
   const css = useBranding ? brandingCss(branding!) : PAD_CSS
   const headerHtml = useBranding ? brandingPadHeader(branding!, docTitle) : padHeader(docTitle)

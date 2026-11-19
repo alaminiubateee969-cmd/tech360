@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { guard, isResponse } from '@/lib/api-guard'
 import { readJson, sanitizeText, audit } from '@/lib/security'
 import { sendCommunication, wrapEmailHtml, emailTemplate } from '@/lib/comms'
+import { isAuthorizedEmailDestination, recordSentEmailDocumentArchive } from '@/lib/document-storage'
 import {
   GovernanceDeniedError,
   ensureGovernedApproval,
@@ -34,6 +36,32 @@ export async function POST(req: NextRequest) {
 
   const recipient = to || (channel === 'EMAIL' ? client?.email : client?.whatsapp) || ''
   if (!recipient) return Response.json({ error: `No ${channel === 'EMAIL' ? 'email' : 'phone'} on record for this client` }, { status: 400 })
+
+  // Enforce authorized email destination check when sending to a client record
+  if (channel === 'EMAIL' && client && to) {
+    const destCheck = await isAuthorizedEmailDestination({
+      clientPrimaryEmail: client.email,
+      clientPublicId: client.clientId,
+      recipientEmail: recipient,
+    })
+    if (!destCheck.authorized) {
+      await audit({
+        actor: g.user.email,
+        action: 'EMAIL_DESTINATION_BLOCKED',
+        userId: g.user.id,
+        clientId: client.clientId,
+        details: { recipient, reason: destCheck.reason },
+      })
+      return Response.json(
+        {
+          ok: false,
+          code: 'UNAPPROVED_EMAIL_DESTINATION',
+          error: destCheck.reason,
+        },
+        { status: 403 },
+      )
+    }
+  }
 
   // Consequential content (payment instruction, invoice, legal or refund
   // response, handover link, dispute, or any monetary amount) needs a Super
@@ -96,6 +124,71 @@ export async function POST(req: NextRequest) {
   })
   await audit({ actor: g.user.email, action: 'MANUAL_MESSAGE_SENT', userId: g.user.id, clientId: client?.clientId, details: { channel, recipient, status: result.status, consequential: policy.consequential, categories: policy.categories } })
 
+  // Archive exact sent email + optional document snapshot to CRM and Customer Portal Document Library
+  let portalFileRecordId: string | null = null
+  if (channel === 'EMAIL' && client) {
+    const documentId = sanitizeText(raw.documentId, 60) || null
+    const documentVersion = Number.isInteger(Number(raw.documentVersion)) && Number(raw.documentVersion) > 0 ? Number(raw.documentVersion) : null
+    const exactDocumentHtml = typeof raw.exactDocumentHtml === 'string' && raw.exactDocumentHtml.trim() ? raw.exactDocumentHtml : null
+    let documentSha256: string | null = null
+
+    if (exactDocumentHtml) {
+      const docBytes = Buffer.from(exactDocumentHtml, 'utf8')
+      documentSha256 = createHash('sha256').update(docBytes).digest('hex')
+      const safeRef = (documentId || `email-doc-${Date.now()}`).replace(/[^A-Za-z0-9._-]/g, '_')
+      const verSuffix = documentVersion ? `-v${documentVersion}` : ''
+      const fileRow = await db.fileRecord.create({
+        data: {
+          filename: `${safeRef}${verSuffix}-${documentSha256.slice(0, 10)}.html`,
+          originalName: `${safeRef}${verSuffix}.html`,
+          mimeType: 'text/html',
+          size: docBytes.length,
+          sha256: documentSha256,
+          classification: 'PRIVATE',
+          scanStatus: 'CLEAN',
+          content: docBytes,
+          note: `Archived email document (${subject || 'Message from Tech360'}) sent to ${recipient}`,
+          clientId: client.id,
+          relatedType: 'ADMIN_SHARE',
+          uploadedBy: `user:${g.user.email}`,
+        },
+        select: { id: true },
+      })
+      portalFileRecordId = fileRow.id
+    }
+
+    await recordSentEmailDocumentArchive({
+      communicationId: communicationId ?? null,
+      clientId: client.id,
+      clientPublicId: client.clientId,
+      projectId: sanitizeText(raw.projectId, 40) || null,
+      subject: subject || 'Message from Tech360',
+      finalEmailBody: body,
+      documentId,
+      documentVersion,
+      documentSha256,
+      portalFileRecordId,
+      attachments: portalFileRecordId && documentSha256
+        ? [{
+            fileRecordId: portalFileRecordId,
+            filename: `${documentId || 'document'}.html`,
+            mimeType: 'text/html',
+            size: Buffer.byteLength(exactDocumentHtml || '', 'utf8'),
+            sha256: documentSha256,
+          }]
+        : [],
+      recipientEmail: recipient,
+      cc: Array.isArray(raw.cc) ? raw.cc.map((c) => sanitizeText(c, 200)).filter(Boolean) : [],
+      bcc: Array.isArray(raw.bcc) ? raw.bcc.map((c) => sanitizeText(c, 200)).filter(Boolean) : [],
+      sentAt: new Date().toISOString(),
+      senderAccount: g.user.email,
+      approvalId: consumedApprovalId ?? null,
+      deliveryStatus: result.status === 'SENT' ? 'SENT' : result.status === 'NOT_CONFIGURED' ? 'NOT_CONFIGURED' : 'FAILED',
+      providerMessageId: result.providerMessageId ?? null,
+      failureInfo: result.error ?? null,
+    })
+  }
+
   const statusText = result.status === 'SENT' ? 'sent successfully' : result.status === 'NOT_CONFIGURED' ? 'not sent — channel not configured' : `failed: ${result.error}`
   return Response.json({
     ok: result.status === 'SENT',
@@ -103,5 +196,6 @@ export async function POST(req: NextRequest) {
     error: result.error ?? null,
     message: `Message ${statusText}. Recorded in CRM.`,
     communicationId,
+    portalFileRecordId,
   })
 }

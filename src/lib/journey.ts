@@ -151,6 +151,13 @@ export async function intakeLead(input: {
   verifiedIdentities?: VerifiedIdentityProof[]
   tracking?: unknown
   formId?: string
+  /**
+   * Skip the automatic first ("welcome") message. The inbound channel handlers
+   * (SMS/WhatsApp) use this because they deliver exactly one answer through the
+   * AI orchestrator on the originating channel; sending a template first would
+   * double-message the customer.
+   */
+  suppressWelcome?: boolean
 }): Promise<{
   clientId: string
   clientRowId: string
@@ -275,7 +282,7 @@ export async function intakeLead(input: {
     if (isNewClient) {
       // Website enquiries require the exact boolean consent checked by the form;
       // inbound messages may receive a reply only on their originating channel.
-      const hasContactPermission = createData.source !== 'WEBSITE' || hasExplicitContactConsent(input.contactConsent)
+      const hasContactPermission = !input.suppressWelcome && (createData.source !== 'WEBSITE' || hasExplicitContactConsent(input.contactConsent))
       const selectedChannel = hasContactPermission ? selectWelcomeChannel(createData.source, clientRow.preferredContact) : null
       const welcomeChannels: PipelineChannel[] = []
       if (hasContactPermission && createData.source === 'WEBSITE' && selectedChannel) {
@@ -297,7 +304,9 @@ export async function intakeLead(input: {
       let welcomeAccepted = false
       if (!hasContactPermission) {
         await stepLog(log.id, 'welcome_skipped', {
-          reason: 'explicit website contact consent was not recorded',
+          reason: input.suppressWelcome
+            ? 'the inbound channel handler delivers the single first reply on the originating channel'
+            : 'explicit website contact consent was not recorded',
         })
       } else if (welcomeChannels.length > 0) {
         // STAGE 1 — save and dispatch the first reply through the centralized
@@ -361,6 +370,12 @@ export async function intakeLead(input: {
 
     if (input.formId) {
       await db.formSubmission.update({ where: { id: input.formId }, data: { clientId: clientRow.id, status: 'PROCESSED' } })
+    }
+    // Automation event for a genuinely new lead (deduped per client row so retries never fire twice).
+    if (isNewClient) {
+      const { emitLeadCreated } = await import('@/lib/automation/domain-events')
+      const trackingSource = input.tracking && typeof input.tracking === 'object' ? (input.tracking as Record<string, unknown>).source : undefined
+      await emitLeadCreated({ clientRowId: clientRow.id, clientId: clientRow.clientId, leadSource: createData.source ?? null, channelSource: typeof trackingSource === 'string' ? trackingSource : null, businessType: clientRow.businessType ?? null })
     }
     return { clientId: clientRow.clientId, clientRowId: clientRow.id, logId: log.id, welcome: welcomeResult }
   } catch (e) {
@@ -889,11 +904,26 @@ export async function generatePreview(clientRowId: string) {
 }
 
 function buildPreviewHtml(client: { clientId: string; name: string; businessName: string | null }, content: Record<string, unknown>, version: number, brandingOverride?: import('@/lib/document-branding').DocumentBrandingConfig | null): string {
-  const items = Array.isArray(content.items) ? (content.items as Array<Record<string, string>>) : []
-  const timeline = Array.isArray(content.timeline) ? (content.timeline as Array<Record<string, string>>) : []
+  const items = Array.isArray(content.items) ? (content.items as Array<Record<string, unknown>>) : []
+  const timeline = Array.isArray(content.timeline) ? (content.timeline as Array<Record<string, unknown>>) : []
   const pp = (content.paymentPolicy ?? {}) as Record<string, unknown>
-  const itemRows = items.map((i) => `<div class="card"><h3>${escapeHtml(i.name ?? '')}</h3><p>${escapeHtml(i.description ?? '')}</p><div class="tag">Deliverable: ${escapeHtml(i.deliverable ?? 'as described')}</div></div>`).join('')
-  const timelineRows = timeline.map((t) => `<li><strong>${escapeHtml(t.phase ?? '')}</strong> <span>(${escapeHtml(String(t.weeks ?? '?'))} week${String(t.weeks ?? '') === '1' ? '' : 's'})</span><p>${escapeHtml(t.activities ?? '')}</p></li>`).join('')
+  // A real SOW stores structured values (objects/arrays) inside items and
+  // activities. Rendering them as plain text keeps preview generation working
+  // instead of crashing on a non-string value.
+  const asText = (value: unknown): string => {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'string') return value
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+    if (Array.isArray(value)) return value.map(asText).filter(Boolean).join('; ')
+    if (typeof value === 'object') {
+      const record = value as Record<string, unknown>
+      const preferred = record.name ?? record.title ?? record.label ?? record.description ?? record.detail ?? record.text
+      return preferred !== undefined ? asText(preferred) : JSON.stringify(record)
+    }
+    return String(value)
+  }
+  const itemRows = items.map((i) => `<div class="card"><h3>${escapeHtml(asText(i.name ?? i.title))}</h3><p>${escapeHtml(asText(i.description ?? i.detail))}</p><div class="tag">Deliverable: ${escapeHtml(asText(i.deliverable ?? i.deliverables ?? 'as described'))}</div></div>`).join('')
+  const timelineRows = timeline.map((t) => `<li><strong>${escapeHtml(asText(t.phase ?? t.name))}</strong> <span>(${escapeHtml(asText(t.weeks ?? '?'))} week${asText(t.weeks) === '1' ? '' : 's'})</span><p>${escapeHtml(asText(t.activities ?? t.items))}</p></li>`).join('')
   const clientDisplayName = escapeHtml(client.name)
   const issued = docDate()
   const branding = brandingOverride === undefined ? getDefaultBranding() : (brandingOverride ?? getDefaultBranding())
@@ -920,9 +950,9 @@ ${padMeta([
 <h2>Timeline</h2><ol class="timeline">${timelineRows}</ol>
 <h2>Payment Plan</h2>
 <div class="pay">
-<div><b>${escapeHtml(String(pp.advancePct ?? '—'))}%</b><br/><small>Advance</small></div>
-<div><b>${escapeHtml(String(pp.milestonePct ?? '—'))}%</b><br/><small>On milestone</small></div>
-<div><b>${escapeHtml(String(pp.finalPct ?? '—'))}%</b><br/><small>On final delivery</small></div>
+<div><b>${escapeHtml(asText(pp.advancePct ?? '—'))}%</b><br/><small>Advance</small></div>
+<div><b>${escapeHtml(asText(pp.milestonePct ?? '—'))}%</b><br/><small>On milestone</small></div>
+<div><b>${escapeHtml(asText(pp.finalPct ?? '—'))}%</b><br/><small>On final delivery</small></div>
 </div>
 <div class="note"><strong>Project terms:</strong> HTML Preview where included in the agreed process · Final source-code handover after required payments have cleared unless otherwise agreed · Changes to approved scope may require an approved price or schedule adjustment.</div>
 <div style="position:relative">
@@ -1311,6 +1341,10 @@ export async function verifyPayment(paymentId: string, actor: GovernanceActor, a
   const receiptNumber = receiptOutcome && receiptOutcome.ok ? receiptOutcome.receipt.receiptNumber : null
 
   await audit({ actor: auditActor, action: alreadyVerified ? 'PAYMENT_VERIFICATION_RECONCILED' : 'PAYMENT_VERIFIED', clientId: client?.clientId, entityId: payment.id, details: { amount: payment.amount, currency: payment.currency, invoice: payment.invoice?.number ?? null, receiptNumber } })
+  if (!alreadyVerified) {
+    const { emitPaymentVerified } = await import('@/lib/automation/domain-events')
+    await emitPaymentVerified({ paymentId: payment.id, clientRowId: client?.id ?? null, clientId: client?.clientId ?? null, amount: Number(payment.amount), currency: payment.currency, invoiceNumber: payment.invoice?.number ?? null })
+  }
   return { ok: true, idempotent: alreadyVerified, receiptNumber }
 }
 
@@ -1381,6 +1415,35 @@ export async function activateProject(clientRowId: string, projectId?: string) {
             assigneeType: String(t.assigneeType ?? 'AGENT') === 'HUMAN' ? 'HUMAN' : 'AGENT',
             assigneeRef: String(t.assigneeType ?? 'AGENT') === 'HUMAN' ? sanitizeText(String(t.assigneeRef ?? ''), 80) || null : 'TSK-019',
             order: order++,
+          },
+        })
+      }
+    } else {
+      // Deterministic lifecycle template when the AI breakdown is unavailable
+      // (provider outage, invalid JSON, quota). Previously the project was left
+      // with ZERO tasks, which permanently blocked QA, delivery and source
+      // handover. These are honest TEMPLATE tasks: clearly labelled, assigned to
+      // a human owner to confirm, and never presented as AI output.
+      const template: Array<{ title: string; description: string; priority: string }> = [
+        { title: 'Confirm requirements and sign-off criteria', description: 'Template task (automatic breakdown unavailable) — confirm the approved SOW deliverables and acceptance criteria with the client.', priority: 'HIGH' },
+        { title: 'Design approval (preview aligned to SOW)', description: 'Template task — confirm the approved HTML preview matches the agreed screens, navigation and forms.', priority: 'HIGH' },
+        { title: 'Implementation', description: 'Template task — build the approved scope. Assign the responsible developer and record evidence on completion.', priority: 'HIGH' },
+        { title: 'Internal review', description: 'Template task — technical review against the SOW and security requirements.', priority: 'MEDIUM' },
+        { title: 'QA against acceptance criteria', description: 'Template task — record actual test results; do not mark failed checks as passed.', priority: 'HIGH' },
+        { title: 'Client review and revisions', description: 'Template task — collect client feedback and record approved revisions.', priority: 'MEDIUM' },
+        { title: 'Final delivery package', description: 'Template task — prepare deployment documentation and the delivery package.', priority: 'HIGH' },
+        { title: 'Source-code handover (authorized)', description: 'Template task — handover only after the required payments are verified and a Super Admin authorizes release.', priority: 'HIGH' },
+      ]
+      for (const [order, t] of template.entries()) {
+        await db.projectTask.create({
+          data: {
+            projectId: project.id,
+            title: t.title,
+            description: `${t.description} [TEMPLATE — generated because the AI breakdown did not return valid JSON; a human owner must confirm or replace it.]`.slice(0, 2000),
+            priority: t.priority,
+            assigneeType: 'HUMAN',
+            assigneeRef: null,
+            order,
           },
         })
       }

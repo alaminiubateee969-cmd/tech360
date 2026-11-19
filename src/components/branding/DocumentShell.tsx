@@ -7,9 +7,9 @@ import { getDefaultBranding } from '@/lib/document-branding'
 export function useBranding(): DocumentBrandingConfig {
   const [branding, setBranding] = useState<DocumentBrandingConfig>(getDefaultBranding())
   useEffect(() => {
-    fetch('/api/admin/branding', { credentials: 'include' })
+    fetch('/api/branding/public')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.branding) setBranding(d.branding) })
+      .then(d => { if (d?.branding) setBranding(current => ({ ...current, ...d.branding })) })
       .catch(() => {})
   }, [])
   return branding

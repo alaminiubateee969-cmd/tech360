@@ -70,7 +70,7 @@ describe('official page template — the supplied letterhead is the actual page'
   })
 
   it('renders every branding asset referenced by the config from a real file', () => {
-    for (const key of ['letterheadAsset', 'logoAsset', 'sealAsset', 'headerAsset', 'footerAsset'] as const) {
+    for (const key of ['letterheadAsset', 'logoAsset', 'sealAsset', 'headerAsset', 'footerAsset', 'companyProfileCoverAsset', 'proposalCoverAsset'] as const) {
       const path = (branding as unknown as Record<string, string>)[key]
       assert.ok(path, `${key} missing`)
       assert.equal(existsSync(`public${path}`), true, `${key} → public${path} does not exist`)

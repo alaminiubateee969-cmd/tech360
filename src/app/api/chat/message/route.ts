@@ -2,10 +2,12 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { sanitizeText, rateLimit, clientIp, apiError, json } from '@/lib/security'
 import { CHAT_SESSION_COOKIE, chatSessionCookieIsValid } from '@/lib/chat-session'
-import { ensureChatClient, extractEmail, EMAIL_GATE_PROMPT } from '@/lib/chat-onboarding'
+import { ensureChatClient, extractEmail } from '@/lib/chat-onboarding'
 import { isValidClientRequestId } from '@/lib/contact-policy'
 import { sanitizeEmail } from '@/lib/security'
 import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
+import { screenVisitorMessage, toVisitorMessage, VISITOR_BURST_LIMIT, VISITOR_BURST_WINDOW_MS, VISITOR_VISIBLE_WHERE } from '@/lib/webchat/policy'
+import { visitorBurstExceeded } from '@/lib/webchat/visitor-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,32 +17,57 @@ function isUniqueConflict(error: unknown): boolean {
   return Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: unknown }).code === 'P2002')
 }
 
+async function visibleThread(conversationId: string) {
+  const rows = await db.chatMessage.findMany({
+    where: { conversationId, ...VISITOR_VISIBLE_WHERE },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+  })
+  return rows.map(toVisitorMessage)
+}
+
 async function threadResponse(input: {
   conversationId: string
   anonId: string
   messageId: string
   duplicate?: boolean
 }) {
-  const messages = await db.chatMessage.findMany({
-    where: { conversationId: input.conversationId },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true, sender: true, body: true, agentEmail: true, createdAt: true },
-  })
+  const messages = await visibleThread(input.conversationId)
   const message = messages.find((item) => item.id === input.messageId)
   return json({
-    message: message
-      ? { id: message.id, sender: message.sender, body: message.body, createdAt: message.createdAt }
-      : null,
+    message: message ?? null,
     reply: null,
     duplicate: input.duplicate ?? false,
-    messages: messages.map((item) => ({
-      id: item.id,
-      sender: item.sender,
-      body: item.body,
-      agentEmail: item.agentEmail,
-      createdAt: item.createdAt.toISOString(),
-    })),
+    messages,
   }, input.duplicate ? 200 : 201)
+}
+
+/** Post-persist hooks: rules triage + automation event. Never affects the visitor's response. */
+async function afterVisitorMessage(conversation: { id: string; tenantId: string; clientId: string | null }, messageId: string, channelBody: string) {
+  try {
+    const { triageConversation } = await import('@/lib/ai-support/assist')
+    const triage = await triageConversation(conversation.id)
+    const { emitAutomationEvent } = await import('@/lib/automation/engine')
+    await emitAutomationEvent({
+      tenantId: conversation.tenantId,
+      type: 'WEBCHAT_MESSAGE_RECEIVED',
+      source: 'WEBCHAT',
+      subjectType: 'ChatConversation',
+      subjectId: conversation.id,
+      payload: {
+        conversationId: conversation.id,
+        clientRowId: conversation.clientId,
+        messageId,
+        body: channelBody.slice(0, 500),
+        intent: triage?.intent ?? null,
+        language: triage?.language ?? null,
+        priority: triage?.priority ?? null,
+      },
+      dedupeKey: `webchat_msg:${messageId}`,
+    })
+  } catch (error) {
+    const { logError } = await import('@/lib/security')
+    await logError({ source: 'CHAT_MESSAGE', code: 'POST_MESSAGE_HOOK_FAILED', message: error instanceof Error ? error.message : String(error) }).catch(() => null)
+  }
 }
 
 // PUBLIC — visitor sends a message into their consented OPEN conversation.
@@ -88,11 +115,16 @@ export async function POST(req: NextRequest) {
       return apiError('This chat session cannot be verified in this browser. Please contact support.', 401, 'CHAT_SESSION_REQUIRED')
     }
 
+    const screened = screenVisitorMessage(body)
+    if (!screened.ok) return apiError(screened.reason, 422, screened.code)
+    if (await visitorBurstExceeded(conversation.id, VISITOR_BURST_LIMIT, VISITOR_BURST_WINDOW_MS)) {
+      return apiError('You are sending messages too quickly — please wait a moment.', 429, 'RATE_LIMITED')
+    }
+
     // Preserve the validated consent timestamp across conversation updates.
     const contactConsentAt = conversation.contactConsentAt
 
     let identityReviewRequired = false
-    let emailRequired = false
     if (!conversation.clientId) {
       // If the visitor's message itself contains an email, capture it so the Client ID can be auto-created now.
       const emailed = extractEmail(body)
@@ -110,15 +142,11 @@ export async function POST(req: NextRequest) {
         contactConsentAt,
       })
       identityReviewRequired = linked.identityReviewRequired
-      emailRequired = Boolean((linked as { emailRequired?: boolean }).emailRequired)
       if (linked.clientRowId) {
         conversation = await db.chatConversation.update({
           where: { id: conversation.id },
           data: { clientId: linked.clientRowId, visitorName: conversation.visitorName ?? (name || null), visitorEmail: linked.clientRowId ? (sanitizeEmail(extractEmail(body) ?? conversation.visitorEmail ?? '') ?? conversation.visitorEmail) : conversation.visitorEmail },
         })
-      } else if (emailRequired) {
-        // Still no email — queue a follow-up prompt in webchat (and rely on the prior first SMS already sent from session).
-        // Do not spam: create one prompt per inbound that still lacks email.
       }
     } else if (!conversation.visitorName && name) {
       conversation = await db.chatConversation.update({ where: { id: conversation.id }, data: { visitorName: name } })
@@ -160,8 +188,12 @@ export async function POST(req: NextRequest) {
         lastMessagePreview: body.slice(0, 120),
         lastSender: 'VISITOR',
         unreadCount: { increment: 1 },
+        visitorTypingAt: null,
+        // A visitor reply re-opens a resolved thread so it returns to the working queues.
+        ...(conversation.inboxState === 'RESOLVED' ? { inboxState: 'OPEN', resolvedAt: null, resolvedBy: null } : {}),
       },
     })
+    await afterVisitorMessage(conversation, message.id, body)
 
     if (conversation.clientId) {
       await db.communication.create({
@@ -191,38 +223,15 @@ export async function POST(req: NextRequest) {
     }).catch(() => null)
 
     if (!conversation.clientId) {
-      // Email-gated: no Client ID yet — the first SMS already asked for email. Return the same prompt as a visible reply.
-      if (emailRequired) {
-        const promptMsg = await db.chatMessage.create({
-          data: { conversationId: conversation.id, sender: 'ADMIN', body: EMAIL_GATE_PROMPT },
-        }).catch(() => null)
-        if (promptMsg) {
-          await db.chatConversation.update({
-            where: { id: conversation.id },
-            data: { lastMessageAt: new Date(), lastMessagePreview: EMAIL_GATE_PROMPT.slice(0, 120), lastSender: 'ADMIN' },
-          }).catch(() => null)
-        }
-        const latestMessages = await db.chatMessage.findMany({
-          where: { conversationId: conversation.id },
-          orderBy: { createdAt: 'asc' },
-          select: { id: true, sender: true, body: true, agentEmail: true, createdAt: true },
-        })
-        return json({
-          message: { id: message.id, sender: message.sender, body: message.body, createdAt: message.createdAt },
-          reply: { body: EMAIL_GATE_PROMPT, wasAiGenerated: false, escalated: false, error: null },
-          identityReviewRequired,
-          emailRequired: true,
-          notice: 'Please share your email address — your Client ID will be created automatically once received.',
-          messages: latestMessages.map((item) => ({ id: item.id, sender: item.sender, body: item.body, agentEmail: item.agentEmail, createdAt: item.createdAt.toISOString() })),
-        }, 201)
-      }
+      // A consented conversation always receives a prospect Client ID at
+      // session start, so this is an exceptional state (CRM write failed).
+      // The visitor's message is already saved; do not claim an AI reply.
       return json({
-        message: { id: message.id, sender: message.sender, body: message.body, createdAt: message.createdAt },
+        message: toVisitorMessage(message),
         reply: null,
         identityReviewRequired,
-        notice: identityReviewRequired
-          ? 'Your message is saved, but we could not safely match this email to an existing Client ID. Please use the Client Portal or contact info@bdtech360.com for verification.'
-          : 'Your message is saved. CRM matching is still being checked; please try again shortly if you do not receive a reply.',
+        code: 'CRM_LINK_PENDING',
+        notice: 'Your message is saved. Our team can already read it in the chat inbox; a Client ID will be attached for you shortly.',
       }, 201)
     }
 
@@ -238,18 +247,14 @@ export async function POST(req: NextRequest) {
         visitorName: name || conversation.visitorName,
         visitorEmail: conversation.visitorEmail,
       })
-      const latestMessages = await db.chatMessage.findMany({
-        where: { conversationId: conversation.id },
-        orderBy: { createdAt: 'asc' },
-        select: { id: true, sender: true, body: true, agentEmail: true, createdAt: true },
-      })
+      const latestMessages = await visibleThread(conversation.id)
       return json({
-        message: { id: message.id, sender: message.sender, body: message.body, createdAt: message.createdAt },
+        message: toVisitorMessage(message),
         reply: result.ok
           ? { body: result.reply, wasAiGenerated: result.wasAiGenerated, escalated: result.escalated ?? false, error: result.error ?? null }
           : null,
         conversation: { id: conversation.id, clientId: result.clientId, status: 'OPEN' },
-        messages: latestMessages.map((item) => ({ id: item.id, sender: item.sender, body: item.body, agentEmail: item.agentEmail, createdAt: item.createdAt.toISOString() })),
+        messages: latestMessages,
       }, 201)
     } catch (error) {
       // Honest fallback: the visitor message is already saved. We do not claim an AI reply
@@ -262,7 +267,7 @@ export async function POST(req: NextRequest) {
         workflow: 'CHAT',
       }).catch(() => null)
       return json({
-        message: { id: message.id, sender: message.sender, body: message.body, createdAt: message.createdAt },
+        message: toVisitorMessage(message),
         reply: null,
         error: 'Your message was saved. Our assistant is temporarily unavailable — please try again or email info@bdtech360.com.',
         code: 'AI_UNAVAILABLE',

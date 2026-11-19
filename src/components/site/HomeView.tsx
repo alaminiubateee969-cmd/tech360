@@ -15,11 +15,8 @@ import {
 } from "lucide-react";
 import { CASE_STUDIES, FAQS, INDUSTRIES } from "@/data/site";
 import { industryImage, industryImageAlt } from "@/data/industry-images";
-import {
-  getCaseStudyImage,
-  serviceImageAlt,
-  serviceImageSrc,
-} from "@/data/service-images";
+import { serviceImageAlt, serviceImageSrc } from "@/data/service-images";
+import { getPortfolioEntry } from "@/data/portfolio";
 import { cn } from "@/lib/utils";
 import { Icon } from "./icons";
 import { SectionHeading } from "./SectionHeading";
@@ -82,6 +79,177 @@ const HERO_TRUST = [
   "HTML preview before production build",
   "Full source-code handover after completion",
 ];
+
+const HERO_3D_LAYERS = [
+  {
+    code: "LAYER 01",
+    title: "Connected Customer Channels",
+    detail: "Customer enquiries from approved channels can be connected to a consistent customer record.",
+    accent: "from-[#009FE3]/35 to-[#063B8F]/35 border-[#7FD4FF]/40",
+    depth: 36,
+  },
+  {
+    code: "LAYER 02",
+    title: "Custom CRM & Interactive Preview",
+    detail: "Review the proposed experience and written scope before production engineering begins.",
+    accent: "from-[#063B8F]/40 to-[#0B1F33]/50 border-white/25",
+    depth: 24,
+  },
+  {
+    code: "LAYER 03",
+    title: "Workflow Automation & Quality Assurance",
+    detail: "Connect business systems, reduce repetitive work and keep important actions under human review.",
+    accent: "from-[#009FE3]/30 to-[#18B83A]/25 border-[#5AE07A]/35",
+    depth: 14,
+  },
+  {
+    code: "LAYER 04",
+    title: "Secure Client Portal & Source Handover",
+    detail: "Approved milestones, project files and source-code handover are managed through clear delivery controls.",
+    accent: "from-[#0B1F33]/60 to-[#061528]/80 border-white/20",
+    depth: 4,
+  },
+];
+
+const HERO_ECOSYSTEM_PRODUCTS = [
+  { name: "CRM Solutions", tag: "Custom Client Workflows", accent: "border-[#009FE3]/50 bg-[#0066CC]/25 text-[#9BEBFF]" },
+  { name: "Workflow Automation", tag: "Human-Approved Automation", accent: "border-[#FFB347]/50 bg-[#E8501A]/25 text-[#FFD38A]" },
+  { name: "Integration Engineering", tag: "Connected Business Systems", accent: "border-[#5AE07A]/45 bg-[#18B83A]/20 text-[#86F2A1]" },
+  { name: "Client Portals", tag: "Secure Project Access", accent: "border-[#7FD4FF]/45 bg-[#07152B]/70 text-white" },
+  { name: "Business Intelligence", tag: "Dashboards & Reporting", accent: "border-[#009FE3]/40 bg-[#063B8F]/35 text-[#B8E8FF]" },
+  { name: "Digital Product Studio", tag: "Web & Product Engineering", accent: "border-[#FFB347]/40 bg-[#E8501A]/20 text-[#FFE0A8]" },
+];
+
+function Hero3dArchitectureShowcase() {
+  const [tilt, setTilt] = useState({ rx: 8, ry: -12 });
+  const [activeLayer, setActiveLayer] = useState(0);
+
+  function handleMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const nx = (e.clientX - rect.left) / rect.width - 0.5;
+    const ny = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({
+      rx: Math.max(-14, Math.min(14, -ny * 20)),
+      ry: Math.max(-18, Math.min(18, nx * 24)),
+    });
+  }
+
+  return (
+    <div
+      onMouseMove={handleMove}
+      onMouseLeave={() => setTilt({ rx: 8, ry: -12 })}
+      aria-label="Interactive 3D global digital infrastructure and product ecosystem showcase"
+      className="select-none"
+      style={{ perspective: "1100px" }}
+    >
+      <div
+        className="relative rounded-2xl border border-white/20 bg-[#07152B]/80 p-5 shadow-2xl backdrop-blur-md transition-transform duration-200 ease-out"
+        style={{
+          transform: `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
+          transformStyle: "preserve-3d",
+        }}
+      >
+        <div
+          className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-3 text-xs"
+          style={{ transform: "translateZ(42px)" }}
+        >
+          <span className="font-mono font-semibold tracking-wider text-[#7FD4FF]">
+            TECH360 · GLOBAL 3D ECOSYSTEM
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FFB347]/40 bg-[#E8501A]/20 px-2.5 py-0.5 text-[11px] font-semibold text-[#FFB347]">
+            <ShieldCheck className="size-3.5" aria-hidden="true" /> Build · Automate · Transform · Grow
+          </span>
+        </div>
+
+        {/* 3D Digital World Globe + Connected Global Infrastructure */}
+        <div
+          className="relative mb-3.5 overflow-hidden rounded-xl border border-[#0066CC]/45 bg-gradient-to-br from-[#07152B] via-[#06244A] to-[#041022] p-3.5"
+          style={{ transform: "translateZ(32px)" }}
+        >
+          <div className="flex items-center gap-4">
+            <div className="relative flex size-24 shrink-0 items-center justify-center">
+              <svg
+                viewBox="0 0 120 120"
+                className="size-24 text-[#009FE3]"
+                aria-hidden="true"
+              >
+                <defs>
+                  <radialGradient id="t360GlobeGlow" cx="35%" cy="30%" r="70%">
+                    <stop offset="0%" stopColor="#7FD4FF" stopOpacity="0.45" />
+                    <stop offset="55%" stopColor="#0066CC" stopOpacity="0.22" />
+                    <stop offset="100%" stopColor="#07152B" stopOpacity="0.9" />
+                  </radialGradient>
+                </defs>
+                <circle cx="60" cy="60" r="46" fill="url(#t360GlobeGlow)" stroke="#009FE3" strokeWidth="1.2" strokeOpacity="0.7" />
+                <ellipse cx="60" cy="60" rx="46" ry="18" fill="none" stroke="#7FD4FF" strokeWidth="0.9" strokeOpacity="0.45" />
+                <ellipse cx="60" cy="60" rx="46" ry="34" fill="none" stroke="#0066CC" strokeWidth="0.9" strokeOpacity="0.4" />
+                <ellipse cx="60" cy="60" rx="18" ry="46" fill="none" stroke="#7FD4FF" strokeWidth="0.9" strokeOpacity="0.45" />
+                <ellipse cx="60" cy="60" rx="34" ry="46" fill="none" stroke="#0066CC" strokeWidth="0.9" strokeOpacity="0.4" />
+                {/* Global data arcs */}
+                <path d="M 24 52 Q 60 18 96 48" fill="none" stroke="#FFB347" strokeWidth="1.5" strokeDasharray="3 2" />
+                <path d="M 28 74 Q 62 96 92 64" fill="none" stroke="#E8501A" strokeWidth="1.4" />
+                <circle cx="24" cy="52" r="2.8" fill="#FFB347" />
+                <circle cx="96" cy="48" r="2.8" fill="#5AE07A" />
+                <circle cx="60" cy="36" r="3" fill="#7FD4FF" />
+                <circle cx="28" cy="74" r="2.6" fill="#E8501A" />
+                <circle cx="92" cy="64" r="2.8" fill="#FFB347" />
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#FFB347]">
+                Connected Global Infrastructure
+              </p>
+              <p className="mt-0.5 text-xs font-semibold text-white">
+                Unified Identity · Multi-Channel Intake · Governed Workflow Execution
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {HERO_ECOSYSTEM_PRODUCTS.map((prod) => (
+                  <span
+                    key={prod.name}
+                    title={prod.tag}
+                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold ${prod.accent}`}
+                  >
+                    <span>{prod.name}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Floating 3D System Layers */}
+        <div className="space-y-2" style={{ transformStyle: "preserve-3d" }}>
+          {HERO_3D_LAYERS.map((layer, idx) => {
+            const isSelected = activeLayer === idx;
+            return (
+              <button
+                key={layer.code}
+                type="button"
+                onClick={() => setActiveLayer(idx)}
+                className={`w-full rounded-xl border bg-gradient-to-r p-3 text-left shadow-lg transition-all duration-200 ${layer.accent} ${
+                  isSelected ? "ring-1 ring-[#FFB347]/70" : "opacity-90 hover:opacity-100"
+                }`}
+                style={{ transform: `translateZ(${layer.depth}px)` }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[10px] font-bold tracking-widest text-[#9BEBFF]">
+                    {layer.code}
+                  </span>
+                  <span
+                    className={`size-2 rounded-full ${isSelected ? "bg-[#FFB347]" : "bg-[#5AE07A]"}`}
+                    aria-hidden="true"
+                  />
+                </div>
+                <p className="mt-0.5 text-sm font-bold text-white">{layer.title}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-white/80">{layer.detail}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Hero() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -152,8 +320,8 @@ function Hero() {
         className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#051225]/85 via-transparent to-[#051225]/45"
       />
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
-        <div className="max-w-3xl">
+      <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-12 lg:px-8 lg:py-28">
+        <div className="max-w-3xl lg:col-span-7">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white/95 backdrop-blur-sm">
             <Sparkles className="size-3.5 text-[#7FD4FF]" aria-hidden="true" />
             <span>Custom Software · AI Automation · Cloud Engineering</span>
@@ -218,6 +386,9 @@ function Hero() {
               </li>
             ))}
           </ul>
+        </div>
+        <div className="lg:col-span-5">
+          <Hero3dArchitectureShowcase />
         </div>
       </div>
     </section>
@@ -470,8 +641,8 @@ const STANDARDS = [
     icon: "Eye",
   },
   {
-    title: "Approve-First AI & Operational Safety",
-    body: "AI assistants, outbound messaging, and financial status updates stay inside role-based permissions, human approval checkpoints, and audit trails.",
+    title: "Governed Automation & Operational Safety",
+    body: "Automation, outbound messaging and financial status updates can be controlled through role-based permissions, human approval checkpoints and auditable records.",
     icon: "ShieldCheck",
   },
   {
@@ -549,18 +720,20 @@ function SelectedWork() {
 
       <RevealList className="mt-12 grid gap-6 lg:grid-cols-3">
         {featured.map((study) => {
-          const visual = getCaseStudyImage(study.slug);
+          const entry = getPortfolioEntry("blueprint", study.slug);
+          const visual = entry?.cover;
+          const href = entry?.href ?? "/work/case-studies";
           return (
             <RevealItem key={study.slug} className="h-full">
               <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#009FE3]/50 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
                 <a
-                  href="/work/case-studies"
+                  href={href}
                   tabIndex={-1}
                   aria-hidden="true"
                   className="relative block overflow-hidden border-b border-[#E2E8F0] bg-[#061528]"
                 >
                   <ImageView
-                    src={visual?.src}
+                    src={visual?.srcSmall ?? visual?.src}
                     alt={visual?.alt ?? `${study.title} — illustrative delivery blueprint`}
                     aspect="16/10"
                     width={1600}
@@ -580,11 +753,13 @@ function SelectedWork() {
                       Delivery Blueprint
                     </span>
                     <span className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-0.5 text-[11px] font-medium text-[#64748B]">
-                      Illustrative scenario
+                      Illustrative · concept artwork
                     </span>
                   </div>
                   <h3 className="mt-2.5 text-lg font-bold leading-snug text-[#0B1F33]">
-                    {study.title}
+                    <a href={href} className="rounded-sm outline-none hover:text-[#063B8F] focus-visible:ring-2 focus-visible:ring-[#009FE3]">
+                      {study.title}
+                    </a>
                   </h3>
                   <p className="mt-3 text-sm leading-relaxed text-[#475569]">
                     <strong className="font-semibold text-[#0B1F33]">Challenge:</strong>{" "}

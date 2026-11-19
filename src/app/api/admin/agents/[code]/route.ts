@@ -68,14 +68,69 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ co
 
   const { code } = await params
   const clean = sanitizeText(code, 20).toUpperCase()
-  if (!DYNAMIC_AGENT_CODE_PATTERN.test(clean)) return Response.json({ error: 'Only dynamic AGT drafts can be activated or paused here.' }, { status: 400 })
 
-  let body: { status?: unknown; reason?: unknown; confirmation?: unknown } = {}
+  let body: {
+    status?: unknown
+    reason?: unknown
+    confirmation?: unknown
+    action?: unknown
+    model?: unknown
+    dailyQuota?: unknown
+    resetTokensToday?: unknown
+  } = {}
   try {
     body = await req.json()
   } catch {
     return Response.json({ error: 'A JSON body is required.' }, { status: 400 })
   }
+
+  if (
+    body.action === 'update_config' ||
+    body.model !== undefined ||
+    body.dailyQuota !== undefined ||
+    body.resetTokensToday === true
+  ) {
+    const existing = await db.aiAgent.findUnique({ where: { code: clean } })
+    if (!existing) return Response.json({ error: 'Agent not found.' }, { status: 404 })
+    const data: { model?: string; dailyQuota?: number; tokensToday?: number } = {}
+    if (typeof body.model === 'string') {
+      data.model = sanitizeText(body.model, 120) || 'default'
+    }
+    if (body.dailyQuota !== undefined) {
+      const parsedQuota = Number(body.dailyQuota)
+      if (!Number.isInteger(parsedQuota) || parsedQuota < 1 || parsedQuota > 100_000) {
+        return Response.json({ error: 'dailyQuota must be an integer between 1 and 100000.' }, { status: 400 })
+      }
+      data.dailyQuota = parsedQuota
+    }
+    if (body.resetTokensToday === true) {
+      data.tokensToday = 0
+    }
+    const updated = await db.aiAgent.update({
+      where: { code: clean },
+      data,
+      select: { code: true, name: true, status: true, model: true, dailyQuota: true, tokensToday: true },
+    })
+    await db.auditLog.create({
+      data: {
+        actor: guarded.user.email,
+        userId: guarded.user.id,
+        action: 'AGENT_CONFIG_UPDATED',
+        entityType: 'AiAgent',
+        entityId: updated.code,
+        details: JSON.stringify({
+          previousModel: existing.model,
+          model: updated.model,
+          previousDailyQuota: existing.dailyQuota,
+          dailyQuota: updated.dailyQuota,
+          resetTokensToday: Boolean(body.resetTokensToday),
+        }),
+      },
+    })
+    return Response.json({ ok: true, agent: updated, message: `Updated ${updated.code} model and quota settings.` })
+  }
+
+  if (!DYNAMIC_AGENT_CODE_PATTERN.test(clean)) return Response.json({ error: 'Only dynamic AGT drafts can be activated or paused here.' }, { status: 400 })
   const nextStatus = sanitizeText(body.status, 16).toUpperCase()
   const reason = sanitizeText(body.reason, 500)
   const confirmation = sanitizeText(body.confirmation, 16)

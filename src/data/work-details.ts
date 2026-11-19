@@ -822,8 +822,27 @@ export function isProjectSlug(slug: string): boolean {
 }
 
 /** Closest related showcases, excluding the current one. */
+/**
+ * Related showcase projects, ranked by shared category, shared related
+ * services and shared industry — previously this returned the first N entries
+ * regardless of relevance.
+ */
 export function relatedProjects(slug: string, limit = 3): string[] {
+  const current = WORK_EXAMPLES.find((example) => example.slug === slug);
+  const currentDetail = DETAILS.find((detail) => detail.slug === slug);
   return WORK_EXAMPLES.filter((example) => example.slug !== slug)
+    .map((example, index) => {
+      const detail = DETAILS.find((d) => d.slug === example.slug);
+      const sharedServices = detail && currentDetail
+        ? detail.relatedServices.filter((service) => currentDetail.relatedServices.includes(service)).length
+        : 0;
+      const score =
+        (current && example.category === current.category ? 3 : 0) +
+        sharedServices +
+        (detail?.industrySlug && detail.industrySlug === currentDetail?.industrySlug ? 2 : 0);
+      return { slug: example.slug, score, index };
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, limit)
-    .map((example) => example.slug);
+    .map((item) => item.slug);
 }

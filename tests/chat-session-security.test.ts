@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { CHAT_SESSION_TTL_SECONDS, signChatSessionToken, verifyChatSessionToken } from '../src/lib/chat-session'
-import { isValidClientRequestId } from '../src/lib/contact-policy'
+import { chatReplayContactMatches, isValidClientRequestId } from '../src/lib/contact-policy'
 
 const secret = 'a-secret-used-only-by-this-unit-test-at-least-32-bytes'
 
@@ -23,6 +23,14 @@ describe('signed chat session capability', () => {
 })
 
 describe('public request idempotency keys', () => {
+  it('recovers anonymous CHAT-first session retries when the persisted email is null and the retry sends blank', () => {
+    assert.equal(chatReplayContactMatches(null, ''), true)
+    assert.equal(chatReplayContactMatches(undefined, null), true)
+    assert.equal(chatReplayContactMatches('  Visitor@Example.com ', 'visitor@example.com'), true)
+    assert.equal(chatReplayContactMatches('someone@example.com', ''), false)
+    assert.equal(chatReplayContactMatches('one@example.com', 'two@example.com'), false)
+  })
+
   it('accepts bounded opaque request ids and rejects malformed values', () => {
     assert.equal(isValidClientRequestId('9d2a44ea-e29d-43ee-a107-c77c3e7ff123'), true)
     assert.equal(isValidClientRequestId('short'), false)

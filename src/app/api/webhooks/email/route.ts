@@ -163,8 +163,25 @@ export async function POST(req: NextRequest) {
         message: subject ? `${subject}\n\n${textBody}` : textBody,
         providerMessageId: eventId,
         tracking: { source: 'INBOUND_EMAIL_WEBHOOK', inReplyTo: inReplyTo || null },
+        // The orchestrator below sends the single first reply, so the template
+        // welcome is suppressed (no duplicate email to a new customer).
+        suppressWelcome: true,
       })
       await audit({ actor: 'webhook:EMAIL', action: 'NEW_LEAD_FROM_EMAIL', clientId: created.clientId, ip })
+
+      // A brand-new email customer used to get the CRM record but no answer
+      // until an admin looked at the inbox. Answer the first message through
+      // the same one-question-at-a-time orchestrator used by web chat.
+      const createdRow = await db.client.findUnique({ where: { id: created.clientRowId } })
+      if (createdRow) {
+        await sendAgentEmailReply({
+          clientRow: createdRow,
+          fromEmail,
+          fromName,
+          subject,
+          textBody,
+        })
+      }
       await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: created.clientRowId })
       return Response.json({ ok: true, matched: false, createdLead: true, clientId: created.clientId })
     }
@@ -222,50 +239,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!handledLifecycle) {
-      // Route through same orchestrator for contextual reply (one-question-at-a-time)
-      try {
-        let convo = await db.chatConversation.findFirst({
-          where: { anonId: `email:${fromEmail}`, status: 'OPEN' },
-          orderBy: { createdAt: 'desc' },
-        })
-        if (!convo) {
-          convo = await db.chatConversation.create({
-            data: { anonId: `email:${fromEmail}`, visitorName: fromName || clientRow.name, visitorEmail: fromEmail, clientId: clientRow.id, status: 'OPEN' },
-          })
-        }
-        const { handleCustomerMessage } = await import('@/lib/chat-orchestrator')
-        const result = await handleCustomerMessage({
-          channel: 'EMAIL',
-          conversationId: convo.id,
-          clientRowId: clientRow.id,
-          clientId: clientRow.clientId,
-          visitorBody: textBody,
-          visitorName: fromName || clientRow.name,
-          visitorEmail: fromEmail,
-        })
-        if (result.ok) {
-          // Send reply via email (canonical channel)
-          const { sendCommunication } = await import('@/lib/comms')
-          // Build email with next-step footer (Requirement E)
-          const emailBody = `${result.reply}\n\n—\nClient ID: ${clientRow.clientId} | Stage: ${clientRow.pipelineStage}\nReply to this email to continue.`
-          const res = await sendCommunication({
-            clientId: clientRow.id,
-            channel: 'EMAIL',
-            to: fromEmail,
-            subject: `Re: ${subject || 'Your enquiry with Tech360'} — ${clientRow.clientId}`,
-            body: emailBody,
-            agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
-          })
-          if (!res.result.ok) {
-            await logError({ source: 'WEBHOOK', code: `EMAIL_SEND_${res.result.status}`, message: res.result.error ?? 'Email send failed', clientId: clientRow.clientId }).catch(() => null)
-          } else {
-            const { recordOutbound } = await import('@/lib/conversation-state')
-            await recordOutbound(clientRow.id, clientRow.clientId, emailBody, 'EMAIL', clientRow.pipelineStage, result.nextAction, result.nextActor, result.nextDueDate).catch(() => null)
-          }
-        }
-      } catch (replyError) {
-        await logError({ source: 'WEBHOOK', code: 'EMAIL_REPLY_FAILED', message: replyError instanceof Error ? replyError.message : String(replyError), workflow: 'EMAIL_REPLY' }).catch(() => null)
-      }
+      await sendAgentEmailReply({ clientRow, fromEmail, fromName, subject, textBody })
     }
 
     await audit({ actor: 'webhook:EMAIL', action: 'INBOUND_EMAIL', clientId: clientRow.clientId, ip })
@@ -280,5 +254,87 @@ export async function POST(req: NextRequest) {
     }).catch(() => false)
     await logError({ source: 'WEBHOOK', code: 'EMAIL_HOOK_FAILED', message: error instanceof Error ? error.message : 'unknown', workflow: 'EMAIL_IN' })
     return Response.json({ ok: false }, { status: 200 })
+  }
+}
+
+type EmailReplyClient = {
+  id: string
+  clientId: string
+  name: string
+  email: string | null
+  pipelineStage: string
+}
+
+/**
+ * Generate one contextual reply for an inbound email and deliver it on email.
+ * Shared by the first-contact and matched-thread paths so both behave the same.
+ */
+async function sendAgentEmailReply(input: {
+  clientRow: EmailReplyClient
+  fromEmail: string
+  fromName: string
+  subject: string
+  textBody: string
+}): Promise<void> {
+  const { clientRow, fromEmail, fromName, subject, textBody } = input
+  try {
+    let convo = await db.chatConversation.findFirst({
+      where: { anonId: `email:${fromEmail}`, status: 'OPEN' },
+      orderBy: { createdAt: 'desc' },
+    })
+    if (!convo) {
+      convo = await db.chatConversation.create({
+        data: {
+          anonId: `email:${fromEmail}`,
+          visitorName: fromName || clientRow.name,
+          visitorEmail: fromEmail,
+          clientId: clientRow.id,
+          status: 'OPEN',
+        },
+      })
+    }
+    const { handleCustomerMessage } = await import('@/lib/chat-orchestrator')
+    const result = await handleCustomerMessage({
+      channel: 'EMAIL',
+      conversationId: convo.id,
+      clientRowId: clientRow.id,
+      clientId: clientRow.clientId,
+      visitorBody: textBody,
+      visitorName: fromName || clientRow.name,
+      visitorEmail: fromEmail,
+    })
+    if (!result.ok) return
+
+    const { sendCommunication } = await import('@/lib/comms')
+    const emailBody = `${result.reply}\n\n—\nClient ID: ${clientRow.clientId} | Stage: ${clientRow.pipelineStage}\nReply to this email to continue.`
+    const res = await sendCommunication({
+      clientId: clientRow.id,
+      channel: 'EMAIL',
+      to: fromEmail,
+      subject: `Re: ${subject || 'Your enquiry with Tech360'} — ${clientRow.clientId}`,
+      body: emailBody,
+      agentCode: result.wasAiGenerated ? 'CHAT-AI' : 'CHAT-FALLBACK',
+    })
+    if (!res.result.ok) {
+      // Provider failure: the Communication row already carries the honest
+      // status. Conversation state is NOT advanced, so the next inbound
+      // message still sees the customer as unanswered.
+      await logError({
+        source: 'WEBHOOK',
+        code: `EMAIL_SEND_${res.result.status}`,
+        message: res.result.error ?? 'Email send failed',
+        clientId: clientRow.clientId,
+      }).catch(() => null)
+    } else {
+      const { recordOutbound } = await import('@/lib/conversation-state')
+      await recordOutbound(clientRow.id, clientRow.clientId, emailBody, 'EMAIL', clientRow.pipelineStage, result.nextAction, result.nextActor, result.nextDueDate).catch(() => null)
+    }
+  } catch (replyError) {
+    await logError({
+      source: 'WEBHOOK',
+      code: 'EMAIL_REPLY_FAILED',
+      message: replyError instanceof Error ? replyError.message : String(replyError),
+      workflow: 'EMAIL_REPLY',
+    }).catch(() => null)
   }
 }

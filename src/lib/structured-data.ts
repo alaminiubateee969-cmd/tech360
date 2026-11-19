@@ -28,6 +28,7 @@ import {
 } from '@/data/site'
 import { getIndustryBySlug } from '@/data/industries'
 import { getServiceImage } from '@/data/service-images'
+import { PORTFOLIO_MEDIA_PRODUCED_ON, getPortfolioEntry, type PortfolioKind } from '@/data/portfolio'
 import { PUBLIC_CONTACT, SITE_URL } from '@/lib/site-contact'
 
 /** Stable `@id` values — imported by the layout so nothing drifts. */
@@ -169,7 +170,7 @@ export const SCENARIO_ARTICLE_NODES = CASE_STUDIES.map((study) => ({
   headline: study.title,
   description: study.challenge,
   articleSection: study.industry,
-  url: `${SITE_URL}/work`,
+  url: `${SITE_URL}/work/case-studies/${study.slug}`,
   isPartOf: { '@id': `${SITE_URL}/work#webpage` },
   publisher: { '@id': ORG_ID },
   inLanguage: 'en',
@@ -219,6 +220,68 @@ export function siteGraph() {
       inLanguage: 'en',
     },
   ]
+}
+
+/**
+ * Graph for a dedicated portfolio page (/work/projects/<slug> or
+ * /work/case-studies/<slug>): WebPage + BreadcrumbList + a CreativeWork that
+ * is explicitly described as illustrative, plus a VideoObject for the concept
+ * motion preview. No Review, Rating or client entity is ever emitted.
+ */
+function portfolioItemGraph(kind: PortfolioKind, slug: string, meta: { title: string; description: string }) {
+  const entry = getPortfolioEntry(kind, slug)
+  if (!entry) return null
+  const path = entry.href
+  const absolute = (src: string) => `${SITE_URL}${src}`
+  const nodes: Record<string, unknown>[] = [
+    {
+      ...webPageNode({ path, name: meta.title, description: meta.description }),
+      primaryImageOfPage: { '@type': 'ImageObject', url: absolute(entry.cover.src), caption: entry.cover.caption },
+      mainEntity: { '@id': `${SITE_URL}${path}#work` },
+    },
+    breadcrumbNode([
+      { name: 'Home', path: '/' },
+      { name: 'Work', path: '/work' },
+      kind === 'system'
+        ? { name: 'System Scenarios', path: '/work/projects' }
+        : { name: 'Delivery Blueprints', path: '/work/case-studies' },
+      { name: entry.title, path },
+    ]),
+    {
+      '@type': 'CreativeWork',
+      '@id': `${SITE_URL}${path}#work`,
+      name: entry.title,
+      headline: entry.title,
+      description: entry.summary,
+      url: `${SITE_URL}${path}`,
+      image: absolute(entry.cover.src),
+      genre: kind === 'system' ? 'System specification' : 'Delivery blueprint',
+      about: entry.industry,
+      keywords: [...entry.capabilities, ...entry.technologies].join(', '),
+      creator: { '@id': ORG_ID },
+      publisher: { '@id': ORG_ID },
+      inLanguage: 'en',
+      creativeWorkStatus: 'Illustrative — not a delivered client engagement or a measured outcome',
+      ...(entry.video ? { video: { '@id': `${SITE_URL}${path}#video` } } : {}),
+    },
+  ]
+  if (entry.video) {
+    nodes.push({
+      '@type': 'VideoObject',
+      '@id': `${SITE_URL}${path}#video`,
+      name: entry.video.title,
+      description: entry.video.description,
+      thumbnailUrl: [absolute(entry.video.poster)],
+      contentUrl: absolute(entry.video.src),
+      uploadDate: PORTFOLIO_MEDIA_PRODUCED_ON,
+      duration: `PT${entry.video.durationSeconds}S`,
+      width: entry.video.width,
+      height: entry.video.height,
+      publisher: { '@id': ORG_ID },
+      inLanguage: 'en',
+    })
+  }
+  return nodes
 }
 
 /**
@@ -275,6 +338,11 @@ export function pageGraph(pathname: string, meta: { title: string; description: 
     ]
   }
 
+  if (section === 'work' && (slug === 'projects' || slug === 'case-studies')) {
+    const itemSlug = pathname.replace(/^\/+/, '').split('/')[2]
+    if (itemSlug) return portfolioItemGraph(slug === 'projects' ? 'system' : 'blueprint', itemSlug, meta)
+  }
+
   if (section === 'legal' && slug) {
     const doc = LEGAL_DOCS.find((d) => d.slug === slug)
     if (!doc) return null
@@ -292,7 +360,7 @@ export function pageGraph(pathname: string, meta: { title: string; description: 
   const simple: Record<string, { type: PageNodeType; trail: string }> = {
     '/about': { type: 'AboutPage', trail: 'About TECH360' },
     '/contact': { type: 'ContactPage', trail: 'Contact' },
-    '/platform': { type: 'CollectionPage', trail: 'Company-in-a-Box Platform' },
+    '/platform': { type: 'CollectionPage', trail: 'Enterprise Platforms & Software' },
     '/services': { type: 'CollectionPage', trail: 'Services' },
     '/industries': { type: 'CollectionPage', trail: 'Industries' },
     '/work': { type: 'CollectionPage', trail: 'Work' },

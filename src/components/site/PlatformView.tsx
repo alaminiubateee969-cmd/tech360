@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { AI_NATIVE_MESSENGER, PLATFORM_PILLARS, PRODUCED_SYSTEMS } from "@/data/site";
 import { getProducedSystemImage } from "@/data/service-images";
@@ -17,13 +18,111 @@ import {
   PlatformGrid,
 } from "./PremiumSections";
 
+const ECOSYSTEM_MODULES = [
+  {
+    id: "crm",
+    name: "Enterprise CRM & Customer Operations",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "A customer record and pipeline shaped around your sales, service and account workflows.",
+    capabilities: [
+      "Lead and customer records connected to projects and service history",
+      "Custom pipeline stages, assignment rules and follow-up workflows",
+      "Role-based access, approvals and auditable activity history",
+      "Reporting tailored to your operational and commercial measures",
+    ],
+    href: "/services/custom-crm-development",
+  },
+  {
+    id: "automation",
+    name: "Business Process Automation",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Reduce repetitive work by connecting the tools and processes your teams already use.",
+    capabilities: [
+      "Event-driven workflows, conditions, retries and scheduled tasks",
+      "Human review for sensitive customer, finance and publishing actions",
+      "Webhook and API integrations with clear failure handling",
+      "Execution records and operational reporting",
+    ],
+    href: "/services/ai-business-automation",
+  },
+  {
+    id: "integration",
+    name: "API & Workflow Integration",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Connect business applications without creating another disconnected data silo.",
+    capabilities: [
+      "REST API and webhook integration design",
+      "Data mapping, validation and duplicate-safe processing",
+      "Secure credential handling and least-privilege access",
+      "Monitoring, retries and integration acceptance testing",
+    ],
+    href: "/services/api-integrations",
+  },
+  {
+    id: "client-portal",
+    name: "Client Portals & Collaboration",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Give customers a secure, clear view of their projects and shared documents.",
+    capabilities: [
+      "Authenticated customer access and role-based permissions",
+      "Milestones, approvals, invoices and project updates",
+      "Secure document upload, review and handover",
+      "Responsive portal experiences across devices",
+    ],
+    href: "/services/client-portals",
+  },
+  {
+    id: "intelligence",
+    name: "Business Intelligence & Reporting",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Turn operational records into dashboards that support timely decisions.",
+    capabilities: [
+      "Executive and team dashboards built around agreed KPIs",
+      "Pipeline, finance and delivery reporting",
+      "Data quality checks and exportable reports",
+      "Access controls for sensitive business information",
+    ],
+    href: "/services/business-dashboards",
+  },
+  {
+    id: "commerce",
+    name: "eCommerce & Digital Commerce",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Build customer-ready storefronts and connected order operations.",
+    capabilities: [
+      "Product catalogs, variants, inventory and checkout journeys",
+      "Payment-provider integration scoped to the project",
+      "Order, fulfillment and customer notification workflows",
+      "Sales reporting and post-purchase automation",
+    ],
+    href: "/services/ecommerce-platforms",
+  },
+  {
+    id: "studio",
+    name: "Web & Product Engineering",
+    status: "SCOPED CUSTOM DELIVERY",
+    tagline: "Design and engineer high-performance digital products around your business goals.",
+    capabilities: [
+      "Responsive web applications and enterprise websites",
+      "Design systems, accessible interfaces and interactive previews",
+      "Technical SEO, structured data and performance engineering",
+      "Documented source-code and deployment handover",
+    ],
+    href: "/services/custom-software-development",
+  },
+];
+
 export default function PlatformView() {
+  const [selectedProduct, setSelectedProduct] = useState(ECOSYSTEM_MODULES[0].id);
+  const activeProduct =
+    ECOSYSTEM_MODULES.find((m) => m.id === selectedProduct) ?? ECOSYSTEM_MODULES[0];
+
   return (
     <div>
       <PageHero
-        eyebrow="Company-in-a-Box"
-        title="Your Business. One Connected Platform. Complete Control."
-        description="Connect the people, information, and workflows that help your business move forward. We work with you to define a solution around your goals and an agreed scope."
+        eyebrow="Enterprise Software · AI Engineering · Automation · Digital Transformation"
+        title="Connected Business Systems, Designed Around Your Operations"
+        description="TECH360 designs and builds customer-facing platforms, internal business applications and workflow integrations tailored to your requirements, with each engagement defined by written scope and agreed acceptance criteria."
         breadcrumb={[{ label: "Platform" }]}
       >
         <div className="flex flex-wrap gap-3">
@@ -39,6 +138,104 @@ export default function PlatformView() {
           </a>
         </div>
       </PageHero>
+
+      {/* Connected Business Capabilities */}
+      <section className="border-b border-[#E2E8F0] bg-[#07152B] py-20 text-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <SectionHeading
+            dark
+            eyebrow="Connected Business Capabilities"
+            title="A Connected Technology Stack, Tailored to Your Business"
+            description="Explore the capabilities that can be combined for your operation. Features, integrations and delivery status are confirmed for each project in its written scope."
+          />
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-12">
+            <div className="flex flex-col gap-2 lg:col-span-5">
+              {ECOSYSTEM_MODULES.map((mod) => {
+                const isSelected = mod.id === activeProduct.id;
+                return (
+                  <button
+                    key={mod.id}
+                    type="button"
+                    onClick={() => setSelectedProduct(mod.id)}
+                    className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3.5 text-left transition-all ${
+                      isSelected
+                        ? "border-[#009FE3] bg-[#0066CC]/25 shadow-lg"
+                        : "border-white/12 bg-white/5 hover:border-white/25 hover:bg-white/10"
+                    }`}
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-white">{mod.name}</p>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-white/70">
+                        {mod.tagline}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 font-mono text-[10px] font-semibold ${
+                        mod.status === "LIVE PLATFORM MODULE"
+                          ? "bg-[#18B83A]/20 text-[#5AE07A]"
+                          : "bg-[#E8501A]/25 text-[#FFB347]"
+                      }`}
+                    >
+                      {mod.status}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-[#0B1F33] to-[#051225] p-6 shadow-xl lg:col-span-7 sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-4">
+                <div>
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#7FD4FF]">
+                    Capability Detail
+                  </span>
+                  <h3 className="mt-1 text-2xl font-bold text-white">
+                    {activeProduct.name}
+                  </h3>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 font-mono text-xs font-semibold ${
+                    activeProduct.status === "LIVE PLATFORM MODULE"
+                      ? "border border-[#5AE07A]/40 bg-[#18B83A]/20 text-[#5AE07A]"
+                      : "border border-[#FFB347]/40 bg-[#E8501A]/25 text-[#FFB347]"
+                  }`}
+                >
+                  {activeProduct.status}
+                </span>
+              </div>
+
+              <p className="mt-4 text-sm leading-relaxed text-white/85">
+                {activeProduct.tagline}
+              </p>
+
+              <ul className="mt-6 space-y-3">
+                {activeProduct.capabilities.map((cap) => (
+                  <li
+                    key={cap}
+                    className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/90 sm:text-sm"
+                  >
+                    <CheckCircle2
+                      className="mt-0.5 size-4 shrink-0 text-[#5AE07A]"
+                      aria-hidden="true"
+                    />
+                    <span>{cap}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/15 pt-4">
+                <span className="text-xs text-white/65">
+                  Engineering principles: secure authentication · least-privilege roles · audit trails · tenant isolation
+                </span>
+                <LinkArrow href={activeProduct.href}>
+                  Explore {activeProduct.name}
+                </LinkArrow>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Core Platform Pillars */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -86,7 +283,7 @@ export default function PlatformView() {
       {/* Connected Platform Modules (with dedicated 1600×1000 visuals) */}
       <PlatformGrid />
 
-      {/* Console Preview */}
+      {/* Client Experience Preview */}
       <DashboardShowcase />
 
       {/* Unified Client Messaging */}

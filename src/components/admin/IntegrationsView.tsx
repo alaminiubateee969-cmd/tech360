@@ -1,8 +1,10 @@
 'use client'
 
-import { RefreshCw, Plug, XCircle } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, PlugZap, RefreshCw, Plug, XCircle } from 'lucide-react'
+import { toast } from 'sonner'
 
-import { useApi } from '@/lib/admin-client'
+import { fetchJson, fmtDate, useApi } from '@/lib/admin-client'
 import { EmptyState, KpiCard, PageHeader, SectionCard } from './shared/cards'
 import { StatusBadge } from './shared/StatusBadge'
 import { CARD } from './shared/styles'
@@ -32,6 +34,71 @@ type IntegrationsResponse = {
 
 const CATEGORIES = ['MESSAGING', 'CRM', 'AUTOMATION', 'AI', 'PAYMENTS', 'STORAGE'] as const
 
+type ProviderState = {
+  provider: 'WHATSAPP' | 'EMAIL' | 'MESSENGER' | 'INSTAGRAM' | 'N8N'
+  configured: boolean
+  state: 'NOT_CONFIGURED' | 'CONFIGURED_UNTESTED' | 'CONNECTED' | 'FAILED'
+  lastTest: { ok: boolean; testedAt: string; detail: string; httpStatus: number | null } | null
+}
+
+const PROVIDER_LABEL: Record<ProviderState['provider'], string> = {
+  WHATSAPP: 'WhatsApp Cloud API',
+  EMAIL: 'Email (SMTP / Hostinger)',
+  MESSENGER: 'Facebook Messenger',
+  INSTAGRAM: 'Instagram messaging',
+  N8N: 'n8n automation',
+}
+
+/**
+ * Live connection tests: "configured" (credentials present) is not "connected".
+ * CONNECTED is shown only after a real request to the provider succeeded.
+ */
+function ConnectionTests() {
+  const { data, loading, error, refresh } = useApi<{ providers: ProviderState[] }>('/api/admin/integrations/test')
+  const [busy, setBusy] = useState<string | null>(null)
+  const test = async (provider: ProviderState['provider']) => {
+    setBusy(provider)
+    try {
+      const res = await fetchJson<{ ok: boolean; result: { detail: string } }>('/api/admin/integrations/test', { method: 'POST', body: { provider } })
+      if (res.ok) toast.success(`${PROVIDER_LABEL[provider]}: ${res.result.detail}`)
+      else toast.error(`${PROVIDER_LABEL[provider]}: ${res.result.detail}`)
+      refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Connection test failed.')
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <div className="mb-4">
+      <SectionCard title="Live connection tests" description="Runs a real, read-only request against each provider (no message is sent). The result is stored and shown here.">
+        {error ? <p className="text-xs text-red-400">{error}</p> : loading && !data ? <Loader2 className="size-4 animate-spin text-slate-500" /> : (
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {(data?.providers ?? []).map((p) => (
+              <div key={p.provider} className={CARD + ' space-y-1.5 p-3'}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-slate-200">{PROVIDER_LABEL[p.provider]}</span>
+                  <StatusBadge status={p.state} />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  {p.state === 'NOT_CONFIGURED'
+                    ? 'No credentials on the server — sends through this channel are refused.'
+                    : p.lastTest
+                      ? `Last test ${fmtDate(p.lastTest.testedAt)}: ${p.lastTest.detail}`
+                      : 'Credentials present, not yet tested — not reported as connected.'}
+                </p>
+                <Button size="sm" variant="outline" disabled={!p.configured || busy !== null} onClick={() => void test(p.provider)} aria-label={`Test ${PROVIDER_LABEL[p.provider]} connection`}>
+                  {busy === p.provider ? <Loader2 className="size-3.5 animate-spin" /> : <PlugZap className="size-3.5" />} Test connection
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  )
+}
+
 export default function IntegrationsView() {
   const { data, loading, error, refresh } = useApi<IntegrationsResponse>('/api/admin/integrations')
 
@@ -56,6 +123,8 @@ export default function IntegrationsView() {
         <KpiCard label="Disabled" value={data?.summary.disabled ?? '—'} icon={Plug} tone="slate" loading={loading} sub="switched off in the console" />
         <KpiCard label="Total" value={data?.summary.total ?? '—'} icon={Plug} tone="accent" loading={loading} sub="tracked integrations" />
       </div>
+
+      <ConnectionTests />
 
       {CATEGORIES.map((category) => {
         const rows = (data?.integrations ?? []).filter((i) => i.category === category)

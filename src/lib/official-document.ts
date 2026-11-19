@@ -37,6 +37,7 @@ import { letterheadPageCss } from '@/lib/document-page-template'
  */
 export const OFFICIAL_DOCUMENT_KINDS = [
   'BUSINESS_PROPOSAL',
+  'COMPANY_PROFILE',
   'SOW',
   'QUOTATION',
   'PAYMENT_INSTRUCTION',
@@ -52,6 +53,7 @@ export const OFFICIAL_DOCUMENT_KINDS = [
   'CUSTOMER_ACCEPTANCE',
   'WARRANTY_SUPPORT',
   'OFFICIAL_LETTER',
+  'COVER_LETTER',
   'CERTIFICATE',
 ] as const
 
@@ -59,6 +61,7 @@ export type OfficialDocumentKind = (typeof OFFICIAL_DOCUMENT_KINDS)[number]
 
 export const DOCUMENT_TITLES: Record<OfficialDocumentKind, string> = {
   BUSINESS_PROPOSAL: 'Business Proposal',
+  COMPANY_PROFILE: 'Company Profile',
   SOW: 'Scope of Work',
   QUOTATION: 'Quotation',
   PAYMENT_INSTRUCTION: 'Payment Instruction',
@@ -74,6 +77,7 @@ export const DOCUMENT_TITLES: Record<OfficialDocumentKind, string> = {
   CUSTOMER_ACCEPTANCE: 'Customer Acceptance',
   WARRANTY_SUPPORT: 'Warranty & Support',
   OFFICIAL_LETTER: 'Official Business Letter',
+  COVER_LETTER: 'Cover Letter',
   CERTIFICATE: 'Certificate',
 }
 
@@ -194,6 +198,14 @@ export function renderOfficialDocumentHtml(input: OfficialDocumentInput, brandin
   const layout = letterheadPageCss(branding)
   const safeTitle = escapeHtml(title)
   const safeRef = escapeHtml(input.reference)
+  const coverAsset = input.kind === 'COMPANY_PROFILE'
+    ? branding.companyProfileCoverAsset
+    : input.kind === 'BUSINESS_PROPOSAL'
+      ? branding.proposalCoverAsset
+      : null
+  const coverPage = coverAsset
+    ? `<div class="cover-page" role="img" aria-label="${safeTitle} cover"><img src="${escapeHtml(coverAsset)}" alt="${safeTitle} cover" /></div>`
+    : ''
 
   const meta: string[] = []
   meta.push(`<div><span>Document</span><b>${safeRef}</b></div>`)
@@ -230,6 +242,8 @@ ${layout.css}
 }
 *{box-sizing:border-box}
 body{font-family:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;color:var(--ink);font-size:11pt;line-height:1.55;margin:0}
+.cover-page{width:${branding.pageSize === 'A3' ? '297' : branding.pageSize === 'LETTER' ? '215.9' : '210'}mm;height:${branding.pageSize === 'A3' ? '420' : branding.pageSize === 'LETTER' ? '279.4' : '297'}mm;display:flex;align-items:center;justify-content:center;break-after:page;page-break-after:always;overflow:hidden;background:#fff}
+.cover-page img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
 .sheet{max-width:${branding.pageSize === 'A3' ? '420' : branding.pageSize === 'LETTER' ? '216' : '210'}mm;margin:0 auto}
 .doc-head{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-bottom:6mm}
 .doc-head h1{margin:0;font-size:19pt;letter-spacing:-.01em;color:var(--navy)}
@@ -266,6 +280,7 @@ table.grid td{padding:2mm;border:1px solid #e5ecf3;vertical-align:top}
 </style>
 </head>
 <body>
+${coverPage}
 <main class="sheet" role="main">
   <header class="doc-head">
     <div>

@@ -37,10 +37,11 @@ import {
   Users,
   Wallet,
   Workflow,
+  Zap,
   Mail,
   MessagesSquare,
   PhoneCall,
-  Rss, Layers3, Palette } from 'lucide-react'
+  Rss, Layers3, Palette, LayoutGrid } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { api, num, useApi, type AdminUser, type DashboardResponse } from '@/lib/admin-client'
@@ -72,6 +73,7 @@ import { ConversationsView } from './ConversationsView'
 import { ContentStudioView } from './ContentStudioView'
 import { FactoryView } from './FactoryView'
 import { ControlCenter } from './factory/ControlCenter'
+import { AppLauncherView } from './AppLauncherView'
 import { ReaView } from './ReaView'
 import { EvolutionView } from './EvolutionView'
 import { MarketingDashboardView } from './MarketingDashboardView'
@@ -88,6 +90,7 @@ import { PromptLibraryView } from './PromptLibraryView'
 import { SeoAuditView } from './SeoAuditView'
 import { MarketingKitView } from './MarketingKitView'
 import { N8nView } from './N8nView'
+import AutomationView from './AutomationView'
 import { OpsView } from './OpsView'
 import { PaymentsView } from './PaymentsView'
 import { ProjectDetailView, ProjectsView } from './ProjectsView'
@@ -132,7 +135,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
       { id: 'clients', label: 'Clients', icon: Building2 },
       { id: 'approvals', label: 'Approvals', icon: ShieldCheck },
       { id: 'communications', label: 'Communications', icon: MessageSquare },
-      { id: 'chat', label: 'Live Chat', icon: MessagesSquare },
+      { id: 'chat', label: 'Inbox', icon: MessagesSquare },
       { id: 'telephony', label: 'Calls & SMS', icon: PhoneCall },
       { id: 'pipeline', label: 'Communication Pipeline', icon: MessagesSquare },
     ],
@@ -147,10 +150,16 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
   {
     section: 'Product Factory',
     items: [
-      { id: 'factory', label: 'App Factory', icon: Boxes },
-      { id: 'factoryControl', label: 'Software Factory Control Center', icon: Layers3 },
       { id: 'media', label: 'Media Studio', icon: Clapperboard },
       { id: 'designKit', label: 'Design Kit', icon: Palette },
+    ],
+  },
+  {
+    section: 'Company OS & Software Factory',
+    items: [
+      { id: 'appLauncher', label: 'App Launcher', icon: LayoutGrid },
+      { id: 'factory', label: 'AI Software Factory', icon: Boxes },
+      { id: 'factoryControl', label: 'Software Factory Control Center', icon: Layers3 },
     ],
   },
   {
@@ -195,6 +204,7 @@ const NAV: Array<{ section: string; items: NavItem[] }> = [
     section: 'System',
     items: [
       { id: 'logs', label: 'Logs', icon: ScrollText },
+      { id: 'automation', label: 'Automation', icon: Zap },
       { id: 'n8n', label: 'n8n Workflows', icon: Workflow },
       { id: 'reports', label: 'Reports', icon: FileBarChart },
       { id: 'team', label: 'Team', icon: Users },
@@ -227,7 +237,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   clients: 'Clients',
   approvals: 'Approvals',
   communications: 'Communications',
-  chat: 'Live Chat',
+  chat: 'Inbox',
   payments: 'Payments',
   projects: 'Projects',
   reviews: 'Reviews & Referrals',
@@ -256,6 +266,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   analytics: 'Analytics',
   logs: 'Logs',
   n8n: 'n8n Workflows',
+  automation: 'Automation',
   reports: 'Reports',
   settings: 'Settings',
   team: 'Team',
@@ -266,6 +277,7 @@ const VIEW_TITLES: Record<ViewId, string> = {
   telephony: 'Calls & SMS',
   rea: 'Reverse Engineer Anything',
   evolution: 'Evolution Loop',
+  appLauncher: 'App Launcher',
 }
 
 export default function AdminApp({ onExit }: { onExit: () => void }) {
@@ -614,7 +626,7 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
               ) : view === 'communications' ? (
                 <CommunicationsView />
               ) : view === 'chat' ? (
-                <ConversationsView />
+                <ConversationsView onOpenClient={openClient} />
               ) : view === 'payments' ? (
                 <PaymentsView onOpenClient={openClient} />
               ) : view === 'projects' ? (
@@ -665,6 +677,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <ReaView />
               ) : view === 'evolution' ? (
                 <EvolutionView />
+              ) : view === 'appLauncher' && canAccessView('appLauncher') ? (
+                <AppLauncherView onNavigate={navigate} />
               ) : view === 'factory' ? (
                 <FactoryView />
               ) : view === 'factoryControl' ? (
@@ -683,6 +697,8 @@ export default function AdminApp({ onExit }: { onExit: () => void }) {
                 <AnalyticsView />
               ) : view === 'logs' ? (
                 <LogsView />
+              ) : view === 'automation' ? (
+                <AutomationView role={userRole} />
               ) : view === 'n8n' ? (
                 <N8nView />
               ) : view === 'reports' ? (

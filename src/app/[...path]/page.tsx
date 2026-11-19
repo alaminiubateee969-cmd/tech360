@@ -4,6 +4,7 @@ import PublicSitePage from '../page'
 import type { BlogPost } from '@/components/site/BlogPostView'
 import { industryImage } from '@/data/industry-images'
 import { getServiceImage } from '@/data/service-images'
+import { getPortfolioEntry } from '@/data/portfolio'
 import { getStaticPublicRoutePaths, resolvePublicRoute } from '@/lib/public-route-catalog'
 import { jsonLdDocument, pageGraph } from '@/lib/structured-data'
 
@@ -56,6 +57,12 @@ export async function generateMetadata({ params }: { params: Promise<{ path: str
       const sImg = getServiceImage(path[1])
       if (sImg) {
         return [{ url: sImg.src, width: sImg.width, height: sImg.height, alt: sImg.alt }]
+      }
+    }
+    if (path[0] === 'work' && (path[1] === 'projects' || path[1] === 'case-studies') && path[2]) {
+      const entry = getPortfolioEntry(path[1] === 'projects' ? 'system' : 'blueprint', path[2])
+      if (entry) {
+        return [{ url: entry.cover.src, width: entry.cover.width, height: entry.cover.height, alt: entry.cover.alt }]
       }
     }
     if (path[0] === 'industries' && path[1]) {

@@ -42,6 +42,20 @@ describe('self-hosted industry and site photography', () => {
     }
   })
 
+  it('uses service-specific visuals for recommended services on industry pages', () => {
+    const industryDetail = readFileSync('src/components/site/IndustryDetailView.tsx', 'utf8')
+    assert.match(industryDetail, /serviceImageSrc\(service\.slug\)/)
+    assert.match(industryDetail, /serviceImageAlt\(service\.slug, service\.title\)/)
+  })
+
+  it('includes recruitment-to-visa and partner controls in the education consultancy solution card', () => {
+    const consultancy = EDUCATION_SOLUTIONS.find((item) => item.id === 'consultancy')
+    assert.ok(consultancy)
+    assert.match(consultancy.summary, /visa-case readiness/)
+    assert.match(consultancy.facilities, /B2B partner portal/)
+    assert.match(consultancy.workflow, /visa checklist/)
+  })
+
   it('marks DesignKit playground previews as illustrative UI only and disables Origin header reflection in official-info', () => {
     const designKit = readFileSync('src/components/site/DesignKitView.tsx', 'utf8')
     assert.match(designKit, /Illustrative UI only/)

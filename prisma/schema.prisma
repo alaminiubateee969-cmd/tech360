@@ -21,6 +21,7 @@ model User {
   email        String    @unique
   name         String?
   role         String    @default("STAFF") // SUPER_ADMIN | ADMIN | MANAGER | STAFF
+  tenantId     String    @default("tech360") // Tenant.id — server-side isolation key for inbox/automation
   title        String?
   passwordHash String
   isActive     Boolean   @default(true)
@@ -448,7 +449,7 @@ model Communication {
   messageType       String   @default("TEXT") // TEXT | TEMPLATE | MEDIA | DOCUMENT | SYSTEM
   templateName      String?
   providerMessageId String?
-  status            String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | RECEIVED | FAILED | NOT_CONFIGURED | DISABLED_BY_ADMIN | DEAD_LETTER
+  status            String   @default("QUEUED") // QUEUED | SENT | DELIVERED | READ | RECEIVED | FAILED | NOT_CONFIGURED | DISABLED_BY_ADMIN | OPTED_OUT | DEAD_LETTER
   error             String? @db.Text
   // Outbox retry bookkeeping — see src/lib/outbox-retry.ts.
   // attempts counts AUTOMATIC re-dispatches (the original send is 0).
@@ -1141,6 +1142,11 @@ model N8nWorkflow {
   status      String   @default("AVAILABLE") // AVAILABLE | IMPORTED | RUNNING | ERROR
   lastRunAt   DateTime?
   lastRunStatus String?
+  tenantId    String   @default("tech360")
+  enabled     Boolean  @default(false) // TECH360 control plane: disabled until an operator enables it
+  webhookPath String?  // path under N8N_BASE_URL/webhook/ (no host, no secret)
+  credentialRefs String? @db.Text // JSON array of credential NAMES held in n8n — never secret values
+  timeoutMs   Int      @default(15000)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1196,10 +1202,36 @@ model GeneratedDocument {
 
 model ChatConversation {
   id                 String   @id @default(cuid())
+  tenantId           String   @default("tech360")
   anonId             String
   clientId           String?
   clientRequestId    String?  @unique(map: "ChatConversation_clientRequestId_key") @db.VarChar(64)
-  status             String    @default("OPEN") // OPEN | CLOSED
+  status             String    @default("OPEN") // OPEN | CLOSED (visitor-facing session state)
+  // Operator workflow state, independent from the visitor session:
+  // OPEN | PENDING | ESCALATED | RESOLVED
+  inboxState         String   @default("OPEN")
+  priority           String   @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  team               String?  // SUPPORT | SALES | BILLING | TECHNICAL
+  assignedToId       String?
+  assignedToEmail    String?
+  assignedAt         DateTime?
+  escalatedAt        DateTime?
+  escalationReason   String? @db.Text
+  humanRequestedAt   DateTime?
+  resolvedAt         DateTime?
+  resolvedBy         String?
+  closedAt           DateTime?
+  closedBy           String?  // VISITOR | user email
+  firstResponseAt    DateTime?
+  visitorTypingAt    DateTime?
+  agentTypingAt      DateTime?
+  agentTypingName    String?
+  visitorReadAt      DateTime?
+  aiLanguage         String?  // bn | en | mixed
+  aiIntent           String?
+  aiBusinessType     String?
+  aiSummary          String? @db.Text
+  aiTriagedAt        DateTime?
   visitorName        String?
   visitorEmail       String?
   visitorPhone       String?
@@ -1218,6 +1250,8 @@ model ChatConversation {
   @@index([anonId])
   @@index([clientId])
   @@index([status, lastMessageAt])
+  @@index([tenantId, inboxState, lastMessageAt])
+  @@index([assignedToId])
 }
 
 model ChatMessage {
@@ -1228,6 +1262,16 @@ model ChatMessage {
   sender          String // VISITOR | ADMIN | SYSTEM
   body            String @db.Text
   agentEmail      String?
+  kind            String   @default("MESSAGE") // MESSAGE | NOTE | EVENT
+  internal        Boolean  @default(false) // internal notes are NEVER returned to the visitor
+  aiGenerated     Boolean  @default(false) // written by the AI assistant (labelled distinctly)
+  deliveryStatus  String   @default("SENT") // SENT | DELIVERED | READ | FAILED
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  attachmentId    String?  // FileRecord.id (relatedType CHAT_ATTACHMENT)
+  attachmentName  String?
+  attachmentMime  String?
+  attachmentSize  Int?
   createdAt       DateTime        @default(now())
 
   @@index([conversationId, createdAt])
@@ -2383,4 +2427,126 @@ model EvolutionProposal {
   @@index([generation])
   @@index([surface])
   @@index([approvalId])
+}
+
+// ---------------- TENANCY / AUTOMATION ENGINE / N8N CONTROL PLANE ----------------
+
+model Tenant {
+  id        String   @id // "tech360" is the default tenant
+  slug      String   @unique
+  name      String
+  status    String   @default("ACTIVE") // ACTIVE | SUSPENDED
+  settings  String? @db.Text // JSON: usage controls, automation policy
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AutomationEvent {
+  id            String   @id @default(cuid())
+  tenantId      String   @default("tech360")
+  type          String   // WEBCHAT_MESSAGE_RECEIVED | LEAD_CREATED | CONVERSATION_ESCALATED | ...
+  source        String   // WEBCHAT | ADMIN | WEBHOOK | SCHEDULER | N8N | SYSTEM
+  subjectType   String?  // ChatConversation | Client | Project | ...
+  subjectId     String?
+  payload       String @db.LongText // JSON (redacted)
+  dedupeKey     String   @unique @db.VarChar(191)
+  correlationId String
+  status        String   @default("PENDING") // PENDING | PROCESSED | FAILED
+  availableAt   DateTime @default(now()) // scheduled follow-ups become available later
+  processedAt   DateTime?
+  error         String? @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, type, createdAt])
+  @@index([status, availableAt])
+}
+
+model AutomationRule {
+  id               String   @id @default(cuid())
+  tenantId         String   @default("tech360")
+  key              String
+  name             String
+  description      String? @db.Text
+  triggerType      String
+  conditions       String @db.Text // JSON array of { field, op, value }
+  actions          String @db.LongText // JSON array of actions (optional per-action `when` branch)
+  status           String   @default("DRAFT") // DRAFT | ACTIVE | DISABLED
+  version          Int      @default(1)
+  requiresApproval Boolean  @default(false)
+  maxAttempts      Int      @default(3)
+  createdBy        String?
+  updatedBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  versions AutomationRuleVersion[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId, triggerType, status])
+}
+
+model AutomationRuleVersion {
+  id        String         @id @default(cuid())
+  ruleId    String
+  rule      AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  version   Int
+  snapshot  String @db.LongText // JSON of trigger/conditions/actions at this version
+  createdBy String?
+  createdAt DateTime       @default(now())
+
+  @@unique([ruleId, version])
+}
+
+model AutomationRun {
+  id             String    @id @default(cuid())
+  tenantId       String    @default("tech360")
+  ruleId         String
+  ruleVersion    Int
+  eventId        String
+  triggerType    String
+  idempotencyKey String    @unique @db.VarChar(191)
+  correlationId  String
+  // PENDING | RUNNING | AWAITING_APPROVAL | RETRY_SCHEDULED | SUCCEEDED | FAILED | DEAD_LETTER | SKIPPED
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3)
+  nextAttemptAt  DateTime?
+  steps          String @db.LongText // JSON step results (append-only per attempt)
+  output         String? @db.Text
+  error          String? @db.Text
+  approvalId     String?
+  approvalHash   String?   // sha256 of the exact action parameters the approval covers
+  replayOfId     String?
+  triggeredBy    String?   // EVENT | user email (manual replay)
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId, status, createdAt])
+  @@index([ruleId])
+  @@index([status, nextAttemptAt])
+}
+
+model N8nExecution {
+  id                 String    @id @default(cuid())
+  tenantId           String    @default("tech360")
+  workflowCode       String
+  correlationId      String    @unique @db.VarChar(191)
+  // REQUESTED | ACCEPTED | RUNNING | SUCCEEDED | FAILED | NOT_CONFIGURED | DISABLED
+  status             String    @default("REQUESTED")
+  attempts           Int       @default(0)
+  requestPayload     String @db.LongText // JSON (no secrets)
+  responseBody       String? @db.Text
+  httpStatus         Int?
+  error              String? @db.Text
+  automationRunId    String?
+  requestedBy        String?
+  callbackReceivedAt DateTime?
+  finishedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([tenantId, workflowCode, createdAt])
+  @@index([status])
 }

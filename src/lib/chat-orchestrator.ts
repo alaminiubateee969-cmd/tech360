@@ -305,6 +305,8 @@ export async function handleCustomerMessage(input: {
         conversationId: input.conversationId,
         sender: escalated ? 'SYSTEM' : 'ADMIN', // SYSTEM for honest fallback/escalation, ADMIN for AI reply (attributed to TECH360)
         body: outboundBody,
+        // AI replies are labelled distinctly from human replies in every UI.
+        aiGenerated: wasAiGenerated && !escalated,
       },
     })
     await db.chatConversation.update({
@@ -525,6 +527,7 @@ Produce your reply now:`
       const result = await runAgent(code, {
         input: prompt.slice(0, 24000),
         clientId: input.context.id,
+        actingForClientId: input.context.id,
         workflow: 'CHAT_ONE_QA',
       })
       if (result.ok && result.output) {

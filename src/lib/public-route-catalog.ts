@@ -1,4 +1,5 @@
-import { INDUSTRIES, LEGAL_DOCS, SERVICES } from '@/data/site'
+import { CASE_STUDIES, INDUSTRIES, LEGAL_DOCS, SERVICES } from '@/data/site'
+import { BLUEPRINT_DETAILS, getBlueprintDetail } from '@/data/blueprint-details'
 import { getIndustryBySlug } from '@/data/industries'
 import { PROJECT_DETAILS, getProjectDetail } from '@/data/work-details'
 import { WORK_EXAMPLES } from '@/data/work-examples'
@@ -11,6 +12,7 @@ export type PublicRouteKind =
   | 'blog-index'
   | 'blog-post'
   | 'project'
+  | 'blueprint'
   | 'portal'
 
 export type PublicRouteInfo = {
@@ -55,8 +57,8 @@ const SECTIONS: Record<string, Omit<PublicRouteInfo, 'path'>> = {
     kind: 'section',
   },
   platform: {
-    title: 'Company-in-a-Box Software Platform',
-    description: 'Explore Company-in-a-Box: connected workflows, customer relationships, reporting, portals, and business systems tailored to your needs.',
+    title: 'Enterprise Platforms & Software',
+    description: 'Explore enterprise software capabilities including CRM, client portals, workflow automation, reporting, integrations and digital commerce, scoped to your business requirements.',
     kind: 'section',
   },
   services: {
@@ -181,6 +183,20 @@ export function resolvePublicRoute(pathSegments: readonly string[]): PublicRoute
     }
   }
 
+  if (segments.length === 3 && segments[0] === 'work' && segments[1] === 'case-studies') {
+    // Dedicated delivery-blueprint pages. Only slugs present in BOTH the
+    // CASE_STUDIES list and the blueprint detail registry resolve.
+    const slug = segments[2]
+    const study = CASE_STUDIES.find((item) => item.slug === slug)
+    if (!isSlug(slug) || !study || !getBlueprintDetail(slug)) return null
+    return {
+      path: `/work/case-studies/${slug}`,
+      title: `${study.title} — ${study.industry} Delivery Blueprint`,
+      description: study.challenge.replace(/^Illustrative scenario:\s*/i, ''),
+      kind: 'blueprint',
+    }
+  }
+
   if (segments.length === 2) {
     const [section, slug] = segments
     if (section === 'services') {
@@ -246,5 +262,6 @@ export function getStaticPublicRoutePaths(): string[] {
     ...INDUSTRIES.map((industry) => `/industries/${industry.slug}`),
     ...LEGAL_DOCS.map((policy) => `/legal/${policy.slug}`),
     ...PROJECT_DETAILS.map((project) => `/work/projects/${project.slug}`),
+    ...BLUEPRINT_DETAILS.map((blueprint) => `/work/case-studies/${blueprint.slug}`),
   ]
 }

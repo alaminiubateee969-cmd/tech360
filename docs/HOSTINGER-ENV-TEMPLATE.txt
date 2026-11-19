@@ -112,6 +112,11 @@ PORTAL_OTP_CHANNEL=email
 SMS_API_URL=
 SMS_API_KEY=
 SMS_SENDER=
+# Inbound webhook auth: choose TWILIO, HTTPSMS, or GENERIC explicitly.
+# Twilio requires TWILIO_AUTH_TOKEN + x-twilio-signature;
+# HTTPSMS/GENERIC require SMS_WEBHOOK_SECRET (32+ chars) in x-sms-webhook-secret.
+SMS_INBOUND_PROVIDER=
+SMS_WEBHOOK_SECRET=
 FACEBOOK_PAGE_TOKEN=
 INSTAGRAM_TOKEN=
 LINKEDIN_TOKEN=

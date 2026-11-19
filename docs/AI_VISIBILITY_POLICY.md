@@ -15,12 +15,20 @@ Public wording standard:
 - All client-facing messages sign **"Team Tech360"**.
 - Diagrams and stats say **automation / workflow runs**, never
   "AI workforce / agent runs".
+- The private Company-in-a-Box / Software Factory, internal control-plane
+  modules, agent counts, department counts, model/provider configuration,
+  token usage, execution telemetry and internal workflow names are not
+  public product claims. Public platform copy describes customer-facing
+  capabilities and project-scoped delivery only.
+- Public health APIs expose only application readiness and database
+  UP/DOWN status. Provider, channel, agent, heartbeat and subsystem
+  diagnostics belong behind the Super Admin-only `/api/health/deep` guard.
 - Services we *sell* (e.g. automation systems for a client's own
   business) are described as client systems — never as how TECH360
   itself delivers projects, and never with examples copied from our
   internal enquiry/scope process.
 
-Enforced in code (public surfaces scrubbed): `src/components/site/*`
+Enforced in code (public surfaces scrubbed): `src/components/site/*`, `src/app/api/health/route.ts`
 (ChatWidget, SiteHeader, SiteFooter, buttons, About, Contact, Legal,
 Portal, diagrams, design-kit), `src/data/site.ts`, `src/app/layout.tsx`
 metadata, `src/lib/comms.ts` email templates, the official invoice

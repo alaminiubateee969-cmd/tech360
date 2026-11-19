@@ -19,10 +19,10 @@ const base = (kind: OfficialDocumentKind): OfficialDocumentInput => ({
   sections: [{ heading: 'Overview', paragraphs: ['Body copy.'] }],
 })
 
-describe('official document renderer — 17 required types', () => {
+describe('official document renderer — 19 required types', () => {
   it('covers every required document kind with a real title', () => {
-    assert.equal(OFFICIAL_DOCUMENT_KINDS.length, 17)
-    assert.equal(new Set(OFFICIAL_DOCUMENT_KINDS).size, 17)
+    assert.equal(OFFICIAL_DOCUMENT_KINDS.length, 19)
+    assert.equal(new Set(OFFICIAL_DOCUMENT_KINDS).size, 19)
     for (const kind of OFFICIAL_DOCUMENT_KINDS) {
       assert.ok(DOCUMENT_TITLES[kind], `missing title for ${kind}`)
       assert.ok(DOCUMENT_TITLES[kind].length > 3)
@@ -40,6 +40,25 @@ describe('official document renderer — 17 required types', () => {
       assert.match(html, /TECH-2026-000123/, `${kind} missing Client ID`)
       // The supplied letterhead must be the page background for EVERY type.
       assert.match(html, /background-image:url\("\/brand\/tech360-letterhead-a4\.png"\)/, `${kind} not using letterhead page template`)
+    }
+  })
+
+  it('applies the exact configured cover only to its Company Profile and Business Proposal template', () => {
+    const branding = getDefaultBranding()
+    assert.equal(branding.companyProfileCoverAsset, '/brand/tech360-company-profile-cover.jpg')
+    assert.equal(branding.proposalCoverAsset, '/brand/tech360-work-proposal-cover.jpg')
+    for (const [kind, expected] of [
+      ['COMPANY_PROFILE', branding.companyProfileCoverAsset],
+      ['BUSINESS_PROPOSAL', branding.proposalCoverAsset],
+    ] as const) {
+      const html = renderOfficialDocumentHtml(base(kind), branding)
+      assert.ok(html.includes(`<img src="${expected}" alt="${DOCUMENT_TITLES[kind]} cover"`))
+      assert.match(html, /class="cover-page"/)
+      assert.match(html, /break-after:page/)
+    }
+    for (const kind of ['SOW', 'OFFICIAL_LETTER', 'COVER_LETTER'] as const) {
+      const html = renderOfficialDocumentHtml(base(kind), branding)
+      assert.doesNotMatch(html, /tech360-(?:company-profile|work-proposal)-cover\.jpg/)
     }
   })
 

@@ -3,7 +3,9 @@ import { guard, isResponse } from '@/lib/api-guard'
 import {
   ALWAYS_HUMAN_ACTIONS,
   CONSTITUTION_WITH_ENFORCEMENT,
+  constitutionalRuleStats,
   defaultGovernanceRules,
+  ENTERPRISE_CONSTITUTIONAL_RULES,
   GOVERNANCE_LAYERS,
 } from '@/lib/governance/rules'
 import { TOOL_REGISTRY, validateToolRegistry } from '@/lib/tools/registry'
@@ -33,10 +35,22 @@ export async function GET(req: NextRequest) {
   const byRisk = new Map<string, number>()
   for (const tool of TOOL_REGISTRY) byRisk.set(tool.riskLevel, (byRisk.get(tool.riskLevel) ?? 0) + 1)
 
+  const url = new URL(req.url)
+  const includeFullCatalog = url.searchParams.get('catalog') === 'full'
+  const filterDept = url.searchParams.get('departmentCode')?.trim()
+
   return Response.json({
     constitution: CONSTITUTION_WITH_ENFORCEMENT,
     layers: GOVERNANCE_LAYERS,
     rules: defaultGovernanceRules(),
+    constitutionalCatalog: {
+      stats: constitutionalRuleStats(),
+      entries: includeFullCatalog
+        ? ENTERPRISE_CONSTITUTIONAL_RULES
+        : filterDept
+          ? ENTERPRISE_CONSTITUTIONAL_RULES.filter((r) => r.subject === filterDept || r.subject === '*')
+          : ENTERPRISE_CONSTITUTIONAL_RULES.slice(0, 25),
+    },
     alwaysHuman: ALWAYS_HUMAN_ACTIONS.map((action) => ({ id: action.id, description: action.description })),
     tools: {
       total: TOOL_REGISTRY.length,

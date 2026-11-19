@@ -7,6 +7,7 @@ import { toE164 } from '@/lib/phone'
 import { claimInboundWebhookEvent, finishInboundWebhookEvent, resolveVerifiedClientIdentity } from '@/lib/identity-resolver'
 import type { VerifiedIdentityProof } from '@/lib/identity-policy'
 import { redactSensitiveCrmData } from '@/lib/sensitive-redaction'
+import { isSmsOptOutKeyword } from '@/lib/sms-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -121,10 +122,20 @@ export async function POST(req: NextRequest) {
           .catch(() => null)
       }
 
-      const { recordInbound } = await import('@/lib/conversation-state')
-      await recordInbound(existing.id, existing.clientId, text, 'SMS').catch(() => null)
+      const { recordInbound, setOptOut } = await import('@/lib/conversation-state')
+      const communicationState = await recordInbound(existing.id, existing.clientId, text, 'SMS').catch(() => null)
 
       await audit({ actor: 'webhook:SMS', action: 'INBOUND_MESSAGE', clientId: existing.clientId, ip })
+      if (isSmsOptOutKeyword(text)) {
+        await setOptOut(existing.id, existing.clientId, true)
+        await audit({ actor: 'webhook:SMS', action: 'SMS_OPT_OUT', clientId: existing.clientId, ip })
+        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: existing.id })
+        return Response.json({ ok: true })
+      }
+      if (communicationState?.optedOut) {
+        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: existing.id })
+        return Response.json({ ok: true })
+      }
 
       // Generate contextual reply via orchestrator (one-question-at-a-time, honest errors)
       try {
@@ -135,52 +146,97 @@ export async function POST(req: NextRequest) {
 
       await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: existing.id })
     } else {
-      // First SMS contact — require email before issuing Client ID (webchat agent's first SMS asks for email).
-      const { extractEmail, EMAIL_GATE_PROMPT } = await import('@/lib/chat-onboarding')
-      const emailFromSms = extractEmail(text)
-      if (!emailFromSms) {
-        // No email yet: store the inbound as pending and reply asking for email. Do NOT create Client yet.
-        // Use a ChatConversation keyed by sms:phone to keep history visible in console without a Client link.
-        let pendingConvo = await db.chatConversation.findFirst({ where: { anonId: `sms:${phone}`, status: 'OPEN' }, orderBy: { createdAt: 'desc' } })
-        if (!pendingConvo) {
-          pendingConvo = await db.chatConversation.create({
-            data: { anonId: `sms:${phone}`, visitorName: 'SMS Contact', visitorPhone: phone, status: 'OPEN', contactConsentAt: new Date(), consentVersion: 'sms-email-gate' },
-          }).catch(() => null) as typeof pendingConvo
-        }
-        if (pendingConvo) {
-          await db.chatMessage.create({ data: { conversationId: pendingConvo.id, sender: 'VISITOR', body: text } }).catch(() => null)
-          await db.chatMessage.create({ data: { conversationId: pendingConvo.id, sender: 'ADMIN', body: EMAIL_GATE_PROMPT } }).catch(() => null)
-          await db.chatConversation.update({ where: { id: pendingConvo.id }, data: { lastMessageAt: new Date(), lastMessagePreview: EMAIL_GATE_PROMPT.slice(0, 120), lastSender: 'ADMIN' } }).catch(() => null)
-        }
-        // Attempt to send SMS asking for email (best-effort, requires gateway configured).
-        // sendCommunication creates and updates the single outbound Communication row.
-        try {
-          const { sendCommunication } = await import('@/lib/comms')
-          await sendCommunication({
-            clientId: undefined,
-            channel: 'SMS',
-            to: phone,
-            body: EMAIL_GATE_PROMPT,
-            agentCode: 'EMAIL-GATE',
-          }).catch(() => null)
-        } catch {}
-        await audit({ actor: 'webhook:SMS', action: 'SMS_AWAITING_EMAIL', details: { phone }, ip } as never).catch(() => null)
-        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: null })
+      // First contact from a phone number with no verified CRM identity.
+      //
+      // Root cause fixed here: this branch used to REFUSE to create a Client
+      // until the sender texted an email address. An inbound SMS therefore
+      // produced no CRM record and no Client ID, and the AI orchestrator was
+      // never called — so a first-time SMS customer received (at best) a
+      // static "share your email" template. If the outbound gateway was not
+      // configured the lead was silently lost, which violates "do not lose
+      // inbound messages".
+      //
+      // Now the handler creates (or reuses) a prospect keyed to the originating
+      // number, issues a permanent Client ID, stores the inbound message in the
+      // CRM timeline and answers on SMS through the same AI orchestrator used
+      // by web chat. The number is stored as contact data only: it is NOT
+      // written to ClientIdentity, because a provider signature proves the
+      // sender, not ownership. Verified-identity merging is unchanged.
+      const { recordInbound, setOptOut } = await import('@/lib/conversation-state')
+
+      let linkedClient = await db.client.findFirst({
+        where: {
+          deletedAt: null,
+          source: { in: ['SMS', 'WHATSAPP'] },
+          OR: [{ phone }, { whatsapp: phone }],
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, clientId: true },
+      }).catch(() => null)
+
+      const priorConvo = await db.chatConversation.findFirst({
+        where: { anonId: `sms:${phone}`, clientId: { not: null } },
+        orderBy: { createdAt: 'desc' },
+        select: { clientId: true },
+      }).catch(() => null)
+      if (!linkedClient && priorConvo?.clientId) {
+        linkedClient = await db.client.findUnique({
+          where: { id: priorConvo.clientId },
+          select: { id: true, clientId: true, deletedAt: true },
+        }).then((row) => (row && !row.deletedAt ? { id: row.id, clientId: row.clientId } : null)).catch(() => null)
+      }
+
+      if (!linkedClient) {
+        const result = await intakeLead({
+          source: 'SMS',
+          name: 'SMS Contact',
+          phone,
+          preferredContact: 'SMS',
+          message: `SMS first message: ${text}`,
+          providerMessageId: eventId,
+          suppressWelcome: true,
+        })
+        linkedClient = { id: result.clientRowId, clientId: result.clientId }
+      }
+
+      await db.chatConversation.updateMany({
+        where: { anonId: `sms:${phone}`, clientId: null },
+        data: { clientId: linkedClient.id },
+      }).catch(() => null)
+
+      const communicationState = await recordInbound(linkedClient.id, linkedClient.clientId, text, 'SMS').catch(() => null)
+      await audit({ actor: 'webhook:SMS', action: 'NEW_LEAD_FROM_SMS', clientId: linkedClient.clientId, ip })
+      if (isSmsOptOutKeyword(text)) {
+        await setOptOut(linkedClient.id, linkedClient.clientId, true)
+        await audit({ actor: 'webhook:SMS', action: 'SMS_OPT_OUT', clientId: linkedClient.clientId, ip })
+        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: linkedClient.id })
         return Response.json({ ok: true })
       }
-      // Email present in SMS: create CRM lead with that email and auto-issue Client ID
-      const result = await intakeLead({
-        source: 'SMS',
-        name: 'SMS Contact',
-        email: emailFromSms,
-        phone,
-        message: `SMS first message: ${text}`,
-        providerMessageId: eventId,
-        verifiedIdentities: [proof],
+      if (communicationState?.optedOut) {
+        await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: linkedClient.id })
+        return Response.json({ ok: true })
+      }
+
+      const full = await db.client.findUnique({ where: { id: linkedClient.id } })
+      if (full) {
+        try {
+          await handleSmsReply({ client: full, phone, text })
+        } catch (replyError) {
+          await logError({
+            source: 'WEBHOOK',
+            code: 'SMS_REPLY_FAILED',
+            message: replyError instanceof Error ? replyError.message : String(replyError),
+            clientId: linkedClient.clientId,
+            workflow: 'SMS_REPLY',
+          }).catch(() => null)
+        }
+      }
+      await finishInboundWebhookEvent({
+        receiptId: claim.receiptId,
+        claimToken: claim.claimToken,
+        success: true,
+        clientId: linkedClient.id,
       })
-      await db.chatConversation.updateMany({ where: { anonId: `sms:${phone}`, clientId: null, status: 'OPEN' }, data: { clientId: result.clientRowId } }).catch(() => null)
-      await audit({ actor: 'webhook:SMS', action: 'NEW_LEAD_FROM_SMS', clientId: result.clientId, ip })
-      await finishInboundWebhookEvent({ receiptId: claim.receiptId, claimToken: claim.claimToken, success: true, clientId: result.clientRowId })
     }
 
     return Response.json({ ok: true })

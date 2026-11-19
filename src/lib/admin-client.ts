@@ -845,6 +845,7 @@ export interface AgentFull extends AgentRow {
   permissions?: string | string[] | null
   model?: string | null
   dailyQuota?: number | null
+  tokensToday?: number | null
   executionCount?: number | null
   successCount?: number | null
   failureCount?: number | null
@@ -1005,10 +1006,30 @@ export interface N8nResponse { workflows?: N8nWorkflowRow[] }
 
 export interface HealthResponse {
   status?: string | null
-  db?: boolean | string | null
-  agents?: number | null
-  channels?: Record<string, boolean | string> | null
+  app?: string | null
+  timestamp?: string | null
   version?: string | null
+  release?: { commit?: string | null; sourceState?: string | null } | null
+  uptimeSeconds?: number | null
+  channels?: Record<string, boolean | string> | null
+  checks?: {
+    database?: { status?: string | null; detail?: string | null } | null
+    modelService?: { status?: string | null; detail?: string | null } | null
+    localModels?: { status?: string | null; detail?: string | null } | null
+    taskQueue?: { status?: string | null; detail?: string | null } | null
+    knowledgeCorpus?: { status?: string | null; detail?: string | null } | null
+    registries?: {
+      status?: string | null
+      detail?: string | null
+      persistedSkills?: number | null
+      persistedExecutableAgents?: number | null
+      persistedDepartments?: number | null
+      catalogueSkills?: number | null
+      catalogueLogicalAgents?: number | null
+      executableAgents?: number | null
+      departments?: number | null
+    } | null
+  } | null
 }
 
 // ------------------------------------------------------------

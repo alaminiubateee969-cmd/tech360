@@ -26,10 +26,10 @@ export const COMPANY = {
   serviceCoverage: "Worldwide",
   tagline: "Strategy. Software. Automation. Growth.",
   subline:
-    "Your private, self-controlled Company-in-a-Box — engineered worldwide for businesses that need to own their software, their data, and their future.",
+    "Enterprise software, custom platforms, AI engineering and business automation — designed around your workflows, data and long-term ownership.",
 } as const;
 
-// Customer-facing Company-in-a-Box Platform pillars (confidentiality-clean; no internal factory module names)
+// Customer-facing enterprise software and business-automation capability pillars
 export const PLATFORM_PILLARS = [
   {
     key: "operations",
@@ -740,14 +740,17 @@ export const SERVICES: Service[] = [
     problem:
       "Transformation budgets evaporate on tools nobody adopted and dashboards nobody opens — because the work started with software selection instead of process clarity.",
     solution:
-      "We start where transformation should: mapping how work actually flows today, identifying where technology genuinely pays back, sequencing initiatives by return and risk, and delivering a roadmap your organisation can execute — with or without our build team.",
+      "We start by mapping how work flows today, then design a practical digitalisation roadmap that can connect HR and employee records, attendance, payroll, finance integrations, inventory, POS, project management, internal communication, performance reporting, document management and APIs. We sequence the work by business value, adoption effort and delivery risk — not by software hype.",
     features: [
-      "Current-state process and systems mapping",
-      "Opportunity assessment ranked by ROI and risk",
-      "Technology recommendations with honest trade-offs",
-      "Sequenced transformation roadmap",
-      "Vendor-neutral evaluation of existing tools",
-      "Executive briefing and team adoption planning",
+      "Current-state process, people and systems mapping",
+      "HR, employee records, onboarding and role-based access design",
+      "Attendance, leave and payroll workflow integration",
+      "Accounting, finance, purchasing and inventory system connections",
+      "POS, order management and operational data integration",
+      "Project management, team communication and performance dashboards",
+      "Document management, approvals and auditable records",
+      "API integration planning, data migration and validation",
+      "Technology recommendations and phased transformation roadmap",
     ],
     tech: ["Process mapping", "Architecture review", "ROI analysis", "Roadmapping"],
     workflow: [
@@ -801,18 +804,19 @@ export const INDUSTRIES: Industry[] = [
     title: "Education",
     imageKey: "education",
     description:
-      "Institutions where enquiry handling, admission and communication with guardians decide both reputation and revenue.",
+      "Universities, colleges and education consultancies managing student enquiries, course applications, document checklists, visa casework and B2B university or agent relationships.",
     problems: [
-      "Enquiries answered late or lost across staff phones",
-      "Admission status communicated through repeated calls",
-      "Guardian communication dependent on individual teachers",
-      "No single record of a student's full journey",
+      "Student enquiries and counsellor follow-ups scattered across inboxes and messaging channels",
+      "Applications, offers and intake deadlines tracked in separate spreadsheets",
+      "Passports, transcripts and visa evidence lack version, expiry and verification history",
+      "Education agents and university partners cannot see assigned applications or remaining quotas",
+      "No single case timeline from first enquiry through application, visa readiness and enrollment",
     ],
     solution:
-      "An enquiry-to-admission pipeline with automated follow-up, guardian communication templates and a single record per student from first contact to certificate.",
+      "A student recruitment-to-visa CRM with consent-aware lead capture, counsellor assignment, course and intake shortlists, application stages, secure document vaults, human-managed visa checklists, applicant and B2B partner portals, quota controls and operational reporting.",
     exampleSystem:
-      "A coaching centre automates enquiry follow-up, batch-allocation notices and monthly guardian progress updates — each message logged against the student's record.",
-    recommended: ["custom-crm-development", "whatsapp-automation", "email-automation", "client-portals"],
+      "Illustrative education consultancy workflow: a student enquiry is assigned to a counsellor, matched to a verified course and intake, moved through an application checklist, supported by a versioned document vault and destination-specific visa case timeline, then handed to the institution for enrollment. Approved partners see only their own referrals and quota usage.",
+    recommended: ["custom-crm-development", "client-portals", "whatsapp-automation", "email-automation", "business-dashboards", "api-integrations"],
   },
   {
     slug: "schools-training",
@@ -945,7 +949,7 @@ export const INDUSTRIES: Industry[] = [
     title: "Marketing Agencies",
     imageKey: "marketing",
     description:
-      "Marketing teams whose value depends on producing, approving and publishing at volume without chaos.",
+      "Marketing agencies managing SEO/SEM, paid search and social, content and video production, landing pages, campaign automation and performance reporting across multiple client accounts.",
     problems: [
       "Content production tracked across chats and boards",
       "Client approval rounds lost in forwarded messages",
@@ -953,9 +957,9 @@ export const INDUSTRIES: Industry[] = [
       "Creative assets scattered across drives and phones",
     ],
     solution:
-      "Content operations systems: structured production pipelines, approval workflows with records, automated publishing and reporting that assembles itself.",
+      "A connected marketing operating model: SEO and SEM planning, paid media coordination, content and video production, landing-page conversion journeys, client approvals, consent-aware campaign automation and attribution reporting.",
     exampleSystem:
-      "A social-first agency runs client content through an approval pipeline — every draft, note and sign-off permanently attached to the campaign record.",
+      "A digital agency connects search strategy, paid campaigns, landing pages, creative approvals and CRM lead routing so each campaign can be reviewed against its agreed objectives and attribution method.",
     recommended: ["n8n-workflow-automation", "client-portals", "ai-business-automation", "business-dashboards"],
   },
   {

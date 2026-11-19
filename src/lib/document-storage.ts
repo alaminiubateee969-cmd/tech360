@@ -23,6 +23,7 @@ import { hasCapability, hasRole } from '@/lib/access-policy'
 
 export type DocumentType =
   | 'WORK_PROPOSAL'
+  | 'COMPANY_PROFILE'
   | 'SOW'
   | 'INVOICE'
   | 'OFFICIAL_LETTER'
@@ -123,6 +124,7 @@ export function canReplaceBranding(user: { role: string } | null): boolean {
 export function defaultPermissionsFor(type: DocumentType): string[] {
   switch (type) {
     case 'WORK_PROPOSAL': return ['SUPER_ADMIN', 'ADMIN', 'SALES', 'PROJECT_MANAGER', 'CLIENT']
+    case 'COMPANY_PROFILE': return ['SUPER_ADMIN', 'ADMIN', 'SALES', 'CLIENT']
     case 'SOW': return ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'CLIENT']
     case 'INVOICE': return ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'CLIENT']
     case 'PAYMENT_RECEIPT': return ['SUPER_ADMIN', 'ADMIN', 'FINANCE', 'CLIENT']
@@ -232,4 +234,220 @@ export async function findGeneratedDocument(documentId: string, version?: number
   const all = await listGeneratedDocuments()
   if (version !== undefined) return all.find(d => d.documentId === documentId && d.version === version) ?? null
   return all.find(d => d.documentId === documentId) ?? null
+}
+
+// ------------------------------------------------------------
+// Email Destination Management & Sent Document Archiving
+// ------------------------------------------------------------
+
+export type EmailDestinationPurpose =
+  | 'PRIMARY_EMAIL'
+  | 'ADDITIONAL_EMAIL'
+  | 'PROJECT_CONTACT'
+  | 'FINANCE_CONTACT'
+  | 'BUSINESS_CONTACT'
+
+export type DestinationAuthStatus = 'AUTHORIZED' | 'PENDING' | 'REVOKED'
+
+export interface EmailDestinationRecord {
+  id: string
+  clientId: string
+  clientPublicId: string
+  projectId: string | null
+  recipientName: string
+  email: string
+  purpose: EmailDestinationPurpose
+  authorizationStatus: DestinationAuthStatus
+  active: boolean
+  verified: boolean
+  consentEvidence: string | null
+  authorizedBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EmailAttachmentArchive {
+  fileRecordId: string
+  filename: string
+  mimeType: string
+  size: number
+  sha256: string
+}
+
+export interface EmailDocumentArchiveEntry {
+  id: string
+  communicationId: string | null
+  clientId: string
+  clientPublicId: string
+  projectId: string | null
+  subject: string
+  finalEmailBody: string
+  documentId: string | null
+  documentVersion: number | null
+  documentSha256: string | null
+  portalFileRecordId: string | null
+  attachments: EmailAttachmentArchive[]
+  recipientEmail: string
+  cc: string[]
+  bcc: string[]
+  sentAt: string
+  senderAccount: string
+  approvalId: string | null
+  deliveryStatus: 'SENT' | 'NOT_CONFIGURED' | 'FAILED' | 'BOUNCED'
+  providerMessageId: string | null
+  failureInfo: string | null
+  resendHistory: Array<{ at: string; actor: string; status: string; providerMessageId?: string | null }>
+  auditEvents: AuditEntry[]
+}
+
+const SETTING_KEY_EMAIL_DESTINATIONS = 'authorized_email_destinations_index'
+const SETTING_KEY_EMAIL_DOC_ARCHIVE = 'sent_email_document_archives_index'
+
+export async function recordEmailDestination(
+  input: Omit<EmailDestinationRecord, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<EmailDestinationRecord> {
+  const now = new Date().toISOString()
+  const normalizedEmail = input.email.trim().toLowerCase()
+  const entry: EmailDestinationRecord = {
+    ...input,
+    email: normalizedEmail,
+    id: `edest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: now,
+    updatedAt: now,
+  }
+  try {
+    const existing = await db.setting.findUnique({ where: { key: SETTING_KEY_EMAIL_DESTINATIONS } })
+    let list: EmailDestinationRecord[] = []
+    if (existing?.value) {
+      try {
+        const parsed = JSON.parse(existing.value) as EmailDestinationRecord[]
+        if (Array.isArray(parsed)) list = parsed
+      } catch {
+        list = []
+      }
+    }
+    list = list.filter(
+      (item) => !(item.clientPublicId === entry.clientPublicId && item.email.toLowerCase() === normalizedEmail),
+    )
+    list.unshift(entry)
+    if (list.length > 2000) list = list.slice(0, 2000)
+    await db.setting.upsert({
+      where: { key: SETTING_KEY_EMAIL_DESTINATIONS },
+      create: { key: SETTING_KEY_EMAIL_DESTINATIONS, value: JSON.stringify(list) },
+      update: { value: JSON.stringify(list), updatedAt: new Date() },
+    })
+  } catch {
+    // Offline fallback
+  }
+  return entry
+}
+
+export async function listEmailDestinations(filter?: {
+  clientPublicId?: string
+  onlyActiveAuthorized?: boolean
+}): Promise<EmailDestinationRecord[]> {
+  try {
+    const row = await db.setting.findUnique({ where: { key: SETTING_KEY_EMAIL_DESTINATIONS } })
+    if (!row?.value) return []
+    const parsed = JSON.parse(row.value) as EmailDestinationRecord[]
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((d) => {
+      if (filter?.clientPublicId && d.clientPublicId !== filter.clientPublicId) return false
+      if (filter?.onlyActiveAuthorized && (!d.active || d.authorizationStatus !== 'AUTHORIZED')) return false
+      return true
+    })
+  } catch {
+    return []
+  }
+}
+
+export async function isAuthorizedEmailDestination(input: {
+  clientPrimaryEmail: string | null | undefined
+  clientPublicId: string
+  recipientEmail: string
+}): Promise<{ authorized: boolean; reason: string; destination?: EmailDestinationRecord }> {
+  const target = input.recipientEmail.trim().toLowerCase()
+  if (!target) return { authorized: false, reason: 'Recipient email is empty.' }
+  if (input.clientPrimaryEmail && input.clientPrimaryEmail.trim().toLowerCase() === target) {
+    return { authorized: true, reason: 'Matches client primary email on record.' }
+  }
+  const destinations = await listEmailDestinations({ clientPublicId: input.clientPublicId })
+  const match = destinations.find((d) => d.email.toLowerCase() === target)
+  if (!match) {
+    return {
+      authorized: false,
+      reason: 'Recipient email is not on the authorized destination list for this client. Thread appearance alone does not authorize document delivery.',
+    }
+  }
+  if (!match.active || match.authorizationStatus !== 'AUTHORIZED') {
+    return {
+      authorized: false,
+      reason: `Recipient destination status is ${match.authorizationStatus} (active=${String(match.active)}).`,
+      destination: match,
+    }
+  }
+  return { authorized: true, reason: `Authorized destination (${match.purpose}).`, destination: match }
+}
+
+export async function recordSentEmailDocumentArchive(
+  input: Omit<EmailDocumentArchiveEntry, 'id' | 'resendHistory' | 'auditEvents'> & {
+    resendHistory?: EmailDocumentArchiveEntry['resendHistory']
+    auditEvents?: AuditEntry[]
+  },
+): Promise<EmailDocumentArchiveEntry> {
+  const now = new Date().toISOString()
+  const entry: EmailDocumentArchiveEntry = {
+    ...input,
+    id: `earc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    resendHistory: input.resendHistory ?? [],
+    auditEvents: input.auditEvents ?? [
+      {
+        at: now,
+        actor: input.senderAccount,
+        action: 'EMAIL_DOCUMENT_ARCHIVED',
+        detail: `Archived "${input.subject}" to ${input.recipientEmail} (status=${input.deliveryStatus})`,
+      },
+    ],
+  }
+  try {
+    const existing = await db.setting.findUnique({ where: { key: SETTING_KEY_EMAIL_DOC_ARCHIVE } })
+    let list: EmailDocumentArchiveEntry[] = []
+    if (existing?.value) {
+      try {
+        const parsed = JSON.parse(existing.value) as EmailDocumentArchiveEntry[]
+        if (Array.isArray(parsed)) list = parsed
+      } catch {
+        list = []
+      }
+    }
+    list.unshift(entry)
+    if (list.length > 1000) list = list.slice(0, 1000)
+    await db.setting.upsert({
+      where: { key: SETTING_KEY_EMAIL_DOC_ARCHIVE },
+      create: { key: SETTING_KEY_EMAIL_DOC_ARCHIVE, value: JSON.stringify(list) },
+      update: { value: JSON.stringify(list), updatedAt: new Date() },
+    })
+  } catch {
+    // Offline fallback
+  }
+  return entry
+}
+
+export async function listSentEmailDocumentArchives(filter?: {
+  clientPublicId?: string
+  projectId?: string
+}): Promise<EmailDocumentArchiveEntry[]> {
+  try {
+    const row = await db.setting.findUnique({ where: { key: SETTING_KEY_EMAIL_DOC_ARCHIVE } })
+    if (!row?.value) return []
+    const parsed = JSON.parse(row.value) as EmailDocumentArchiveEntry[]
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((a) => {
+      if (filter?.clientPublicId && a.clientPublicId !== filter.clientPublicId) return false
+      if (filter?.projectId && a.projectId !== filter.projectId) return false
+      return true
+    })
+  } catch {
+    return []
+  }
 }

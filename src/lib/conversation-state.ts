@@ -169,6 +169,8 @@ export async function recordInbound(
   }
   // Any inbound clears humanTakeover only if explicitly re-engaged? Keep takeover until manually cleared
   await saveCommState(state)
+  const { emitInboundMessage } = await import('@/lib/automation/domain-events')
+  await emitInboundMessage({ clientRowId, clientId, channel, body, at: state.lastInboundAt ?? new Date().toISOString() })
   return state
 }
 

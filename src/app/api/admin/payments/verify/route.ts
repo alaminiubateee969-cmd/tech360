@@ -31,7 +31,14 @@ export async function POST(req: NextRequest) {
         const pendingId = payment
           ? await ensureGovernedApproval({
               action: 'payment.verify',
-              requestedBy: g.user.id,
+              // Raised BY THE GOVERNANCE BOUNDARY, not by a person: the acting
+              // Super Admin merely attempted the action. Recording them as the
+              // requester made the approval impossible to grant (the boundary
+              // forbids self-approval), which blocked payment verification and
+              // therefore project creation and delivery whenever the company
+              // has a single Super Admin. A Super Admin decision is still
+              // mandatory before anything is verified.
+              requestedBy: 'SYSTEM:payment.verify',
               resourceKey: `payment:${payment.id}`,
               amountMinor: Math.round(payment.amount * 100),
               clientId: payment.clientId,

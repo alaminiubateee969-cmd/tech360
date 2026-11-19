@@ -388,8 +388,22 @@ jobs:
           if (health.status !== 'healthy') throw new Error(`health status: ${health.status}`);
           if (health.app !== 'tech360-platform') throw new Error(`unexpected app: ${health.app}`);
           if (health.version !== pkg.version) throw new Error(`health version ${health.version} != package ${pkg.version}`);
+          const expectedSha = require('node:child_process').execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+          if (health.release?.commit !== expectedSha) throw new Error(`health release does not match built source ${expectedSha}`);
+          if (!['clean', 'dirty'].includes(health.release?.sourceState)) throw new Error('missing Git source-state evidence');
           if (health.checks?.database?.status !== 'UP') throw new Error(`database status: ${health.checks?.database?.status}`);
-          if (!/MySQL/i.test(health.checks.database.detail ?? '')) throw new Error('health does not identify the connected MySQL database');
+          // Public health no longer names the database engine (965a217, "security:
+          // minimize public health response"). MySQL is proven from the artifact
+          // instead: the standalone server can only use the Prisma client bundled
+          // with it, and lib/preview-db refuses the SQLite adapter under
+          // NODE_ENV=production. Together with database UP here and the HTTP 503
+          // check against a dead MySQL port below, this proves the server is
+          // serving from the configured MySQL database.
+          const bundledSchema = fs.readFileSync('.next/standalone/node_modules/.prisma/client/schema.prisma', 'utf8');
+          const bundledProvider = /datasource\s+\w+\s*\{[^}]*?provider\s*=\s*"([^"]+)"/.exec(bundledSchema)?.[1];
+          if (bundledProvider !== 'mysql') throw new Error(`standalone bundle carries a "${bundledProvider}" Prisma client, expected "mysql"`);
+          const databaseKeys = Object.keys(health.checks.database).sort().join(',');
+          if (databaseKeys !== 'status') throw new Error(`public health discloses database details (${databaseKeys}); only status is allowed`);
           const healthText = JSON.stringify(health);
           if (/DATABASE_URL|mysql:\/\/|SESSION_SECRET|PORTAL_SECRET|OPS_SECRET|password/i.test(healthText)) {
             throw new Error('health response contains configuration or secret material');
